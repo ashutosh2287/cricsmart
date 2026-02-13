@@ -6,6 +6,8 @@ import { useParams } from "next/navigation";
 import BroadcastLiveView from "@/components/BroadcastLiveView";
 import { enableBroadcast, disableBroadcast } from "@/services/broadcastMode";
 import { Match } from "@/types/match";
+import OversTimeline from "@/components/OversTimeline";
+
 
 export default function MatchDetailPage() {
 
@@ -99,9 +101,9 @@ export default function MatchDetailPage() {
         <div>Scorecard View Coming Soon...</div>
       )}
 
-      {activeTab === "overs" && (
-        <div>Ball by Ball Overs View Coming Soon...</div>
-      )}
+     {activeTab === "overs" && (
+  <OversTimeline slug={match.slug} />
+)}
 
       {activeTab === "highlights" && (
         <div>Highlights Coming Soon...</div>

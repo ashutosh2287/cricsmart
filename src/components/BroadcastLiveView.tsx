@@ -2,6 +2,7 @@
 
 import MatchCard from "./MatchCard";
 import BroadcastOverlay from "./BroadcastOverlay";
+import LiveCommentaryFeed from "./LiveCommentaryFeed";
 import { Match } from "@/types/match";
 
 type Props = {
@@ -11,12 +12,15 @@ type Props = {
 export default function BroadcastLiveView({ match }: Props) {
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
 
-      {/* 🔥 MatchCard reused for broadcast animations */}
+      {/* 🔥 MatchCard reused for realtime + broadcast animations */}
       <MatchCard slug={match.slug} />
 
-      {/* 🔥 Cinematic overlay */}
+      {/* 🔥 Live Commentary Section */}
+      <LiveCommentaryFeed />
+
+      {/* 🔥 Cinematic overlay (top layer animation) */}
       <BroadcastOverlay />
 
     </div>

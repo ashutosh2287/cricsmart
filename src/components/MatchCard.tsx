@@ -6,6 +6,8 @@ import { getMatch, subscribeMatch } from "@/store/realtimeStore";
 import { publishAnimation } from "@/services/animationBus";
 import { isBroadcastEnabled } from "@/services/broadcastMode";
 import { useRouter } from "next/navigation";
+import { publishCommentary } from "@/services/commentaryBus";
+import { addBallEvent } from "@/store/ballEventStore";
 
 type Props = {
   slug: string;
@@ -55,46 +57,56 @@ export default function MatchCard({ slug }: Props) {
 
         const diff = newRuns - oldRuns;
 
-        // ⭐ DELTA animation (allowed everywhere)
-       // 🔥 Only animate in broadcast mode (match detail live tab)
-if (isBroadcastEnabled()) {
+        // 🔥 Create Ball Event (CORE ENGINE UPGRADE)
+        if (diff !== 0 || newWickets > oldWickets) {
 
-  // DELTA animation
-  if (diff > 0) {
+          addBallEvent(slug, {
+            over: Number(updated.overs ?? 0),
 
-    setDelta(diff);
+            runs: diff,
+            wicket: newWickets > oldWickets,
+            timestamp: Date.now(),
+          });
 
-    setTimeout(() => setDelta(null), 900);
+        }
 
-  }
-
-  // HIGHLIGHT animation
-  if (oldScore !== newScore) {
-
-    setHighlight(true);
-
-    setTimeout(() => {
-      setHighlight(false);
-    }, 300);
-
-  }
-
-}
-
-
-        // 🔥 CINEMATIC EVENTS ONLY IN BROADCAST MODE
+        // 🔥 ONLY animate inside broadcast mode
         if (isBroadcastEnabled()) {
 
+          // DELTA animation
+          if (diff > 0) {
+
+            setDelta(diff);
+
+            setTimeout(() => setDelta(null), 900);
+
+          }
+
+          // HIGHLIGHT animation
+          if (oldScore !== newScore) {
+
+            setHighlight(true);
+
+            setTimeout(() => {
+              setHighlight(false);
+            }, 300);
+
+          }
+
+          // 🔥 CINEMATIC EVENTS
           if (diff === 6) {
             publishAnimation({ type: "SIX" });
+            publishCommentary("🔥 BOOOOM! Massive SIX into the stands!");
           }
 
           if (diff === 4) {
             publishAnimation({ type: "FOUR" });
+            publishCommentary("🎯 Beautiful FOUR through the field!");
           }
 
           if (newWickets > oldWickets) {
             publishAnimation({ type: "WICKET" });
+            publishCommentary("💥 WICKET! The batter is gone!");
           }
 
         }

@@ -13,13 +13,14 @@ export default function OversTimeline({ slug }: Props) {
   const [events, setEvents] = useState<BallEvent[]>(getBallEvents(slug));
 
   const prevLength = useRef(events.length);
-
-  // 🔥 Detect new ball outside render
   const [isNewEvent, setIsNewEvent] = useState(false);
 
+  /*
+  🔥 Realtime subscription
+  */
   useEffect(() => {
 
-    const unsubscribe = subscribeBallEvents(() => {
+    const unsubscribe = subscribeBallEvents(slug, () => {
 
       const newEvents = getBallEvents(slug);
 
@@ -31,6 +32,7 @@ export default function OversTimeline({ slug }: Props) {
 
       prevLength.current = newEvents.length;
 
+      // ⭐ IMPORTANT — create new reference
       setEvents([...newEvents]);
 
     });
@@ -39,7 +41,9 @@ export default function OversTimeline({ slug }: Props) {
 
   }, [slug]);
 
-  // ⭐ GROUP BALLS BY OVER
+  /*
+  🔥 GROUP BALLS BY OVER
+  */
   const grouped = events.reduce<Record<number, BallEvent[]>>((acc, e) => {
 
     const overNumber = Math.floor(Number(e.over));
@@ -63,21 +67,34 @@ export default function OversTimeline({ slug }: Props) {
 
       {overs.map((over) => {
 
-        const overRuns = grouped[over].reduce((sum, ball) => {
-          return sum + (ball.runs || 0);
+        const balls = grouped[over];
+
+        /*
+        🔥 SAFE OVER RUN CALCULATION
+        */
+        const overRuns = balls.reduce((sum, ball) => {
+          return sum + (ball.runs ?? 0);
         }, 0);
 
         return (
 
           <div key={over} className="border p-4 rounded-lg">
 
-            <h3 className="font-bold mb-2">
-              Ov {over} — {overRuns} runs
+            {/* ⭐ OVER HEADER */}
+            <h3 className="font-bold mb-3 flex justify-between">
+
+              <span>Ov {over}</span>
+
+              <span className="text-gray-400">
+                {overRuns} runs
+              </span>
+
             </h3>
 
-            <div className="flex gap-2">
+            {/* ⭐ BALL ROW */}
+            <div className="flex gap-2 flex-wrap">
 
-              {grouped[over].map((ball, i) => {
+              {balls.map((ball, i) => {
 
                 const label =
                   ball.wicket ? "W"
@@ -91,16 +108,17 @@ export default function OversTimeline({ slug }: Props) {
                     ? "bg-blue-500 text-white"
                     : ball.runs === 6
                     ? "bg-green-600 text-white"
-                    : "bg-gray-300";
+                    : "bg-gray-300 text-black";
 
                 const isLatestBall =
-                  i === grouped[over].length - 1 && isNewEvent;
+                  i === balls.length - 1 && isNewEvent;
 
                 return (
                   <div
                     key={i}
                     className={`
                       w-8 h-8 rounded-full flex items-center justify-center font-bold
+                      transition-all duration-300
                       ${color}
                       ${isLatestBall ? "animate-bounce scale-110" : ""}
                     `}

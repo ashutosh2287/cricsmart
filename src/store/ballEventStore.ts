@@ -1,9 +1,10 @@
 import { BallEvent } from "@/types/ballEvent";
 
+// ⭐ MatchSlug → BallEvent[]
 const events: Record<string, BallEvent[]> = {};
 
-
-let listeners: (() => void)[] = [];
+// ⭐ MatchSlug → listeners array
+const listeners: Record<string, Array<() => void>> = {};
 
 export function addBallEvent(matchSlug: string, event: BallEvent) {
 
@@ -11,21 +12,31 @@ export function addBallEvent(matchSlug: string, event: BallEvent) {
     events[matchSlug] = [];
   }
 
-  events[matchSlug].push(event);
+  // 🔥 create new reference so React detects update
+  events[matchSlug] = [...events[matchSlug], event];
 
-  listeners.forEach(l => l());
+  if (listeners[matchSlug]) {
+    listeners[matchSlug].forEach((cb: () => void) => cb());
+  }
 }
 
-export function getBallEvents(matchSlug: string) {
-
-  return events[matchSlug] || [];
+export function getBallEvents(matchSlug: string): BallEvent[] {
+  return events[matchSlug] ?? [];
 }
 
-export function subscribeBallEvents(cb: () => void) {
+export function subscribeBallEvents(
+  matchSlug: string,
+  cb: () => void
+) {
 
-  listeners.push(cb);
+  if (!listeners[matchSlug]) {
+    listeners[matchSlug] = [];
+  }
+
+  listeners[matchSlug].push(cb);
 
   return () => {
-    listeners = listeners.filter(l => l !== cb);
+    listeners[matchSlug] =
+      listeners[matchSlug].filter((l) => l !== cb);
   };
 }

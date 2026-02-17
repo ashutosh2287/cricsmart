@@ -3,11 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Match } from "../types/match";
 import { getMatch, subscribeMatch } from "@/store/realtimeStore";
-import { publishAnimation } from "@/services/animationBus";
+import { subscribeTimeline } from "@/services/broadcastTimeline";
 import { isBroadcastEnabled } from "@/services/broadcastMode";
 import { useRouter } from "next/navigation";
-import { publishCommentary } from "@/services/commentaryBus";
-import { addBallEvent } from "@/store/ballEventStore";
 
 type Props = {
   slug: string;
@@ -17,8 +15,7 @@ export default function MatchCard({ slug }: Props) {
 
   const router = useRouter();
 
-  // ⭐ Static match info
-  const [match] = useState<Match | undefined>(
+  const [match, setMatch] = useState<Match | undefined>(
     getMatch(slug)
   );
 
@@ -27,93 +24,78 @@ export default function MatchCard({ slug }: Props) {
   const [highlight, setHighlight] = useState(false);
   const [delta, setDelta] = useState<number | null>(null);
 
-  const prevScore = useRef(match?.score);
+  // 🔥 LIVE ENERGY SWEEP STATE
+  const [energy, setEnergy] = useState(false);
 
-  // ⭐ Realtime subscription (ZERO RENDER)
+  /*
+  =====================================
+  STATUS STYLE SYSTEM
+  =====================================
+  */
+
+  const statusStyle = {
+    Live: "text-red-500",
+    Upcoming: "text-blue-500",
+    Completed: "text-gray-500"
+  };
+
+  const statusClass = {
+    Live: "live-cinematic",
+    Upcoming: "upcoming-cinematic",
+    Completed: "completed-cinematic"
+  };
+
+  /*
+  =====================================
+  MATCH STATE SUBSCRIPTION
+  =====================================
+  */
+
   useEffect(() => {
 
     const unsubscribe = subscribeMatch(slug, (updated) => {
 
-      const oldScore = prevScore.current;
-      const newScore = updated.score;
+      setMatch(updated);
 
-      if (!newScore) return;
-
-      // ⭐ DIRECT DOM UPDATE (zero render)
       if (scoreRef.current) {
-        scoreRef.current.textContent = newScore;
+        scoreRef.current.textContent = updated.score ?? "";
       }
 
-      if (oldScore) {
+    });
 
-        const [oldRunsStr, oldWicketsStr] = oldScore.split("/");
-        const [newRunsStr, newWicketsStr] = newScore.split("/");
+    return unsubscribe;
 
-        const oldRuns = parseInt(oldRunsStr);
-        const newRuns = parseInt(newRunsStr);
+  }, [slug]);
 
-        const oldWickets = parseInt(oldWicketsStr);
-        const newWickets = parseInt(newWicketsStr);
+  /*
+  =====================================
+  BROADCAST TIMELINE LISTENER
+  UI EFFECTS ONLY
+  =====================================
+  */
 
-        const diff = newRuns - oldRuns;
+  useEffect(() => {
 
-        // 🔥 Create Ball Event (CORE ENGINE UPGRADE)
-        if (diff !== 0 || newWickets > oldWickets) {
+    const unsubscribe = subscribeTimeline((event) => {
 
-          addBallEvent(slug, {
-            over: Number(updated.overs ?? 0),
+      if (event.slug !== slug) return;
 
-            runs: diff,
-            wicket: newWickets > oldWickets,
-            timestamp: Date.now(),
-          });
+      if (!isBroadcastEnabled()) return;
 
-        }
+      // highlight animation
+      setHighlight(true);
+      setTimeout(() => setHighlight(false), 300);
 
-        // 🔥 ONLY animate inside broadcast mode
-        if (isBroadcastEnabled()) {
+      // delta animation
+      if (event.runs > 0) {
 
-          // DELTA animation
-          if (diff > 0) {
+        setDelta(event.runs);
+        setTimeout(() => setDelta(null), 900);
 
-            setDelta(diff);
-
-            setTimeout(() => setDelta(null), 900);
-
-          }
-
-          // HIGHLIGHT animation
-          if (oldScore !== newScore) {
-
-            setHighlight(true);
-
-            setTimeout(() => {
-              setHighlight(false);
-            }, 300);
-
-          }
-
-          // 🔥 CINEMATIC EVENTS
-          if (diff === 6) {
-            publishAnimation({ type: "SIX" });
-            publishCommentary("🔥 BOOOOM! Massive SIX into the stands!");
-          }
-
-          if (diff === 4) {
-            publishAnimation({ type: "FOUR" });
-            publishCommentary("🎯 Beautiful FOUR through the field!");
-          }
-
-          if (newWickets > oldWickets) {
-            publishAnimation({ type: "WICKET" });
-            publishCommentary("💥 WICKET! The batter is gone!");
-          }
-
-        }
-
+        // 🔥 ENERGY SWEEP
+        setEnergy(true);
+        setTimeout(() => setEnergy(false), 600);
       }
-
-      prevScore.current = newScore;
 
     });
 
@@ -126,7 +108,12 @@ export default function MatchCard({ slug }: Props) {
   return (
     <div
       onClick={() => router.push(`/match/${slug}`)}
-      className="border p-4 rounded-xl shadow relative overflow-hidden transition-all cursor-pointer hover:scale-[1.02]"
+      className={`
+        border p-4 rounded-xl shadow relative overflow-hidden
+        transition-all cursor-pointer hover:scale-[1.02]
+        ${statusClass[match.status]}
+        ${energy ? "energy-sweep" : ""}
+      `}
     >
 
       {/* HEADER */}
@@ -143,12 +130,10 @@ export default function MatchCard({ slug }: Props) {
       {/* SCORE */}
       <div className="relative mt-2">
 
-        <p
-          className={`text-lg font-semibold transition-all duration-300 ${
+        <p className={`text-lg font-semibold transition-all duration-300 ${
             highlight ? "bg-yellow-300 scale-110 px-2 rounded" : ""
           }`}
         >
-
           Score:
 
           <span ref={scoreRef} className="ml-1">
@@ -157,7 +142,6 @@ export default function MatchCard({ slug }: Props) {
 
         </p>
 
-        {/* DELTA ANIMATION */}
         {delta && (
           <span className="absolute left-28 top-0 text-green-500 font-bold animate-bounce">
             +{delta}
@@ -174,7 +158,12 @@ export default function MatchCard({ slug }: Props) {
         <p className="text-sm">Run Rate: {match.runRate}</p>
       )}
 
-      <span className="text-sm">{match.status}</span>
+      {/* STATUS BADGE */}
+      <span
+        className={`mt-2 inline-block px-2 py-1 rounded-full text-xs font-semibold ${statusStyle[match.status]}`}
+      >
+        {match.status}
+      </span>
 
     </div>
   );

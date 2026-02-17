@@ -1,7 +1,7 @@
 import { Match } from "../types/match";
 import { dispatchMatchEvent } from "@/store/matchStore";
 import { publishAnimation } from "@/services/animationBus";
-import { setMatches } from "@/store/realtimeStore";
+import { addBallEvent } from "@/store/ballEventStore";
 
 type Listener = (update: {
   type: "match_update";
@@ -12,8 +12,15 @@ let matches: Match[] = [];
 let listeners: Listener[] = [];
 
 let interval: ReturnType<typeof setInterval> | null = null;
-
 let isPaused = false;
+
+/*
+🔥 Track over + ball for each match
+*/
+const matchState: Record<
+  string,
+  { over: number; ball: number }
+> = {};
 
 /*
 🔥 Realistic cricket event types
@@ -30,7 +37,7 @@ type CricketEvent =
   | "NB";
 
 /*
-🔥 Realistic probability distribution
+🔥 Probability distribution
 */
 const cricketEvents: CricketEvent[] = [
   0,0,0,0,
@@ -45,7 +52,9 @@ const cricketEvents: CricketEvent[] = [
 ];
 
 /*
-🔥 Start realtime engine
+=================================================
+START REALTIME ENGINE
+=================================================
 */
 export function startRealtime(initialMatches: Match[]) {
 
@@ -53,7 +62,6 @@ export function startRealtime(initialMatches: Match[]) {
 
   dispatchMatchEvent("START_MATCH");
 
-  // restart engine safely
   if (interval) {
     clearInterval(interval);
   }
@@ -62,51 +70,52 @@ export function startRealtime(initialMatches: Match[]) {
 
     if (isPaused) return;
 
-    const updatedMatches: Match[] = [];
-
     matches.forEach(match => {
 
-      if (match.status !== "Live") {
-        updatedMatches.push(match);
-        return;
+      if (match.status !== "Live") return;
+
+      /*
+      ⭐ Initialize match tracking
+      */
+      if (!matchState[match.slug]) {
+        matchState[match.slug] = { over: 0, ball: 0 };
       }
 
-      const [runsStr, wicketsStr] =
-        (match.score ?? "0/0").split("/");
+      let { over, ball } = matchState[match.slug];
 
-      let runs = Number(runsStr) || 0;
-      let wickets = Number(wicketsStr) || 0;
-
-      // all out
-      if (wickets >= 10) {
-
-        dispatchMatchEvent("INNINGS_END");
-
-        updatedMatches.push({
-          ...match,
-          status: "Completed"
-        });
-
-        return;
-      }
-
-      const oversStr = match.overs ?? "0.0";
-
-      const [overPart, ballPart] = oversStr.split(".");
-
-      let over = Number(overPart) || 0;
-      let ball = Number(ballPart) || 0;
-
+      /*
+      ⭐ Random cricket event
+      */
       const event =
         cricketEvents[
           Math.floor(Math.random() * cricketEvents.length)
         ];
 
+      let ballRuns = 0;
+      let isWicket = false;
+      let extraRun = false;
+      let legalDelivery = true;
+
       if (event === "WD" || event === "NB") {
 
-        runs += 1;
+        ballRuns = 1;
+        extraRun = true;
+        legalDelivery = false;
+
+      } else if (event === "W") {
+
+        isWicket = true;
 
       } else {
+
+        ballRuns = event;
+
+      }
+
+      /*
+      ⭐ Update over + ball count
+      */
+      if (legalDelivery) {
 
         ball++;
 
@@ -116,77 +125,60 @@ export function startRealtime(initialMatches: Match[]) {
           ball = 0;
 
           dispatchMatchEvent("OVER_COMPLETE");
+
         }
 
-        if (event === "W") {
-
-          wickets++;
-
-          const animationDuration = 5000;
-
-          isPaused = true;
-
-          publishAnimation({
-            type: "WICKET"
-          });
-
-          setTimeout(() => {
-            isPaused = false;
-          }, animationDuration);
-
-        } else {
-
-          runs += event;
-
-          if (event === 4 || event === 6) {
-
-            publishAnimation({
-              type: event === 6 ? "SIX" : "FOUR"
-            });
-
-          }
-        }
-
-        dispatchMatchEvent("BALL");
       }
 
-      const newOvers = `${over}.${ball}`;
+      // Save state
+      matchState[match.slug] = { over, ball };
 
-      const totalBalls = over * 6 + ball;
+      /*
+      ⭐ Send BALL EVENT
+      */
+      addBallEvent({
+        slug: match.slug,
+        over: Number(`${over}.${ball}`),
+        runs: ballRuns,
+        wicket: isWicket,
+        extra: extraRun,
+        timestamp: Date.now()
+      });
 
-      const runRate =
-        totalBalls > 0
-          ? Number((runs / (totalBalls / 6)).toFixed(2))
-          : 0;
+      /*
+      ⭐ Animation layer
+      */
+      if (isWicket) {
 
-      const updatedMatch: Match = {
-        ...match,
-        score: `${runs}/${wickets}`,
-        overs: newOvers,
-        runRate
-      };
+        const animationDuration = 5000;
 
-      updatedMatches.push(updatedMatch);
+        isPaused = true;
 
-      listeners.forEach(cb =>
-        cb({
-          type: "match_update",
-          payload: updatedMatch
-        })
-      );
+        publishAnimation({ type: "WICKET" });
+
+        setTimeout(() => {
+          isPaused = false;
+        }, animationDuration);
+
+      } else if (ballRuns === 4 || ballRuns === 6) {
+
+        publishAnimation({
+          type: ballRuns === 6 ? "SIX" : "FOUR"
+        });
+
+      }
+
+      dispatchMatchEvent("BALL");
 
     });
-
-    matches = updatedMatches;
-
-    // ⭐ sync realtime engine with global store
-    setMatches(updatedMatches);
 
   }, 2000);
 }
 
 /*
-🔥 Subscribe
+=================================================
+SUBSCRIBE
+=================================================
 */
 export function subscribeRealtime(cb: Listener) {
 
@@ -198,7 +190,9 @@ export function subscribeRealtime(cb: Listener) {
 }
 
 /*
-🔥 Get latest matches
+=================================================
+GET LATEST
+=================================================
 */
 export function getRealtimeMatches() {
   return matches;

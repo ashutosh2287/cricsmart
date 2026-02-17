@@ -1,7 +1,7 @@
 import { Match } from "../types/match";
 
 /*
-⭐ Default demo data (fix empty state)
+⭐ Default demo data
 */
 let matches: Match[] = [
 
@@ -23,8 +23,7 @@ let matches: Match[] = [
     team2: "Pakistan",
     status: "Upcoming",
     score: "",
-    overs: "",
-    
+    overs: ""
   },
 
   {
@@ -40,51 +39,22 @@ let matches: Match[] = [
 
 ];
 
-
+/*
+⭐ INTERNAL STATE
+*/
 
 let frameScheduled = false;
 const pendingUpdates: Match[] = [];
 
-const globalListeners: (() => void)[] = [];
+const globalListeners = new Set<() => void>();
 
-const matchListeners: Record<string, ((match: Match) => void)[]> = {};
+const matchListeners: Record<string, Set<(match: Match) => void>> = {};
 
-export function setMatches(newMatches: Match[]) {
-
-  matches = newMatches;
-
-  globalListeners.forEach(l => l());
-}
-
-export function updateMatch(updated: Match) {
-
-  matches = matches.map(m =>
-    m.slug === updated.slug ? updated : m
-  );
-
-  pendingUpdates.push(updated);
-
-  if (!frameScheduled) {
-
-    frameScheduled = true;
-
-    requestAnimationFrame(() => {
-
-      frameScheduled = false;
-
-      globalListeners.forEach(l => l());
-
-      pendingUpdates.forEach(match => {
-        matchListeners[match.slug]?.forEach(cb => cb(match));
-      });
-
-      pendingUpdates.length = 0;
-
-    });
-
-  }
-
-}
+/*
+=================================================
+GETTERS
+=================================================
+*/
 
 export function getMatches() {
   return matches;
@@ -94,13 +64,93 @@ export function getMatch(slug: string) {
   return matches.find(m => m.slug === slug);
 }
 
+/*
+=================================================
+SET ALL MATCHES
+=================================================
+*/
+
+export function setMatches(newMatches: Match[]) {
+
+  // Replace reference only when necessary
+  if (matches === newMatches) return;
+
+  matches = newMatches;
+
+  emitGlobal();
+}
+
+/*
+=================================================
+UPDATE SINGLE MATCH (🔥 OPTIMIZED)
+=================================================
+*/
+
+export function updateMatch(updated: Match) {
+
+  const index = matches.findIndex(m => m.slug === updated.slug);
+
+  if (index === -1) return;
+
+  // ⭐ IMPORTANT:
+  // update only the changed index
+  matches[index] = updated;
+
+  pendingUpdates.push(updated);
+
+  scheduleFrame();
+}
+
+/*
+=================================================
+FRAME BATCHING
+=================================================
+*/
+
+function scheduleFrame() {
+
+  if (frameScheduled) return;
+
+  frameScheduled = true;
+
+  requestAnimationFrame(() => {
+
+    frameScheduled = false;
+
+    emitGlobal();
+
+    pendingUpdates.forEach(match => {
+      matchListeners[match.slug]?.forEach(cb => cb(match));
+    });
+
+    pendingUpdates.length = 0;
+
+  });
+
+}
+
+/*
+=================================================
+EMITTERS
+=================================================
+*/
+
+function emitGlobal() {
+  globalListeners.forEach(l => l());
+}
+
+/*
+=================================================
+SUBSCRIPTIONS
+=================================================
+*/
+
 export function subscribeStore(listener: () => void) {
 
-  globalListeners.push(listener);
+  globalListeners.add(listener);
 
   return () => {
-    const index = globalListeners.indexOf(listener);
-    if (index !== -1) globalListeners.splice(index, 1);
+    globalListeners.delete(listener);
   };
 
 }
@@ -108,16 +158,13 @@ export function subscribeStore(listener: () => void) {
 export function subscribeMatch(slug: string, cb: (match: Match) => void) {
 
   if (!matchListeners[slug]) {
-    matchListeners[slug] = [];
+    matchListeners[slug] = new Set();
   }
 
-  matchListeners[slug].push(cb);
+  matchListeners[slug].add(cb);
 
   return () => {
-
-    matchListeners[slug] =
-      matchListeners[slug].filter(l => l !== cb);
-
+    matchListeners[slug].delete(cb);
   };
 
 }

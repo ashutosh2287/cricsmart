@@ -1,42 +1,39 @@
 import { BallEvent } from "@/types/ballEvent";
+import { dispatchEvent } from "@/services/eventDispatcher";
 
-// ⭐ MatchSlug → BallEvent[]
+/*
+========================================
+EVENT HISTORY (optional — replay / debugging)
+========================================
+*/
+
 const events: Record<string, BallEvent[]> = {};
 
-// ⭐ MatchSlug → listeners array
-const listeners: Record<string, Array<() => void>> = {};
+/*
+========================================
+ADD BALL EVENT (ENGINE ENTRY POINT)
+========================================
+*/
 
-export function addBallEvent(matchSlug: string, event: BallEvent) {
+export function addBallEvent(event: BallEvent) {
 
+  const matchSlug = event.slug;
+
+  // store history (optional but useful)
   if (!events[matchSlug]) {
     events[matchSlug] = [];
   }
 
-  // 🔥 create new reference so React detects update
-  events[matchSlug] = [...events[matchSlug], event];
+  events[matchSlug].push(event);
 
-  if (listeners[matchSlug]) {
-    listeners[matchSlug].forEach((cb: () => void) => cb());
-  }
+  // 🔥 ENTERPRISE EVENT ROUTING
+  dispatchEvent(event);
 }
 
-export function getBallEvents(matchSlug: string): BallEvent[] {
+/*
+(optional debugging / replay access)
+*/
+
+export function getBallEvents(matchSlug: string) {
   return events[matchSlug] ?? [];
-}
-
-export function subscribeBallEvents(
-  matchSlug: string,
-  cb: () => void
-) {
-
-  if (!listeners[matchSlug]) {
-    listeners[matchSlug] = [];
-  }
-
-  listeners[matchSlug].push(cb);
-
-  return () => {
-    listeners[matchSlug] =
-      listeners[matchSlug].filter((l) => l !== cb);
-  };
 }

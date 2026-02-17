@@ -1,9 +1,19 @@
 export type BallEvent = {
 
-  over: number;        // 18.3
-  runs: number;        // 0,1,2,3,4,6
+  slug: string;
+
+  over: number;
+
+  runs: number;
+
   wicket?: boolean;
-  commentary?: string;
-  timestamp: number;
+
+  // ⭐ NEW (for WD / NB support)
+  extra?: boolean;
+
+  // ⭐ OPTIONAL (future-ready)
+  type?: "RUN" | "FOUR" | "SIX" | "WICKET" | "WD" | "NB";
+
+  timestamp: number; 
 
 };

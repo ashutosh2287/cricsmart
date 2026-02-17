@@ -1,66 +1,67 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getMatches, subscribeStore } from "@/store/realtimeStore";
 import MatchCard from "../../components/MatchCard";
 import { Match } from "../../types/match";
-
 import { startRealtime } from "@/services/realtimeService";
 
 export default function MatchPage() {
 
-  // ⭐ Only used for LIST order (not data rendering)
+  // ⭐ UI list only
   const [matches, setMatches] = useState<Match[]>(getMatches());
 
   const [filter, setFilter] = useState<
     "All" | "Live" | "Upcoming" | "Completed"
   >("All");
 
-  // ⭐ Subscribe ONLY for list changes (add/remove/sort)
+  // ✅ Subscribe ONLY to store changes
   useEffect(() => {
 
-  const unsubscribe = subscribeStore(() => {
+    const unsubscribe = subscribeStore((updatedMatches?: Match[]) => {
 
-    const updatedMatches = getMatches();
+      const data = updatedMatches ?? getMatches();
 
-    setMatches(updatedMatches);
+      setMatches(prev => {
+        if (prev === data) return prev; // prevent useless re-render
+        return data;
+      });
 
-    // ⭐ IMPORTANT — start realtime when matches exist
-    if (updatedMatches.length > 0) {
-      startRealtime(updatedMatches);
-    }
+    });
 
-  });
+    return unsubscribe;
 
-  return unsubscribe;
+  }, []);
 
-}, []);
-
-
-  // ✅ START REALTIME ENGINE (THIS WAS MISSING)
+  // ✅ Start realtime ONCE
   useEffect(() => {
 
     const initialMatches = getMatches();
 
-    startRealtime(initialMatches);
+    if (initialMatches.length > 0) {
+      startRealtime(initialMatches);
+    }
 
   }, []);
 
-  // ⭐ Priority sorting (Live first)
+  // ⭐ Priority map
   const priority: Record<"Live" | "Upcoming" | "Completed", number> = {
     Live: 1,
     Upcoming: 2,
     Completed: 3
   };
 
-  const sortedMatches = [...matches].sort((a, b) => {
-    return priority[a.status] - priority[b.status];
-  });
+  // ✅ Memoized sorting
+  const sortedMatches = useMemo(() => {
+    return [...matches].sort(
+      (a, b) => priority[a.status] - priority[b.status]
+    );
+  }, [matches]);
 
   const filteredMatches =
     filter === "All"
       ? sortedMatches
-      : sortedMatches.filter((match) => match.status === filter);
+      : sortedMatches.filter(match => match.status === filter);
 
   return (
     <main className="p-10 space-y-6">
@@ -69,8 +70,7 @@ export default function MatchPage() {
 
       {/* FILTER BUTTONS */}
       <div className="flex gap-4 relative bg-gray-200 p-1 rounded-full w-fit">
-
-        {(["All", "Live", "Upcoming", "Completed"] as const).map((tab) => {
+        {(["All", "Live", "Upcoming", "Completed"] as const).map(tab => {
 
           const getActiveColor = () => {
             if (tab === "Live") return "bg-red-500 text-white";
@@ -95,13 +95,11 @@ export default function MatchPage() {
               {tab}
             </button>
           );
-
         })}
-
       </div>
 
       {/* MATCH LIST */}
-      {filteredMatches.map((match) => (
+      {filteredMatches.map(match => (
         <MatchCard
           key={match.slug}
           slug={match.slug}

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { getBallEvents, subscribeBallEvents } from "@/store/ballEventStore";
+import { useEffect, useState } from "react";
+import { subscribeTimeline } from "@/services/broadcastTimeline";
 import { BallEvent } from "@/types/ballEvent";
 
 type Props = {
@@ -10,30 +10,27 @@ type Props = {
 
 export default function OversTimeline({ slug }: Props) {
 
-  const [events, setEvents] = useState<BallEvent[]>(getBallEvents(slug));
+  const [events, setEvents] = useState<BallEvent[]>([]);
 
-  const prevLength = useRef(events.length);
-  const [isNewEvent, setIsNewEvent] = useState(false);
+  // ⭐ Track newest ball
+  const [latestEventKey, setLatestEventKey] = useState<string | null>(null);
 
   /*
-  🔥 Realtime subscription
+  =====================================
+  🔥 TIMELINE STREAM SUBSCRIPTION
+  =====================================
   */
+
   useEffect(() => {
 
-    const unsubscribe = subscribeBallEvents(slug, () => {
+    const unsubscribe = subscribeTimeline((event) => {
 
-      const newEvents = getBallEvents(slug);
+      if (event.slug !== slug) return;
 
-      if (newEvents.length > prevLength.current) {
-        setIsNewEvent(true);
+      setEvents(prev => [...prev, event]);
 
-        setTimeout(() => setIsNewEvent(false), 400);
-      }
-
-      prevLength.current = newEvents.length;
-
-      // ⭐ IMPORTANT — create new reference
-      setEvents([...newEvents]);
+      // unique id for newest ball
+      setLatestEventKey(`${event.over}-${event.timestamp}`);
 
     });
 
@@ -42,8 +39,11 @@ export default function OversTimeline({ slug }: Props) {
   }, [slug]);
 
   /*
+  =====================================
   🔥 GROUP BALLS BY OVER
+  =====================================
   */
+
   const grouped = events.reduce<Record<number, BallEvent[]>>((acc, e) => {
 
     const overNumber = Math.floor(Number(e.over));
@@ -69,9 +69,6 @@ export default function OversTimeline({ slug }: Props) {
 
         const balls = grouped[over];
 
-        /*
-        🔥 SAFE OVER RUN CALCULATION
-        */
         const overRuns = balls.reduce((sum, ball) => {
           return sum + (ball.runs ?? 0);
         }, 0);
@@ -80,7 +77,7 @@ export default function OversTimeline({ slug }: Props) {
 
           <div key={over} className="border p-4 rounded-lg">
 
-            {/* ⭐ OVER HEADER */}
+            {/* OVER HEADER */}
             <h3 className="font-bold mb-3 flex justify-between">
 
               <span>Ov {over}</span>
@@ -91,7 +88,7 @@ export default function OversTimeline({ slug }: Props) {
 
             </h3>
 
-            {/* ⭐ BALL ROW */}
+            {/* BALL ROW */}
             <div className="flex gap-2 flex-wrap">
 
               {balls.map((ball, i) => {
@@ -110,8 +107,9 @@ export default function OversTimeline({ slug }: Props) {
                     ? "bg-green-600 text-white"
                     : "bg-gray-300 text-black";
 
+                // ⭐ Animate ONLY newest ball
                 const isLatestBall =
-                  i === balls.length - 1 && isNewEvent;
+                  latestEventKey === `${ball.over}-${ball.timestamp}`;
 
                 return (
                   <div

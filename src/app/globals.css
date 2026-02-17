@@ -24,7 +24,12 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
-/* GPU PARTICLE ENGINE */
+
+/*
+================================================
+GPU PARTICLE ENGINE
+================================================
+*/
 
 .particle {
   position: absolute;
@@ -53,7 +58,12 @@ body {
   }
 
 }
-/* CAMERA SHAKE EFFECT */
+
+/*
+================================================
+CAMERA SHAKE EFFECT
+================================================
+*/
 
 @keyframes shake {
 
@@ -66,5 +76,166 @@ body {
 
 }
 
+/*
+================================================
+🔥 LIVE CINEMATIC CARD (NEW)
+================================================
+*/
+
+.live-cinematic {
+
+  border-color: rgba(239,68,68,0.6);
+
+  box-shadow:
+    0 0 12px rgba(239,68,68,0.25),
+    inset 0 0 6px rgba(239,68,68,0.1);
+
+  animation: liveBreathing 3.5s ease-in-out infinite;
+
+}
+
+@keyframes liveBreathing {
+
+  0% {
+    box-shadow:
+      0 0 10px rgba(239,68,68,0.15),
+      inset 0 0 4px rgba(239,68,68,0.08);
+  }
+
+  50% {
+    box-shadow:
+      0 0 18px rgba(239,68,68,0.45),
+      inset 0 0 10px rgba(239,68,68,0.2);
+  }
+
+  100% {
+    box-shadow:
+      0 0 10px rgba(239,68,68,0.15),
+      inset 0 0 4px rgba(239,68,68,0.08);
+  }
+
+}
+/*
+================================================
+🔵 UPCOMING CINEMATIC CARD
+================================================
+*/
+
+.upcoming-cinematic {
+
+  border-color: rgba(59,130,246,0.5);
+
+  box-shadow:
+    0 0 8px rgba(59,130,246,0.15),
+    inset 0 0 4px rgba(59,130,246,0.08);
+
+  transition: box-shadow 0.4s ease;
+
+}
+
+.upcoming-cinematic:hover {
+
+  box-shadow:
+    0 0 14px rgba(59,130,246,0.35),
+    inset 0 0 8px rgba(59,130,246,0.15);
+
+}
 
 
+/*
+================================================
+⚫ COMPLETED CINEMATIC CARD
+================================================
+*/
+
+.completed-cinematic {
+
+  border-color: rgba(107,114,128,0.4);
+
+  box-shadow:
+    0 0 6px rgba(107,114,128,0.1),
+    inset 0 0 3px rgba(107,114,128,0.05);
+
+  opacity: 0.95;
+
+}
+
+/*
+================================================
+🔥 LIVE ENERGY SWEEP
+================================================
+*/
+
+.energy-sweep::after {
+
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: -120%;
+
+  width: 120%;
+  height: 100%;
+
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255,255,255,0.4),
+    transparent
+  );
+
+  animation: energySweep 600ms ease-out forwards;
+
+  pointer-events: none;
+
+}
+
+@keyframes energySweep {
+
+  from {
+    left: -120%;
+  }
+
+  to {
+    left: 120%;
+  }
+
+}
+/*
+================================================
+🔥 STADIUM MOMENT ENGINE
+================================================
+*/
+
+.stadium-overlay {
+
+  position: fixed;
+  inset: 0;
+
+  pointer-events: none;
+
+  z-index: 9999;
+
+  animation: stadiumFlash 500ms ease-out;
+
+}
+
+.stadium-overlay.six {
+  background: radial-gradient(circle, rgba(255,215,0,0.25), transparent);
+}
+
+.stadium-overlay.four {
+  background: radial-gradient(circle, rgba(59,130,246,0.2), transparent);
+}
+
+.stadium-overlay.wicket {
+  background: radial-gradient(circle, rgba(239,68,68,0.3), transparent);
+}
+
+@keyframes stadiumFlash {
+
+  from { opacity: 1; }
+  to { opacity: 0; }
+
+}

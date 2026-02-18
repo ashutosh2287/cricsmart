@@ -239,3 +239,50 @@ CAMERA SHAKE EFFECT
   to { opacity: 0; }
 
 }
+
+/* =========================================
+🎬 BROADCAST DIRECTOR OVERLAY
+========================================= */
+
+.director-overlay.camera_shake {
+
+  animation: cameraShake 600ms ease;
+  will-change: transform; /* GPU optimization */
+
+}
+
+@keyframes cameraShake {
+
+  0% { transform: translate3d(0,0,0); }
+  25% { transform: translate3d(-6px,4px,0); }
+  50% { transform: translate3d(6px,-4px,0); }
+  75% { transform: translate3d(-4px,3px,0); }
+  100% { transform: translate3d(0,0,0); }
+
+}
+
+
+/* =========================================
+🎥 CINEMATIC SLOW MOTION FLASH
+========================================= */
+
+.director-overlay.slow_motion {
+
+  animation: slowMotionFlash 600ms ease-out;
+  will-change: backdrop-filter, filter;
+
+}
+
+@keyframes slowMotionFlash {
+
+  from {
+    -webkit-backdrop-filter: brightness(1.4); /* Safari support */
+    backdrop-filter: brightness(1.4);
+  }
+
+  to {
+    -webkit-backdrop-filter: brightness(1);
+    backdrop-filter: brightness(1);
+  }
+
+}

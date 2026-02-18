@@ -1,16 +1,18 @@
-import { BallEvent } from "@/types/ballEvent";
 import { publishAnimation } from "@/services/animationBus";
 import { publishCommentary } from "@/services/commentaryBus";
 import { scheduleCinematic } from "@/services/cinematicScheduler";
 import { triggerStadiumMoment } from "@/services/stadiumMoment";
+import { triggerDirector } from "@/services/broadcastDirector";
+import { subscribeCommand, Command } from "./commandBus";
 
 /*
 ================================================
 GLOBAL ANIMATION ORCHESTRATOR
+(Command-driven cinematic layer)
 ================================================
 */
 
-export function handleAnimation(event: BallEvent) {
+function handleCommand(command: Command) {
 
   /*
   ================================================
@@ -18,7 +20,7 @@ export function handleAnimation(event: BallEvent) {
   ================================================
   */
 
-  if (event.wicket) {
+  if (command.type === "WICKET_FALL") {
 
     scheduleCinematic(() => {
 
@@ -28,8 +30,9 @@ export function handleAnimation(event: BallEvent) {
 
       publishCommentary("💥 WICKET! The batter is gone!");
 
-      // 🔥 STADIUM MOMENT
       triggerStadiumMoment("WICKET");
+
+      triggerDirector("SLOW_MOTION");
 
     });
 
@@ -42,7 +45,7 @@ export function handleAnimation(event: BallEvent) {
   ================================================
   */
 
-  if (event.runs === 6) {
+  if (command.type === "BOUNDARY_SIX") {
 
     scheduleCinematic(() => {
 
@@ -52,8 +55,9 @@ export function handleAnimation(event: BallEvent) {
 
       publishCommentary("🔥 BOOOOM! Massive SIX into the stands!");
 
-      // 🔥 STADIUM MOMENT
       triggerStadiumMoment("SIX");
+
+      triggerDirector("CAMERA_SHAKE");
 
     });
 
@@ -66,7 +70,7 @@ export function handleAnimation(event: BallEvent) {
   ================================================
   */
 
-  if (event.runs === 4) {
+  if (command.type === "BOUNDARY_FOUR") {
 
     scheduleCinematic(() => {
 
@@ -76,12 +80,25 @@ export function handleAnimation(event: BallEvent) {
 
       publishCommentary("🎯 Beautiful FOUR through the field!");
 
-      // 🔥 STADIUM MOMENT
       triggerStadiumMoment("FOUR");
+
+      triggerDirector("LIGHT_IMPACT");
 
     });
 
     return;
   }
+
+}
+
+/*
+================================================
+INIT ORCHESTRATOR (RUN ONCE)
+================================================
+*/
+
+export function initAnimationOrchestrator() {
+
+  subscribeCommand(handleCommand);
 
 }

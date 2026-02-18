@@ -1,21 +1,19 @@
 import { BallEvent } from "@/types/ballEvent";
-import { pushToTimeline } from "@/services/broadcastTimeline";
-import { handleAnimation } from "@/services/animationOrchestrator";
+import { dispatchBallEvent } from "@/services/matchEngine";
 
 type EventListener = (event: BallEvent) => void;
 
 /*
 =====================================
-ROUTED LISTENERS
+ROUTED LISTENERS (UI direct listeners)
 =====================================
 */
 
-// slug → listeners
 const routes: Record<string, Set<EventListener>> = {};
 
 /*
 =====================================
-SUBSCRIBE TO EVENT (optional)
+SUBSCRIBE TO EVENT (OPTIONAL UI HOOK)
 =====================================
 */
 
@@ -23,7 +21,6 @@ export function subscribeEvent(
   slug: string,
   cb: EventListener
 ) {
-
   if (!routes[slug]) {
     routes[slug] = new Set();
   }
@@ -37,27 +34,18 @@ export function subscribeEvent(
 
 /*
 =====================================
-DISPATCH EVENT
+DISPATCH EVENT (MASTER ENTRY)
 =====================================
 */
 
 export function dispatchEvent(event: BallEvent) {
 
-  /*
-  🔥 1. direct listeners (if any UI subscribes)
-  */
+  console.log("DISPATCH EVENT slug:", event.slug);
+
   routes[event.slug]?.forEach(listener => {
     listener(event);
   });
 
-  /*
-  🔥 2. Broadcast timeline engine
-  */
-  pushToTimeline(event);
-
-  /*
-  🔥 3. GLOBAL ANIMATION ORCHESTRATOR (NEW)
-  */
-  handleAnimation(event);
-
+  dispatchBallEvent(event.slug, event);
 }
+

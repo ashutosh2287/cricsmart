@@ -4,7 +4,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import BootstrapRealtime from "@/components/BootstrapRealtime";
-import StadiumOverlay from "@/components/StadiumOverlay"; // ⭐ NEW
+import StadiumOverlay from "@/components/StadiumOverlay";
+import BroadcastDirectorOverlay from "@/components/BroadcastDirectorOverlay";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,11 +34,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
 
-        {/* ⭐ Global realtime bootstrapping (runs once) */}
+        {/* ⭐ Global realtime bootstrapping */}
         <BootstrapRealtime />
 
-        {/* ⭐ GLOBAL STADIUM OVERLAY (NEW 😈) */}
+        {/* 🔥 Stadium cinematic effects */}
         <StadiumOverlay />
+
+        {/* 🎬 Broadcast director cinematic effects */}
+        <BroadcastDirectorOverlay />
 
         {/* ⭐ Navigation */}
         <Navbar />

@@ -1,26 +1,5 @@
 import { Match } from "../types/match";
-import { dispatchMatchEvent } from "@/store/matchStore";
-import { publishAnimation } from "@/services/animationBus";
-import { addBallEvent } from "@/store/ballEventStore";
-
-type Listener = (update: {
-  type: "match_update";
-  payload: Match;
-}) => void;
-
-let matches: Match[] = [];
-let listeners: Listener[] = [];
-
-let interval: ReturnType<typeof setInterval> | null = null;
-let isPaused = false;
-
-/*
-🔥 Track over + ball for each match
-*/
-const matchState: Record<
-  string,
-  { over: number; ball: number }
-> = {};
+import { dispatchBallEvent, initMatch } from "@/services/matchEngine";
 
 /*
 🔥 Realistic cricket event types
@@ -40,16 +19,21 @@ type CricketEvent =
 🔥 Probability distribution
 */
 const cricketEvents: CricketEvent[] = [
-  0,0,0,0,
-  1,1,1,1,1,
+  0, 0, 0, 0,
+  1, 1, 1, 1, 1,
   2,
   3,
-  4,4,
+  4, 4,
   6,
   "W",
   "WD",
   "NB"
 ];
+
+let interval: ReturnType<typeof setInterval> | null = null;
+let isPaused = false;
+
+let matches: Match[] = [];
 
 /*
 =================================================
@@ -60,7 +44,14 @@ export function startRealtime(initialMatches: Match[]) {
 
   matches = initialMatches;
 
-  dispatchMatchEvent("START_MATCH");
+  // ✅ Ensure matchEngine initializes live matches
+  matches.forEach(match => {
+
+    if (match.status === "Live") {
+      initMatch(match.slug);
+    }
+
+  });
 
   if (interval) {
     clearInterval(interval);
@@ -74,126 +65,83 @@ export function startRealtime(initialMatches: Match[]) {
 
       if (match.status !== "Live") return;
 
-      /*
-      ⭐ Initialize match tracking
-      */
-      if (!matchState[match.slug]) {
-        matchState[match.slug] = { over: 0, ball: 0 };
-      }
-
-      let { over, ball } = matchState[match.slug];
-
-      /*
-      ⭐ Random cricket event
-      */
       const event =
         cricketEvents[
           Math.floor(Math.random() * cricketEvents.length)
         ];
 
-      let ballRuns = 0;
-      let isWicket = false;
-      let extraRun = false;
-      let legalDelivery = true;
+      /*
+      -------------------------------------------------
+      MAP RANDOM EVENT → ENGINE BALL EVENT
+      -------------------------------------------------
+      */
 
-      if (event === "WD" || event === "NB") {
+      if (event === "WD") {
 
-        ballRuns = 1;
-        extraRun = true;
-        legalDelivery = false;
-
-      } else if (event === "W") {
-
-        isWicket = true;
-
-      } else {
-
-        ballRuns = event;
+        dispatchBallEvent(match.slug, { type: "WD" });
+        return;
 
       }
 
-      /*
-      ⭐ Update over + ball count
-      */
-      if (legalDelivery) {
+      if (event === "NB") {
 
-        ball++;
-
-        if (ball === 6) {
-
-          over++;
-          ball = 0;
-
-          dispatchMatchEvent("OVER_COMPLETE");
-
-        }
+        dispatchBallEvent(match.slug, { type: "NB" });
+        return;
 
       }
 
-      // Save state
-      matchState[match.slug] = { over, ball };
+      if (event === "W") {
 
-      /*
-      ⭐ Send BALL EVENT
-      */
-      addBallEvent({
-        slug: match.slug,
-        over: Number(`${over}.${ball}`),
-        runs: ballRuns,
-        wicket: isWicket,
-        extra: extraRun,
-        timestamp: Date.now()
-      });
+        dispatchBallEvent(match.slug, { type: "WICKET" });
 
-      /*
-      ⭐ Animation layer
-      */
-      if (isWicket) {
-
-        const animationDuration = 5000;
-
+        // cinematic pause
         isPaused = true;
 
-        publishAnimation({ type: "WICKET" });
+        
 
         setTimeout(() => {
           isPaused = false;
-        }, animationDuration);
+        }, 5000);
 
-      } else if (ballRuns === 4 || ballRuns === 6) {
-
-        publishAnimation({
-          type: ballRuns === 6 ? "SIX" : "FOUR"
-        });
+        return;
 
       }
 
-      dispatchMatchEvent("BALL");
+      if (event === 4) {
+
+        dispatchBallEvent(match.slug, { type: "FOUR" });
+
+        
+
+        return;
+
+      }
+
+      if (event === 6) {
+
+        dispatchBallEvent(match.slug, { type: "SIX" });
+
+       
+
+        return;
+
+      }
+
+      if (event === 0) {
+
+        dispatchBallEvent(match.slug, { type: "RUN", runs: 0 });
+
+        return;
+
+      }
+
+      // 1 / 2 / 3 runs
+      dispatchBallEvent(match.slug, {
+        type: "RUN",
+        runs: event
+      });
 
     });
 
   }, 2000);
-}
-
-/*
-=================================================
-SUBSCRIBE
-=================================================
-*/
-export function subscribeRealtime(cb: Listener) {
-
-  listeners.push(cb);
-
-  return () => {
-    listeners = listeners.filter(l => l !== cb);
-  };
-}
-
-/*
-=================================================
-GET LATEST
-=================================================
-*/
-export function getRealtimeMatches() {
-  return matches;
 }

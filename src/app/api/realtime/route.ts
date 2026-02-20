@@ -1,47 +1,25 @@
 import { NextResponse } from "next/server";
-import { subscribeRealtime } from "@/services/realtimeService";
 
 export async function GET() {
 
-  const encoder = new TextEncoder();
-
-  let isClosed = false;
+  let interval: NodeJS.Timeout;
 
   const stream = new ReadableStream({
 
     start(controller) {
 
-      const unsubscribe = subscribeRealtime((update) => {
+      const encoder = new TextEncoder();
 
-        // ✅ DO NOT send if closed
-        if (isClosed) return;
+      interval = setInterval(() => {
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ ping: true })}\n\n`)
+        );
+      }, 5000);
 
-        try {
+    },
 
-          const message =
-            `data: ${JSON.stringify(update)}\n\n`;
-
-          controller.enqueue(
-            encoder.encode(message)
-          );
-
-        } catch {
-
-          // stream already closed
-          isClosed = true;
-
-        }
-
-      });
-
-      // cleanup when connection closes
-      return () => {
-
-        isClosed = true;
-        unsubscribe();
-
-      };
-
+    cancel() {
+      clearInterval(interval);
     }
 
   });
@@ -53,5 +31,4 @@ export async function GET() {
       Connection: "keep-alive",
     },
   });
-
 }

@@ -1,17 +1,40 @@
-type AnimationEvent = {
-  type: "SIX" | "FOUR" | "WICKET";
-};
+/*
+================================================
+ANIMATION EVENT TYPES (EXTENSIBLE)
+================================================
+*/
+
+export type AnimationEvent =
+  | { type: "SIX"; slug: string }
+  | { type: "FOUR"; slug: string }
+  | { type: "WICKET"; slug: string }
+  | { type: "SCORE_HIGHLIGHT"; slug: string }
+  | { type: "ENERGY_SWEEP"; slug: string }
+  | { type: "DELTA"; slug: string; value: number }
+  | { type: "CAMERA_SHAKE"; slug?: string }
+  | { type: "CROWD_ROAR"; slug?: string };
 
 type AnimationListener = (event: AnimationEvent) => void;
 
 let listeners: AnimationListener[] = [];
 
-export function publishAnimation(event: AnimationEvent) {
-  
+/*
+================================================
+PUBLISH EVENT
+================================================
+*/
 
-  listeners.forEach(l => l(event));
+export function publishAnimation(event: AnimationEvent) {
+
+  listeners.forEach(listener => listener(event));
 
 }
+
+/*
+================================================
+SUBSCRIBE
+================================================
+*/
 
 export function subscribeAnimation(listener: AnimationListener) {
 

@@ -1,15 +1,19 @@
 // services/matchEngine.ts
 
-import { BallEvent } from "@/types/ballEvent";
+export type EngineBallEvent =
+  | { type: "RUN"; runs?: number }
+  | { type: "FOUR" }
+  | { type: "SIX" }
+  | { type: "WICKET" }
+  | { type: "WD" }
+  | { type: "NB" };
+
 import { pushToTimeline } from "./broadcastTimeline";
 import { emitCommand } from "./commandBus";
-
-
 
 /*
 -------------------------------------------------------
 MATCH STATE TYPE
-Single source of truth for each match
 -------------------------------------------------------
 */
 
@@ -19,33 +23,55 @@ export type MatchState = {
   wickets: number;
   over: number;
   ball: number;
-  timeline: BallEvent[];
 };
 
 /*
 -------------------------------------------------------
-INTERNAL ENGINE STORE
+ENGINE STORE
 -------------------------------------------------------
 */
 
 const matches = new Map<string, MatchState>();
 
-const listeners = new Set<() => void>();
+const matchListeners: Record<string, Set<() => void>> = {};
 
-function emit() {
-  listeners.forEach((l) => l());
+/*
+-------------------------------------------------------
+EMIT (MATCH SCOPED)
+-------------------------------------------------------
+*/
+
+function emit(matchId: string) {
+
+  const run = () => {
+    matchListeners[matchId]?.forEach((l) => l());
+  };
+
+  if (typeof window !== "undefined" && "requestAnimationFrame" in window) {
+    requestAnimationFrame(run);
+  } else {
+    setTimeout(run, 0);
+  }
+
 }
 
 /*
 -------------------------------------------------------
-PUBLIC SUBSCRIPTIONS
-(UI hooks or stores can listen)
+SUBSCRIPTIONS
 -------------------------------------------------------
 */
 
-export function subscribeMatchEngine(cb: () => void) {
-  listeners.add(cb);
-  return () => listeners.delete(cb);
+export function subscribeMatch(matchId: string, cb: () => void) {
+
+  if (!matchListeners[matchId]) {
+    matchListeners[matchId] = new Set();
+  }
+
+  matchListeners[matchId].add(cb);
+
+  return () => {
+    matchListeners[matchId].delete(cb);
+  };
 }
 
 export function getMatchState(matchId: string) {
@@ -54,11 +80,12 @@ export function getMatchState(matchId: string) {
 
 /*
 -------------------------------------------------------
-INITIALIZE MATCH (Call when match starts)
+INIT MATCH
 -------------------------------------------------------
 */
 
 export function initMatch(matchId: string) {
+
   if (matches.has(matchId)) return;
 
   matches.set(matchId, {
@@ -67,62 +94,52 @@ export function initMatch(matchId: string) {
     wickets: 0,
     over: 0,
     ball: 0,
-    timeline: [],
   });
 
-  emit();
+  emit(matchId);
 }
 
 /*
 -------------------------------------------------------
-CORE REDUCER (PURE LOGIC ONLY)
-All state updates happen here
+REDUCER (PURE)
 -------------------------------------------------------
 */
-function reduce(state: MatchState, event: BallEvent): MatchState {
 
-  const next: MatchState = {
-    ...state,
-    timeline: [...state.timeline, event],
-  };
+function reduce(state: MatchState, event: EngineBallEvent): MatchState {
 
- switch (event.type) {
+  const next: MatchState = { ...state };
 
-  case "RUN":
-    next.runs += 1;
-    next.ball += 1;
-    emitCommand({ type: "RUN_SCORED", runs: 1 });
-    break;
+  switch (event.type) {
 
-  case "FOUR":
-    next.runs += 4;
-    next.ball += 1;
-    emitCommand({ type: "BOUNDARY_FOUR" });
-    break;
+    case "RUN":
+      next.runs += event.runs ?? 1;
+      next.ball += 1;
+      break;
 
-  case "SIX":
-    next.runs += 6;
-    next.ball += 1;
-    emitCommand({ type: "BOUNDARY_SIX" });
-    break;
+    case "FOUR":
+      next.runs += 4;
+      next.ball += 1;
+      break;
 
-  case "WICKET":
-    next.wickets += 1;
-    next.ball += 1;
-    emitCommand({ type: "WICKET_FALL" });
-    break;
+    case "SIX":
+      next.runs += 6;
+      next.ball += 1;
+      break;
 
-  case "WD":
-    next.runs += 1;
-    return next;
+    case "WICKET":
+      next.wickets += 1;
+      next.ball += 1;
+      break;
 
-  case "NB":
-    next.runs += 1;
-    return next;
-}
+    case "WD":
+      next.runs += 1;
+      return next;
 
+    case "NB":
+      next.runs += 1;
+      return next;
+  }
 
-  // Over progression
   if (next.ball >= 6) {
     next.over += 1;
     next.ball = 0;
@@ -131,38 +148,20 @@ function reduce(state: MatchState, event: BallEvent): MatchState {
   return next;
 }
 
-
 /*
 -------------------------------------------------------
-MAIN ENTRY POINT
-ALL events must go through here
+MAIN ENTRY (SIDE EFFECTS LIVE HERE)
 -------------------------------------------------------
 */
-export function dispatchBallEvent(matchId: string, event: BallEvent) {
+
+export function dispatchBallEvent(matchId: string, event: EngineBallEvent) {
 
   let current = matches.get(matchId);
 
-  /*
-  -------------------------------------------------------
-  AUTO INITIALIZE (Realtime-safe)
-  -------------------------------------------------------
-  */
-
   if (!current) {
-
-    console.warn("Auto-init match:", matchId);
-
     initMatch(matchId);
-
-    // 🔥 IMPORTANT: fetch again after init
     current = matches.get(matchId)!;
   }
-
-  /*
-  -------------------------------------------------------
-  REDUCE EVENT
-  -------------------------------------------------------
-  */
 
   const updated = reduce(current, event);
 
@@ -170,22 +169,71 @@ export function dispatchBallEvent(matchId: string, event: BallEvent) {
 
   /*
   -------------------------------------------------------
-  Downstream integrations
+  EMIT DOMAIN COMMAND
   -------------------------------------------------------
   */
 
-  pushToTimeline(event);
+  switch (event.type) {
 
-  emit();
+    case "RUN":
+      emitCommand({
+        type: "RUN_SCORED",
+        slug: matchId,
+        runs: event.runs ?? 1
+      });
+      break;
+
+    case "FOUR":
+      emitCommand({
+        type: "BOUNDARY_FOUR",
+        slug: matchId
+      });
+      break;
+
+    case "SIX":
+      emitCommand({
+        type: "BOUNDARY_SIX",
+        slug: matchId
+      });
+      break;
+
+    case "WICKET":
+      emitCommand({
+        type: "WICKET_FALL",
+        slug: matchId
+      });
+      break;
+  }
+
+  /*
+  -------------------------------------------------------
+  PUSH TO TIMELINE
+  -------------------------------------------------------
+  */
+
+  pushToTimeline({
+    slug: matchId,
+    over: updated.over + updated.ball / 10,
+    runs:
+      event.type === "FOUR" ? 4 :
+      event.type === "SIX" ? 6 :
+      event.type === "RUN" ? (event.runs ?? 1) :
+      event.type === "WD" || event.type === "NB" ? 1 : 0,
+    wicket: event.type === "WICKET",
+    extra: event.type === "WD" || event.type === "NB",
+    type: event.type,
+    timestamp: Date.now(),
+  });
+
+  emit(matchId);
 }
 
 /*
 -------------------------------------------------------
-OPTIONAL RESET (useful for testing)
+RESET
 -------------------------------------------------------
 */
 
 export function resetMatch(matchId: string) {
   matches.delete(matchId);
-  emit();
 }

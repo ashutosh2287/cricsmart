@@ -1,6 +1,6 @@
 import { Match } from "../types/match";
 
-export async function fetchMatches(): Promise<Match[]> {
+export async function fetchMatches() {
 
   const res = await fetch("/api/matches");
 
@@ -10,6 +10,7 @@ export async function fetchMatches(): Promise<Match[]> {
 
   const data = await res.json();
 
+  // IMPORTANT: return array only
   return data.matches;
 }
 

@@ -1,52 +1,33 @@
 import { createRealtimeRouter } from "./realtimeRouter";
+import { dispatchBallEvent } from "@/services/matchEngine";
 import { Match } from "../types/match";
-import { updateMatch } from "@/store/realtimeStore";
-
 
 let eventSource: EventSource | null = null;
 
-type Handlers = {
-  onMatchUpdate?: (match: Match) => void;
-};
-
-const subscribers: Handlers[] = [];
-
 export function startGlobalRealtime() {
 
-  if (eventSource) return; // prevent multiple connections
+  if (eventSource) return;
 
   eventSource = new EventSource("/api/realtime");
 
   createRealtimeRouter(eventSource, {
 
-    onMatchUpdate: (match) => {
+    onMatchUpdate: (match: Match) => {
 
-  // update global store
-  updateMatch(match);
+      /*
+      ------------------------------------------------
+      TEMP CONVERSION:
+      Server sends Match → convert to EngineBallEvent
+      ------------------------------------------------
 
-  subscribers.forEach(sub => {
-    sub.onMatchUpdate?.(match);
-  });
+      (Later backend should send real events)
+      */
 
-}
+      // Example fake mapping — adjust if needed
+      dispatchBallEvent(match.slug, { type: "RUN", runs: 1 });
 
-
-  });
-
-}
-
-export function subscribeGlobalRealtime(handler: Handlers) {
-
-  subscribers.push(handler);
-
-  return () => {
-
-    const index = subscribers.indexOf(handler);
-
-    if (index !== -1) {
-      subscribers.splice(index, 1);
     }
 
-  };
+  });
 
 }

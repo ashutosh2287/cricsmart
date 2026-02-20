@@ -25,7 +25,8 @@ function handleCommand(command: Command) {
     scheduleCinematic(() => {
 
       publishAnimation({
-        type: "WICKET"
+        type: "WICKET",
+        slug: command.slug
       });
 
       publishCommentary("💥 WICKET! The batter is gone!");
@@ -50,7 +51,8 @@ function handleCommand(command: Command) {
     scheduleCinematic(() => {
 
       publishAnimation({
-        type: "SIX"
+        type: "SIX",
+        slug: command.slug
       });
 
       publishCommentary("🔥 BOOOOM! Massive SIX into the stands!");
@@ -75,7 +77,8 @@ function handleCommand(command: Command) {
     scheduleCinematic(() => {
 
       publishAnimation({
-        type: "FOUR"
+        type: "FOUR",
+        slug: command.slug
       });
 
       publishCommentary("🎯 Beautiful FOUR through the field!");

@@ -1,11 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Match } from "../types/match";
-import { getMatch, subscribeMatch } from "@/store/realtimeStore";
-import { subscribeTimeline } from "@/services/broadcastTimeline";
-import { isBroadcastEnabled } from "@/services/broadcastMode";
 import { useRouter } from "next/navigation";
+import { getMatches } from "@/store/realtimeStore";
+
+import {
+  useMatchRuns,
+  useMatchWickets,
+  useMatchOvers
+} from "@/services/matchSelectors";
+
+import {
+  subscribeAnimation,
+  AnimationEvent
+} from "@/services/animationBus";
+
+import { playAnimation } from "@/services/animationController";
 
 type Props = {
   slug: string;
@@ -15,103 +25,129 @@ export default function MatchCard({ slug }: Props) {
 
   const router = useRouter();
 
-  const [match, setMatch] = useState<Match | undefined>(
-    getMatch(slug)
-  );
+  /*
+  ====================================================
+  MATCH METADATA (teams / status)
+  ====================================================
+  */
 
+  const match = getMatches().find(m => m.slug === slug);
+
+  /*
+  ====================================================
+  MATCH ENGINE DATA (score authority)
+  ====================================================
+  */
+
+  const runs = useMatchRuns(slug);
+  const wickets = useMatchWickets(slug);
+  const overs = useMatchOvers(slug);
+
+  /*
+  ====================================================
+  DOM REFS
+  ====================================================
+  */
+
+  const cardRef = useRef<HTMLDivElement>(null);
   const scoreRef = useRef<HTMLSpanElement>(null);
+  const deltaRef = useRef<HTMLSpanElement>(null);
 
-  const [highlight, setHighlight] = useState(false);
+  /*
+  ====================================================
+  UI STATE (ONLY FOR VISUAL FX)
+  ====================================================
+  */
+
+  const [energy, setEnergy] = useState(false);
   const [delta, setDelta] = useState<number | null>(null);
 
-  // 🔥 LIVE ENERGY SWEEP STATE
-  const [energy, setEnergy] = useState(false);
-
   /*
-  =====================================
-  STATUS STYLE SYSTEM
-  =====================================
-  */
-
-  const statusStyle = {
-    Live: "text-red-500",
-    Upcoming: "text-blue-500",
-    Completed: "text-gray-500"
-  };
-
-  const statusClass = {
-    Live: "live-cinematic",
-    Upcoming: "upcoming-cinematic",
-    Completed: "completed-cinematic"
-  };
-
-  /*
-  =====================================
-  MATCH STATE SUBSCRIPTION
-  =====================================
+  ====================================================
+  ANIMATION BUS LISTENER
+  ====================================================
   */
 
   useEffect(() => {
 
-    const unsubscribe = subscribeMatch(slug, (updated) => {
+    const unsubscribe = subscribeAnimation((event: AnimationEvent) => {
+      console.log("ANIMATION EVENT RECEIVED:", event);
 
-      setMatch(updated);
+    if (
+  event.type === "FOUR" ||
+  event.type === "SIX" ||
+  event.type === "WICKET"
+) {
+  playAnimation(scoreRef.current, "score-highlight", 300);
+}
 
-      if (scoreRef.current) {
-        scoreRef.current.textContent = updated.score ?? "";
-      }
+      // ENERGY SWEEP
+      if (event.type === "ENERGY_SWEEP") {
 
-    });
-
-    return unsubscribe;
-
-  }, [slug]);
-
-  /*
-  =====================================
-  BROADCAST TIMELINE LISTENER
-  UI EFFECTS ONLY
-  =====================================
-  */
-
-  useEffect(() => {
-
-    const unsubscribe = subscribeTimeline((event) => {
-
-      if (event.slug !== slug) return;
-
-      if (!isBroadcastEnabled()) return;
-
-      // highlight animation
-      setHighlight(true);
-      setTimeout(() => setHighlight(false), 300);
-
-      // delta animation
-      if (event.runs > 0) {
-
-        setDelta(event.runs);
-        setTimeout(() => setDelta(null), 900);
-
-        // 🔥 ENERGY SWEEP
         setEnergy(true);
+        playAnimation(cardRef.current, "energy-sweep", 600);
+
         setTimeout(() => setEnergy(false), 600);
       }
 
+      // DELTA POP
+      if (event.type === "DELTA") {
+
+        setDelta(event.value);
+
+        if (deltaRef.current) {
+          deltaRef.current.textContent = `+${event.value}`;
+          playAnimation(deltaRef.current, "delta-bounce", 900);
+        }
+
+        setTimeout(() => setDelta(null), 900);
+      }
+
     });
 
     return unsubscribe;
 
   }, [slug]);
 
-  if (!match) return null;
+  if (!match || runs === undefined || wickets === undefined) return null;
+
+  /*
+  ====================================================
+  STATUS STYLE SYSTEM
+  ====================================================
+  */
+
+  const statusConfig = {
+    Live: {
+      cinematic: "live-cinematic",
+      text: "text-red-500"
+    },
+    Upcoming: {
+      cinematic: "upcoming-cinematic",
+      text: "text-blue-500"
+    },
+    Completed: {
+      cinematic: "completed-cinematic",
+      text: "text-gray-500"
+    }
+  };
+
+  const status = statusConfig[match.status];
+
+  /*
+  ====================================================
+  RENDER
+  ====================================================
+  */
 
   return (
     <div
+      ref={cardRef}
       onClick={() => router.push(`/match/${slug}`)}
       className={`
         border p-4 rounded-xl shadow relative overflow-hidden
         transition-all cursor-pointer hover:scale-[1.02]
-        ${statusClass[match.status]}
+        ${status.cinematic}
         ${energy ? "energy-sweep" : ""}
       `}
     >
@@ -128,30 +164,29 @@ export default function MatchCard({ slug }: Props) {
       </h2>
 
       {/* SCORE */}
-      <div className="relative mt-2">
+     <div className="relative mt-2">
 
-        <p className={`text-lg font-semibold transition-all duration-300 ${
-            highlight ? "bg-yellow-300 scale-110 px-2 rounded" : ""
-          }`}
-        >
-          Score:
+  <p className="text-lg font-semibold transition-all duration-300">
+    Score:
+    <span
+      ref={scoreRef}
+      className="ml-1 inline-block"
+    >
+      {runs}/{wickets}
+    </span>
+  </p>
 
-          <span ref={scoreRef} className="ml-1">
-            {match.score}
-          </span>
+  {delta && (
+    <span
+      ref={deltaRef}
+      className="absolute left-28 top-0 text-green-500 font-bold pointer-events-none"
+    />
+  )}
 
-        </p>
+</div>
 
-        {delta && (
-          <span className="absolute left-28 top-0 text-green-500 font-bold animate-bounce">
-            +{delta}
-          </span>
-        )}
-
-      </div>
-
-      {match.overs && (
-        <p className="text-sm mt-1">Overs: {match.overs}</p>
+      {overs && (
+        <p className="text-sm mt-1">Overs: {overs}</p>
       )}
 
       {match.runRate && (
@@ -159,9 +194,7 @@ export default function MatchCard({ slug }: Props) {
       )}
 
       {/* STATUS BADGE */}
-      <span
-        className={`mt-2 inline-block px-2 py-1 rounded-full text-xs font-semibold ${statusStyle[match.status]}`}
-      >
+      <span className={`mt-2 inline-block px-2 py-1 rounded-full text-xs font-semibold ${status.text}`}>
         {match.status}
       </span>
 

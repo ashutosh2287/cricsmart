@@ -1,5 +1,5 @@
 // services/matchEngine.ts
-
+import { BallEvent } from "@/types/ballEvent";
 export type EngineBallEvent =
   | { type: "RUN"; runs?: number }
   | { type: "FOUR" }
@@ -23,6 +23,7 @@ export type MatchState = {
   wickets: number;
   over: number;
   ball: number;
+  overs: Record<number, BallEvent[]>;
 };
 
 /*
@@ -94,6 +95,7 @@ export function initMatch(matchId: string) {
     wickets: 0,
     over: 0,
     ball: 0,
+    overs: {},
   });
 
   emit(matchId);
@@ -107,7 +109,54 @@ REDUCER (PURE)
 
 function reduce(state: MatchState, event: EngineBallEvent): MatchState {
 
-  const next: MatchState = { ...state };
+  // deep-safe clone for overs
+  const next: MatchState = {
+    ...state,
+    overs: { ...state.overs }
+  };
+
+  /*
+  -------------------------------------------------------
+  CREATE BALL EVENT SNAPSHOT
+  -------------------------------------------------------
+  */
+
+  const ballEvent: BallEvent = {
+    slug: state.matchId,
+    over: state.over + state.ball / 10,
+    runs:
+      event.type === "FOUR" ? 4 :
+      event.type === "SIX" ? 6 :
+      event.type === "RUN" ? (event.runs ?? 1) :
+      event.type === "WD" || event.type === "NB" ? 1 : 0,
+    wicket: event.type === "WICKET",
+    extra: event.type === "WD" || event.type === "NB",
+    type: event.type,
+    timestamp: Date.now(),
+  };
+
+  /*
+  -------------------------------------------------------
+  UPDATE OVERS HISTORY FIRST
+  -------------------------------------------------------
+  */
+
+  const overNumber = state.over;
+
+  if (!next.overs[overNumber]) {
+    next.overs[overNumber] = [];
+  }
+
+  next.overs[overNumber] = [
+    ...next.overs[overNumber],
+    ballEvent
+  ];
+
+  /*
+  -------------------------------------------------------
+  APPLY GAME LOGIC
+  -------------------------------------------------------
+  */
 
   switch (event.type) {
 
@@ -147,7 +196,6 @@ function reduce(state: MatchState, event: EngineBallEvent): MatchState {
 
   return next;
 }
-
 /*
 -------------------------------------------------------
 MAIN ENTRY (SIDE EFFECTS LIVE HERE)

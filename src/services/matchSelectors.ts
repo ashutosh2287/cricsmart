@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { subscribeMatch, getMatchState, MatchState } from "./matchEngine";
 
 /*
 ================================================
-GENERIC SELECTOR HOOK
+GENERIC SELECTOR HOOK (REACT SAFE)
 ================================================
 */
 
@@ -12,31 +12,39 @@ export function useMatchSelector<T>(
   selector: (match: MatchState) => T
 ) {
 
-  const [value, setValue] = useState(() => {
+  const selectorRef = useRef(selector);
+
+  // ✅ update ref AFTER render (React safe)
+  useEffect(() => {
+    selectorRef.current = selector;
+  }, [selector]);
+
+  const [value, setValue] = useState<T | undefined>(() => {
 
     const match = getMatchState(matchId);
-
     return match ? selector(match) : undefined;
 
   });
 
   useEffect(() => {
 
-  const unsubscribe = subscribeMatch(matchId, () => {
+    const unsubscribe = subscribeMatch(matchId, () => {
 
-    const match = getMatchState(matchId);
+      const match = getMatchState(matchId);
+      if (!match) return;
 
-    if (!match) return;
+      const newValue = selectorRef.current(match);
 
-    setValue(selector(match));
+      setValue(prev => {
+        if (Object.is(prev, newValue)) return prev;
+        return newValue;
+      });
 
-  });
+    });
 
-  return () => {
-    unsubscribe();
-  };
+    return unsubscribe;
 
-}, [matchId, selector]);
+  }, [matchId]);
 
   return value;
 }

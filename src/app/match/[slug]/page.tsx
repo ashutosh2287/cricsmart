@@ -102,7 +102,9 @@ function TabsArea({ match }: { match: Match }) {
       {activeTab === "info" && <div>Match Info Coming Soon...</div>}
       {activeTab === "live" && <BroadcastLiveView match={match} />}
       {activeTab === "scorecard" && <div>Scorecard View Coming Soon...</div>}
-      {activeTab === "overs" && <OversTimeline slug={match.slug} />}
+      <div style={{ display: activeTab === "overs" ? "block" : "none" }}>
+   <OversTimeline slug={match.slug} />
+</div>
       {activeTab === "highlights" && <div>Highlights Coming Soon...</div>}
     </>
   );

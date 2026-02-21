@@ -1,73 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { subscribeTimeline } from "@/services/broadcastTimeline";
+import { useMatchSelector } from "@/services/matchSelectors";
 import { BallEvent } from "@/types/ballEvent";
 
 type Props = {
   slug: string;
 };
 
+type OversMap = Record<number, BallEvent[]>;
+
 export default function OversTimeline({ slug }: Props) {
 
-  const [events, setEvents] = useState<BallEvent[]>([]);
-
-  // ⭐ Track newest ball
-  const [latestEventKey, setLatestEventKey] = useState<string | null>(null);
-
   /*
   =====================================
-  🔥 TIMELINE STREAM SUBSCRIPTION
+  🔥 SINGLE SOURCE OF TRUTH
   =====================================
   */
 
-  useEffect(() => {
+  const oversHistory = useMatchSelector<OversMap | undefined>(
+    slug,
+    (m) => m.overs
+  );
 
-    const unsubscribe = subscribeTimeline((event) => {
-
-      if (event.slug !== slug) return;
-
-      setEvents(prev => [...prev, event]);
-
-      // unique id for newest ball
-      setLatestEventKey(`${event.over}-${event.timestamp}`);
-
-    });
-
-    return unsubscribe;
-
-  }, [slug]);
+  if (!oversHistory) return null;
 
   /*
   =====================================
-  🔥 GROUP BALLS BY OVER
+  🔥 SORT OVERS (LATEST FIRST)
   =====================================
   */
 
-  const grouped = events.reduce<Record<number, BallEvent[]>>((acc, e) => {
-
-    const overNumber = Math.floor(Number(e.over));
-
-    if (!acc[overNumber]) {
-      acc[overNumber] = [];
-    }
-
-    acc[overNumber].push(e);
-
-    return acc;
-
-  }, {});
-
-  const overs = Object.keys(grouped)
+  const sortedOvers = Object.keys(oversHistory)
     .map(Number)
     .sort((a, b) => b - a);
 
   return (
     <div className="space-y-4">
 
-      {overs.map((over) => {
+      {sortedOvers.map((overNumber) => {
 
-        const balls = grouped[over];
+        const balls = oversHistory[overNumber];
 
         const overRuns = balls.reduce((sum, ball) => {
           return sum + (ball.runs ?? 0);
@@ -75,12 +47,15 @@ export default function OversTimeline({ slug }: Props) {
 
         return (
 
-          <div key={over} className="border p-4 rounded-lg">
+          <div
+            key={overNumber}
+            className="border p-4 rounded-lg"
+          >
 
             {/* OVER HEADER */}
             <h3 className="font-bold mb-3 flex justify-between">
 
-              <span>Ov {over}</span>
+              <span>Ov {overNumber}</span>
 
               <span className="text-gray-400">
                 {overRuns} runs
@@ -107,18 +82,12 @@ export default function OversTimeline({ slug }: Props) {
                     ? "bg-green-600 text-white"
                     : "bg-gray-300 text-black";
 
-                // ⭐ Animate ONLY newest ball
-                const isLatestBall =
-                  latestEventKey === `${ball.over}-${ball.timestamp}`;
-
                 return (
                   <div
-                    key={i}
+                    key={`${ball.timestamp}-${i}`}
                     className={`
                       w-8 h-8 rounded-full flex items-center justify-center font-bold
-                      transition-all duration-300
                       ${color}
-                      ${isLatestBall ? "animate-bounce scale-110" : ""}
                     `}
                   >
                     {label}

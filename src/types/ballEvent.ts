@@ -15,5 +15,6 @@ export type BallEvent = {
   type?: "RUN" | "FOUR" | "SIX" | "WICKET" | "WD" | "NB";
 
   timestamp: number; 
+  isLegalDelivery?: boolean;
 
 };

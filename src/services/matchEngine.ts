@@ -120,20 +120,22 @@ function reduce(state: MatchState, event: EngineBallEvent): MatchState {
   CREATE BALL EVENT SNAPSHOT
   -------------------------------------------------------
   */
+const ballEvent: BallEvent = {
+  slug: state.matchId,
+  over: state.over + state.ball / 10,
+  runs:
+    event.type === "FOUR" ? 4 :
+    event.type === "SIX" ? 6 :
+    event.type === "RUN" ? (event.runs ?? 1) :
+    event.type === "WD" || event.type === "NB" ? 1 : 0,
+  wicket: event.type === "WICKET",
+  extra: event.type === "WD" || event.type === "NB",
+  type: event.type,
+  timestamp: Date.now(),
 
-  const ballEvent: BallEvent = {
-    slug: state.matchId,
-    over: state.over + state.ball / 10,
-    runs:
-      event.type === "FOUR" ? 4 :
-      event.type === "SIX" ? 6 :
-      event.type === "RUN" ? (event.runs ?? 1) :
-      event.type === "WD" || event.type === "NB" ? 1 : 0,
-    wicket: event.type === "WICKET",
-    extra: event.type === "WD" || event.type === "NB",
-    type: event.type,
-    timestamp: Date.now(),
-  };
+  // ⭐ ADD THIS
+  isLegalDelivery: event.type !== "WD" && event.type !== "NB"
+};
 
   /*
   -------------------------------------------------------

@@ -55,7 +55,7 @@ export default function OversTimeline({ slug }: Props) {
             {/* OVER HEADER */}
             <h3 className="font-bold mb-3 flex justify-between">
 
-              <span>Ov {overNumber}</span>
+              <span>Ov {overNumber +1}</span>
 
               <span className="text-gray-400">
                 {overRuns} runs
@@ -66,35 +66,59 @@ export default function OversTimeline({ slug }: Props) {
             {/* BALL ROW */}
             <div className="flex gap-2 flex-wrap">
 
-              {balls.map((ball, i) => {
+            {balls.map((ball, i) => {
 
-                const label =
-                  ball.wicket ? "W"
-                  : ball.runs === 0 ? "•"
-                  : ball.runs;
+  /*
+  -------------------------------------
+  LABEL LOGIC (CRICKET CORRECT)
+  -------------------------------------
+  */
 
-                const color =
-                  ball.wicket
-                    ? "bg-red-500 text-white"
-                    : ball.runs === 4
-                    ? "bg-blue-500 text-white"
-                    : ball.runs === 6
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-300 text-black";
+  let label;
 
-                return (
-                  <div
-                    key={`${ball.timestamp}-${i}`}
-                    className={`
-                      w-8 h-8 rounded-full flex items-center justify-center font-bold
-                      ${color}
-                    `}
-                  >
-                    {label}
-                  </div>
-                );
+  if (ball.type === "WD") {
+    label = "Wd";
+  } else if (ball.type === "NB") {
+    label = "Nb";
+  } else if (ball.wicket) {
+    label = "W";
+  } else if (ball.runs === 0) {
+    label = "•";
+  } else {
+    label = ball.runs;
+  }
 
-              })}
+  /*
+  -------------------------------------
+  COLOR LOGIC
+  -------------------------------------
+  */
+
+  let color = "bg-gray-300 text-black";
+
+  if (ball.wicket) {
+    color = "bg-red-500 text-white";
+  } else if (ball.type === "WD" || ball.type === "NB") {
+    color = "bg-yellow-400 text-black";
+  } else if (ball.runs === 4) {
+    color = "bg-blue-500 text-white";
+  } else if (ball.runs === 6) {
+    color = "bg-green-600 text-white";
+  }
+
+  return (
+    <div
+      key={`${ball.timestamp}-${i}`}
+      className={`
+        w-8 h-8 rounded-full flex items-center justify-center font-bold
+        ${color}
+      `}
+    >
+      {label}
+    </div>
+  );
+
+})}
 
             </div>
 

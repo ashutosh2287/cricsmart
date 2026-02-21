@@ -25,19 +25,7 @@ export default function MatchCard({ slug }: Props) {
 
   const router = useRouter();
 
-  /*
-  ====================================================
-  MATCH METADATA (teams / status)
-  ====================================================
-  */
-
   const match = getMatches().find(m => m.slug === slug);
-
-  /*
-  ====================================================
-  MATCH ENGINE DATA (score authority)
-  ====================================================
-  */
 
   const runs = useMatchRuns(slug);
   const wickets = useMatchWickets(slug);
@@ -45,54 +33,52 @@ export default function MatchCard({ slug }: Props) {
 
   /*
   ====================================================
-  DOM REFS
+  DERIVED RUN RATE (LIVE ONLY)
   ====================================================
   */
+
+  let runRate: string | null = null;
+
+  if (match?.status === "Live" && runs !== undefined && overs) {
+
+    const [overPart, ballPart] = overs.split(".");
+    const overNum = Number(overPart);
+    const ballNum = Number(ballPart);
+
+    const totalOvers = overNum + ballNum / 6;
+
+    runRate =
+      totalOvers > 0
+        ? (runs / totalOvers).toFixed(2)
+        : "0.00";
+  }
 
   const cardRef = useRef<HTMLDivElement>(null);
   const scoreRef = useRef<HTMLSpanElement>(null);
   const deltaRef = useRef<HTMLSpanElement>(null);
 
-  /*
-  ====================================================
-  UI STATE (ONLY FOR VISUAL FX)
-  ====================================================
-  */
-
   const [energy, setEnergy] = useState(false);
   const [delta, setDelta] = useState<number | null>(null);
-
-  /*
-  ====================================================
-  ANIMATION BUS LISTENER
-  ====================================================
-  */
 
   useEffect(() => {
 
     const unsubscribe = subscribeAnimation((event: AnimationEvent) => {
-      console.log("ANIMATION EVENT RECEIVED:", event);
 
-    if (
-  event.type === "FOUR" ||
-  event.type === "SIX" ||
-  event.type === "WICKET"
-) {
-  playAnimation(scoreRef.current, "score-highlight", 300);
-}
+      if (
+        event.type === "FOUR" ||
+        event.type === "SIX" ||
+        event.type === "WICKET"
+      ) {
+        playAnimation(scoreRef.current, "score-highlight", 300);
+      }
 
-      // ENERGY SWEEP
       if (event.type === "ENERGY_SWEEP") {
-
         setEnergy(true);
         playAnimation(cardRef.current, "energy-sweep", 600);
-
         setTimeout(() => setEnergy(false), 600);
       }
 
-      // DELTA POP
       if (event.type === "DELTA") {
-
         setDelta(event.value);
 
         if (deltaRef.current) {
@@ -109,36 +95,15 @@ export default function MatchCard({ slug }: Props) {
 
   }, [slug]);
 
-  if (!match || runs === undefined || wickets === undefined) return null;
-
-  /*
-  ====================================================
-  STATUS STYLE SYSTEM
-  ====================================================
-  */
+  if (!match) return null;
 
   const statusConfig = {
-    Live: {
-      cinematic: "live-cinematic",
-      text: "text-red-500"
-    },
-    Upcoming: {
-      cinematic: "upcoming-cinematic",
-      text: "text-blue-500"
-    },
-    Completed: {
-      cinematic: "completed-cinematic",
-      text: "text-gray-500"
-    }
+    Live: { cinematic: "live-cinematic", text: "text-red-500" },
+    Upcoming: { cinematic: "upcoming-cinematic", text: "text-blue-500" },
+    Completed: { cinematic: "completed-cinematic", text: "text-gray-500" }
   };
 
   const status = statusConfig[match.status];
-
-  /*
-  ====================================================
-  RENDER
-  ====================================================
-  */
 
   return (
     <div
@@ -154,46 +119,58 @@ export default function MatchCard({ slug }: Props) {
 
       {/* HEADER */}
       <h2 className="font-bold flex items-center gap-2">
-
         {match.team1} vs {match.team2}
-
         {match.status === "Live" && (
           <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"/>
         )}
-
       </h2>
 
-      {/* SCORE */}
-     <div className="relative mt-2">
+      {/* LIVE MATCH UI */}
+      {match.status === "Live" && runs !== undefined && wickets !== undefined && (
 
-  <p className="text-lg font-semibold transition-all duration-300">
-    Score:
-    <span
-      ref={scoreRef}
-      className="ml-1 inline-block"
-    >
-      {runs}/{wickets}
-    </span>
-  </p>
+        <>
+          <div className="relative mt-2">
 
-  {delta && (
-    <span
-      ref={deltaRef}
-      className="absolute left-28 top-0 text-green-500 font-bold pointer-events-none"
-    />
-  )}
+            <p className="text-lg font-semibold">
+              Score:
+              <span ref={scoreRef} className="ml-1 inline-block">
+                {runs}/{wickets}
+              </span>
+            </p>
 
-</div>
+            {delta && (
+              <span
+                ref={deltaRef}
+                className="absolute left-28 top-0 text-green-500 font-bold pointer-events-none"
+              />
+            )}
 
-      {overs && (
-        <p className="text-sm mt-1">Overs: {overs}</p>
+          </div>
+
+          {overs && (
+            <p className="text-sm mt-1">Overs: {overs}</p>
+          )}
+
+          {runRate && (
+            <p className="text-sm">Run Rate: {runRate}</p>
+          )}
+        </>
       )}
 
-      {match.runRate && (
-        <p className="text-sm">Run Rate: {match.runRate}</p>
+      {/* UPCOMING UI */}
+      {match.status === "Upcoming" && (
+        <p className="text-sm mt-2 text-blue-400">
+          Match not started
+        </p>
       )}
 
-      {/* STATUS BADGE */}
+      {/* COMPLETED UI */}
+      {match.status === "Completed" && (
+        <p className="text-sm mt-2 text-gray-400">
+          Match Finished
+        </p>
+      )}
+
       <span className={`mt-2 inline-block px-2 py-1 rounded-full text-xs font-semibold ${status.text}`}>
         {match.status}
       </span>

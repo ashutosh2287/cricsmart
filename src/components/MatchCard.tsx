@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getMatches } from "@/store/realtimeStore";
 
 import {
   useMatchRuns,
   useMatchWickets,
-  useMatchOvers
+  useMatchOversDisplay,
+  useMatchMeta
 } from "@/services/matchSelectors";
 
 import {
@@ -25,11 +25,11 @@ export default function MatchCard({ slug }: Props) {
 
   const router = useRouter();
 
-  const match = getMatches().find(m => m.slug === slug);
+  const match = useMatchMeta(slug);
 
   const runs = useMatchRuns(slug);
   const wickets = useMatchWickets(slug);
-  const overs = useMatchOvers(slug);
+  const overs = useMatchOversDisplay(slug);
 
   /*
   ====================================================
@@ -97,11 +97,23 @@ export default function MatchCard({ slug }: Props) {
 
   if (!match) return null;
 
-  const statusConfig = {
-    Live: { cinematic: "live-cinematic", text: "text-red-500" },
-    Upcoming: { cinematic: "upcoming-cinematic", text: "text-blue-500" },
-    Completed: { cinematic: "completed-cinematic", text: "text-gray-500" }
-  };
+  const statusConfig: Record<
+  "Live" | "Upcoming" | "Completed",
+  { cinematic: string; text: string }
+> = {
+  Live: {
+    cinematic: "live-cinematic",
+    text: "text-red-500"
+  },
+  Upcoming: {
+    cinematic: "upcoming-cinematic",
+    text: "text-blue-500"
+  },
+  Completed: {
+    cinematic: "completed-cinematic",
+    text: "text-gray-500"
+  }
+};
 
   const status = statusConfig[match.status];
 

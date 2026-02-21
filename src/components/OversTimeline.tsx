@@ -34,19 +34,21 @@ export default function OversTimeline({ slug }: Props) {
     .map(Number)
     .sort((a, b) => b - a);
 
+  const latestOverNumber = sortedOvers[0];
+
   return (
     <div className="space-y-4">
 
       {sortedOvers.map((overNumber) => {
 
         const balls = oversHistory[overNumber];
+        const isLatestOver = overNumber === latestOverNumber;
 
         const overRuns = balls.reduce((sum, ball) => {
           return sum + (ball.runs ?? 0);
         }, 0);
 
         return (
-
           <div
             key={overNumber}
             className="border p-4 rounded-lg"
@@ -54,76 +56,77 @@ export default function OversTimeline({ slug }: Props) {
 
             {/* OVER HEADER */}
             <h3 className="font-bold mb-3 flex justify-between">
-
-              <span>Ov {overNumber +1}</span>
-
+              <span>Ov {overNumber + 1}</span>
               <span className="text-gray-400">
                 {overRuns} runs
               </span>
-
             </h3>
 
             {/* BALL ROW */}
             <div className="flex gap-2 flex-wrap">
 
-            {balls.map((ball, i) => {
+              {balls.map((ball, i) => {
 
-  /*
-  -------------------------------------
-  LABEL LOGIC (CRICKET CORRECT)
-  -------------------------------------
-  */
+                const isLatestBall =
+                  isLatestOver && i === balls.length - 1;
 
-  let label;
+                /*
+                -------------------------------------
+                LABEL LOGIC
+                -------------------------------------
+                */
 
-  if (ball.type === "WD") {
-    label = "Wd";
-  } else if (ball.type === "NB") {
-    label = "Nb";
-  } else if (ball.wicket) {
-    label = "W";
-  } else if (ball.runs === 0) {
-    label = "•";
-  } else {
-    label = ball.runs;
-  }
+                let label;
 
-  /*
-  -------------------------------------
-  COLOR LOGIC
-  -------------------------------------
-  */
+                if (ball.type === "WD") {
+                  label = "Wd";
+                } else if (ball.type === "NB") {
+                  label = "Nb";
+                } else if (ball.wicket) {
+                  label = "W";
+                } else if (ball.runs === 0) {
+                  label = "•";
+                } else {
+                  label = ball.runs;
+                }
 
-  let color = "bg-gray-300 text-black";
+                /*
+                -------------------------------------
+                COLOR LOGIC
+                -------------------------------------
+                */
 
-  if (ball.wicket) {
-    color = "bg-red-500 text-white";
-  } else if (ball.type === "WD" || ball.type === "NB") {
-    color = "bg-yellow-400 text-black";
-  } else if (ball.runs === 4) {
-    color = "bg-blue-500 text-white";
-  } else if (ball.runs === 6) {
-    color = "bg-green-600 text-white";
-  }
+                let color = "bg-gray-300 text-black";
 
-  return (
-    <div
-      key={`${ball.timestamp}-${i}`}
-      className={`
-        w-8 h-8 rounded-full flex items-center justify-center font-bold
-        ${color}
-      `}
-    >
-      {label}
-    </div>
-  );
+                if (ball.wicket) {
+                  color = "bg-red-500 text-white";
+                } else if (ball.type === "WD" || ball.type === "NB") {
+                  color = "bg-yellow-400 text-black";
+                } else if (ball.runs === 4) {
+                  color = "bg-blue-500 text-white";
+                } else if (ball.runs === 6) {
+                  color = "bg-green-600 text-white";
+                }
 
-})}
+                return (
+                  <div
+                    key={`${ball.timestamp}-${i}`}
+                    className={`
+                      w-8 h-8 rounded-full flex items-center justify-center font-bold
+                      transition-all duration-300
+                      ${color}
+                      ${isLatestBall ? "animate-bounce scale-110" : ""}
+                    `}
+                  >
+                    {label}
+                  </div>
+                );
+
+              })}
 
             </div>
 
           </div>
-
         );
 
       })}

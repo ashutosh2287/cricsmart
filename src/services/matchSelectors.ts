@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { subscribeMatch, getMatchState, MatchState } from "./matchEngine";
+import { getMatches } from "@/store/realtimeStore";
 
 /*
 ================================================
-GENERIC SELECTOR HOOK (REACT SAFE)
+GENERIC ENGINE SELECTOR (Selective subscription)
 ================================================
 */
 
@@ -14,7 +15,6 @@ export function useMatchSelector<T>(
 
   const selectorRef = useRef(selector);
 
-  // ✅ update ref AFTER render (React safe)
   useEffect(() => {
     selectorRef.current = selector;
   }, [selector]);
@@ -51,7 +51,7 @@ export function useMatchSelector<T>(
 
 /*
 ================================================
-SMALL FAST SELECTORS
+FAST ENGINE SELECTORS
 ================================================
 */
 
@@ -65,4 +65,69 @@ export function useMatchWickets(matchId:string){
 
 export function useMatchOvers(matchId:string){
   return useMatchSelector(matchId, m => `${m.over}.${m.ball}`);
+}
+/*
+================================================
+OVERS DISPLAY SELECTOR (Derived value)
+================================================
+*/
+
+export function useMatchOversDisplay(matchId: string) {
+
+  return useMatchSelector(matchId, m => {
+
+    // internal engine uses zero-based over
+    const displayOver = m.over + 1;
+
+    return `${displayOver}.${m.ball}`;
+
+  });
+
+}
+
+/*
+================================================
+MATCH METADATA SELECTOR (Selective metadata)
+================================================
+*/
+
+export function useMatchMeta(slug: string) {
+
+  const [match, setMatch] = useState(() =>
+    getMatches().find(m => m.slug === slug)
+  );
+
+  useEffect(() => {
+
+    // lightweight metadata refresh
+    const interval = setInterval(() => {
+
+      const updated = getMatches().find(m => m.slug === slug);
+
+      setMatch(prev => {
+        if (prev === updated) return prev;
+        return updated;
+      });
+
+    }, 1000);
+
+    return () => clearInterval(interval);
+
+  }, [slug]);
+
+  return match;
+}
+
+export function useMatchRunRate(matchId: string) {
+
+  return useMatchSelector(matchId, m => {
+
+    const totalOvers = m.over + m.ball / 6;
+
+    return totalOvers > 0
+      ? (m.runs / totalOvers).toFixed(2)
+      : "0.00";
+
+  });
+
 }

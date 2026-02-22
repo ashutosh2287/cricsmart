@@ -1,4 +1,7 @@
+import type { MatchState } from "@/services/matchEngine";
+
 export type Match = {
+
   slug: string;
   team1: string;
   team2: string;
@@ -9,7 +12,8 @@ export type Match = {
   runRate?: number;
   id: string;
 
-
   // ⭐ engine state (hidden simulation data)
   balls?: number;
+  engineState?: MatchState;
+
 };

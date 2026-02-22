@@ -1,5 +1,4 @@
 import { BallEvent } from "@/types/ballEvent";
-import { dispatchEvent } from "@/services/eventDispatcher";
 
 /*
 ========================================
@@ -27,7 +26,6 @@ export function addBallEvent(event: BallEvent) {
   events[matchSlug].push(event);
 
   // 🔥 ENTERPRISE EVENT ROUTING
-  dispatchEvent(event);
 }
 
 /*

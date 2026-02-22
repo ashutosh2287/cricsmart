@@ -22,7 +22,7 @@ export function connectRealtime(initialMatches: Match[]) {
           ...match,
           score: `${runs}/${wickets}`,
           overs: newOvers,
-          runRate: (runs / parseFloat(newOvers)).toFixed(2)
+          runRate: Number((Math.random() * 10).toFixed(2))
         };
 
       }

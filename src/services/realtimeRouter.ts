@@ -1,32 +1,43 @@
-import { RealtimeEvent } from "../types/realtime";
-import { Match } from "../types/match";
+import { enqueueBallEvent } from "@/services/eventQueue";
 
-type RouterHandlers = {
-  onMatchUpdate?: (match: Match) => void;
-  onCommentaryUpdate?: (data: string[]) => void;
-};
+export type RealtimeBallEvent =
+  | { type: "RUN"; matchId: string; runs: number }
+  | { type: "FOUR"; matchId: string }
+  | { type: "SIX"; matchId: string }
+  | { type: "WICKET"; matchId: string }
+  | { type: "WD"; matchId: string }
+  | { type: "NB"; matchId: string };
 
-export function createRealtimeRouter(
-  eventSource: EventSource,
-  handlers: RouterHandlers
-) {
+export function routeRealtimeEvent(data: RealtimeBallEvent) {
 
-  eventSource.onmessage = (event) => {
+  switch (data.type) {
 
-    const data: RealtimeEvent = JSON.parse(event.data);
+    case "RUN":
+      enqueueBallEvent(data.matchId, {
+        type: "RUN",
+        runs: data.runs
+      });
+      break;
 
-    switch (data.type) {
+    case "FOUR":
+      enqueueBallEvent(data.matchId, { type: "FOUR" });
+      break;
 
-      case "match_update":
-        handlers.onMatchUpdate?.(data.payload);
-        break;
+    case "SIX":
+      enqueueBallEvent(data.matchId, { type: "SIX" });
+      break;
 
-      case "commentary_update":
-        handlers.onCommentaryUpdate?.(data.payload);
-        break;
+    case "WICKET":
+      enqueueBallEvent(data.matchId, { type: "WICKET" });
+      break;
 
-    }
+    case "WD":
+      enqueueBallEvent(data.matchId, { type: "WD" });
+      break;
 
-  };
+    case "NB":
+      enqueueBallEvent(data.matchId, { type: "NB" });
+      break;
+  }
 
 }

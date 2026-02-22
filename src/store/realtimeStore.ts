@@ -7,7 +7,7 @@ let matches: Match[] = [
 
   {
     id: "1",
-    slug: "india-australia",
+    slug: "india-vs-australia",
     team1: "India",
     team2: "Australia",
     status: "Live",
@@ -18,7 +18,7 @@ let matches: Match[] = [
 
   {
     id: "2",
-    slug: "england-pakistan",
+    slug: "england-vs-pakistan",
     team1: "England",
     team2: "Pakistan",
     status: "Upcoming",

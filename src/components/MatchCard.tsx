@@ -120,7 +120,7 @@ export default function MatchCard({ slug }: Props) {
   return (
     <div
       ref={cardRef}
-      onClick={() => router.push(`/match/${slug}`)}
+      onClick={() => router.push(`/match/${match.slug}`)}
       className={`
         border p-4 rounded-xl shadow relative overflow-hidden
         transition-all cursor-pointer hover:scale-[1.02]

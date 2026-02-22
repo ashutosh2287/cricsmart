@@ -1,147 +1,40 @@
-import { Match } from "../types/match";
-import { dispatchBallEvent, initMatch } from "@/services/matchEngine";
+import { routeRealtimeEvent } from "@/services/realtimeRouter";
 
-/*
-🔥 Realistic cricket event types
-*/
-type CricketEvent =
-  | 0
-  | 1
-  | 2
-  | 3
-  | 4
-  | 6
-  | "W"
-  | "WD"
-  | "NB";
+let socket: EventSource | null = null;
+let activeMatchId: string | null = null;
 
-/*
-🔥 Probability distribution
-*/
-const cricketEvents: CricketEvent[] = [
-  0, 0, 0, 0,
-  1, 1, 1, 1, 1,
-  2,
-  3,
-  4, 4,
-  6,
-  "W",
-  "WD",
-  "NB"
-];
+export function connectRealtime(matchId: string) {
 
-let interval: ReturnType<typeof setInterval> | null = null;
-let isPaused = false;
-
-let matches: Match[] = [];
-
-/*
-=================================================
-START REALTIME ENGINE
-=================================================
-*/
-export function startRealtime(initialMatches: Match[]) {
-
-  matches = initialMatches;
-
-  // ✅ Ensure matchEngine initializes live matches
-  matches.forEach(match => {
-
-    if (match.status === "Live") {
-      initMatch(match.slug);
-    }
-
-  });
-
-  if (interval) {
-    clearInterval(interval);
+  // ✅ Prevent duplicate connection for same match
+  if (socket && activeMatchId === matchId) {
+    return;
   }
 
-  interval = setInterval(() => {
+  // ✅ Close previous connection if switching matches
+  if (socket) {
+    socket.close();
+    socket = null;
+  }
 
-    if (isPaused) return;
+  activeMatchId = matchId;
 
-    matches.forEach(match => {
+  socket = new EventSource(`/api/realtime/${matchId}`);
 
-      if (match.status !== "Live") return;
+  socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    routeRealtimeEvent(data);
+  };
 
-      const event =
-        cricketEvents[
-          Math.floor(Math.random() * cricketEvents.length)
-        ];
+  socket.onerror = () => {
+    console.warn("Realtime connection error");
+  };
+}
 
-      /*
-      -------------------------------------------------
-      MAP RANDOM EVENT → ENGINE BALL EVENT
-      -------------------------------------------------
-      */
+export function disconnectRealtime() {
 
-      if (event === "WD") {
+  if (!socket) return;
 
-        dispatchBallEvent(match.slug, { type: "WD" });
-        return;
-
-      }
-
-      if (event === "NB") {
-
-        dispatchBallEvent(match.slug, { type: "NB" });
-        return;
-
-      }
-
-      if (event === "W") {
-
-        dispatchBallEvent(match.slug, { type: "WICKET" });
-
-        // cinematic pause
-        isPaused = true;
-
-        
-
-        setTimeout(() => {
-          isPaused = false;
-        }, 5000);
-
-        return;
-
-      }
-
-      if (event === 4) {
-
-        dispatchBallEvent(match.slug, { type: "FOUR" });
-
-        
-
-        return;
-
-      }
-
-      if (event === 6) {
-
-        dispatchBallEvent(match.slug, { type: "SIX" });
-
-       
-
-        return;
-
-      }
-
-      if (event === 0) {
-
-        dispatchBallEvent(match.slug, { type: "RUN", runs: 0 });
-
-        return;
-
-      }
-
-      // 1 / 2 / 3 runs
-      dispatchBallEvent(match.slug, {
-        type: "RUN",
-        runs: event
-      });
-
-    });
-
-  }, 2000);
+  socket.close();
+  socket = null;
+  activeMatchId = null;
 }

@@ -1,10 +1,11 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import AdminScoringPanel from "@/components/admin/AdminScoringPanel";
+import { useEffect, useMemo, useState } from "react";
 import {
   getMatchState,
   subscribeMatch,
-  MatchState
+  MatchState,
+  hydrateMatchState
 } from "@/services/matchEngine";
 import { useParams } from "next/navigation";
 import BroadcastLiveView from "@/components/BroadcastLiveView";
@@ -12,32 +13,84 @@ import { enableBroadcast, disableBroadcast } from "@/services/broadcastMode";
 import { Match } from "@/types/match";
 import OversTimeline from "@/components/OversTimeline";
 import { getMatchBySlug } from "@/services/matchService";
+import { connectRealtime, disconnectRealtime } from "@/services/realtimeService";
+import ReplayOverlay from "@/components/replay/ReplayOverlay";
+import { replayOver } from "@/services/replayController";
 
 export default function MatchDetailPage() {
 
-  const { slug } = useParams();
-  const matchId = slug as string;
+  const params = useParams();
 
+  /*
+  =================================================
+  STRICT MATCH ID EXTRACTION
+  =================================================
+  */
+
+  const matchId: string | undefined = useMemo(() => {
+    const slug = params.slug;
+
+    if (typeof slug === "string") return slug;
+    if (Array.isArray(slug)) return slug[0];
+
+    return undefined;
+  }, [params.slug]);
+
+  const [showReplay, setShowReplay] = useState(false);
   const [match, setMatch] = useState<Match | undefined>();
-  
-  // ✅ Properly typed state
-  const [engineState, setEngineState] = useState<MatchState | undefined>(() =>
-    getMatchState(matchId)
-  );
+  const [engineState, setEngineState] = useState<MatchState | undefined>();
 
-  // Load static match info
+  /*
+  =================================================
+  LOAD MATCH DATA
+  =================================================
+  */
+
   useEffect(() => {
 
+    if (!matchId) return;
+
+    const id = matchId; // ✅ local narrowed constant
+
     async function loadMatch() {
-      const m = await getMatchBySlug(matchId);
+      const m = await getMatchBySlug(id);
       setMatch(m);
+
+      if (m?.engineState) {
+        hydrateMatchState(id, m.engineState);
+      }
     }
 
     loadMatch();
 
   }, [matchId]);
 
-  // Enable broadcast mode
+  /*
+  =================================================
+  REALTIME CONNECTION
+  =================================================
+  */
+
+  useEffect(() => {
+
+    if (!matchId) return;
+
+    const id = matchId; // ✅ local narrowed constant
+
+    connectRealtime(id);
+
+    return () => {
+      disconnectRealtime();
+    };
+
+  }, [matchId]);
+
+  /*
+  =================================================
+  BROADCAST MODE
+  =================================================
+  */
+
   useEffect(() => {
 
     enableBroadcast();
@@ -48,15 +101,38 @@ export default function MatchDetailPage() {
 
   }, []);
 
-  // Subscribe to engine updates
+  /*
+  =================================================
+  ENGINE SUBSCRIPTION
+  =================================================
+  */
+
   useEffect(() => {
 
-    const unsubscribe = subscribeMatch(matchId, () => {
-  setEngineState(getMatchState(matchId));
-});
+    if (!matchId) return;
+
+    const id = matchId; // ✅ local narrowed constant
+
+    const unsubscribe = subscribeMatch(id, () => {
+      setEngineState(getMatchState(id));
+    });
+
     return unsubscribe;
 
   }, [matchId]);
+
+  /*
+  =================================================
+  DERIVED ENGINE STATE
+  =================================================
+  */
+
+  const currentEngineState = useMemo(() => {
+    if (!matchId) return undefined;
+    return engineState ?? getMatchState(matchId);
+  }, [engineState, matchId]);
+
+  if (!matchId) return null;
 
   if (!match) {
     return <div className="p-6">Match not found</div>;
@@ -70,16 +146,35 @@ export default function MatchDetailPage() {
           {match.team1} vs {match.team2}
         </h1>
 
-        {engineState && (
+        {currentEngineState && (
           <div className="text-lg mt-2">
-            {engineState.runs}/{engineState.wickets}
+            {currentEngineState.runs}/{currentEngineState.wickets}
             {" "}
-            ({engineState.over}.{engineState.ball})
+            ({currentEngineState.over}.{currentEngineState.ball})
           </div>
+        )}
+
+        {currentEngineState && (
+          <button
+            className="mt-4 bg-blue-600 text-white px-4 py-2 rounded"
+            onClick={() => {
+              replayOver(matchId, currentEngineState.over);
+              setShowReplay(true);
+            }}
+          >
+            Replay Last Over
+          </button>
         )}
       </div>
 
       <TabsArea match={match} />
+
+      {showReplay && (
+        <ReplayOverlay
+          matchId={matchId}
+          onClose={() => setShowReplay(false)}
+        />
+      )}
 
     </div>
   );
@@ -97,15 +192,22 @@ function TabsArea({ match }: { match: Match }) {
         <button onClick={() => setActiveTab("scorecard")}>Scorecard</button>
         <button onClick={() => setActiveTab("overs")}>Overs</button>
         <button onClick={() => setActiveTab("highlights")}>Highlights</button>
+        <button onClick={() => setActiveTab("admin")}>Admin</button>
       </div>
 
       {activeTab === "info" && <div>Match Info Coming Soon...</div>}
       {activeTab === "live" && <BroadcastLiveView match={match} />}
       {activeTab === "scorecard" && <div>Scorecard View Coming Soon...</div>}
-      <div style={{ display: activeTab === "overs" ? "block" : "none" }}>
-   <OversTimeline slug={match.slug} />
-</div>
+      
+
+      <div className={activeTab === "overs" ? "block" : "hidden"}>
+        <OversTimeline slug={match.slug} />
+      </div>
+
       {activeTab === "highlights" && <div>Highlights Coming Soon...</div>}
+      {activeTab === "admin" && (
+  <AdminScoringPanel matchId={match.slug} />
+)}
     </>
   );
 }

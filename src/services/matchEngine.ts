@@ -1,5 +1,13 @@
-// services/matchEngine.ts
 import { BallEvent } from "@/types/ballEvent";
+import { pushToTimeline } from "./broadcastTimeline";
+import { emitCommand } from "./commandBus";
+
+/*
+-------------------------------------------------------
+ENGINE EVENT TYPES
+-------------------------------------------------------
+*/
+
 export type EngineBallEvent =
   | { type: "RUN"; runs?: number }
   | { type: "FOUR" }
@@ -8,12 +16,9 @@ export type EngineBallEvent =
   | { type: "WD" }
   | { type: "NB" };
 
-import { pushToTimeline } from "./broadcastTimeline";
-import { emitCommand } from "./commandBus";
-
 /*
 -------------------------------------------------------
-MATCH STATE TYPE
+MATCH STATE
 -------------------------------------------------------
 */
 
@@ -23,9 +28,13 @@ export type MatchState = {
   wickets: number;
   over: number;
   ball: number;
-  overs: Record<number, BallEvent[]>;
-};
 
+  // existing structured history
+  overs: Record<number, BallEvent[]>;
+
+  // ⭐ NEW TEMPORAL INDEX
+  timelineIndex: BallEvent[];
+};
 /*
 -------------------------------------------------------
 ENGINE STORE
@@ -33,12 +42,32 @@ ENGINE STORE
 */
 
 const matches = new Map<string, MatchState>();
-
 const matchListeners: Record<string, Set<() => void>> = {};
 
 /*
+================================================
+SNAPSHOT STORAGE
+================================================
+*/
+
+const snapshotMap: Record<string, Record<number, MatchState>> = {};
+
+function cloneState(state: MatchState): MatchState {
+  return JSON.parse(JSON.stringify(state));
+}
+
+function saveSnapshot(matchId: string, over: number, state: MatchState) {
+
+  if (!snapshotMap[matchId]) {
+    snapshotMap[matchId] = {};
+  }
+
+  snapshotMap[matchId][over] = cloneState(state);
+}
+
+/*
 -------------------------------------------------------
-EMIT (MATCH SCOPED)
+EMIT
 -------------------------------------------------------
 */
 
@@ -53,7 +82,6 @@ function emit(matchId: string) {
   } else {
     setTimeout(run, 0);
   }
-
 }
 
 /*
@@ -96,6 +124,7 @@ export function initMatch(matchId: string) {
     over: 0,
     ball: 0,
     overs: {},
+    timelineIndex: [] // ⭐ NEW
   });
 
   emit(matchId);
@@ -103,45 +132,34 @@ export function initMatch(matchId: string) {
 
 /*
 -------------------------------------------------------
-REDUCER (PURE)
+REDUCER
 -------------------------------------------------------
 */
 
-function reduce(state: MatchState, event: EngineBallEvent): MatchState {
+function reduce(
+  state: MatchState,
+  event: EngineBallEvent
+): { next: MatchState; ballEvent: BallEvent } {
 
-  // deep-safe clone for overs
   const next: MatchState = {
     ...state,
     overs: { ...state.overs }
   };
 
-  /*
-  -------------------------------------------------------
-  CREATE BALL EVENT SNAPSHOT
-  -------------------------------------------------------
-  */
-const ballEvent: BallEvent = {
-  slug: state.matchId,
-  over: state.over + state.ball / 10,
-  runs:
-    event.type === "FOUR" ? 4 :
-    event.type === "SIX" ? 6 :
-    event.type === "RUN" ? (event.runs ?? 1) :
-    event.type === "WD" || event.type === "NB" ? 1 : 0,
-  wicket: event.type === "WICKET",
-  extra: event.type === "WD" || event.type === "NB",
-  type: event.type,
-  timestamp: Date.now(),
-
-  // ⭐ ADD THIS
-  isLegalDelivery: event.type !== "WD" && event.type !== "NB"
-};
-
-  /*
-  -------------------------------------------------------
-  UPDATE OVERS HISTORY FIRST
-  -------------------------------------------------------
-  */
+  const ballEvent: BallEvent = {
+    slug: state.matchId,
+    over: state.over + state.ball / 10,
+    runs:
+      event.type === "FOUR" ? 4 :
+      event.type === "SIX" ? 6 :
+      event.type === "RUN" ? (event.runs ?? 1) :
+      event.type === "WD" || event.type === "NB" ? 1 : 0,
+    wicket: event.type === "WICKET",
+    extra: event.type === "WD" || event.type === "NB",
+    type: event.type,
+    timestamp: Date.now(),
+    isLegalDelivery: event.type !== "WD" && event.type !== "NB"
+  };
 
   const overNumber = state.over;
 
@@ -153,12 +171,16 @@ const ballEvent: BallEvent = {
     ...next.overs[overNumber],
     ballEvent
   ];
-
   /*
-  -------------------------------------------------------
-  APPLY GAME LOGIC
-  -------------------------------------------------------
-  */
+-------------------------------------------------------
+TEMPORAL INDEX RECORD
+-------------------------------------------------------
+*/
+
+next.timelineIndex = [
+  ...state.timelineIndex,
+  ballEvent
+];
 
   switch (event.type) {
 
@@ -184,23 +206,29 @@ const ballEvent: BallEvent = {
 
     case "WD":
       next.runs += 1;
-      return next;
+      return { next, ballEvent };
 
     case "NB":
       next.runs += 1;
-      return next;
+      return { next, ballEvent };
   }
 
   if (next.ball >= 6) {
+
+    const completedOver = next.over;
+
     next.over += 1;
     next.ball = 0;
+
+    saveSnapshot(state.matchId, completedOver, next);
   }
 
-  return next;
+  return { next, ballEvent };
 }
+
 /*
 -------------------------------------------------------
-MAIN ENTRY (SIDE EFFECTS LIVE HERE)
+MAIN ENTRY
 -------------------------------------------------------
 */
 
@@ -213,77 +241,94 @@ export function dispatchBallEvent(matchId: string, event: EngineBallEvent) {
     current = matches.get(matchId)!;
   }
 
-  const updated = reduce(current, event);
+  const { next, ballEvent } = reduce(current, event);
 
-  matches.set(matchId, updated);
-
-  /*
-  -------------------------------------------------------
-  EMIT DOMAIN COMMAND
-  -------------------------------------------------------
-  */
+  matches.set(matchId, next);
 
   switch (event.type) {
 
     case "RUN":
-      emitCommand({
-        type: "RUN_SCORED",
-        slug: matchId,
-        runs: event.runs ?? 1
-      });
+      emitCommand({ type: "RUN_SCORED", slug: matchId, runs: event.runs ?? 1 });
       break;
 
     case "FOUR":
-      emitCommand({
-        type: "BOUNDARY_FOUR",
-        slug: matchId
-      });
+      emitCommand({ type: "BOUNDARY_FOUR", slug: matchId });
       break;
 
     case "SIX":
-      emitCommand({
-        type: "BOUNDARY_SIX",
-        slug: matchId
-      });
+      emitCommand({ type: "BOUNDARY_SIX", slug: matchId });
       break;
 
     case "WICKET":
-      emitCommand({
-        type: "WICKET_FALL",
-        slug: matchId
-      });
+      emitCommand({ type: "WICKET_FALL", slug: matchId });
       break;
   }
 
-  /*
-  -------------------------------------------------------
-  PUSH TO TIMELINE
-  -------------------------------------------------------
-  */
-
-  pushToTimeline({
-    slug: matchId,
-    over: updated.over + updated.ball / 10,
-    runs:
-      event.type === "FOUR" ? 4 :
-      event.type === "SIX" ? 6 :
-      event.type === "RUN" ? (event.runs ?? 1) :
-      event.type === "WD" || event.type === "NB" ? 1 : 0,
-    wicket: event.type === "WICKET",
-    extra: event.type === "WD" || event.type === "NB",
-    type: event.type,
-    timestamp: Date.now(),
-  });
+  pushToTimeline(ballEvent);
 
   emit(matchId);
 }
 
 /*
 -------------------------------------------------------
-RESET
+MAP BALL EVENT → ENGINE EVENT
+-------------------------------------------------------
+*/
+
+function mapBallEventToEngineEvent(event: BallEvent): EngineBallEvent {
+
+  switch (event.type) {
+    case "RUN": return { type: "RUN", runs: event.runs };
+    case "FOUR": return { type: "FOUR" };
+    case "SIX": return { type: "SIX" };
+    case "WICKET": return { type: "WICKET" };
+    case "WD": return { type: "WD" };
+    case "NB": return { type: "NB" };
+    default:
+      throw new Error(`Unsupported event type: ${event.type}`);
+  }
+}
+
+/*
+-------------------------------------------------------
+STATE ONLY REDUCER (REPLAY SCRUB)
+-------------------------------------------------------
+*/
+
+export function reduceStateOnly(
+  state: MatchState,
+  event: BallEvent
+): MatchState {
+
+  const engineEvent = mapBallEventToEngineEvent(event);
+
+  const { next } = reduce(state, engineEvent);
+
+  return next;
+}
+
+/*
+-------------------------------------------------------
+UTILS
 -------------------------------------------------------
 */
 
 export function resetMatch(matchId: string) {
   matches.delete(matchId);
+}
+
+export function hydrateMatchState(matchId: string, state: MatchState) {
+
+  const existing = getMatchState(matchId);
+
+  if (existing) {
+    Object.assign(existing, state);
+  } else {
+    initMatch(matchId);
+    Object.assign(getMatchState(matchId)!, state);
+  }
+}
+
+export function getSnapshot(matchId: string, over: number) {
+  return snapshotMap[matchId]?.[over];
 }

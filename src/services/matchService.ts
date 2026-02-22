@@ -1,5 +1,4 @@
 import { Match } from "../types/match";
-import { startRealtime } from "./realtimeService";
 
 /*
 ⭐ Central match data source
@@ -40,7 +39,6 @@ const matches: Match[] = [
 // ✅ Get ALL matches
 export async function getAllMatches(): Promise<Match[]> {
 
-  startRealtime(matches);
 
   return matches;
 }

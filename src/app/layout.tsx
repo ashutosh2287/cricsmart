@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import Navbar from "../components/Navbar";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-import BootstrapRealtime from "@/components/BootstrapRealtime";
 import StadiumOverlay from "@/components/StadiumOverlay";
 import BroadcastDirectorOverlay from "@/components/BroadcastDirectorOverlay";
 
@@ -35,7 +33,6 @@ export default function RootLayout({
       >
 
         {/* ⭐ Global realtime bootstrapping */}
-        <BootstrapRealtime />
 
         {/* 🔥 Stadium cinematic effects */}
         <StadiumOverlay />

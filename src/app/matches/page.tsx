@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { getMatches, subscribeStore } from "@/store/realtimeStore";
 import MatchCard from "../../components/MatchCard";
 import { Match } from "../../types/match";
-import { startRealtime } from "@/services/realtimeService";
 
 export default function MatchPage() {
 
@@ -39,7 +38,6 @@ export default function MatchPage() {
     const initialMatches = getMatches();
 
     if (initialMatches.length > 0) {
-      startRealtime(initialMatches);
     }
 
   }, []);

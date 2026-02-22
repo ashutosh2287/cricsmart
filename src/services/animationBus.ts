@@ -4,6 +4,8 @@ ANIMATION EVENT TYPES (EXTENSIBLE)
 ================================================
 */
 
+export type AnimationChannel = "LIVE" | "REPLAY";
+
 export type AnimationEvent =
   | { type: "SIX"; slug: string }
   | { type: "FOUR"; slug: string }
@@ -14,34 +16,76 @@ export type AnimationEvent =
   | { type: "CAMERA_SHAKE"; slug?: string }
   | { type: "CROWD_ROAR"; slug?: string };
 
-type AnimationListener = (event: AnimationEvent) => void;
-
-let listeners: AnimationListener[] = [];
-
 /*
 ================================================
-PUBLISH EVENT
+ANIMATION EVENT BUS
 ================================================
 */
 
-export function publishAnimation(event: AnimationEvent) {
+type AnimationEventListener = (
+  event: AnimationEvent,
+  channel: AnimationChannel
+) => void;
 
-  listeners.forEach(listener => listener(event));
+let animationListeners: AnimationEventListener[] = [];
 
+export function publishAnimation(
+  event: AnimationEvent,
+  channel: AnimationChannel = "LIVE"
+) {
+  animationListeners.forEach(listener => listener(event, channel));
+}
+
+export function subscribeAnimation(listener: AnimationEventListener) {
+  animationListeners.push(listener);
+
+  return () => {
+    animationListeners = animationListeners.filter(l => l !== listener);
+  };
 }
 
 /*
 ================================================
-SUBSCRIBE
+ANIMATION COMPLETION SIGNAL
 ================================================
 */
 
-export function subscribeAnimation(listener: AnimationListener) {
+type AnimationCompleteListener = (channel: AnimationChannel) => void;
 
-  listeners.push(listener);
+let completionListeners: AnimationCompleteListener[] = [];
+
+export function onAnimationComplete(listener: AnimationCompleteListener) {
+  completionListeners.push(listener);
 
   return () => {
-    listeners = listeners.filter(l => l !== listener);
+    completionListeners = completionListeners.filter(l => l !== listener);
   };
+}
+
+export function emitAnimationComplete(channel: AnimationChannel = "LIVE") {
+  completionListeners.forEach(listener => listener(channel));
+}
+
+/*
+================================================
+PROMISE-BASED WAIT (CRITICAL FOR REPLAY QUEUE)
+================================================
+*/
+
+export function waitForAnimationComplete(
+  channel: AnimationChannel = "LIVE"
+): Promise<void> {
+
+  return new Promise(resolve => {
+
+    const unsubscribe = onAnimationComplete((completedChannel) => {
+
+      if (completedChannel !== channel) return;
+
+      unsubscribe();
+      resolve();
+    });
+
+  });
 
 }

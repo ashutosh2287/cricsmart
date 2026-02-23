@@ -1,14 +1,15 @@
 import { BallEvent } from "@/types/ballEvent";
 import { pushToTimeline } from "./broadcastTimeline";
 import { emitCommand } from "./commandBus";
+import { rebuildStateFromIndex } from "./timelineScrubber";
 
 /*
 -------------------------------------------------------
-ENGINE EVENT TYPES
+SCORING EVENT TYPES
 -------------------------------------------------------
 */
 
-export type EngineBallEvent =
+export type ScoringEvent =
   | { type: "RUN"; runs?: number }
   | { type: "FOUR" }
   | { type: "SIX" }
@@ -16,6 +17,24 @@ export type EngineBallEvent =
   | { type: "WD" }
   | { type: "NB" };
 
+/*
+-------------------------------------------------------
+CORRECTION EVENT TYPES
+-------------------------------------------------------
+*/
+
+export type CorrectionEvent =
+  | { type: "CORRECTION_UNDO_LAST" }
+  | { type: "CORRECTION_DELETE"; targetEventId: string }
+  | { type: "CORRECTION_REPLACE"; targetEventId: string; replacement: Partial<BallEvent> };
+
+export type EngineBallEvent = ScoringEvent | CorrectionEvent;
+
+type Branch = {
+  id: string;
+  parentId?: string;
+  createdAt: number;
+};
 /*
 -------------------------------------------------------
 MATCH STATE
@@ -28,13 +47,12 @@ export type MatchState = {
   wickets: number;
   over: number;
   ball: number;
-
-  // existing structured history
   overs: Record<number, BallEvent[]>;
-
-  // ⭐ NEW TEMPORAL INDEX
   timelineIndex: BallEvent[];
+  activeBranchId: string;
+  branches: string[]; // ⭐ NEW
 };
+
 /*
 -------------------------------------------------------
 ENGINE STORE
@@ -43,40 +61,20 @@ ENGINE STORE
 
 const matches = new Map<string, MatchState>();
 const matchListeners: Record<string, Set<() => void>> = {};
-
-/*
-================================================
-SNAPSHOT STORAGE
-================================================
-*/
-
 const snapshotMap: Record<string, Record<number, MatchState>> = {};
+const branchRegistry: Record<string, Record<string, Branch>> = {};
 
 function cloneState(state: MatchState): MatchState {
   return JSON.parse(JSON.stringify(state));
 }
 
 function saveSnapshot(matchId: string, over: number, state: MatchState) {
-
-  if (!snapshotMap[matchId]) {
-    snapshotMap[matchId] = {};
-  }
-
+  if (!snapshotMap[matchId]) snapshotMap[matchId] = {};
   snapshotMap[matchId][over] = cloneState(state);
 }
 
-/*
--------------------------------------------------------
-EMIT
--------------------------------------------------------
-*/
-
 function emit(matchId: string) {
-
-  const run = () => {
-    matchListeners[matchId]?.forEach((l) => l());
-  };
-
+  const run = () => matchListeners[matchId]?.forEach(l => l());
   if (typeof window !== "undefined" && "requestAnimationFrame" in window) {
     requestAnimationFrame(run);
   } else {
@@ -84,37 +82,24 @@ function emit(matchId: string) {
   }
 }
 
+
 /*
 -------------------------------------------------------
-SUBSCRIPTIONS
+PUBLIC API
 -------------------------------------------------------
 */
 
 export function subscribeMatch(matchId: string, cb: () => void) {
-
-  if (!matchListeners[matchId]) {
-    matchListeners[matchId] = new Set();
-  }
-
+  if (!matchListeners[matchId]) matchListeners[matchId] = new Set();
   matchListeners[matchId].add(cb);
-
-  return () => {
-    matchListeners[matchId].delete(cb);
-  };
+  return () => matchListeners[matchId].delete(cb);
 }
 
 export function getMatchState(matchId: string) {
   return matches.get(matchId);
 }
 
-/*
--------------------------------------------------------
-INIT MATCH
--------------------------------------------------------
-*/
-
 export function initMatch(matchId: string) {
-
   if (matches.has(matchId)) return;
 
   matches.set(matchId, {
@@ -124,21 +109,29 @@ export function initMatch(matchId: string) {
     over: 0,
     ball: 0,
     overs: {},
-    timelineIndex: [] // ⭐ NEW
+    timelineIndex: [],
+    activeBranchId: "main",
+    branches: ["main"]
   });
+  branchRegistry[matchId] = {
+  main: {
+    id: "main",
+    createdAt: Date.now()
+  }
+};
 
   emit(matchId);
 }
 
 /*
 -------------------------------------------------------
-REDUCER
+REDUCER (SCORING ONLY)
 -------------------------------------------------------
 */
 
 function reduce(
   state: MatchState,
-  event: EngineBallEvent
+  event: ScoringEvent
 ): { next: MatchState; ballEvent: BallEvent } {
 
   const next: MatchState = {
@@ -147,6 +140,7 @@ function reduce(
   };
 
   const ballEvent: BallEvent = {
+    id: crypto.randomUUID(),
     slug: state.matchId,
     over: state.over + state.ball / 10,
     runs:
@@ -158,29 +152,24 @@ function reduce(
     extra: event.type === "WD" || event.type === "NB",
     type: event.type,
     timestamp: Date.now(),
-    isLegalDelivery: event.type !== "WD" && event.type !== "NB"
+    isLegalDelivery: event.type !== "WD" && event.type !== "NB",
+    valid: true,
+    branchId: state.activeBranchId ?? "main"
   };
 
   const overNumber = state.over;
 
-  if (!next.overs[overNumber]) {
-    next.overs[overNumber] = [];
-  }
+  if (!next.overs[overNumber]) next.overs[overNumber] = [];
 
   next.overs[overNumber] = [
     ...next.overs[overNumber],
     ballEvent
   ];
-  /*
--------------------------------------------------------
-TEMPORAL INDEX RECORD
--------------------------------------------------------
-*/
 
-next.timelineIndex = [
-  ...state.timelineIndex,
-  ballEvent
-];
+  next.timelineIndex = [
+    ...state.timelineIndex,
+    ballEvent
+  ];
 
   switch (event.type) {
 
@@ -214,12 +203,9 @@ next.timelineIndex = [
   }
 
   if (next.ball >= 6) {
-
     const completedOver = next.over;
-
     next.over += 1;
     next.ball = 0;
-
     saveSnapshot(state.matchId, completedOver, next);
   }
 
@@ -241,24 +227,100 @@ export function dispatchBallEvent(matchId: string, event: EngineBallEvent) {
     current = matches.get(matchId)!;
   }
 
-  const { next, ballEvent } = reduce(current, event);
+  const timeline = current.timelineIndex;
+
+  if (event.type === "CORRECTION_UNDO_LAST") {
+
+    for (let i = timeline.length - 1; i >= 0; i--) {
+      if (timeline[i]?.valid) {
+        timeline[i].valid = false;
+        break;
+      }
+    }
+
+    const rebuilt = rebuildStateFromIndex(matchId, timeline.length - 1, current);
+    if (rebuilt) matches.set(matchId, rebuilt);
+
+    emit(matchId);
+    return;
+  }
+
+  if (event.type === "CORRECTION_DELETE") {
+
+    const target = timeline.find(e => e.id === event.targetEventId);
+    if (target) target.valid = false;
+
+    const rebuilt = rebuildStateFromIndex(matchId, timeline.length - 1, current);
+    if (rebuilt) matches.set(matchId, rebuilt);
+
+    emit(matchId);
+    return;
+  }
+
+  if (event.type === "CORRECTION_REPLACE") {
+
+    const targetIndex = timeline.findIndex(e => e.id === event.targetEventId);
+    if (targetIndex === -1) return;
+
+    const target = timeline[targetIndex];
+
+    if (!target.branchId) {
+      target.branchId = current.activeBranchId;
+    }
+
+    target.valid = false;
+
+    const newBranchId = crypto.randomUUID();
+    branchRegistry[matchId][newBranchId] = {
+  id: newBranchId,
+  parentId: current.activeBranchId,
+  createdAt: Date.now()
+};
+
+current.branches.push(newBranchId);
+
+    const replacement: BallEvent = {
+      ...target,
+      ...event.replacement,
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      valid: true,
+      replacedBy: undefined,
+      branchId: newBranchId
+    };
+
+    target.replacedBy = replacement.id;
+
+    current.activeBranchId = newBranchId;
+
+    current.timelineIndex = [
+      ...current.timelineIndex,
+      replacement
+    ];
+
+    const rebuilt = rebuildStateFromIndex(matchId, current.timelineIndex.length - 1, current);
+    if (rebuilt) matches.set(matchId, rebuilt);
+
+    emit(matchId);
+    return;
+  }
+
+  const scoringEvent = event as ScoringEvent;
+
+  const { next, ballEvent } = reduce(current, scoringEvent);
 
   matches.set(matchId, next);
 
-  switch (event.type) {
-
+  switch (scoringEvent.type) {
     case "RUN":
-      emitCommand({ type: "RUN_SCORED", slug: matchId, runs: event.runs ?? 1 });
+      emitCommand({ type: "RUN_SCORED", slug: matchId, runs: scoringEvent.runs ?? 1 });
       break;
-
     case "FOUR":
       emitCommand({ type: "BOUNDARY_FOUR", slug: matchId });
       break;
-
     case "SIX":
       emitCommand({ type: "BOUNDARY_SIX", slug: matchId });
       break;
-
     case "WICKET":
       emitCommand({ type: "WICKET_FALL", slug: matchId });
       break;
@@ -268,14 +330,13 @@ export function dispatchBallEvent(matchId: string, event: EngineBallEvent) {
 
   emit(matchId);
 }
-
 /*
 -------------------------------------------------------
 MAP BALL EVENT → ENGINE EVENT
 -------------------------------------------------------
 */
 
-function mapBallEventToEngineEvent(event: BallEvent): EngineBallEvent {
+function mapBallEventToEngineEvent(event: BallEvent): ScoringEvent {
 
   switch (event.type) {
     case "RUN": return { type: "RUN", runs: event.runs };
@@ -309,26 +370,28 @@ export function reduceStateOnly(
 
 /*
 -------------------------------------------------------
-UTILS
+SNAPSHOT ACCESS
 -------------------------------------------------------
 */
 
-export function resetMatch(matchId: string) {
-  matches.delete(matchId);
+export function getSnapshot(matchId: string, over: number) {
+  return snapshotMap[matchId]?.[over];
 }
+/*
+-------------------------------------------------------
+HYDRATE MATCH STATE
+-------------------------------------------------------
+*/
 
 export function hydrateMatchState(matchId: string, state: MatchState) {
 
-  const existing = getMatchState(matchId);
+  const existing = matches.get(matchId);
 
   if (existing) {
     Object.assign(existing, state);
   } else {
-    initMatch(matchId);
-    Object.assign(getMatchState(matchId)!, state);
+    matches.set(matchId, state);
   }
-}
 
-export function getSnapshot(matchId: string, over: number) {
-  return snapshotMap[matchId]?.[over];
+  emit(matchId);
 }

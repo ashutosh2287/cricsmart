@@ -8,6 +8,10 @@ export function routeAdminCommand(command: DomainCommand) {
 
   switch (command.type) {
 
+    // ========================
+    // SCORING EVENTS
+    // ========================
+
     case "SCORE_RUN":
       engineEvent = { type: "RUN", runs: command.runs };
       break;
@@ -30,6 +34,29 @@ export function routeAdminCommand(command: DomainCommand) {
 
     case "SCORE_NOBALL":
       engineEvent = { type: "NB" };
+      break;
+
+    // ========================
+    // CORRECTION EVENTS
+    // ========================
+
+    case "UNDO_LAST_BALL":
+      engineEvent = { type: "CORRECTION_UNDO_LAST" };
+      break;
+
+    case "DELETE_BALL_EVENT":
+      engineEvent = {
+        type: "CORRECTION_DELETE",
+        targetEventId: command.eventId
+      };
+      break;
+
+    case "REPLACE_BALL_EVENT":
+      engineEvent = {
+        type: "CORRECTION_REPLACE",
+        targetEventId: command.eventId,
+        replacement: command.replacement
+      };
       break;
   }
 

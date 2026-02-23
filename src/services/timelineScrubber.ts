@@ -32,9 +32,19 @@ export function rebuildStateFromIndex(
 
   let state: MatchState = JSON.parse(JSON.stringify(snapshot));
 
-  for (let i = 0; i <= targetIndex; i++) {
-    state = reduceStateOnly(state, timeline[i]);
+ for (let i = 0; i <= targetIndex; i++) {
+
+  const event = timeline[i];
+
+  if (!event?.valid) continue;
+
+  // ⭐ branch filtering
+  if (event.branchId && event.branchId !== liveState.activeBranchId) {
+    continue;
   }
+
+  state = reduceStateOnly(state, event);
+}
 
   return state;
 }

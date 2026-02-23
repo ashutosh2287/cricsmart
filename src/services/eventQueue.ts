@@ -1,19 +1,11 @@
-import { dispatchBallEvent } from "@/services/matchEngine";
+import { dispatchBallEvent, EngineBallEvent } from "@/services/matchEngine";
 import { onAnimationComplete } from "@/services/animationBus";
 
 /*
 ================================================
-EVENT TYPES
+QUEUE TYPES
 ================================================
 */
-
-type EngineBallEvent =
-  | { type: "RUN"; runs?: number }
-  | { type: "FOUR" }
-  | { type: "SIX" }
-  | { type: "WICKET" }
-  | { type: "WD" }
-  | { type: "NB" };
 
 type QueueItem = {
   matchId: string;
@@ -60,7 +52,7 @@ ENQUEUE EVENT
 
 export function enqueueBallEvent(matchId: string, event: EngineBallEvent) {
 
-  // Save highlights automatically
+  // Save highlights automatically (only scoring events)
   if (event.type === "SIX" || event.type === "WICKET") {
     highlights.push({ matchId, event });
   }
@@ -92,7 +84,7 @@ function processQueue() {
   // Wait for animation finish signal
   const unsubscribe = onAnimationComplete(() => {
 
-    unsubscribe(); // prevent duplicate listeners
+    unsubscribe();
 
     isProcessing = false;
 

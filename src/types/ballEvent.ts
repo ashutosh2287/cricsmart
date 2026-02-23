@@ -1,5 +1,7 @@
 export type BallEvent = {
 
+  id: string;
+
   slug: string;
 
   over: number;
@@ -8,13 +10,25 @@ export type BallEvent = {
 
   wicket?: boolean;
 
-  // ⭐ NEW (for WD / NB support)
   extra?: boolean;
 
-  // ⭐ OPTIONAL (future-ready)
-  type?: "RUN" | "FOUR" | "SIX" | "WICKET" | "WD" | "NB";
+  // ⭐ ONLY REAL CRICKET EVENTS
+  type:
+    | "RUN"
+    | "FOUR"
+    | "SIX"
+    | "WICKET"
+    | "WD"
+    | "NB";
 
-  timestamp: number; 
+  timestamp: number;
+
   isLegalDelivery?: boolean;
 
+  // ⭐ correction metadata
+  valid: boolean;
+  replacedBy?: string;
+
+  // ⭐ temporal branch support
+  branchId?: string;
 };

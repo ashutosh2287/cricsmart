@@ -20,11 +20,13 @@ REPLAY STATE
 ================================================
 */
 
-
+let isReplayActive = false;
 let replayState: MatchState | null = null;
 
 const listeners = new Set<() => void>();
-
+export function isReplayMode() {
+  return isReplayActive;
+}
 function emit() {
   listeners.forEach((l) => l());
 }
@@ -47,7 +49,11 @@ HYDRATE REPLAY STATE
 */
 
 export function hydrateReplay(snapshot: MatchState) {
+
   replayState = JSON.parse(JSON.stringify(snapshot));
+
+  isReplayActive = true; // ⭐ enable replay mode
+
   emit();
 }
 
@@ -164,8 +170,13 @@ LEGACY STOP REPLAY
 */
 
 export function stopReplay() {
+
   stopCursorPlayback();
+
   replayState = null;
+
+  isReplayActive = false; // ⭐ return to live mode
+
   emit();
 }
 
@@ -175,24 +186,19 @@ APPLY SINGLE EVENT DURING REPLAY QUEUE
 ================================================
 */
 
-export function dispatchReplayEvent(ballEvent: BallEvent) {
+/*
+================================================
+LEGACY REPLAY EVENT HANDLER (SAFE WRAPPER)
+================================================
+*/
 
-  if (!replayState) return;
+export function dispatchReplayEvent(_ballEvent: BallEvent) {
 
-  replayState.runs += ballEvent.runs;
+  // Replay engine is deterministic now.
+  // Events should NOT manually mutate state.
 
-  if (ballEvent.wicket) {
-    replayState.wickets += 1;
-  }
+  console.warn(
+    "dispatchReplayEvent is deprecated. Replay uses rebuildFromIndex."
+  );
 
-  if (ballEvent.isLegalDelivery) {
-    replayState.ball += 1;
-  }
-
-  if (replayState.ball >= 6) {
-    replayState.over += 1;
-    replayState.ball = 0;
-  }
-
-  emit();
 }

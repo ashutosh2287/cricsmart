@@ -1,5 +1,37 @@
 import { MatchState, getSnapshot, reduceStateOnly } from "./matchEngine";
 
+/*
+-------------------------------------------------------
+TEMPORAL INDEX TYPE (must match matchEngine.ts)
+-------------------------------------------------------
+*/
+
+type TimelineAnchor = {
+  index: number;
+  over: number;
+};
+
+/*
+-------------------------------------------------------
+TEMPORAL INDEX STORE
+NOTE:
+This must be exported from matchEngine.ts
+If already exported there, import instead.
+-------------------------------------------------------
+*/
+
+// If you already exported temporalIndex from matchEngine,
+// replace this with:
+// import { temporalIndex } from "./matchEngine";
+
+declare const temporalIndex: Record<string, TimelineAnchor[]>;
+
+/*
+-------------------------------------------------------
+REBUILD STATE FROM TIMELINE INDEX
+-------------------------------------------------------
+*/
+
 export function rebuildStateFromIndex(
   matchId: string,
   targetIndex: number,
@@ -14,37 +46,81 @@ export function rebuildStateFromIndex(
 
   if (!targetEvent) return null;
 
-  const targetOver = Math.floor(targetEvent.over);
+  /*
+  -------------------------------------------------------
+  FIND NEAREST TEMPORAL ANCHOR
+  -------------------------------------------------------
+  */
 
-  let snapshotOver = targetOver;
-  let snapshot;
+  const anchors = temporalIndex?.[matchId] || [];
 
-  while (snapshotOver >= 0) {
+  let startIndex = 0;
+  let snapshot: MatchState | null = null;
 
-    snapshot = getSnapshot(matchId, snapshotOver);
+  // find nearest anchor before target index
+  for (let i = anchors.length - 1; i >= 0; i--) {
 
-    if (snapshot) break;
+    if (anchors[i].index <= targetIndex) {
 
-    snapshotOver--;
+      startIndex = anchors[i].index;
+
+      snapshot = getSnapshot(matchId, anchors[i].over) ?? null;
+
+      break;
+    }
+  }
+
+  /*
+  -------------------------------------------------------
+  FALLBACK IF NO TEMPORAL ANCHOR FOUND
+  -------------------------------------------------------
+  */
+
+  if (!snapshot) {
+
+    const targetOver = Math.floor(targetEvent.over);
+
+    let snapshotOver = targetOver;
+
+    while (snapshotOver >= 0) {
+
+      snapshot = getSnapshot(matchId, snapshotOver);
+
+      if (snapshot) break;
+
+      snapshotOver--;
+    }
   }
 
   if (!snapshot) return null;
 
+  /*
+  -------------------------------------------------------
+  CLONE SNAPSHOT
+  -------------------------------------------------------
+  */
+
   let state: MatchState = JSON.parse(JSON.stringify(snapshot));
 
- for (let i = 0; i <= targetIndex; i++) {
+  /*
+  -------------------------------------------------------
+  REBUILD ONLY FROM START INDEX (PERFORMANCE OPTIMIZED)
+  -------------------------------------------------------
+  */
 
-  const event = timeline[i];
+  for (let i = startIndex; i <= targetIndex; i++) {
 
-  if (!event?.valid) continue;
+    const event = timeline[i];
 
-  // ⭐ branch filtering
-  if (event.branchId && event.branchId !== liveState.activeBranchId) {
-    continue;
+    if (!event?.valid) continue;
+
+    // ⭐ branch filtering
+    if (event.branchId && event.branchId !== liveState.activeBranchId) {
+      continue;
+    }
+
+    state = reduceStateOnly(state, event);
   }
-
-  state = reduceStateOnly(state, event);
-}
 
   return state;
 }

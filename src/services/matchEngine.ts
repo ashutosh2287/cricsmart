@@ -64,6 +64,19 @@ const matchListeners: Record<string, Set<() => void>> = {};
 const snapshotMap: Record<string, Record<number, MatchState>> = {};
 const branchRegistry: Record<string, Record<string, Branch>> = {};
 
+/*
+-------------------------------------------------------
+TEMPORAL INDEX (Performance Anchors)
+-------------------------------------------------------
+*/
+
+type TimelineAnchor = {
+  index: number;   // timelineIndex position
+  over: number;    // snapshot over number
+};
+
+const temporalIndex: Record<string, TimelineAnchor[]> = {};
+
 function cloneState(state: MatchState): MatchState {
   return JSON.parse(JSON.stringify(state));
 }
@@ -203,11 +216,26 @@ function reduce(
   }
 
   if (next.ball >= 6) {
-    const completedOver = next.over;
-    next.over += 1;
-    next.ball = 0;
-    saveSnapshot(state.matchId, completedOver, next);
+
+  const completedOver = next.over;
+
+  next.over += 1;
+  next.ball = 0;
+
+  saveSnapshot(state.matchId, completedOver, next);
+
+  // ⭐ TEMPORAL ANCHOR REGISTER
+  if (!temporalIndex[state.matchId]) {
+    temporalIndex[state.matchId] = [];
   }
+
+  temporalIndex[state.matchId].push({
+    index: state.timelineIndex.length,
+    over: completedOver
+  });
+}
+
+  
 
   return { next, ballEvent };
 }
@@ -391,6 +419,40 @@ export function hydrateMatchState(matchId: string, state: MatchState) {
     Object.assign(existing, state);
   } else {
     matches.set(matchId, state);
+  }
+
+  emit(matchId);
+}
+/*
+-------------------------------------------------------
+BRANCH SWITCHING API
+-------------------------------------------------------
+*/
+
+export function switchBranch(matchId: string, branchId: string) {
+
+  const current = matches.get(matchId);
+
+  if (!current) return;
+
+  // check branch exists
+  if (!branchRegistry[matchId]?.[branchId]) {
+    console.warn("Branch not found:", branchId);
+    return;
+  }
+
+  // switch active branch
+  current.activeBranchId = branchId;
+
+  // rebuild deterministic state for selected branch
+  const rebuilt = rebuildStateFromIndex(
+    matchId,
+    current.timelineIndex.length - 1,
+    current
+  );
+
+  if (rebuilt) {
+    matches.set(matchId, rebuilt);
   }
 
   emit(matchId);

@@ -2,6 +2,12 @@ import { BallEvent } from "@/types/ballEvent";
 import { pushToTimeline } from "./broadcastTimeline";
 import { emitCommand } from "./commandBus";
 import { rebuildStateFromIndex } from "./timelineScrubber";
+import { eventStore } from "@/persistence/eventStore";
+
+
+
+
+export type BranchRegistry = Record<string, Record<string, Branch>>;
 
 /*
 -------------------------------------------------------
@@ -82,8 +88,21 @@ function cloneState(state: MatchState): MatchState {
 }
 
 function saveSnapshot(matchId: string, over: number, state: MatchState) {
-  if (!snapshotMap[matchId]) snapshotMap[matchId] = {};
-  snapshotMap[matchId][over] = cloneState(state);
+
+  if (!snapshotMap[matchId]) {
+    snapshotMap[matchId] = {};
+  }
+
+  const cloned = cloneState(state);
+
+  // In-memory snapshot (performance cache)
+  snapshotMap[matchId][over] = cloned;
+
+  // Persistent snapshot (async side-effect)
+  eventStore.saveSnapshot(matchId, over, cloned)
+    .catch(err => {
+      console.error("Snapshot persistence failed:", err);
+    });
 }
 
 function emit(matchId: string) {
@@ -355,6 +374,8 @@ current.branches.push(newBranchId);
   }
 
   pushToTimeline(ballEvent);
+
+eventStore.appendEvent(matchId, ballEvent); // ← persistent event sourcing
 
   emit(matchId);
 }

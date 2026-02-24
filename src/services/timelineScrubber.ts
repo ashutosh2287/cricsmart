@@ -1,8 +1,13 @@
-import { MatchState, getSnapshot, reduceStateOnly } from "./matchEngine";
+import {
+  MatchState,
+  getSnapshot,
+  reduceStateOnly,
+  getEventStream
+} from "./matchEngine";
 
 /*
 -------------------------------------------------------
-TEMPORAL INDEX TYPE (must match matchEngine.ts)
+TEMPORAL INDEX TYPE
 -------------------------------------------------------
 */
 
@@ -13,22 +18,20 @@ type TimelineAnchor = {
 
 /*
 -------------------------------------------------------
-TEMPORAL INDEX STORE
-NOTE:
-This must be exported from matchEngine.ts
-If already exported there, import instead.
+IMPORT TEMPORAL INDEX FROM ENGINE
 -------------------------------------------------------
 */
 
-// If you already exported temporalIndex from matchEngine,
-// replace this with:
-// import { temporalIndex } from "./matchEngine";
+// IMPORTANT:
+// You must export temporalIndex from matchEngine.ts:
+// export const temporalIndex = ...
+// Then import it here instead of declare.
 
-declare const temporalIndex: Record<string, TimelineAnchor[]>;
+import { temporalIndex } from "./matchEngine";
 
 /*
 -------------------------------------------------------
-REBUILD STATE FROM TIMELINE INDEX
+REBUILD STATE FROM CANONICAL EVENT STREAM
 -------------------------------------------------------
 */
 
@@ -38,12 +41,11 @@ export function rebuildStateFromIndex(
   liveState: MatchState
 ): MatchState | null {
 
-  const timeline = liveState.timelineIndex;
+  const timeline = getEventStream(matchId);
 
-  if (!timeline || !timeline.length) return null;
+  if (!timeline.length) return null;
 
   const targetEvent = timeline[targetIndex];
-
   if (!targetEvent) return null;
 
   /*
@@ -52,34 +54,30 @@ export function rebuildStateFromIndex(
   -------------------------------------------------------
   */
 
-  const anchors = temporalIndex?.[matchId] || [];
+  const anchors: TimelineAnchor[] = temporalIndex?.[matchId] || [];
 
   let startIndex = 0;
   let snapshot: MatchState | null = null;
 
-  // find nearest anchor before target index
   for (let i = anchors.length - 1; i >= 0; i--) {
 
     if (anchors[i].index <= targetIndex) {
 
       startIndex = anchors[i].index;
-
       snapshot = getSnapshot(matchId, anchors[i].over) ?? null;
-
       break;
     }
   }
 
   /*
   -------------------------------------------------------
-  FALLBACK IF NO TEMPORAL ANCHOR FOUND
+  FALLBACK SNAPSHOT SEARCH
   -------------------------------------------------------
   */
 
   if (!snapshot) {
 
     const targetOver = Math.floor(targetEvent.over);
-
     let snapshotOver = targetOver;
 
     while (snapshotOver >= 0) {
@@ -104,7 +102,7 @@ export function rebuildStateFromIndex(
 
   /*
   -------------------------------------------------------
-  REBUILD ONLY FROM START INDEX (PERFORMANCE OPTIMIZED)
+  REBUILD FROM ANCHOR TO TARGET INDEX
   -------------------------------------------------------
   */
 
@@ -114,7 +112,7 @@ export function rebuildStateFromIndex(
 
     if (!event?.valid) continue;
 
-    // ⭐ branch filtering
+    // Branch filtering
     if (event.branchId && event.branchId !== liveState.activeBranchId) {
       continue;
     }

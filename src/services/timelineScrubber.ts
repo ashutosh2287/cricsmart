@@ -4,6 +4,9 @@ import {
   reduceStateOnly,
   getEventStream
 } from "./matchEngine";
+import { resetAnalytics, processAnalyticsEvent } from "./analytics/analyticsEngine";
+import { processHighlightEvent } from "./highlights/highlightEngine";
+import { resetDirectorState } from "./directorEngine";
 
 /*
 -------------------------------------------------------
@@ -99,6 +102,14 @@ export function rebuildStateFromIndex(
   */
 
   let state: MatchState = JSON.parse(JSON.stringify(snapshot));
+  /*
+-------------------------------------------------------
+RESET PROJECTION SYSTEMS (DETERMINISTIC REBUILD)
+-------------------------------------------------------
+*/
+
+resetAnalytics(matchId);
+resetDirectorState(liveState.activeBranchId);
 
   /*
   -------------------------------------------------------
@@ -118,6 +129,18 @@ export function rebuildStateFromIndex(
     }
 
     state = reduceStateOnly(state, event);
+
+/*
+-------------------------------------------------------
+REBUILD PROJECTIONS
+-------------------------------------------------------
+*/
+
+// rebuild analytics (will emit signals internally)
+processAnalyticsEvent(matchId, event);
+
+// rebuild highlight detection
+processHighlightEvent(matchId, event);
   }
 
   return state;

@@ -14,7 +14,8 @@ NEVER:
 - apply events
 ================================================
 */
-import { getSnapshot, getMatchState } from "./matchEngine";
+
+import { getSnapshot, getMatchState, getEventStream } from "./matchEngine";
 import {
   hydrateReplay,
   setCursorIndex,
@@ -68,9 +69,10 @@ export function scrubToPosition(
   const liveState = getMatchState(matchId);
   if (!liveState) return;
 
-  const timeline = liveState.timelineIndex;
-  if (!timeline || !timeline.length) return;
+  // ✅ canonical timeline source
+  const timeline = getEventStream(matchId);
 
+  if (!timeline.length) return;
   if (targetIndex < 0 || targetIndex >= timeline.length) return;
 
   /*
@@ -109,8 +111,10 @@ export function playFromCurrentCursor(matchId: string) {
   const liveState = getMatchState(matchId);
   if (!liveState) return;
 
-  const timeline = liveState.timelineIndex;
-  if (!timeline || !timeline.length) return;
+  // ✅ canonical timeline source
+  const timeline = getEventStream(matchId);
+
+  if (!timeline.length) return;
 
   startCursorPlayback(
     timeline,

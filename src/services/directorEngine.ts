@@ -3,6 +3,15 @@
 import { subscribeDirectorSignal } from "./directorSignalBus";
 import { DirectorSignal } from "./directorSignals";
 import { emitBroadcastCommand } from "./broadcastCommands";
+import { computeNextPacing } from "./pacingStateMachine";
+import { canTrigger, resetCinematicCooldown } from "./cinematicCooldown";
+import { updateTension } from "./tensionEngine";
+import {
+  updateDirectorMemory,
+  getDirectorMemory,
+  resetDirectorMemory
+} from "./directorMemory";
+import { runPredictiveDirector } from "./predictiveDirector";
 
 /*
 ================================================
@@ -10,94 +19,178 @@ DIRECTOR STATE
 ================================================
 */
 
-type DirectorState = {
+export type DirectorState = {
   branchId: string;
   lastEventId: string | null;
   pacing: "NORMAL" | "TENSION" | "CLIMAX";
   momentum: number;
 };
 
-const state: DirectorState = {
+let state: DirectorState = {
   branchId: "main",
   lastEventId: null,
   pacing: "NORMAL",
   momentum: 0
 };
 
+export function resetDirectorState(branchId: string) {
+  resetCinematicCooldown();
+  resetDirectorMemory();
+
+  state = {
+    branchId,
+    lastEventId: null,
+    pacing: "NORMAL",
+    momentum: 0
+  };
+}
+
 /*
 ================================================
-DIRECTOR SIGNAL HANDLER
+CORE DIRECTOR PROCESSOR
+Deterministic.
+emit = false during replay rebuild.
 ================================================
 */
 
-function handleSignal(signal: DirectorSignal) {
+function processDirectorSignal(signal: DirectorSignal, emit: boolean) {
+
+  // Update memory first
+  updateDirectorMemory(signal);
+  const memory = getDirectorMemory();
+
+  // Update core metrics
+  if (signal.type === "MOMENTUM_UPDATE") {
+    state.momentum = signal.value;
+  }
+
+  /*
+  ------------------------------------------------
+  TENSION ENGINE
+  ------------------------------------------------
+  */
+
+  /*
+------------------------------------------------
+TENSION ENGINE
+------------------------------------------------
+*/
+const tension = updateTension(signal);
+ 
+
+  /*
+  ------------------------------------------------
+  PACING STATE MACHINE (PURE)
+  ------------------------------------------------
+  */
+
+  const nextPacing = computeNextPacing(state, signal);
+   runPredictiveDirector(state, signal, tension);
+
+  if (nextPacing !== state.pacing) {
+
+    state.pacing = nextPacing;
+
+    if (emit) {
+
+      if (state.pacing === "TENSION") {
+        emitBroadcastCommand({ type: "ENTER_TENSION" });
+      }
+
+      if (state.pacing === "CLIMAX") {
+        emitBroadcastCommand({
+          type: "CAMERA_SHAKE",
+          intensity: 1
+        });
+      }
+    }
+  }
+
+  /*
+  ------------------------------------------------
+  Skip cinematic output during rebuild
+  ------------------------------------------------
+  */
+
+  if (!emit) {
+    state.lastEventId = signal.eventId;
+    return;
+  }
+
+  /*
+  ------------------------------------------------
+  CINEMATIC REACTIONS
+  ------------------------------------------------
+  */
 
   switch (signal.type) {
 
-    /*
-    --------------------------------------------
-    ANALYTICS SIGNALS
-    --------------------------------------------
-    */
+    case "PRESSURE_SPIKE":
 
-    case "MOMENTUM_UPDATE":
-
-      state.momentum = signal.value;
-
-      // pacing logic example
-      if (state.momentum > 15 && state.pacing !== "CLIMAX") {
-        state.pacing = "CLIMAX";
-
+      if (state.pacing === "TENSION") {
         emitBroadcastCommand({
-          type: "ENTER_TENSION"
+          type: "CAMERA_SWEEP",
+          slug: signal.eventId
         });
       }
 
       break;
-
-    case "PRESSURE_SPIKE":
-
-      emitBroadcastCommand({
-  type: "CAMERA_SWEEP",
-  slug: signal.eventId
-});
-
-      break;
-
-    /*
-    --------------------------------------------
-    HIGHLIGHT SIGNALS
-    --------------------------------------------
-    */
 
     case "HIGHLIGHT_DETECTED":
 
+      /*
+      --------------------------------------------
+      SIX LOGIC WITH MEMORY ESCALATION
+      --------------------------------------------
+      */
+
       if (signal.subtype === "SIX") {
 
-        emitBroadcastCommand({
-          type: "CAMERA_SHAKE",
-          intensity: 0.9
-        });
+        if (canTrigger("SIX_SHAKE", 1500)) {
 
-        emitBroadcastCommand({
-          type: "SHOW_OVERLAY",
-          overlay: "BIG_SIX"
-        });
+          let intensity = 0.8;
 
+          // Escalate based on streak memory
+          if (memory.boundaryStreak >= 3) {
+            intensity = 1;
+          }
+
+          if (state.pacing === "CLIMAX") {
+            intensity = 1;
+          }
+
+          emitBroadcastCommand({
+            type: "CAMERA_SHAKE",
+            intensity
+          });
+
+          emitBroadcastCommand({
+            type: "SHOW_OVERLAY",
+            overlay: "BIG_SIX"
+          });
+        }
       }
+
+      /*
+      --------------------------------------------
+      WICKET LOGIC
+      --------------------------------------------
+      */
 
       if (signal.subtype === "WICKET") {
 
-        emitBroadcastCommand({
-  type: "PLAY_SLOW_MOTION",
-  slug: signal.eventId
-});
+        if (canTrigger("WICKET_SLOWMO", 2000)) {
 
-        emitBroadcastCommand({
-          type: "SHOW_OVERLAY",
-          overlay: "WICKET"
-        });
+          emitBroadcastCommand({
+            type: "PLAY_SLOW_MOTION",
+            slug: signal.eventId
+          });
 
+          emitBroadcastCommand({
+            type: "SHOW_OVERLAY",
+            overlay: "WICKET"
+          });
+        }
       }
 
       break;
@@ -113,7 +206,7 @@ INIT DIRECTOR ENGINE
 */
 
 export function initDirectorEngine() {
-
-  subscribeDirectorSignal(handleSignal);
-
+  subscribeDirectorSignal((signal) => {
+    processDirectorSignal(signal, true);
+  });
 }

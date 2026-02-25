@@ -2,8 +2,10 @@ import { publishAnimation } from "@/services/animationBus";
 import { publishCommentary } from "@/services/commentaryBus";
 import { scheduleCinematic } from "@/services/cinematicScheduler";
 import { triggerStadiumMoment } from "@/services/stadiumMoment";
-import { triggerDirector } from "@/services/broadcastDirector";
-import { subscribeCommand, Command } from "./commandBus";
+import {
+  subscribeBroadcastCommand,
+  BroadcastCommand
+} from "./broadcastCommands";
 
 /*
 ================================================
@@ -12,88 +14,90 @@ GLOBAL ANIMATION ORCHESTRATOR
 ================================================
 */
 
-function handleCommand(command: Command) {
+function handleBroadcastCommand(command: BroadcastCommand) {
 
-  /*
-  ================================================
-  💥 WICKET
-  ================================================
-  */
+  switch (command.type) {
 
-  if (command.type === "WICKET_FALL") {
+    /*
+    ================================================
+    CAMERA SHAKE
+    ================================================
+    */
 
-    scheduleCinematic(() => {
+    case "CAMERA_SHAKE":
 
-      publishAnimation({
-        type: "WICKET",
-        slug: command.slug
+      scheduleCinematic(() => {
+        publishAnimation({
+          type: "CAMERA_SHAKE"
+        });
       });
 
-      publishCommentary("💥 WICKET! The batter is gone!");
+      break;
 
-      triggerStadiumMoment("WICKET");
+    /*
+    ================================================
+    CAMERA SWEEP
+    (Map to existing ENERGY_SWEEP animation)
+    ================================================
+    */
 
-      triggerDirector("SLOW_MOTION");
+    case "CAMERA_SWEEP":
 
-    });
-
-    return;
-  }
-
-  /*
-  ================================================
-  🔥 SIX
-  ================================================
-  */
-
-  if (command.type === "BOUNDARY_SIX") {
-
-    scheduleCinematic(() => {
-
-      publishAnimation({
-        type: "SIX",
-        slug: command.slug
+      scheduleCinematic(() => {
+         publishAnimation({
+  type: "ENERGY_SWEEP",
+  slug: command.slug
+});
       });
 
-      publishCommentary("🔥 BOOOOM! Massive SIX into the stands!");
+      break;
 
-      triggerStadiumMoment("SIX");
+    /*
+    ================================================
+    SLOW MOTION
+    (Map to DELTA or cinematic effect you already use)
+    ================================================
+    */
 
-      triggerDirector("CAMERA_SHAKE");
+    case "PLAY_SLOW_MOTION":
 
-    });
-
-    return;
-  }
-
-  /*
-  ================================================
-  🎯 FOUR
-  ================================================
-  */
-
-  if (command.type === "BOUNDARY_FOUR") {
-
-    scheduleCinematic(() => {
-
-      publishAnimation({
-        type: "FOUR",
-        slug: command.slug
+      scheduleCinematic(() => {
+        publishAnimation({
+  type: "DELTA",
+  slug: command.slug,
+  value: 1
+});
       });
 
-      publishCommentary("🎯 Beautiful FOUR through the field!");
+      break;
 
-      triggerStadiumMoment("FOUR");
+    /*
+    ================================================
+    OVERLAY
+    (Map overlays into stadium moment + commentary)
+    ================================================
+    */
 
-      triggerDirector("LIGHT_IMPACT");
+    case "SHOW_OVERLAY":
 
-    });
+      scheduleCinematic(() => {
 
-    return;
+        publishCommentary(`🔥 ${command.overlay}`);
+
+        // Only pass valid moment types if required
+        triggerStadiumMoment("SIX"); 
+
+      });
+
+      break;
+
+    case "ENTER_TENSION":
+
+      publishCommentary("🔥 Match tension rising!");
+
+      break;
   }
-
 }
-
 /*
 ================================================
 INIT ORCHESTRATOR (RUN ONCE)
@@ -102,6 +106,6 @@ INIT ORCHESTRATOR (RUN ONCE)
 
 export function initAnimationOrchestrator() {
 
-  subscribeCommand(handleCommand);
+  subscribeBroadcastCommand(handleBroadcastCommand);
 
 }

@@ -2,6 +2,8 @@ import { BallEvent } from "@/types/ballEvent";
 import { pushToTimeline } from "./broadcastTimeline";
 import { rebuildStateFromIndex } from "./timelineScrubber";
 import { eventStore } from "@/persistence/eventStore";
+import { processAnalyticsEvent } from "./analytics/analyticsEngine";
+import { processHighlightEvent } from "./highlights/highlightEngine";
 
 
 const branchRegistry: Record<string, Record<string, Branch>> = {};
@@ -265,6 +267,9 @@ export function dispatchBallEvent(matchId: string, event: EngineBallEvent) {
   matches.set(matchId, next);
 
   eventStreams[matchId].push(ballEvent);
+  processAnalyticsEvent(matchId, ballEvent);
+  processHighlightEvent(matchId, ballEvent);
+  
 
   pushToTimeline(ballEvent);
   eventStore.appendEvent(matchId, ballEvent);

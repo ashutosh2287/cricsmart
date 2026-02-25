@@ -1,6 +1,8 @@
-import { subscribeCommand, Command } from "./commandBus";
-import { triggerDirector } from "@/services/broadcastDirector";
-import { subscribeMomentum } from "./momentumEngine";
+// directorEngine.ts
+
+import { subscribeDirectorSignal } from "./directorSignalBus";
+import { DirectorSignal } from "./directorSignals";
+import { emitBroadcastCommand } from "./broadcastCommands";
 
 /*
 ================================================
@@ -8,78 +10,100 @@ DIRECTOR STATE
 ================================================
 */
 
-let hypeLevel = 0;
-let currentMomentum = 0;
+type DirectorState = {
+  branchId: string;
+  lastEventId: string | null;
+  pacing: "NORMAL" | "TENSION" | "CLIMAX";
+  momentum: number;
+};
+
+const state: DirectorState = {
+  branchId: "main",
+  lastEventId: null,
+  pacing: "NORMAL",
+  momentum: 0
+};
 
 /*
 ================================================
-LISTEN TO MOMENTUM ENGINE
+DIRECTOR SIGNAL HANDLER
 ================================================
 */
 
-subscribeMomentum((value) => {
-  currentMomentum = value;
+function handleSignal(signal: DirectorSignal) {
+
+  switch (signal.type) {
+
+    /*
+    --------------------------------------------
+    ANALYTICS SIGNALS
+    --------------------------------------------
+    */
+
+    case "MOMENTUM_UPDATE":
+
+      state.momentum = signal.value;
+
+      // pacing logic example
+      if (state.momentum > 15 && state.pacing !== "CLIMAX") {
+        state.pacing = "CLIMAX";
+
+        emitBroadcastCommand({
+          type: "ENTER_TENSION"
+        });
+      }
+
+      break;
+
+    case "PRESSURE_SPIKE":
+
+      emitBroadcastCommand({
+  type: "CAMERA_SWEEP",
+  slug: signal.eventId
 });
 
-/*
-================================================
-DIRECTOR LOGIC
-================================================
-*/
-
-function handleCommand(command: Command) {
-
-  switch (command.type) {
-
-    case "RUN_SCORED":
-
-      hypeLevel += 1;
-
-      if (currentMomentum > 8) {
-        triggerDirector("LIGHT_IMPACT");
-      }
-
       break;
 
-    case "BOUNDARY_FOUR":
+    /*
+    --------------------------------------------
+    HIGHLIGHT SIGNALS
+    --------------------------------------------
+    */
 
-      hypeLevel += 3;
+    case "HIGHLIGHT_DETECTED":
 
-      if (currentMomentum > 12) {
-        triggerDirector("CAMERA_SHAKE");
-      } else {
-        triggerDirector("CAMERA_SWEEP");
+      if (signal.subtype === "SIX") {
+
+        emitBroadcastCommand({
+          type: "CAMERA_SHAKE",
+          intensity: 0.9
+        });
+
+        emitBroadcastCommand({
+          type: "SHOW_OVERLAY",
+          overlay: "BIG_SIX"
+        });
+
       }
 
-      break;
+      if (signal.subtype === "WICKET") {
 
-    case "BOUNDARY_SIX":
+        emitBroadcastCommand({
+  type: "PLAY_SLOW_MOTION",
+  slug: signal.eventId
+});
 
-      hypeLevel += 5;
+        emitBroadcastCommand({
+          type: "SHOW_OVERLAY",
+          overlay: "WICKET"
+        });
 
-      if (currentMomentum > 20) {
-        triggerDirector("EXTREME_SHAKE");
-      } else {
-        triggerDirector("CAMERA_SHAKE");
-      }
-
-      break;
-
-    case "WICKET_FALL":
-
-      hypeLevel += 10;
-
-      if (currentMomentum > 15) {
-        triggerDirector("DRAMATIC_SLOW_MOTION");
-      } else {
-        triggerDirector("SLOW_MOTION");
       }
 
       break;
   }
 
-  // decay hype gradually
-  hypeLevel = Math.max(0, hypeLevel - 1);
+  state.lastEventId = signal.eventId;
 }
 
 /*
@@ -90,6 +114,6 @@ INIT DIRECTOR ENGINE
 
 export function initDirectorEngine() {
 
-  subscribeCommand(handleCommand);
+  subscribeDirectorSignal(handleSignal);
 
 }

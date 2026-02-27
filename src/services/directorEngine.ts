@@ -1,5 +1,5 @@
 // directorEngine.ts
-
+import { getNarrativeState } from "./narrative/narrativeEngine";
 import { subscribeDirectorSignal } from "./directorSignalBus";
 import { DirectorSignal } from "./directorSignals";
 import { emitBroadcastCommand } from "./broadcastCommands";
@@ -12,6 +12,8 @@ import {
   resetDirectorMemory
 } from "./directorMemory";
 import { runPredictiveDirector } from "./predictiveDirector";
+import { subscribeNarrativeSignal } from "./narrative/narrativeSignalBus";
+import { runPredictiveCommentary } from "./commentary/predictiveCommentary";
 
 /*
 ================================================
@@ -20,6 +22,7 @@ DIRECTOR STATE
 */
 
 export type DirectorState = {
+  matchId: string;
   branchId: string;
   lastEventId: string | null;
   pacing: "NORMAL" | "TENSION" | "CLIMAX";
@@ -27,22 +30,27 @@ export type DirectorState = {
 };
 
 let state: DirectorState = {
+  matchId: "",
   branchId: "main",
   lastEventId: null,
   pacing: "NORMAL",
   momentum: 0
 };
 
-export function resetDirectorState(branchId: string) {
+export function resetDirectorState(
+  matchId: string,
+  branchId: string
+) {
   resetCinematicCooldown();
   resetDirectorMemory();
 
   state = {
-    branchId,
-    lastEventId: null,
-    pacing: "NORMAL",
-    momentum: 0
-  };
+  matchId,
+  branchId,
+  lastEventId: null,
+  pacing: "NORMAL",
+  momentum: 0
+};
 }
 
 /*
@@ -54,15 +62,25 @@ emit = false during replay rebuild.
 */
 
 function processDirectorSignal(signal: DirectorSignal, emit: boolean) {
+  
 
   // Update memory first
   updateDirectorMemory(signal);
   const memory = getDirectorMemory();
+  // ----------------------------------------
+// NARRATIVE AWARENESS (READ-ONLY)
+// ----------------------------------------
+
+const narrative = getNarrativeState(
+  state.matchId,
+  state.branchId
+);
 
   // Update core metrics
   if (signal.type === "MOMENTUM_UPDATE") {
     state.momentum = signal.value;
   }
+  
 
   /*
   ------------------------------------------------
@@ -85,11 +103,33 @@ const tension = updateTension(signal);
   */
 
   const nextPacing = computeNextPacing(state, signal);
+  let adjustedPacing = nextPacing;
+
+if (narrative) {
+  if (narrative.currentArc === "CLIMAX") {
+    adjustedPacing = "CLIMAX";
+  }
+
+  if (narrative.currentArc === "PRESSURE_BUILD" &&
+      adjustedPacing === "NORMAL") {
+    adjustedPacing = "TENSION";
+  }
+
+  if (narrative.currentArc === "COLLAPSE") {
+    adjustedPacing = "CLIMAX";
+  }
+}
    runPredictiveDirector(state, signal, tension);
+   runPredictiveCommentary(
+  state.matchId,
+  state.branchId,
+  state,
+  signal.eventId
+);
 
-  if (nextPacing !== state.pacing) {
+   if (adjustedPacing !== state.pacing){
 
-    state.pacing = nextPacing;
+    state.pacing = adjustedPacing;
 
     if (emit) {
 
@@ -158,6 +198,9 @@ const tension = updateTension(signal);
           if (state.pacing === "CLIMAX") {
             intensity = 1;
           }
+          if (narrative?.currentArc === "CLIMAX") {
+  intensity = 1;
+}
 
           emitBroadcastCommand({
             type: "CAMERA_SHAKE",
@@ -209,4 +252,5 @@ export function initDirectorEngine() {
   subscribeDirectorSignal((signal) => {
     processDirectorSignal(signal, true);
   });
+ 
 }

@@ -7,7 +7,10 @@ import {
 import { resetAnalytics, processAnalyticsEvent } from "./analytics/analyticsEngine";
 import { processHighlightEvent } from "./highlights/highlightEngine";
 import { resetDirectorState } from "./directorEngine";
-
+import {
+  processNarrativeEvent,
+  resetNarrative
+} from "./narrative/narrativeEngine";
 /*
 -------------------------------------------------------
 TEMPORAL INDEX TYPE
@@ -109,7 +112,9 @@ RESET PROJECTION SYSTEMS (DETERMINISTIC REBUILD)
 */
 
 resetAnalytics(matchId);
-resetDirectorState(liveState.activeBranchId);
+resetDirectorState(liveState.matchId,
+  liveState.activeBranchId);
+resetNarrative(matchId, liveState.activeBranchId);
 
   /*
   -------------------------------------------------------
@@ -141,6 +146,7 @@ processAnalyticsEvent(matchId, event);
 
 // rebuild highlight detection
 processHighlightEvent(matchId, event);
+processNarrativeEvent(matchId, event);
   }
 
   return state;

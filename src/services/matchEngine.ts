@@ -8,6 +8,15 @@ import {
 } from "./narrative/narrativeEngine";
 import { processCommentaryEvent } from "./commentary/commentaryEngine";
 import { getMatchConfig } from "./matchFormat";
+
+export type CorrectionEvent =
+  | { type: "CORRECTION_UNDO_LAST" }
+  | { type: "CORRECTION_DELETE"; targetEventId: string }
+  | {
+      type: "CORRECTION_REPLACE";
+      targetEventId: string;
+      replacement: Partial<BallEvent>;
+    };
 export type ScoringEvent =
   | { type: "RUN"; runs?: number }
   | { type: "FOUR" }
@@ -15,6 +24,8 @@ export type ScoringEvent =
   | { type: "WICKET" }
   | { type: "WD" }
   | { type: "NB" };
+
+  export type EngineBallEvent = ScoringEvent | CorrectionEvent;
 
 /* ========================================================
    TYPES
@@ -49,7 +60,10 @@ export type MatchState = {
 const matches = new Map<string, MatchState>();
 const eventStreams: Record<string, BallEvent[]> = {};
 const matchListeners: Record<string, Set<() => void>> = {};
-const snapshotMap: Record<string, Record<number, MatchState>> = {};
+const snapshotMap: Record<
+  string,
+  Record<string, MatchState>
+> = {};
 export const temporalIndex: Record<
   string,
   { index: number; innings: number; over: number }[]
@@ -70,7 +84,8 @@ function saveSnapshot(
   state: MatchState
 ) {
   if (!snapshotMap[matchId]) snapshotMap[matchId] = {};
-  snapshotMap[matchId][over] = cloneState(state);
+  const key = `${inningsIndex}-${over}`;
+snapshotMap[matchId][key] = cloneState(state);
 
   eventStore.saveSnapshot(matchId, over, state).catch(console.error);
 
@@ -230,13 +245,28 @@ function reduce(
 
 export function dispatchBallEvent(
   matchId: string,
-  event: ScoringEvent
+  event: EngineBallEvent
 ) {
   let current = matches.get(matchId);
   if (!current) {
     initMatch(matchId);
     current = matches.get(matchId)!;
   }
+
+  // ----------------------------------------
+  // HANDLE CORRECTION EVENTS (stub for now)
+  // ----------------------------------------
+
+  if (
+    event.type === "CORRECTION_UNDO_LAST" ||
+    event.type === "CORRECTION_DELETE" ||
+    event.type === "CORRECTION_REPLACE"
+  ) {
+    // TODO: implement correction logic later
+    return;
+  }
+
+  // From here, TypeScript knows event is ScoringEvent
 
   const { next, ballEvent } = reduce(current, event);
 
@@ -314,7 +344,9 @@ export function setEventStream(
 
 export function getSnapshot(
   matchId: string,
+  inningsIndex: number,
   over: number
 ): MatchState | undefined {
-  return snapshotMap[matchId]?.[over];
+  const key = `${inningsIndex}-${over}`;
+  return snapshotMap[matchId]?.[key];
 }

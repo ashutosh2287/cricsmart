@@ -19,7 +19,14 @@ export default function OversTimeline({ slug }: Props) {
 
   const oversHistory = useMatchSelector<OversMap | undefined>(
     slug,
-    (m) => m.overs
+    (m) => {
+  if (!m) return undefined;
+
+  const innings =
+    m.innings[m.currentInningsIndex];
+
+  return innings?.overs;
+}
   );
 
   if (!oversHistory) return null;

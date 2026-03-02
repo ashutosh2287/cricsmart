@@ -42,7 +42,9 @@ export function useMatchSelector<T>(
 
     });
 
-    return unsubscribe;
+    return () => {
+  unsubscribe();
+};
 
   }, [matchId]);
 
@@ -51,21 +53,31 @@ export function useMatchSelector<T>(
 
 /*
 ================================================
-FAST ENGINE SELECTORS
+FAST ENGINE SELECTORS (Multi-Innings Safe)
 ================================================
 */
 
-export function useMatchRuns(matchId:string){
-  return useMatchSelector(matchId, m => m.runs);
+export function useMatchRuns(matchId: string) {
+  return useMatchSelector(matchId, m => {
+    const innings = m.innings[m.currentInningsIndex];
+    return innings?.runs ?? 0;
+  });
 }
 
-export function useMatchWickets(matchId:string){
-  return useMatchSelector(matchId, m => m.wickets);
+export function useMatchWickets(matchId: string) {
+  return useMatchSelector(matchId, m => {
+    const innings = m.innings[m.currentInningsIndex];
+    return innings?.wickets ?? 0;
+  });
 }
 
-export function useMatchOvers(matchId:string){
-  return useMatchSelector(matchId, m => `${m.over}.${m.ball}`);
+export function useMatchOvers(matchId: string) {
+  return useMatchSelector(matchId, m => {
+    const innings = m.innings[m.currentInningsIndex];
+    return innings ? `${innings.over}.${innings.ball}` : "0.0";
+  });
 }
+
 /*
 ================================================
 OVERS DISPLAY SELECTOR (Derived value)
@@ -73,16 +85,32 @@ OVERS DISPLAY SELECTOR (Derived value)
 */
 
 export function useMatchOversDisplay(matchId: string) {
-
   return useMatchSelector(matchId, m => {
+    const innings = m.innings[m.currentInningsIndex];
+    if (!innings) return "0.0";
 
-    // internal engine uses zero-based over
-    const displayOver = m.over + 1;
-
-    return `${displayOver}.${m.ball}`;
-
+    const displayOver = innings.over + 1;
+    return `${displayOver}.${innings.ball}`;
   });
+}
 
+/*
+================================================
+MATCH RUN RATE (Multi-Innings Safe)
+================================================
+*/
+
+export function useMatchRunRate(matchId: string) {
+  return useMatchSelector(matchId, m => {
+    const innings = m.innings[m.currentInningsIndex];
+    if (!innings) return "0.00";
+
+    const totalOvers = innings.over + innings.ball / 6;
+
+    return totalOvers > 0
+      ? (innings.runs / totalOvers).toFixed(2)
+      : "0.00";
+  });
 }
 
 /*
@@ -118,16 +146,3 @@ export function useMatchMeta(slug: string) {
   return match;
 }
 
-export function useMatchRunRate(matchId: string) {
-
-  return useMatchSelector(matchId, m => {
-
-    const totalOvers = m.over + m.ball / 6;
-
-    return totalOvers > 0
-      ? (m.runs / totalOvers).toFixed(2)
-      : "0.00";
-
-  });
-
-}

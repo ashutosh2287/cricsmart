@@ -109,17 +109,19 @@ export default function MatchDetailPage() {
 
   useEffect(() => {
 
-    if (!matchId) return;
+  if (!matchId) return;
 
-    const id = matchId; // ✅ local narrowed constant
+  const id = matchId;
 
-    const unsubscribe = subscribeMatch(id, () => {
-      setEngineState(getMatchState(id));
-    });
+  const unsubscribe = subscribeMatch(id, () => {
+    setEngineState(getMatchState(id));
+  });
 
-    return unsubscribe;
+  return () => {
+    unsubscribe();
+  };
 
-  }, [matchId]);
+}, [matchId]);
 
   /*
   =================================================
@@ -146,21 +148,32 @@ export default function MatchDetailPage() {
           {match.team1} vs {match.team2}
         </h1>
 
-        {currentEngineState && (
-          <div className="text-lg mt-2">
-            {currentEngineState.runs}/{currentEngineState.wickets}
-            {" "}
-            ({currentEngineState.over}.{currentEngineState.ball})
-          </div>
-        )}
+        {currentEngineState && (() => {
+  const innings =
+    currentEngineState.innings[
+      currentEngineState.currentInningsIndex
+    ];
+
+  return (
+    <div className="text-lg mt-2">
+      {innings.runs}/{innings.wickets}{" "}
+      ({innings.over}.{innings.ball})
+    </div>
+  );
+})()}
 
         {currentEngineState && (
           <button
             className="mt-4 bg-blue-600 text-white px-4 py-2 rounded"
             onClick={() => {
-              replayOver(matchId, currentEngineState.over);
-              setShowReplay(true);
-            }}
+  const innings =
+    currentEngineState.innings[
+      currentEngineState.currentInningsIndex
+    ];
+
+  replayOver(matchId, innings.over);
+  setShowReplay(true);
+}}
           >
             Replay Last Over
           </button>

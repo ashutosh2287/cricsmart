@@ -18,7 +18,7 @@ export function rebuildDirector(matchId: string) {
 
   const activeBranch = matchState.activeBranchId;
 
-  resetDirectorState(activeBranch);
+resetDirectorState(matchState.matchId, activeBranch);
 
   for (const event of events) {
 

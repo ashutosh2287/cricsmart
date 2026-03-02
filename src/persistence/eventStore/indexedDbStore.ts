@@ -1,8 +1,8 @@
-import { db, StoredEvent, StoredSnapshot, StoredBranchRegistry } from "./dbSchema";
+import { db, StoredEvent, StoredSnapshot } from "./dbSchema";
 import { EventStore } from "./eventStore";
 
 import { BallEvent } from "@/types/ballEvent";
-import { MatchState, BranchRegistry } from "@/services/matchEngine";
+import { MatchState } from "@/services/matchEngine";
 
 /*
 -------------------------------------------------------
@@ -11,10 +11,10 @@ INDEXED DB EVENT STORE IMPLEMENTATION
 
 RULES:
 
-- append-only event log
+- append-only canonical event log
 - never mutate events
 - snapshots = performance cache
-- branch registry stored separately
+- branch registry is NOT persisted (runtime metadata)
 */
 
 export class IndexedDbStore implements EventStore {
@@ -48,7 +48,6 @@ export class IndexedDbStore implements EventStore {
       .equals(matchId)
       .sortBy("timestamp");
 
-    // remove matchId before returning
     return rows.map(({ matchId: _, ...event }) => event);
   }
 
@@ -90,37 +89,5 @@ export class IndexedDbStore implements EventStore {
     if (!snaps.length) return null;
 
     return snaps[0].state;
-  }
-
-  /*
-  -------------------------------------------------------
-  SAVE BRANCH REGISTRY
-  -------------------------------------------------------
-  */
-
-  async saveBranchRegistry(
-    matchId: string,
-    registry: BranchRegistry
-  ): Promise<void> {
-
-    const record: StoredBranchRegistry = {
-      matchId,
-      registry
-    };
-
-    await db.branches.put(record);
-  }
-
-  /*
-  -------------------------------------------------------
-  LOAD BRANCH REGISTRY
-  -------------------------------------------------------
-  */
-
-  async loadBranchRegistry(matchId: string): Promise<BranchRegistry | null> {
-
-    const result = await db.branches.get(matchId);
-
-    return result?.registry ?? null;
   }
 }

@@ -1,5 +1,5 @@
 import { BallEvent } from "@/types/ballEvent";
-import { MatchState, BranchRegistry } from "@/services/matchEngine";
+import { MatchState } from "@/services/matchEngine";
 
 export interface EventStore {
 
@@ -11,7 +11,5 @@ export interface EventStore {
 
   loadLatestSnapshot(matchId: string): Promise<MatchState | null>;
 
-  saveBranchRegistry(matchId: string, registry: BranchRegistry): Promise<void>;
-
-  loadBranchRegistry(matchId: string): Promise<BranchRegistry | null>;
+  
 }

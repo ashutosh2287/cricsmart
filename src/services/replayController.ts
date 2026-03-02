@@ -32,7 +32,20 @@ REPLAY FULL OVER (cinematic queue replay)
 
 export function replayOver(matchId: string, over: number) {
 
-  const snapshot = getSnapshot(matchId, over - 1);
+  const matchState = getMatchState(matchId);
+
+if (!matchState) {
+  console.warn("Match not found");
+  return;
+}
+
+const inningsIndex = matchState.currentInningsIndex;
+
+const snapshot = getSnapshot(
+  matchId,
+  inningsIndex,
+  over - 1
+);
 
   if (!snapshot) {
     console.warn("No snapshot available");
@@ -42,9 +55,16 @@ export function replayOver(matchId: string, over: number) {
   hydrateReplay(snapshot);
 
   const liveState = getMatchState(matchId);
-  if (!liveState) return;
+if (!liveState) return;
 
-  const events = liveState.overs?.[over];
+const innings = liveState.innings[liveState.currentInningsIndex];
+
+if (!innings) {
+  console.warn("No innings found");
+  return;
+}
+
+const events = innings.overs?.[over];
 
   if (!events?.length) {
     console.warn("No events for this over");

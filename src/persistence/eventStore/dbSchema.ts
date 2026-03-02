@@ -1,6 +1,6 @@
 import Dexie, { Table } from "dexie";
 import { BallEvent } from "@/types/ballEvent";
-import { MatchState, BranchRegistry } from "@/services/matchEngine";
+import { MatchState } from "@/services/matchEngine";
 
 /*
 -------------------------------------------------------
@@ -19,11 +19,6 @@ export interface StoredSnapshot {
   state: MatchState;
 }
 
-export interface StoredBranchRegistry {
-  matchId: string;
-  registry: BranchRegistry;
-}
-
 /*
 -------------------------------------------------------
 DEXIE DATABASE
@@ -34,21 +29,17 @@ class CricSmartDB extends Dexie {
 
   events!: Table<StoredEvent, number>;
   snapshots!: Table<StoredSnapshot, number>;
-  branches!: Table<StoredBranchRegistry, string>;
 
   constructor() {
     super("cricsmart-db");
 
     this.version(1).stores({
 
-      // append-only event log
+      // append-only canonical event log
       events: "++id, matchId, over, branchId, timestamp",
 
-      // performance snapshots
-      snapshots: "++id, matchId, over",
-
-      // branch tree registry
-      branches: "matchId"
+      // deterministic rebuild anchors
+      snapshots: "++id, matchId, over"
 
     });
   }

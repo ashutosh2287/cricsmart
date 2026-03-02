@@ -19,6 +19,7 @@ TEMPORAL INDEX TYPE
 
 type TimelineAnchor = {
   index: number;
+  innings: number;
   over: number;
 };
 
@@ -70,7 +71,12 @@ export function rebuildStateFromIndex(
     if (anchors[i].index <= targetIndex) {
 
       startIndex = anchors[i].index;
-      snapshot = getSnapshot(matchId, anchors[i].over) ?? null;
+     snapshot =
+  getSnapshot(
+    matchId,
+    anchors[i].innings,
+    anchors[i].over
+  ) ?? null;
       break;
     }
   }
@@ -88,8 +94,12 @@ export function rebuildStateFromIndex(
 
     while (snapshotOver >= 0) {
 
-      snapshot = getSnapshot(matchId, snapshotOver);
-
+    snapshot =
+  getSnapshot(
+    matchId,
+    liveState.currentInningsIndex,
+    snapshotOver
+  ) ?? null;
       if (snapshot) break;
 
       snapshotOver--;

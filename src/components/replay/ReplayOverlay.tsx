@@ -10,11 +10,11 @@ import {
   setCursorSpeed,
   setCursorDirection
 } from "@/services/replayEngine";
-import { getMatchState } from "@/services/matchEngine";
 import {
   scrubToPosition,
   playFromCurrentCursor
 } from "@/services/replayController";
+import { temporalIndex } from "@/services/matchEngine";
 
 type ReplayOverlayProps = {
   onClose: () => void;
@@ -46,10 +46,8 @@ export default function ReplayOverlay({ onClose, matchId }: ReplayOverlayProps) 
   */
 
   const timelineLength = useMemo(() => {
-    const liveState = getMatchState(matchId);
-    return liveState?.timelineIndex?.length ?? 0;
-  }, [matchId]);
-
+  return temporalIndex[matchId]?.length ?? 0;
+}, [matchId]);
   if (!state) return null;
 
   /*
@@ -100,13 +98,22 @@ export default function ReplayOverlay({ onClose, matchId }: ReplayOverlayProps) 
         REPLAY MODE
       </h2>
 
+      {(() => {
+  const innings =
+    state.innings[state.currentInningsIndex];
+
+  return (
+    <>
       <div className="text-xl mb-2">
-        Score: {state.runs}/{state.wickets}
+        Score: {innings.runs}/{innings.wickets}
       </div>
 
       <div className="mb-6 text-lg opacity-80">
-        Over: {state.over}.{state.ball}
+        Over: {innings.over}.{innings.ball}
       </div>
+    </>
+  );
+})()}
 
       {/* TIMELINE SCRUBBER */}
 

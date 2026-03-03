@@ -8,6 +8,7 @@ import {
 } from "./narrative/narrativeEngine";
 import { processCommentaryEvent } from "./commentary/commentaryEngine";
 import { getMatchConfig } from "./matchFormat";
+import { advanceClock } from "./timeEngine";
 
 export type CorrectionEvent =
   | { type: "CORRECTION_UNDO_LAST" }
@@ -273,6 +274,7 @@ export function dispatchBallEvent(
   matches.set(matchId, next);
 
   eventStreams[matchId].push(ballEvent);
+  advanceClock(matchId);
 
   processAnalyticsEvent(matchId, ballEvent);
   processHighlightEvent(matchId, ballEvent);
@@ -338,6 +340,12 @@ export function setEventStream(
 ) {
   eventStreams[matchId] = [...events];
 }
+
+/* ========================================================
+   DERIVED INTELLIGENCE LAYER
+======================================================== */
+
+
 /* ========================================================
    SNAPSHOT ACCESS
 ======================================================== */

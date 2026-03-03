@@ -2,8 +2,8 @@
 
 import { DirectorState } from "./directorEngine";
 import { DirectorSignal } from "./directorSignals";
-import { getDirectorMemory } from "./directorMemory";
 import { emitBroadcastCommand } from "./broadcastCommands";
+import type { ProbabilitySwing } from "./probabilitySwingEngine";
 
 let lastPredictionTime = 0;
 
@@ -16,52 +16,91 @@ BRANCH-AWARE PREDICTIVE DIRECTOR
 export function runPredictiveDirector(
   state: DirectorState,
   signal: DirectorSignal,
-  tension: number
+  tension: number,
+  pressureIndex?: number,
+  swing?: ProbabilitySwing | null
 ) {
 
-  /*
-  --------------------------------------------
-  BRANCH SAFETY
-  --------------------------------------------
-  */
-
+  // Branch safety
   if (
     signal.branchId &&
     signal.branchId !== state.branchId
   ) {
-    return; // ignore signals from other timelines
+    return;
   }
 
   const now = Date.now();
 
-  // cooldown protection
+  // Cooldown protection
   if (now - lastPredictionTime < 2000) return;
-
-  const memory = getDirectorMemory();
 
   /*
   ================================================
-  Predict pressure buildup
+  SHOCK EVENT HANDLING
   ================================================
   */
 
-  if (
-    state.pacing === "TENSION" &&
-    tension > 40 &&
-    memory.boundaryStreak === 0
-  ) {
+  if (swing?.intensity === "SHOCK") {
 
     emitBroadcastCommand({
-      type: "CAMERA_SWEEP",
-      slug: "predictive"
+      type: "CAMERA_SHAKE",
+      intensity: 0.6
+    });
+
+    emitBroadcastCommand({
+      type: "SHOW_OVERLAY",
+      overlay: "MOMENTUM_SHIFT"
     });
 
     lastPredictionTime = now;
+    return;
   }
 
   /*
   ================================================
-  Predict climax buildup
+  HIGH VOLATILITY BUILDUP
+  ================================================
+  */
+
+  if (
+    swing &&
+    swing.volatilityScore > 50 &&
+    state.pacing !== "CLIMAX"
+  ) {
+
+    emitBroadcastCommand({
+      type: "CAMERA_SWEEP",
+      slug: "volatility-rise"
+    });
+
+    lastPredictionTime = now;
+    return;
+  }
+
+  /*
+  ================================================
+  PRESSURE ESCALATION
+  ================================================
+  */
+
+  if (
+    pressureIndex !== undefined &&
+    pressureIndex > 65 &&
+    state.pacing === "TENSION"
+  ) {
+
+    emitBroadcastCommand({
+      type: "CAMERA_SWEEP",
+      slug: "pressure-rise"
+    });
+
+    lastPredictionTime = now;
+    return;
+  }
+
+  /*
+  ================================================
+  CLIMAX ANTICIPATION
   ================================================
   */
 
@@ -72,7 +111,7 @@ export function runPredictiveDirector(
 
     emitBroadcastCommand({
       type: "CAMERA_SHAKE",
-      intensity: 0.3 // subtle anticipation shake
+      intensity: 0.3
     });
 
     lastPredictionTime = now;

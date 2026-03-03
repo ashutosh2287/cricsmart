@@ -1,4 +1,10 @@
-import { MatchState } from "./matchEngine";
+import type { MatchState } from "./matchEngine";
+
+export type DeathLevel =
+  | "NONE"
+  | "EARLY_DEATH"
+  | "CRITICAL"
+  | "FINAL_OVER";
 
 export type ChaseContext = {
   target: number;
@@ -7,16 +13,24 @@ export type ChaseContext = {
   requiredRunRate: number;
   currentRunRate: number;
   pressureIndex: number; // 0–100
+
+  // 🆕 Death over intelligence
+  isDeathOver: boolean;
+  deathLevel: DeathLevel;
 };
 
+/**
+ * Deterministic target-based pressure modeling.
+ * Replay-safe. Multi-innings safe.
+ */
 export function computeChasePressure(
   state: MatchState
 ): ChaseContext | null {
 
-  // Only for limited overs
+  // Limited overs only
   if (state.configOvers === null) return null;
 
-  // Need at least 2 innings
+  // Need completed first innings + active chase
   if (state.innings.length < 2) return null;
 
   const first = state.innings[0];
@@ -31,22 +45,74 @@ export function computeChasePressure(
   const totalBalls = state.configOvers * 6;
   const ballsRemaining = totalBalls - ballsBowled;
 
-  if (ballsRemaining <= 0) return null;
+  // Chase already finished
+  if (requiredRuns <= 0 || ballsRemaining <= 0)
+    return null;
 
   const requiredRunRate =
     (requiredRuns / ballsRemaining) * 6;
 
   const currentRunRate =
-    (second.runs / Math.max(1, ballsBowled)) * 6;
+    ballsBowled > 0
+      ? (second.runs / ballsBowled) * 6
+      : 0;
 
-  // Basic deterministic pressure model
+  const rrrDelta =
+    requiredRunRate - currentRunRate;
+
+  const wicketsRemaining =
+    10 - second.wickets;
+
+  const wicketPressure =
+    (10 - wicketsRemaining) * 2;
+
+  /*
+  ========================================================
+  DEATH OVER DETECTION
+  ========================================================
+  */
+
+  let deathLevel: DeathLevel = "NONE";
+  let isDeathOver = false;
+
+  if (ballsRemaining <= 6) {
+    deathLevel = "FINAL_OVER";
+    isDeathOver = true;
+  } else if (ballsRemaining <= 12) {
+    deathLevel = "CRITICAL";
+    isDeathOver = true;
+  } else if (ballsRemaining <= 18) {
+    deathLevel = "EARLY_DEATH";
+    isDeathOver = true;
+  }
+
+  /*
+  ========================================================
+  LATE GAME PRESSURE MULTIPLIER
+  ========================================================
+  */
+
+  const lateGameMultiplier =
+    deathLevel === "FINAL_OVER" ? 1.6 :
+    deathLevel === "CRITICAL" ? 1.45 :
+    deathLevel === "EARLY_DEATH" ? 1.3 :
+    ballsRemaining <= 36 ? 1.15 :
+    1;
+
+  /*
+  ========================================================
+  RAW PRESSURE MODEL
+  ========================================================
+  */
+
+  const rawPressure =
+    (rrrDelta * 12 + wicketPressure) *
+    lateGameMultiplier;
+
   const pressureIndex =
     Math.max(
       0,
-      Math.min(
-        100,
-        (requiredRunRate - currentRunRate) * 10
-      )
+      Math.min(100, rawPressure)
     );
 
   return {
@@ -55,6 +121,8 @@ export function computeChasePressure(
     ballsRemaining,
     requiredRunRate,
     currentRunRate,
-    pressureIndex
+    pressureIndex,
+    isDeathOver,
+    deathLevel
   };
 }

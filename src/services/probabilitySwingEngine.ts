@@ -1,19 +1,26 @@
 import { computeWinProbability } from "./winProbabilityEngine";
 import { MatchState } from "./matchEngine";
 
-type SwingState = {
-  lastProbability: number | null;
-};
-
-const swingStore: Record<string, SwingState> = {};
+export type SwingIntensity =
+  | "MINOR"
+  | "MODERATE"
+  | "MAJOR"
+  | "SHOCK";
 
 export type ProbabilitySwing = {
   delta: number;
   direction: "UP" | "DOWN";
+  intensity: SwingIntensity;
+  volatilityScore: number; // 0–100
 };
 
+/**
+ * Deterministic swing detection.
+ * Pure function.
+ * Replay-safe.
+ */
 export function computeProbabilitySwing(
-  matchId: string,
+  previousProbability: number | null,
   state: MatchState
 ): ProbabilitySwing | null {
 
@@ -22,22 +29,32 @@ export function computeProbabilitySwing(
 
   const current = result.battingWinProbability;
 
-  if (!swingStore[matchId]) {
-    swingStore[matchId] = { lastProbability: current };
-    return null;
+  if (previousProbability === null) return null;
+
+  const delta = current - previousProbability;
+  const absDelta = Math.abs(delta);
+
+  // Ignore tiny noise
+  if (absDelta < 4) return null;
+
+  let intensity: SwingIntensity = "MINOR";
+
+  if (absDelta >= 20) {
+    intensity = "SHOCK";
+  } else if (absDelta >= 14) {
+    intensity = "MAJOR";
+  } else if (absDelta >= 8) {
+    intensity = "MODERATE";
   }
 
-  const previous = swingStore[matchId].lastProbability;
-  swingStore[matchId].lastProbability = current;
-
-  if (previous === null) return null;
-
-  const delta = current - previous;
-
-  if (Math.abs(delta) < 8) return null;
+  // Volatility scoring (scaled 0–100)
+  const volatilityScore =
+    Math.min(100, absDelta * 5);
 
   return {
     delta,
-    direction: delta > 0 ? "UP" : "DOWN"
+    direction: delta > 0 ? "UP" : "DOWN",
+    intensity,
+    volatilityScore
   };
 }

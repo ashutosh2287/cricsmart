@@ -1,4 +1,5 @@
 // directorEngine.ts
+
 import { getNarrativeState } from "./narrative/narrativeEngine";
 import { subscribeDirectorSignal } from "./directorSignalBus";
 import { DirectorSignal } from "./directorSignals";
@@ -12,8 +13,15 @@ import {
   resetDirectorMemory
 } from "./directorMemory";
 import { runPredictiveDirector } from "./predictiveDirector";
-import { subscribeNarrativeSignal } from "./narrative/narrativeSignalBus";
 import { runPredictiveCommentary } from "./commentary/predictiveCommentary";
+
+import { getMatchState } from "./matchEngine";
+import { computeWinProbability } from "./winProbabilityEngine";
+import { computeProbabilitySwing } from "./probabilitySwingEngine";
+import { computeChasePressure } from "./pressureEngine";
+import { computeMomentumContext } from "./momentumContextEngine";
+import { getEventStream } from "./matchEngine";
+import { computeStrategicContext } from "./strategicEngine";
 
 /*
 ================================================
@@ -37,6 +45,9 @@ let state: DirectorState = {
   momentum: 0
 };
 
+// Probability memory (deterministic per timeline)
+let lastProbability: number | null = null;
+
 export function resetDirectorState(
   matchId: string,
   branchId: string
@@ -44,13 +55,15 @@ export function resetDirectorState(
   resetCinematicCooldown();
   resetDirectorMemory();
 
+  lastProbability = null;
+
   state = {
-  matchId,
-  branchId,
-  lastEventId: null,
-  pacing: "NORMAL",
-  momentum: 0
-};
+    matchId,
+    branchId,
+    lastEventId: null,
+    pacing: "NORMAL",
+    momentum: 0
+  };
 }
 
 /*
@@ -61,73 +74,157 @@ emit = false during replay rebuild.
 ================================================
 */
 
-function processDirectorSignal(signal: DirectorSignal, emit: boolean) {
-  
+function processDirectorSignal(
+  signal: DirectorSignal,
+  emit: boolean
+) {
+
+  // Branch safety
+  if (
+    signal.branchId &&
+    signal.branchId !== state.branchId
+  ) {
+    return;
+  }
 
   // Update memory first
   updateDirectorMemory(signal);
   const memory = getDirectorMemory();
-  // ----------------------------------------
-// NARRATIVE AWARENESS (READ-ONLY)
-// ----------------------------------------
 
-const narrative = getNarrativeState(
-  state.matchId,
-  state.branchId
-);
+  // Narrative awareness (read-only)
+  const narrative = getNarrativeState(
+    state.matchId,
+    state.branchId
+  );
 
-  // Update core metrics
+  // Update momentum
   if (signal.type === "MOMENTUM_UPDATE") {
     state.momentum = signal.value;
   }
-  
 
-  /*
-  ------------------------------------------------
-  TENSION ENGINE
-  ------------------------------------------------
-  */
+ /*
+------------------------------------------------
+WIN PROBABILITY + SWING + PRESSURE + DEATH
+------------------------------------------------
+*/
 
-  /*
+let swing = null;
+let pressureIndex: number | undefined = undefined;
+let deathLevel = undefined;
+
+const matchState = getMatchState(state.matchId);
+
+if (matchState) {
+
+  const probability = computeWinProbability(matchState);
+
+  if (probability) {
+
+    swing = computeProbabilitySwing(
+      lastProbability,
+      matchState
+    );
+
+    lastProbability =
+      probability.battingWinProbability;
+  }
+
+  const chase = computeChasePressure(matchState);
+
+  if (chase) {
+    pressureIndex = chase.pressureIndex;
+    deathLevel = chase.deathLevel; // ✅ declared in same scope
+  }
+}
+let momentumContext = undefined;
+
+if (matchState) {
+  const events = getEventStream(state.matchId);
+  momentumContext = computeMomentumContext(events);
+}
+
+let strategicContext = undefined;
+
+if (matchState) {
+
+  const events = getEventStream(state.matchId);
+
+  const chase = computeChasePressure(matchState);
+
+  strategicContext = computeStrategicContext(
+    events,
+    chase
+  );
+}
+/*
 ------------------------------------------------
 TENSION ENGINE
 ------------------------------------------------
 */
-const tension = updateTension(signal);
- 
 
+const tension = updateTension(
+  signal,
+  swing,
+  pressureIndex,
+  deathLevel,
+  momentumContext,
+  strategicContext
+);
   /*
   ------------------------------------------------
   PACING STATE MACHINE (PURE)
   ------------------------------------------------
   */
 
-  const nextPacing = computeNextPacing(state, signal);
+ const nextPacing = computeNextPacing(
+  state,
+  signal,
+  tension,
+  pressureIndex,
+  
+);
   let adjustedPacing = nextPacing;
 
-if (narrative) {
-  if (narrative.currentArc === "CLIMAX") {
-    adjustedPacing = "CLIMAX";
+  if (narrative) {
+
+    if (narrative.currentArc === "CLIMAX") {
+      adjustedPacing = "CLIMAX";
+    }
+
+    if (
+      narrative.currentArc === "PRESSURE_BUILD" &&
+      adjustedPacing === "NORMAL"
+    ) {
+      adjustedPacing = "TENSION";
+    }
+
+    if (narrative.currentArc === "COLLAPSE") {
+      adjustedPacing = "CLIMAX";
+    }
   }
 
-  if (narrative.currentArc === "PRESSURE_BUILD" &&
-      adjustedPacing === "NORMAL") {
-    adjustedPacing = "TENSION";
-  }
+  /*
+  ------------------------------------------------
+  PREDICTIVE INTELLIGENCE LAYER
+  ------------------------------------------------
+  */
 
-  if (narrative.currentArc === "COLLAPSE") {
-    adjustedPacing = "CLIMAX";
-  }
-}
-   runPredictiveDirector(state, signal, tension);
-   runPredictiveCommentary(
-  state.matchId,
-  state.branchId,
-  state,
-  signal.eventId
-);
+  runPredictiveDirector(
+    state,
+    signal,
+    tension,
+    pressureIndex,
+    swing
+  );
 
-   if (adjustedPacing !== state.pacing){
+  runPredictiveCommentary(
+    state.matchId,
+    state.branchId,
+    state,
+    signal.eventId
+  );
+
+  if (adjustedPacing !== state.pacing) {
 
     state.pacing = adjustedPacing;
 
@@ -178,19 +275,21 @@ if (narrative) {
 
     case "HIGHLIGHT_DETECTED":
 
-      /*
-      --------------------------------------------
-      SIX LOGIC WITH MEMORY ESCALATION
-      --------------------------------------------
-      */
-
+      // SIX LOGIC
       if (signal.subtype === "SIX") {
 
-        if (canTrigger("SIX_SHAKE", 1500)) {
+        if (
+  canTrigger(
+  state.matchId,
+  "SIX_SHAKE",
+  3,
+  tension,
+  swing?.intensity
+)
+) {
 
           let intensity = 0.8;
 
-          // Escalate based on streak memory
           if (memory.boundaryStreak >= 3) {
             intensity = 1;
           }
@@ -198,9 +297,10 @@ if (narrative) {
           if (state.pacing === "CLIMAX") {
             intensity = 1;
           }
+
           if (narrative?.currentArc === "CLIMAX") {
-  intensity = 1;
-}
+            intensity = 1;
+          }
 
           emitBroadcastCommand({
             type: "CAMERA_SHAKE",
@@ -214,15 +314,18 @@ if (narrative) {
         }
       }
 
-      /*
-      --------------------------------------------
-      WICKET LOGIC
-      --------------------------------------------
-      */
-
+      // WICKET LOGIC
       if (signal.subtype === "WICKET") {
 
-        if (canTrigger("WICKET_SLOWMO", 2000)) {
+        if (
+  canTrigger(
+    state.matchId,
+    "WICKET_SLOWMO",
+    2,
+    tension,
+    swing?.intensity
+  )
+) {
 
           emitBroadcastCommand({
             type: "PLAY_SLOW_MOTION",
@@ -252,5 +355,4 @@ export function initDirectorEngine() {
   subscribeDirectorSignal((signal) => {
     processDirectorSignal(signal, true);
   });
- 
 }

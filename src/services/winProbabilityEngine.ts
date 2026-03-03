@@ -14,7 +14,7 @@ export function computeWinProbability(
   state: MatchState
 ): WinProbabilityContext | null {
 
-  // Only limited overs chase
+  // Limited overs only
   if (state.configOvers === null) return null;
   if (state.innings.length < 2) return null;
 
@@ -25,22 +25,39 @@ export function computeWinProbability(
 
   const wicketsRemaining = 10 - second.wickets;
 
+  // Positive means batting side ahead
   const rrrGap =
     chase.currentRunRate - chase.requiredRunRate;
 
+  const totalBalls = state.configOvers * 6;
+
   const ballsFactor =
-    chase.ballsRemaining / (state.configOvers * 6);
+    chase.ballsRemaining / totalBalls;
 
   const wicketFactor =
     wicketsRemaining / 10;
 
-  // Weighted deterministic score
-  const x =
-    rrrGap * 1.5 +
-    ballsFactor * 1.2 +
-    wicketFactor * 0.8;
+  // Normalize pressure (0–1)
+  const pressureFactor =
+    chase.pressureIndex / 100;
 
-  const probability = logistic(x);
+  // Late game amplification
+  const lateGameBoost =
+    chase.ballsRemaining <= 12 ? 1.4 :
+    chase.ballsRemaining <= 24 ? 1.25 :
+    chase.ballsRemaining <= 48 ? 1.1 :
+    1;
+
+  // Improved deterministic score model
+  const x =
+    rrrGap * 2.0 +                 // run rate gap more influential
+    ballsFactor * 1.3 +            // time remaining
+    wicketFactor * 1.0 -           // wickets in hand
+    pressureFactor * 1.2;          // high pressure reduces batting edge
+
+  const adjustedX = x * lateGameBoost;
+
+  const probability = logistic(adjustedX);
 
   const battingWinProbability =
     Math.max(0, Math.min(100, probability * 100));

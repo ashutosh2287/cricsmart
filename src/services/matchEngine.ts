@@ -9,6 +9,7 @@ import {
 import { processCommentaryEvent } from "./commentary/commentaryEngine";
 import { getMatchConfig } from "./matchFormat";
 import { advanceClock } from "./timeEngine";
+import { runTacticalEngine } from "./tacticalEngine";
 
 export type CorrectionEvent =
   | { type: "CORRECTION_UNDO_LAST" }
@@ -284,6 +285,7 @@ export function dispatchBallEvent(
     next.activeBranchId,
     ballEvent
   );
+  runTacticalEngine(matchId, next);
 
   pushToTimeline(ballEvent);
   eventStore.appendEvent(matchId, ballEvent);

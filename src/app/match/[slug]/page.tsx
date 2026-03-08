@@ -16,16 +16,12 @@ import { getMatchBySlug } from "@/services/matchService";
 import { connectRealtime, disconnectRealtime } from "@/services/realtimeService";
 import ReplayOverlay from "@/components/replay/ReplayOverlay";
 import { replayOver } from "@/services/replayController";
+import TacticalOverlay from "@/components/TacticalOverlay";
+import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
 
 export default function MatchDetailPage() {
 
   const params = useParams();
-
-  /*
-  =================================================
-  STRICT MATCH ID EXTRACTION
-  =================================================
-  */
 
   const matchId: string | undefined = useMemo(() => {
     const slug = params.slug;
@@ -42,6 +38,16 @@ export default function MatchDetailPage() {
 
   /*
   =================================================
+  INIT TACTICAL OVERLAY SYSTEM
+  =================================================
+  */
+
+  useEffect(() => {
+    initTacticalOverlayBridge();
+  }, []);
+
+  /*
+  =================================================
   LOAD MATCH DATA
   =================================================
   */
@@ -50,7 +56,7 @@ export default function MatchDetailPage() {
 
     if (!matchId) return;
 
-    const id = matchId; // ✅ local narrowed constant
+    const id = matchId;
 
     async function loadMatch() {
       const m = await getMatchBySlug(id);
@@ -75,7 +81,7 @@ export default function MatchDetailPage() {
 
     if (!matchId) return;
 
-    const id = matchId; // ✅ local narrowed constant
+    const id = matchId;
 
     connectRealtime(id);
 
@@ -109,19 +115,19 @@ export default function MatchDetailPage() {
 
   useEffect(() => {
 
-  if (!matchId) return;
+    if (!matchId) return;
 
-  const id = matchId;
+    const id = matchId;
 
-  const unsubscribe = subscribeMatch(id, () => {
-    setEngineState(getMatchState(id));
-  });
+    const unsubscribe = subscribeMatch(id, () => {
+      setEngineState(getMatchState(id));
+    });
 
-  return () => {
-    unsubscribe();
-  };
+    return () => {
+      unsubscribe();
+    };
 
-}, [matchId]);
+  }, [matchId]);
 
   /*
   =================================================
@@ -143,37 +149,39 @@ export default function MatchDetailPage() {
   return (
     <div className="p-6 space-y-6">
 
+      {/* Tactical broadcast overlay */}
+      <TacticalOverlay />
+
       <div>
         <h1 className="text-2xl font-bold">
           {match.team1} vs {match.team2}
         </h1>
 
         {currentEngineState && (() => {
-  const innings =
-    currentEngineState.innings[
-      currentEngineState.currentInningsIndex
-    ];
+          const innings =
+            currentEngineState.innings[
+              currentEngineState.currentInningsIndex
+            ];
 
-  return (
-    <div className="text-lg mt-2">
-      {innings.runs}/{innings.wickets}{" "}
-      ({innings.over}.{innings.ball})
-    </div>
-  );
-})()}
+          return (
+            <div className="text-lg mt-2">
+              {innings.runs}/{innings.wickets} ({innings.over}.{innings.ball})
+            </div>
+          );
+        })()}
 
         {currentEngineState && (
           <button
             className="mt-4 bg-blue-600 text-white px-4 py-2 rounded"
             onClick={() => {
-  const innings =
-    currentEngineState.innings[
-      currentEngineState.currentInningsIndex
-    ];
+              const innings =
+                currentEngineState.innings[
+                  currentEngineState.currentInningsIndex
+                ];
 
-  replayOver(matchId, innings.over);
-  setShowReplay(true);
-}}
+              replayOver(matchId, innings.over);
+              setShowReplay(true);
+            }}
           >
             Replay Last Over
           </button>
@@ -192,7 +200,6 @@ export default function MatchDetailPage() {
     </div>
   );
 }
-
 function TabsArea({ match }: { match: Match }) {
 
   const [activeTab, setActiveTab] = useState("live");
@@ -211,16 +218,16 @@ function TabsArea({ match }: { match: Match }) {
       {activeTab === "info" && <div>Match Info Coming Soon...</div>}
       {activeTab === "live" && <BroadcastLiveView match={match} />}
       {activeTab === "scorecard" && <div>Scorecard View Coming Soon...</div>}
-      
 
       <div className={activeTab === "overs" ? "block" : "hidden"}>
         <OversTimeline slug={match.slug} />
       </div>
 
       {activeTab === "highlights" && <div>Highlights Coming Soon...</div>}
+
       {activeTab === "admin" && (
-  <AdminScoringPanel matchId={match.slug} />
-)}
+        <AdminScoringPanel matchId={match.slug} />
+      )}
     </>
   );
 }

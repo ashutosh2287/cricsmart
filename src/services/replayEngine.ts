@@ -5,7 +5,9 @@ REPLAY ENGINE PUBLIC API (DO NOT MODIFY SIGNATURES)
 
 hydrateReplay(snapshot)
 dispatchReplayEvent(ballEvent)
-setCursorIndex(index)
+export function setCursorIndex(index: number) {
+  cursor.index = Math.max(0, index);
+}
 startCursorPlayback(timeline, rebuildFn)
 stopReplay()
 

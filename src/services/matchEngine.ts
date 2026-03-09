@@ -285,7 +285,7 @@ export function dispatchBallEvent(
     next.activeBranchId,
     ballEvent
   );
-  runTacticalEngine(matchId, next);
+  runTacticalEngine(matchId, "main", next);
 
   pushToTimeline(ballEvent);
   eventStore.appendEvent(matchId, ballEvent);

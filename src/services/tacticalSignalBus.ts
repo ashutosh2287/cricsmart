@@ -1,19 +1,84 @@
+/*
+================================================
+TACTICAL SIGNAL TYPES
+================================================
+*/
+
 export type TacticalSignal =
-  | { type: "COLLAPSE_ALERT"; intensity: number }
-  | { type: "ASSAULT_PHASE"; intensity: number }
-  | { type: "STRANGLE_ALERT"; intensity: number }
-  | { type: "PANIC_MODE"; intensity: number }
-  | { type: "RECOVERY_PHASE"; intensity: number };
+  | {
+      type: "COLLAPSE_ALERT";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      intensity: number;
+    }
+  | {
+      type: "ASSAULT_PHASE";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      intensity: number;
+    }
+  | {
+      type: "STRANGLE_ALERT";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      intensity: number;
+    }
+  | {
+      type: "PANIC_MODE";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      intensity: number;
+    }
+  | {
+      type: "RECOVERY_PHASE";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      intensity: number;
+    };
+
+/*
+================================================
+LISTENER SYSTEM
+================================================
+*/
 
 type TacticalListener = (signal: TacticalSignal) => void;
 
 const listeners = new Set<TacticalListener>();
 
-export function subscribeTacticalSignal(cb: TacticalListener) {
+/*
+================================================
+SUBSCRIBE
+================================================
+*/
+
+export function subscribeTacticalSignal(
+  cb: TacticalListener
+) {
   listeners.add(cb);
-  return () => listeners.delete(cb);
+
+  return () => {
+    listeners.delete(cb);
+  };
 }
 
-export function emitTacticalSignal(signal: TacticalSignal) {
-  listeners.forEach(l => l(signal));
+/*
+================================================
+EMIT SIGNAL
+================================================
+*/
+
+export function emitTacticalSignal(
+  signal: TacticalSignal
+) {
+
+  for (const listener of listeners) {
+    listener(signal);
+  }
+
 }

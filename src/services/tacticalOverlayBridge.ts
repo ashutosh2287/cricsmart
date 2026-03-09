@@ -1,32 +1,35 @@
 import { subscribeTacticalSignal } from "./tacticalSignalBus";
 import { emitOverlay } from "./overlayBus";
 
+/*
+================================================
+TACTICAL → OVERLAY BRIDGE
+
+Converts tactical signals into broadcast overlays.
+Pure mapping layer — no logic here.
+================================================
+*/
+
 export function initTacticalOverlayBridge() {
 
-  subscribeTacticalSignal(signal => {
+  subscribeTacticalSignal((signal) => {
 
-    switch (signal.type) {
+    const overlayMap = {
+      COLLAPSE_ALERT: "TACTICAL_COLLAPSE",
+      ASSAULT_PHASE: "TACTICAL_ASSAULT",
+      STRANGLE_ALERT: "TACTICAL_STRANGLE",
+      PANIC_MODE: "TACTICAL_PANIC",
+      RECOVERY_PHASE: "TACTICAL_RECOVERY"
+    } as const;
 
-      case "COLLAPSE_ALERT":
-        emitOverlay({ type: "TACTICAL_COLLAPSE", intensity: signal.intensity });
-        break;
+    const overlayType = overlayMap[signal.type];
 
-      case "ASSAULT_PHASE":
-        emitOverlay({ type: "TACTICAL_ASSAULT", intensity: signal.intensity });
-        break;
+    if (!overlayType) return;
 
-      case "STRANGLE_ALERT":
-        emitOverlay({ type: "TACTICAL_STRANGLE", intensity: signal.intensity });
-        break;
-
-      case "PANIC_MODE":
-        emitOverlay({ type: "TACTICAL_PANIC", intensity: signal.intensity });
-        break;
-
-      case "RECOVERY_PHASE":
-        emitOverlay({ type: "TACTICAL_RECOVERY", intensity: signal.intensity });
-        break;
-    }
+    emitOverlay({
+      type: overlayType,
+      intensity: signal.intensity
+    });
 
   });
 

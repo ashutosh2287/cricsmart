@@ -18,6 +18,9 @@ import ReplayOverlay from "@/components/replay/ReplayOverlay";
 import { replayOver } from "@/services/replayController";
 import TacticalOverlay from "@/components/TacticalOverlay";
 import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
+import HighlightTimeline from "@/components/HighlightTimeline";
+
+
 
 export default function MatchDetailPage() {
 
@@ -151,6 +154,9 @@ export default function MatchDetailPage() {
 
       {/* Tactical broadcast overlay */}
       <TacticalOverlay />
+
+       {/* Highlight timeline panel */}
+    <HighlightTimeline matchId={matchId} />
 
       <div>
         <h1 className="text-2xl font-bold">

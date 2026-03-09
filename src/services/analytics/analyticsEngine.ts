@@ -83,34 +83,40 @@ export function processAnalyticsEvent(
   state.runRateHistory.push(runRate);
 
   // Momentum (simple version)
-let momentum = event.runs ?? 0;
-if (event.wicket) momentum -= 5;
+  let momentum = event.runs ?? 0;
 
-state.momentumHistory.push(momentum);
+  if (event.wicket) momentum -= 5;
 
-/*
--------------------------------------------------------
-DIRECTOR SIGNAL EMISSION
--------------------------------------------------------
-*/
+  state.momentumHistory.push(momentum);
 
-// Always emit momentum update signal
-emitDirectorSignal({
-  type: "MOMENTUM_UPDATE",
-  value: momentum,
-  eventId: event.id
-});
+  /*
+  -------------------------------------------------------
+  DIRECTOR SIGNAL EMISSION
+  -------------------------------------------------------
+  */
 
-// Detect pressure spike (example logic)
-if (momentum >= 4 || event.wicket) {
+  // Always emit momentum update signal
   emitDirectorSignal({
-    type: "PRESSURE_SPIKE",
-    value: momentum,
-    eventId: event.id
+    type: "MOMENTUM_UPDATE",
+    matchId,
+    branchId: "main",
+    eventId: event.id,
+    value: momentum
   });
-}
-}
 
+  // Detect pressure spike (example logic)
+  if (momentum >= 4 || event.wicket) {
+
+    emitDirectorSignal({
+      type: "PRESSURE_SPIKE",
+      matchId,
+      branchId: "main",
+      eventId: event.id
+    });
+
+  }
+
+}
 /*
 -------------------------------------------------------
 GET INCREMENTAL RESULT

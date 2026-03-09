@@ -22,6 +22,7 @@ import { computeChasePressure } from "./pressureEngine";
 import { computeMomentumContext } from "./momentumContextEngine";
 import { getEventStream } from "./matchEngine";
 import { computeStrategicContext } from "./strategicEngine";
+import { computeMatchDrama } from "./analytics/matchDramaEngine";
 
 /*
 ================================================
@@ -53,9 +54,9 @@ export function resetDirectorState(
   branchId: string
 ) {
   resetCinematicCooldown();
-  resetDirectorMemory();
+resetDirectorMemory(matchId, branchId);
 
-  lastProbability = null;
+lastProbability = null;
 
   state = {
     matchId,
@@ -89,7 +90,10 @@ function processDirectorSignal(
 
   // Update memory first
   updateDirectorMemory(signal);
-  const memory = getDirectorMemory();
+  const memory = getDirectorMemory(
+  state.matchId,
+  state.branchId
+);
 
   // Narrative awareness (read-only)
   const narrative = getNarrativeState(
@@ -113,6 +117,11 @@ let pressureIndex: number | undefined = undefined;
 let deathLevel = undefined;
 
 const matchState = getMatchState(state.matchId);
+let dramaScore = 0;
+
+if (matchState) {
+  dramaScore = computeMatchDrama(matchState);
+}
 
 if (matchState) {
 
@@ -176,13 +185,24 @@ const tension = updateTension(
   ------------------------------------------------
   */
 
- const nextPacing = computeNextPacing(
+ let nextPacing = computeNextPacing(
   state,
   signal,
   tension,
   pressureIndex,
   
 );
+/*
+----------------------------------------------
+DRAMA ENGINE BIAS
+----------------------------------------------
+*/
+
+if (dramaScore >= 70) {
+  nextPacing = "CLIMAX";
+} else if (dramaScore >= 40 && nextPacing === "NORMAL") {
+  nextPacing = "TENSION";
+}
   let adjustedPacing = nextPacing;
 
   if (narrative) {
@@ -255,6 +275,97 @@ const tension = updateTension(
   }
 
   /*
+------------------------------------------------
+TACTICAL SIGNAL REACTIONS
+Director reacts to strategic match phases
+------------------------------------------------
+*/
+
+switch (signal.type) {
+
+  case "COLLAPSE_ALERT":
+
+    if (emit) {
+
+      state.pacing = "CLIMAX";
+
+      emitBroadcastCommand({
+        type: "CAMERA_SHAKE",
+        intensity: 1
+      });
+
+      emitBroadcastCommand({
+        type: "SHOW_OVERLAY",
+        overlay: "COLLAPSE_ALERT"
+      });
+    }
+
+    break;
+
+
+  case "ASSAULT_PHASE":
+
+    if (emit) {
+
+      emitBroadcastCommand({
+        type: "CAMERA_SWEEP",
+        slug: signal.eventId
+      });
+
+      emitBroadcastCommand({
+        type: "SHOW_OVERLAY",
+        overlay: "ASSAULT_PHASE"
+      });
+    }
+
+    break;
+
+
+  case "PANIC_MODE":
+
+    if (emit) {
+
+      emitBroadcastCommand({
+        type: "CAMERA_SHAKE",
+        intensity: 0.9
+      });
+
+      emitBroadcastCommand({
+        type: "SHOW_OVERLAY",
+        overlay: "PANIC_MODE"
+      });
+    }
+
+    break;
+
+
+  case "STRANGLE_ALERT":
+
+    if (emit) {
+
+      emitBroadcastCommand({
+        type: "SHOW_OVERLAY",
+        overlay: "STRANGLE_HOLD"
+      });
+    }
+
+    break;
+
+
+  case "RECOVERY_PHASE":
+
+    if (emit) {
+
+      emitBroadcastCommand({
+        type: "SHOW_OVERLAY",
+        overlay: "RECOVERY_PHASE"
+      });
+    }
+
+    break;
+}
+
+  /*
   ------------------------------------------------
   CINEMATIC REACTIONS
   ------------------------------------------------
@@ -275,71 +386,106 @@ const tension = updateTension(
 
     case "HIGHLIGHT_DETECTED":
 
-      // SIX LOGIC
-      if (signal.subtype === "SIX") {
+  /*
+  ----------------------------------------------
+  SIX REACTION
+  ----------------------------------------------
+  */
 
-        if (
-  canTrigger(
-  state.matchId,
-  "SIX_SHAKE",
-  3,
-  tension,
-  swing?.intensity
-)
-) {
+  if (signal.subtype === "SIX") {
 
-          let intensity = 0.8;
+    if (
+      canTrigger(
+        state.matchId,
+        "SIX_SHAKE",
+        3,
+        tension,
+        swing?.intensity
+      )
+    ) {
 
-          if (memory.boundaryStreak >= 3) {
-            intensity = 1;
-          }
+      let intensity = 0.8;
 
-          if (state.pacing === "CLIMAX") {
-            intensity = 1;
-          }
-
-          if (narrative?.currentArc === "CLIMAX") {
-            intensity = 1;
-          }
-
-          emitBroadcastCommand({
-            type: "CAMERA_SHAKE",
-            intensity
-          });
-
-          emitBroadcastCommand({
-            type: "SHOW_OVERLAY",
-            overlay: "BIG_SIX"
-          });
-        }
+      if (memory.boundaryStreak >= 2) {
+        intensity = 1;
       }
 
-      // WICKET LOGIC
-      if (signal.subtype === "WICKET") {
+      emitBroadcastCommand({
+        type: "CAMERA_SHAKE",
+        intensity
+      });
 
-        if (
-  canTrigger(
-    state.matchId,
-    "WICKET_SLOWMO",
-    2,
-    tension,
-    swing?.intensity
-  )
-) {
+      emitBroadcastCommand({
+        type: "SHOW_OVERLAY",
+        overlay: "BIG_SIX"
+      });
 
-          emitBroadcastCommand({
-            type: "PLAY_SLOW_MOTION",
-            slug: signal.eventId
-          });
+    }
 
-          emitBroadcastCommand({
-            type: "SHOW_OVERLAY",
-            overlay: "WICKET"
-          });
-        }
-      }
+  }
 
-      break;
+  /*
+  ----------------------------------------------
+  WICKET REACTION
+  ----------------------------------------------
+  */
+
+  if (signal.subtype === "WICKET") {
+
+    if (
+      canTrigger(
+        state.matchId,
+        "WICKET_SLOWMO",
+        2,
+        tension,
+        swing?.intensity
+      )
+    ) {
+
+      emitBroadcastCommand({
+        type: "PLAY_SLOW_MOTION",
+        slug: signal.eventId
+      });
+
+      emitBroadcastCommand({
+        type: "SHOW_OVERLAY",
+        overlay: "WICKET"
+      });
+
+    }
+
+  }
+
+  /*
+  ----------------------------------------------
+  HAT TRICK BUILDUP
+  ----------------------------------------------
+  */
+
+  if (memory.wicketStreak === 2) {
+
+    emitBroadcastCommand({
+      type: "ENTER_TENSION"
+    });
+
+  }
+
+  /*
+  ----------------------------------------------
+  BOUNDARY ASSAULT
+  ----------------------------------------------
+  */
+
+  if (memory.boundaryStreak >= 2) {
+
+    emitBroadcastCommand({
+      type: "CAMERA_SWEEP",
+      slug: signal.eventId
+    });
+
+  }
+
+  break;
   }
 
   state.lastEventId = signal.eventId;

@@ -15,14 +15,26 @@ NEVER:
 ================================================
 */
 
-import { getSnapshot, getMatchState, getEventStream } from "./matchEngine";
+import {
+  getSnapshot,
+  getMatchState,
+  getEventStream
+} from "./matchEngine";
+
 import {
   hydrateReplay,
   setCursorIndex,
   startCursorPlayback
 } from "./replayEngine";
-import { enqueueReplay, startReplayQueue } from "./replayEventQueue";
-import { rebuildStateFromIndex } from "./timelineScrubber";
+
+import {
+  enqueueReplay,
+  startReplayQueue
+} from "./replayEventQueue";
+
+import {
+  rebuildStateFromIndex
+} from "./timelineScrubber";
 
 /*
 ================================================
@@ -34,42 +46,55 @@ export function replayOver(matchId: string, over: number) {
 
   const matchState = getMatchState(matchId);
 
-if (!matchState) {
-  console.warn("Match not found");
-  return;
-}
+  if (!matchState) {
+    console.warn("Match not found");
+    return;
+  }
 
-const inningsIndex = matchState.currentInningsIndex;
+  const inningsIndex = matchState.currentInningsIndex;
 
-const snapshot = getSnapshot(
-  matchId,
-  inningsIndex,
-  over - 1
-);
+  const snapshot = getSnapshot(
+    matchId,
+    inningsIndex,
+    over - 1
+  );
 
   if (!snapshot) {
     console.warn("No snapshot available");
     return;
   }
 
+  /*
+  ----------------------------------------------
+  Hydrate replay with snapshot
+  ----------------------------------------------
+  */
+
   hydrateReplay(snapshot);
 
   const liveState = getMatchState(matchId);
-if (!liveState) return;
 
-const innings = liveState.innings[liveState.currentInningsIndex];
+  if (!liveState) return;
 
-if (!innings) {
-  console.warn("No innings found");
-  return;
-}
+  const innings = liveState.innings[liveState.currentInningsIndex];
 
-const events = innings.overs?.[over];
+  if (!innings) {
+    console.warn("No innings found");
+    return;
+  }
+
+  const events = innings.overs?.[over];
 
   if (!events?.length) {
     console.warn("No events for this over");
     return;
   }
+
+  /*
+  ----------------------------------------------
+  Queue events for cinematic replay
+  ----------------------------------------------
+  */
 
   enqueueReplay(events);
   startReplayQueue();
@@ -87,31 +112,41 @@ export function scrubToPosition(
 ) {
 
   const liveState = getMatchState(matchId);
+
   if (!liveState) return;
 
-  // ✅ canonical timeline source
   const timeline = getEventStream(matchId);
 
   if (!timeline.length) return;
-  if (targetIndex < 0 || targetIndex >= timeline.length) return;
 
   /*
-  -----------------------------------
-  Update cursor
-  -----------------------------------
+  ----------------------------------------------
+  Clamp index safely
+  ----------------------------------------------
   */
 
-  setCursorIndex(targetIndex);
+  const index = Math.max(
+    0,
+    Math.min(targetIndex, timeline.length - 1)
+  );
 
   /*
-  -----------------------------------
+  ----------------------------------------------
+  Update cursor
+  ----------------------------------------------
+  */
+
+  setCursorIndex(index);
+
+  /*
+  ----------------------------------------------
   Rebuild replay state
-  -----------------------------------
+  ----------------------------------------------
   */
 
   const rebuilt = rebuildStateFromIndex(
     matchId,
-    targetIndex,
+    index,
     liveState
   );
 
@@ -128,16 +163,27 @@ START CURSOR PLAYBACK
 
 export function playFromCurrentCursor(matchId: string) {
 
-  const liveState = getMatchState(matchId);
-  if (!liveState) return;
+  const baseState = getMatchState(matchId);
 
-  // ✅ canonical timeline source
+  if (!baseState) return;
+
   const timeline = getEventStream(matchId);
 
   if (!timeline.length) return;
 
+  /*
+  ----------------------------------------------
+  Start deterministic playback
+  ----------------------------------------------
+  */
+
   startCursorPlayback(
     timeline,
-    (index) => rebuildStateFromIndex(matchId, index, liveState)
+    (index) =>
+      rebuildStateFromIndex(
+        matchId,
+        index,
+        baseState
+      )
   );
 }

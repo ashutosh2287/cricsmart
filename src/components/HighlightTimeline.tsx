@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getHighlights } from "@/services/highlights/highlightStore";
-import { Highlight } from "@/services/highlights/highlightStore";
+import {
+  getHighlights,
+  subscribeHighlights,
+  Highlight
+} from "@/services/highlights/highlightStore";
 
 type Props = {
   matchId: string;
@@ -12,16 +15,25 @@ export default function HighlightTimeline({ matchId }: Props) {
 
   const [highlights, setHighlights] = useState<Highlight[]>([]);
 
-  useEffect(() => {
+useEffect(() => {
 
-    const interval = setInterval(() => {
-      const data = getHighlights(matchId);
-      setHighlights([...data]);
-    }, 1000);
+  const update = (id: string) => {
+    if (id !== matchId) return;
 
-    return () => clearInterval(interval);
+    const data = getHighlights(matchId);
+    setHighlights([...data]);
+  };
 
-  }, [matchId]);
+  const unsubscribe = subscribeHighlights(update);
+
+  // initial load
+  update(matchId);
+
+  return () => {
+    unsubscribe();
+  };
+
+}, [matchId]);
 
   if (!highlights.length) return null;
 

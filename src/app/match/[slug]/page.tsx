@@ -19,8 +19,11 @@ import { replayOver } from "@/services/replayController";
 import TacticalOverlay from "@/components/TacticalOverlay";
 import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
 import HighlightTimeline from "@/components/HighlightTimeline";
-
-
+import MatchStory from "@/components/MatchStory";
+import WinProbabilityChart from "@/components/WinProbabilityChart";
+import { initCommentaryVoice } from "@/services/commentary/commentaryVoiceEngine";
+import BroadcastDirectorPanel from "@/components/BroadcastDirectorPanel";
+import MatchTimelineSlider from "@/components/MatchTimelineSlider";
 
 export default function MatchDetailPage() {
 
@@ -47,6 +50,7 @@ export default function MatchDetailPage() {
 
   useEffect(() => {
     initTacticalOverlayBridge();
+    initCommentaryVoice();
   }, []);
 
   /*
@@ -157,6 +161,14 @@ export default function MatchDetailPage() {
 
        {/* Highlight timeline panel */}
     <HighlightTimeline matchId={matchId} />
+
+    <WinProbabilityChart matchId={matchId} />
+
+    <MatchTimelineSlider matchId={matchId} />
+
+    <MatchStory matchId={matchId} />
+
+    <BroadcastDirectorPanel />
 
       <div>
         <h1 className="text-2xl font-bold">

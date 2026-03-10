@@ -1,224 +1,210 @@
-// highlightEngine.ts
-
 import { BallEvent } from "@/types/ballEvent";
 import { addHighlight } from "./highlightStore";
 import { emitDirectorSignal } from "../directorSignalBus";
-import { getEventStream } from "../matchEngine";
-import { getMatchState } from "../matchEngine";
+import { getEventStream, getMatchState } from "../matchEngine";
 import { computeWinProbability } from "../winProbabilityEngine";
 
-/*
-================================================
-LOCAL MEMORY (per match)
-Used for simple contextual highlight detection
-================================================
-*/
-
 const wicketStreak: Record<string, number> = {};
-const sixStreak: Record<string, number> = {};
+const boundaryStreak: Record<string, number> = {};
 const partnershipRuns: Record<string, number> = {};
 const lastWinProb: Record<string, number | null> = {};
 
+export function processHighlightEvent(
+matchId: string,
+event: BallEvent
+) {
+if (!event.valid) return;
+
+if (!wicketStreak[matchId]) wicketStreak[matchId] = 0;
+if (!boundaryStreak[matchId]) boundaryStreak[matchId] = 0;
+if (!partnershipRuns[matchId]) partnershipRuns[matchId] = 0;
+
 /*
-================================================
-PROCESS HIGHLIGHT EVENT
-================================================
+WICKET
 */
 
-export function processHighlightEvent(
-  matchId: string,
-  event: BallEvent
-) {
+if (event.wicket) {
 
-  if (!event.valid) return;
 
-  // Initialize memory
-  if (!wicketStreak[matchId]) wicketStreak[matchId] = 0;
-  if (!sixStreak[matchId]) sixStreak[matchId] = 0;
-  if (!partnershipRuns[matchId]) partnershipRuns[matchId] = 0;
+wicketStreak[matchId]++;
+boundaryStreak[matchId] = 0;
 
-  /*
-  ------------------------------------------------
-  WICKET HIGHLIGHT
-  ------------------------------------------------
-  */
+addHighlight(matchId, {
+  id: `${event.id}_WICKET`,
+  type: "WICKET",
+  event
+});
 
-  if (event.wicket) {
+emitDirectorSignal({
+  type: "HIGHLIGHT_DETECTED",
+  matchId,
+  branchId: event.branchId ?? "main",
+  eventId: event.id,
+  subtype: "WICKET"
+});
 
-    wicketStreak[matchId]++;
-    sixStreak[matchId] = 0;
+if (wicketStreak[matchId] === 2) {
+  addHighlight(matchId, {
+    id: `${event.id}_HATTRICK_THREAT`,
+    type: "HAT_TRICK_THREAT",
+    event
+  });
+}
 
-    const highlightId = `${event.id}_WICKET`;
+partnershipRuns[matchId] = 0;
+return;
 
-    addHighlight(matchId, {
-      id: highlightId,
-      type: "WICKET",
-      event
-    });
 
-    emitDirectorSignal({
-      type: "HIGHLIGHT_DETECTED",
-      matchId,
-      branchId: "main",
-      eventId: event.id,
-      subtype: "WICKET"
-    });
+}
 
-    return;
-  }
-
-  /*
-  ------------------------------------------------
-  SIX HIGHLIGHT
-  ------------------------------------------------
-  */
-
-  if (event.type === "SIX") {
-
-    sixStreak[matchId]++;
-    wicketStreak[matchId] = 0;
-
-    const highlightId = `${event.id}_SIX`;
-
-    addHighlight(matchId, {
-      id: highlightId,
-      type: "SIX",
-      event
-    });
-
-    emitDirectorSignal({
-      type: "HIGHLIGHT_DETECTED",
-      matchId,
-      branchId: "main",
-      eventId: event.id,
-      subtype: "SIX"
-    });
-
-    return;
-  }
-
- 
 /*
-------------------------------------------------
-LAST OVER THRILLER
-------------------------------------------------
+SIX
+*/
+
+if (event.type === "SIX") {
+
+
+boundaryStreak[matchId]++;
+wicketStreak[matchId] = 0;
+
+addHighlight(matchId, {
+  id: `${event.id}_SIX`,
+  type: "SIX",
+  event
+});
+
+emitDirectorSignal({
+  type: "HIGHLIGHT_DETECTED",
+  matchId,
+  branchId: event.branchId ?? "main",
+  eventId: event.id,
+  subtype: "SIX"
+});
+
+
+}
+
+/*
+BOUNDARY CLUSTER
+*/
+
+if (event.type === "FOUR" || event.type === "SIX") {
+
+
+boundaryStreak[matchId]++;
+
+if (boundaryStreak[matchId] >= 3) {
+
+  addHighlight(matchId, {
+    id: `${event.id}_BOUNDARY_CLUSTER`,
+    type: "BOUNDARY_CLUSTER",
+    event
+  });
+
+}
+
+
+} else {
+boundaryStreak[matchId] = 0;
+}
+
+/*
+LAST OVER DRAMA
 */
 
 const events = getEventStream(matchId);
 
 if (events.length >= 6) {
 
-  const lastOverEvents = events.slice(-6);
 
-  const runs = lastOverEvents.reduce(
-    (sum: number, e: BallEvent) => sum + (e.runs ?? 0),
-    0
-  );
+const lastOver = events.slice(-6);
 
-  const wickets = lastOverEvents.filter(
-    (e: BallEvent) => e.wicket
-  ).length;
+const runs = lastOver.reduce(
+  (sum: number, e: BallEvent) => sum + (e.runs ?? 0),
+  0
+);
 
-  if (runs >= 8 || wickets >= 2) {
+const wickets = lastOver.filter(
+  (e: BallEvent) => e.wicket
+).length;
 
-    addHighlight(matchId, {
-      id: `${event.id}_THRILLER`,
-      type: "LAST_OVER_THRILLER",
-      event
-    });
+if (runs >= 10 || wickets >= 2) {
 
-  }
+  addHighlight(matchId, {
+    id: `${event.id}_LAST_OVER_DRAMA`,
+    type: "LAST_OVER_THRILLER",
+    event
+  });
+
+}
 
 
 }
 
 /*
-------------------------------------------------
-PARTNERSHIP TRACKING
-------------------------------------------------
+PARTNERSHIP
 */
 
 partnershipRuns[matchId] += event.runs ?? 0;
 
-if (event.wicket) {
-  partnershipRuns[matchId] = 0;
-}
+if (partnershipRuns[matchId] >= 50 && partnershipRuns[matchId] < 55) {
 
-/*
-------------------------------------------------
-BIG PARTNERSHIP (50)
-------------------------------------------------
-*/
 
-if (partnershipRuns[matchId] === 50) {
+addHighlight(matchId, {
+  id: `${event.id}_PARTNERSHIP50`,
+  type: "BIG_PARTNERSHIP",
+  event
+});
 
-  addHighlight(matchId, {
-    id: `${event.id}_PARTNERSHIP50`,
-    type: "BIG_PARTNERSHIP",
-    event
-  });
 
 }
 
-/*
-------------------------------------------------
-DOMINANT PARTNERSHIP (100)
-------------------------------------------------
-*/
+if (partnershipRuns[matchId] >= 100 && partnershipRuns[matchId] < 105) {
 
-if (partnershipRuns[matchId] === 100) {
 
-  addHighlight(matchId, {
-    id: `${event.id}_PARTNERSHIP100`,
-    type: "DOMINANT_PARTNERSHIP",
-    event
-  });
+addHighlight(matchId, {
+  id: `${event.id}_PARTNERSHIP100`,
+  type: "DOMINANT_PARTNERSHIP",
+  event
+});
+
 
 }
 
 /*
-------------------------------------------------
-TURNING POINT DETECTION
-------------------------------------------------
+TURNING POINT
 */
 
 const matchState = getMatchState(matchId);
 
 if (matchState) {
 
-  const probability = computeWinProbability(matchState);
 
-  if (probability) {
+const probability = computeWinProbability(matchState);
 
-    const current = probability.battingWinProbability;
+if (probability) {
 
-    const previous = lastWinProb[matchId];
+  const current = probability.battingWinProbability;
+  const previous = lastWinProb[matchId];
 
-    if (
-      previous !== null &&
-      previous !== undefined &&
-      Math.abs(current - previous) >= 0.20
-    ) {
+  if (
+    previous !== null &&
+    previous !== undefined &&
+    Math.abs(current - previous) >= 0.20
+  ) {
 
-      addHighlight(matchId, {
-        id: `${event.id}_TURNING_POINT`,
-        type: "TURNING_POINT",
-        event
-      });
+    addHighlight(matchId, {
+      id: `${event.id}_TURNING_POINT`,
+      type: "TURNING_POINT",
+      event
+    });
 
-    }
-
-    lastWinProb[matchId] = current;
   }
+
+  lastWinProb[matchId] = current;
+}
+
 
 }
 
-  /*
-  ------------------------------------------------
-  RESET STREAKS
-  ------------------------------------------------
-  */
-
-  wicketStreak[matchId] = 0;
-  sixStreak[matchId] = 0;
 }

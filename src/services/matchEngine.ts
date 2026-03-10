@@ -1,16 +1,10 @@
 import { BallEvent } from "@/types/ballEvent";
 import { pushToTimeline } from "./broadcastTimeline";
 import { eventStore } from "@/persistence/eventStore";
-import { processAnalyticsEvent } from "./analytics/analyticsEngine";
-import { processHighlightEvent } from "./highlights/highlightEngine";
-import {
-  processNarrativeEvent,
-} from "./narrative/narrativeEngine";
-import { processCommentaryEvent } from "./commentary/commentaryEngine";
+
 import { getMatchConfig } from "./matchFormat";
 import { advanceClock } from "./timeEngine";
-import { runTacticalEngine } from "./tacticalEngine";
-
+import { processMatchIntelligence } from "./matchIntelligenceEngine";
 export type CorrectionEvent =
   | { type: "CORRECTION_UNDO_LAST" }
   | { type: "CORRECTION_DELETE"; targetEventId: string }
@@ -277,15 +271,12 @@ export function dispatchBallEvent(
   eventStreams[matchId].push(ballEvent);
   advanceClock(matchId);
 
-  processAnalyticsEvent(matchId, ballEvent);
-  processHighlightEvent(matchId, ballEvent);
-  processNarrativeEvent(matchId, ballEvent);
-  processCommentaryEvent(
-    matchId,
-    next.activeBranchId,
-    ballEvent
-  );
-  runTacticalEngine(matchId, "main", next);
+  processMatchIntelligence({
+  matchId,
+  branchId: next.activeBranchId,
+  state: next,
+  ballEvent
+});
 
   pushToTimeline(ballEvent);
   eventStore.appendEvent(matchId, ballEvent);

@@ -286,3 +286,25 @@ CAMERA SHAKE EFFECT
   }
 
 }
+
+/*
+================================================
+🎬 CROWD REACTION ENGINE (NEW)
+================================================
+*/
+
+.stadium-overlay.roar {
+  background: radial-gradient(circle, rgba(255,215,0,0.35), transparent);
+}
+
+.stadium-overlay.shock {
+  background: radial-gradient(circle, rgba(255,255,255,0.25), transparent);
+}
+
+.stadium-overlay.hype {
+  background: radial-gradient(circle, rgba(34,197,94,0.25), transparent);
+}
+
+.stadium-overlay.tension {
+  background: radial-gradient(circle, rgba(249,115,22,0.25), transparent);
+}

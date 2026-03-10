@@ -12,6 +12,7 @@ import { getEventStream } from "../matchEngine";
 import { computeChasePressure } from "../pressureEngine";
 import { getDirectorProfileConfig } from "../directorProfile";
 import { computeStrategicContext } from "../strategicEngine";
+import { applyCommentaryPersonality } from "./commentaryPersonalityEngine";
 
 export function processCommentaryEvent(
   matchId: string,
@@ -227,27 +228,47 @@ if (!text && matchState) {
 
   if (!text) return;
 
-  /*
-  ========================================================
-  6️⃣ Commentary Chain Builder
-  ========================================================
-  */
+/*
+================================================
+6️⃣ Commentary Chain Builder
+================================================
+*/
 
-  if (matchState) {
-    text = buildCommentaryChain(text, event, matchState);
-  }
+if (matchState) {
+  text = buildCommentaryChain(text, event, matchState);
+}
 
-  const profile = getDirectorProfileConfig();
+const profile = getDirectorProfileConfig();
 
 if (profile.commentaryAggression > 1.2) {
   tone = "AGGRESSIVE";
 }
 
-  emitCommentary({
-    matchId,
-    branchId,
-    eventId: event.id,
-    text,
-    tone
-  });
+/*
+================================================
+7️⃣ Commentary Personality Layer
+================================================
+*/
+
+const personalities = ["ANALYST", "HYPE", "TACTICAL"] as const;
+
+const personality =
+  personalities[Math.floor(Math.random() * personalities.length)];
+
+text = applyCommentaryPersonality(text, personality);
+
+/*
+================================================
+8️⃣ Emit Commentary
+================================================
+*/
+
+emitCommentary({
+  matchId,
+  branchId,
+  eventId: event.id,
+  text,
+  tone
+});
+
 }

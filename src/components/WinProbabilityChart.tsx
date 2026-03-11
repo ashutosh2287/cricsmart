@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { getMatchState, subscribeMatch } from "@/services/matchEngine";
 import { computeWinProbability } from "@/services/winProbabilityEngine";
+import { detectTurningPoints, TurningPoint } from "@/services/analytics/turningPointEngine";
+import { getEventStream } from "@/services/matchEngine";
 
 import {
   LineChart,
@@ -11,7 +13,8 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  CartesianGrid
+  CartesianGrid,
+  ReferenceDot
 } from "recharts";
 
 type Props = {
@@ -26,6 +29,7 @@ type ChartPoint = {
 export default function WinProbabilityChart({ matchId }: Props) {
 
   const [data, setData] = useState<ChartPoint[]>([]);
+  const [markers, setMarkers] = useState<TurningPoint[]>([]);
 
   useEffect(() => {
 
@@ -43,13 +47,12 @@ export default function WinProbabilityChart({ matchId }: Props) {
         innings.over * 6 + innings.ball;
 
       const probability =
-        prob.battingWinProbability * 100;
+        prob.battingWinProbability;
 
       setData((prev) => {
 
         const last = prev[prev.length - 1];
 
-        // prevent duplicate entries for same ball
         if (last && last.ball === ball) {
           return prev;
         }
@@ -64,6 +67,10 @@ export default function WinProbabilityChart({ matchId }: Props) {
 
       });
 
+     const events = getEventStream(matchId);
+const points = detectTurningPoints(events);
+
+setMarkers(points);
     };
 
     const unsubscribe = subscribeMatch(matchId, update);
@@ -118,6 +125,26 @@ export default function WinProbabilityChart({ matchId }: Props) {
             strokeWidth={2}
             dot={false}
           />
+
+          {/* Turning Point Markers */}
+
+          {markers.map((m, i) => {
+
+            const point = data.find(d => d.ball === m.ballIndex);
+
+            if (!point) return null;
+
+            return (
+              <ReferenceDot
+                key={i}
+                x={point.ball}
+                y={point.probability}
+                r={6}
+                fill="#ef4444"
+              />
+            );
+
+          })}
 
         </LineChart>
 

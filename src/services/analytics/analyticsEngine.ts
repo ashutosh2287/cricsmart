@@ -4,6 +4,11 @@ import { calculateRunRate } from "./metrics/runRate";
 import { calculateMomentum } from "./metrics/momentum";
 import { emitDirectorSignal } from "../directorSignalBus";
 
+import {
+  buildNarrativeTimeline,
+  NarrativeTimeline
+} from "../narrative/narrativeTimelineEngine";
+
 /*
 -------------------------------------------------------
 TYPES
@@ -13,6 +18,7 @@ TYPES
 export type AnalyticsResult = {
   runRate: number[];
   momentum: number[];
+  narrative?: NarrativeTimeline;
 };
 
 type IncrementalAnalyticsState = {
@@ -95,7 +101,6 @@ export function processAnalyticsEvent(
   -------------------------------------------------------
   */
 
-  // Always emit momentum update signal
   emitDirectorSignal({
     type: "MOMENTUM_UPDATE",
     matchId,
@@ -104,7 +109,6 @@ export function processAnalyticsEvent(
     value: momentum
   });
 
-  // Detect pressure spike (example logic)
   if (momentum >= 4 || event.wicket) {
 
     emitDirectorSignal({
@@ -117,6 +121,7 @@ export function processAnalyticsEvent(
   }
 
 }
+
 /*
 -------------------------------------------------------
 GET INCREMENTAL RESULT
@@ -156,13 +161,39 @@ export function computeAnalytics(
     return { runRate: [], momentum: [] };
   }
 
-  // Filter active branch
   const filtered = events.filter(e =>
     e.valid && (!e.branchId || e.branchId === state.activeBranchId)
   );
 
+  const runRate = calculateRunRate(filtered);
+  const momentum = calculateMomentum(filtered);
+
+  /*
+  -------------------------------------------------------
+  BUILD NARRATIVE INPUT STREAM
+  -------------------------------------------------------
+  */
+
+  const narrativeInputs = filtered.map((e, i) => {
+
+    const over = Math.floor(i / 6) + 1;
+
+    return {
+      momentum: momentum[i] ?? 0,
+      pressure: Math.abs(momentum[i] ?? 0) / 6,
+      winProbability: 0.5, // placeholder until winProbabilityEngine integrated
+      wickets: e.wicket ? 1 : 0,
+      over,
+      ballNumber: i
+    };
+
+  });
+
+  const narrative = buildNarrativeTimeline(narrativeInputs);
+
   return {
-    runRate: calculateRunRate(filtered),
-    momentum: calculateMomentum(filtered)
+    runRate,
+    momentum,
+    narrative
   };
 }

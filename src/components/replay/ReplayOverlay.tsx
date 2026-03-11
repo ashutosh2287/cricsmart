@@ -1,19 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+
 import {
   subscribeReplay,
   getReplayState,
   getCursor,
-  setCursorIndex,
+  setCursorIndex as setReplayCursorIndex,
   setCursorPlaying,
   setCursorSpeed,
   setCursorDirection
 } from "@/services/replayEngine";
+
 import {
   scrubToPosition,
   playFromCurrentCursor
 } from "@/services/replayController";
+
 import { temporalIndex } from "@/services/matchEngine";
 
 type ReplayOverlayProps = {
@@ -21,7 +24,10 @@ type ReplayOverlayProps = {
   matchId: string;
 };
 
-export default function ReplayOverlay({ onClose, matchId }: ReplayOverlayProps) {
+export default function ReplayOverlay({
+  onClose,
+  matchId
+}: ReplayOverlayProps) {
 
   const [state, setState] = useState(getReplayState());
   const [cursorIndex, setCursorIndexLocal] = useState(0);
@@ -33,10 +39,19 @@ export default function ReplayOverlay({ onClose, matchId }: ReplayOverlayProps) 
   */
 
   useEffect(() => {
-    return subscribeReplay(() => {
-      setState(getReplayState());
-      setCursorIndexLocal(getCursor().index);
+
+    const unsubscribe = subscribeReplay(() => {
+
+      const newState = getReplayState();
+      const cursor = getCursor();
+
+      setState(newState);
+      setCursorIndexLocal(cursor.index);
+
     });
+
+    return unsubscribe;
+
   }, []);
 
   /*
@@ -46,23 +61,34 @@ export default function ReplayOverlay({ onClose, matchId }: ReplayOverlayProps) 
   */
 
   const timelineLength = useMemo(() => {
-  return temporalIndex[matchId]?.length ?? 0;
-}, [matchId]);
+    return temporalIndex[matchId]?.length ?? 0;
+  }, [matchId]);
+
   if (!state) return null;
 
   /*
   ====================================================
-  SCRUB USING INDEX ONLY
+  SAFE INNINGS ACCESS
+  ====================================================
+  */
+
+  const innings = state?.innings?.[state.currentInningsIndex];
+
+  if (!innings) return null;
+
+  /*
+  ====================================================
+  SCRUB USING INDEX
   ====================================================
   */
 
   function handleScrub(index: number) {
-    setCursorIndex(index);
+
+    setReplayCursorIndex(index);
     setCursorIndexLocal(index);
 
-    scrubToPosition(matchId, index); 
-    // IMPORTANT:
-    // scrubToPosition must now accept index directly
+    scrubToPosition(matchId, index);
+
   }
 
   /*
@@ -72,38 +98,45 @@ export default function ReplayOverlay({ onClose, matchId }: ReplayOverlayProps) 
   */
 
   function handlePlay() {
+
     setCursorDirection(1);
     setCursorPlaying(true);
+
     playFromCurrentCursor(matchId);
+
   }
 
   function handlePause() {
+
     setCursorPlaying(false);
+
   }
 
   function handleReverse() {
+
     setCursorDirection(-1);
     setCursorPlaying(true);
+
     playFromCurrentCursor(matchId);
+
   }
 
   function handleSpeed(speed: number) {
+
     setCursorSpeed(speed);
+
   }
 
   return (
+
     <div className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center text-white p-6">
 
       <h2 className="text-2xl font-bold mb-6 tracking-wide">
         REPLAY MODE
       </h2>
 
-      {(() => {
-  const innings =
-    state.innings[state.currentInningsIndex];
+      {/* SCORE DISPLAY */}
 
-  return (
-    <>
       <div className="text-xl mb-2">
         Score: {innings.runs}/{innings.wickets}
       </div>
@@ -111,9 +144,6 @@ export default function ReplayOverlay({ onClose, matchId }: ReplayOverlayProps) 
       <div className="mb-6 text-lg opacity-80">
         Over: {innings.over}.{innings.ball}
       </div>
-    </>
-  );
-})()}
 
       {/* TIMELINE SCRUBBER */}
 
@@ -140,31 +170,48 @@ export default function ReplayOverlay({ onClose, matchId }: ReplayOverlayProps) 
 
       </div>
 
-      {/* CONTROLS */}
+      {/* PLAYBACK CONTROLS */}
 
       <div className="flex gap-4 mt-6 flex-wrap justify-center">
 
-        <button onClick={handlePause} className="bg-gray-700 px-4 py-2 rounded">
+        <button
+          onClick={handlePause}
+          className="bg-gray-700 px-4 py-2 rounded"
+        >
           Pause
         </button>
 
-        <button onClick={handlePlay} className="bg-green-600 px-4 py-2 rounded">
+        <button
+          onClick={handlePlay}
+          className="bg-green-600 px-4 py-2 rounded"
+        >
           Play
         </button>
 
-        <button onClick={handleReverse} className="bg-yellow-600 px-4 py-2 rounded">
+        <button
+          onClick={handleReverse}
+          className="bg-yellow-600 px-4 py-2 rounded"
+        >
           Reverse
         </button>
 
-        <button onClick={() => handleSpeed(0.5)} className="bg-purple-600 px-4 py-2 rounded">
+        <button
+          onClick={() => handleSpeed(0.5)}
+          className="bg-purple-600 px-4 py-2 rounded"
+        >
           0.5x
         </button>
 
-        <button onClick={() => handleSpeed(2)} className="bg-purple-600 px-4 py-2 rounded">
+        <button
+          onClick={() => handleSpeed(2)}
+          className="bg-purple-600 px-4 py-2 rounded"
+        >
           2x
         </button>
 
       </div>
+
+      {/* EXIT BUTTON */}
 
       <button
         onClick={onClose}
@@ -174,5 +221,7 @@ export default function ReplayOverlay({ onClose, matchId }: ReplayOverlayProps) 
       </button>
 
     </div>
+
   );
+
 }

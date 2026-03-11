@@ -2,6 +2,7 @@
 
 import { DirectorSignal } from "./directorSignals";
 import { subscribeTacticalSignal } from "./tacticalSignalBus";
+import { enqueueReplay } from "./replay/replayQueueEngine";
 
 /*
 ================================================
@@ -40,9 +41,27 @@ Used by analytics engines
 export function emitDirectorSignal(
   signal: DirectorSignal
 ) {
+
+  /*
+  ----------------------------------------------
+  REPLAY QUEUE BRIDGE
+  ----------------------------------------------
+  */
+
+  if (signal.type === "REPLAY_REQUEST") {
+    enqueueReplay(signal);
+  }
+
+  /*
+  ----------------------------------------------
+  NORMAL DIRECTOR SIGNAL FLOW
+  ----------------------------------------------
+  */
+
   for (const listener of listeners) {
     listener(signal);
   }
+
 }
 
 /*

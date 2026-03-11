@@ -1,5 +1,5 @@
 import { BallEvent } from "@/types/ballEvent";
-import { MatchState } from "./matchEngine";
+import { MatchState, getEventStream } from "./matchEngine";
 
 import { processAnalyticsEvent } from "./analytics/analyticsEngine";
 import { processHighlightEvent } from "./highlights/highlightEngine";
@@ -8,68 +8,82 @@ import { processCommentaryEvent } from "./commentary/commentaryEngine";
 import { runTacticalEngine } from "./tacticalEngine";
 import { analyzeHighlightTimeline } from "./highlightTimelineEngine";
 import { updateWinProbabilityTimeline } from "./winProbabilityTimeline";
+import { detectTurningPoints } from "./analytics/turningPointEngine";
 
 type IntelligenceInput = {
-matchId: string;
-branchId: string;
-state: MatchState;
-ballEvent: BallEvent;
+  matchId: string;
+  branchId: string;
+  state: MatchState;
+  ballEvent: BallEvent;
 };
 
 /*
-
+========================================
 MATCH INTELLIGENCE PIPELINE
 Deterministic execution order
-=============================
-
+========================================
 */
 
 export function processMatchIntelligence(
-input: IntelligenceInput
+  input: IntelligenceInput
 ) {
 
-const { matchId, branchId, state, ballEvent } = input;
+  const { matchId, branchId, state, ballEvent } = input;
 
-/*
+  /*
+  ========================================
+  Analytics Engine
+  ========================================
+  */
 
-## Analytics Engine
+  processAnalyticsEvent(matchId, ballEvent);
 
-*/
-processAnalyticsEvent(matchId, ballEvent);
+  updateWinProbabilityTimeline(matchId);
 
-updateWinProbabilityTimeline(matchId);
+  /*
+  ========================================
+  Highlight Detection
+  ========================================
+  */
 
-/*
+  processHighlightEvent(matchId, ballEvent);
 
-## Highlight Detection
+  analyzeHighlightTimeline(matchId);
 
-*/
-processHighlightEvent(matchId, ballEvent);
+  /*
+  ========================================
+  Narrative Engine
+  ========================================
+  */
 
-analyzeHighlightTimeline(matchId);
+  processNarrativeEvent(matchId, ballEvent);
 
-/*
+  /*
+  ========================================
+  Tactical Engine
+  ========================================
+  */
 
-## Narrative Engine
+  runTacticalEngine(matchId, branchId, state);
 
-*/
-processNarrativeEvent(matchId, ballEvent);
+  /*
+  ========================================
+  Turning Point Detection
+  ========================================
+  */
 
-/*
+  const events = getEventStream(matchId);
+  detectTurningPoints(events);
 
-## Tactical Engine
+  /*
+  ========================================
+  Commentary Engine
+  ========================================
+  */
 
-*/
-runTacticalEngine(matchId, branchId, state);
-
-/*
-
-## Commentary Engine
-
-*/
-processCommentaryEvent(
-matchId,
-branchId,
-ballEvent
-);
+  processCommentaryEvent(
+    matchId,
+    branchId,
+    ballEvent
+  );
 }

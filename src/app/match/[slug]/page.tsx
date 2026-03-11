@@ -15,15 +15,16 @@ import OversTimeline from "@/components/OversTimeline";
 import { getMatchBySlug } from "@/services/matchService";
 import { connectRealtime, disconnectRealtime } from "@/services/realtimeService";
 import ReplayOverlay from "@/components/replay/ReplayOverlay";
-import { replayOver } from "@/services/replayController";
 import TacticalOverlay from "@/components/TacticalOverlay";
 import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
 import HighlightTimeline from "@/components/HighlightTimeline";
 import MatchStory from "@/components/MatchStory";
-import WinProbabilityChart from "@/components/WinProbabilityChart";
 import { initCommentaryVoice } from "@/services/commentary/commentaryVoiceEngine";
 import BroadcastDirectorPanel from "@/components/BroadcastDirectorPanel";
 import MatchTimelineSlider from "@/components/MatchTimelineSlider";
+import BroadcastControlDashboard from "@/components/BroadcastControlDashboard";
+import MatchControlPanel from "@/components/MatchControlPanel";
+import MatchHeader from "@/components/MatchHeader";
 
 export default function MatchDetailPage() {
 
@@ -153,74 +154,81 @@ export default function MatchDetailPage() {
     return <div className="p-6">Match not found</div>;
   }
 
+  const innings =
+  currentEngineState?.innings[
+    currentEngineState.currentInningsIndex
+  ];
+
+  
   return (
-    <div className="p-6 space-y-6">
+  <div className="p-6 space-y-8">
 
-      {/* Tactical broadcast overlay */}
-      <TacticalOverlay />
+    {/* MATCH HEADER */}
 
-       {/* Highlight timeline panel */}
-    <HighlightTimeline matchId={matchId} />
+   {innings && (
+  <MatchHeader
+    team1={match.team1}
+    team2={match.team2}
+    runs={innings.runs}
+    wickets={innings.wickets}
+    over={innings.over}
+    ball={innings.ball}
+  />
+)}
 
-    <WinProbabilityChart matchId={matchId} />
 
-    <MatchTimelineSlider matchId={matchId} />
+    {/* MAIN ANALYTICS DASHBOARD */}
+
+    <MatchControlPanel matchId={matchId} />
+
+
+    {/* MATCH STORY */}
 
     <MatchStory matchId={matchId} />
 
-    <BroadcastDirectorPanel />
 
-      <div>
-        <h1 className="text-2xl font-bold">
-          {match.team1} vs {match.team2}
-        </h1>
+    {/* HIGHLIGHT TIMELINE */}
 
-        {currentEngineState && (() => {
-          const innings =
-            currentEngineState.innings[
-              currentEngineState.currentInningsIndex
-            ];
+    <HighlightTimeline matchId={matchId} />
 
-          return (
-            <div className="text-lg mt-2">
-              {innings.runs}/{innings.wickets} ({innings.over}.{innings.ball})
-            </div>
-          );
-        })()}
 
-        {currentEngineState && (
-          <button
-            className="mt-4 bg-blue-600 text-white px-4 py-2 rounded"
-            onClick={() => {
-              const innings =
-                currentEngineState.innings[
-                  currentEngineState.currentInningsIndex
-                ];
+    {/* TIMELINE SCRUBBER */}
 
-              replayOver(matchId, innings.over);
-              setShowReplay(true);
-            }}
-          >
-            Replay Last Over
-          </button>
-        )}
+    <MatchTimelineSlider matchId={matchId} />
+
+
+    {/* LIVE MATCH TABS */}
+
+    <TabsArea match={match} />
+
+
+    {/* OVERLAYS */}
+
+    <TacticalOverlay />
+
+    {showReplay && (
+      <ReplayOverlay
+        matchId={matchId}
+        onClose={() => setShowReplay(false)}
+      />
+    )}
+
+     {/* DEV BROADCAST TOOLS */}
+    {process.env.NODE_ENV === "development" && (
+      <div className="mt-12 border-t border-gray-700 pt-6 space-y-4">
+        <BroadcastDirectorPanel />
+        <BroadcastControlDashboard />
       </div>
+    )}
 
-      <TabsArea match={match} />
-
-      {showReplay && (
-        <ReplayOverlay
-          matchId={matchId}
-          onClose={() => setShowReplay(false)}
-        />
-      )}
-
-    </div>
-  );
+  </div>
+);
 }
 function TabsArea({ match }: { match: Match }) {
 
   const [activeTab, setActiveTab] = useState("live");
+
+  
 
   return (
     <>

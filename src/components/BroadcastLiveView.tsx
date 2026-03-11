@@ -7,7 +7,7 @@ import { Match } from "@/types/match";
 import MatchDramaMeter from "@/components/MatchDramaMeter";
 import BroadcastInsightBanner from "@/components/BroadcastInsightBanner";
 import MomentumMeter from "@/components/MomentumMeter";
-
+import TurningPointBanner from "@/components/TurningPointBanner";
 type Props = {
   match: Match;
 };
@@ -33,6 +33,8 @@ export default function BroadcastLiveView({ match }: Props) {
   <MatchDramaMeter matchId={match.slug} />
 </div>
 <MomentumMeter matchId={match.slug} />
+
+<TurningPointBanner matchId={match.slug} />
 
     </div>
   );

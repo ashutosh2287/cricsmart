@@ -18,6 +18,7 @@ HIGHLIGHT TYPES
 export type HighlightType =
   | "WICKET"
   | "SIX"
+  | "FOUR"
   | "HAT_TRICK_THREAT"
   | "BOUNDARY_CLUSTER"
   | "BIG_PARTNERSHIP"

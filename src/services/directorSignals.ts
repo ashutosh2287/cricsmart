@@ -24,12 +24,26 @@ export type DirectorSignal =
       matchId: string;
       branchId: string;
       eventId: string;
-      subtype: "SIX" | "WICKET";
+      subtype: "SIX" | "FOUR" | "WICKET";
     }
 
   /*
   -----------------------------------------------
-  TACTICAL SIGNALS (NEW)
+  REPLAY CONTROL SIGNAL (NEW)
+  -----------------------------------------------
+  */
+
+  | {
+      type: "REPLAY_REQUEST";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      replayType: "WICKET" | "BOUNDARY" | "TURNING_POINT";
+    }
+
+  /*
+  -----------------------------------------------
+  TACTICAL SIGNALS
   -----------------------------------------------
   */
 

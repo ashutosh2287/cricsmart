@@ -1,0 +1,51 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { subscribeMatch } from "@/services/matchEngine";
+import { detectTurningPoints } from "@/services/analytics/turningPointEngine";
+import { getEventStream } from "@/services/matchEngine";
+
+type Props = {
+  matchId: string;
+};
+
+export default function TurningPointBanner({ matchId }: Props) {
+
+  const [turn, setTurn] = useState<number | null>(null);
+
+  useEffect(() => {
+
+    const update = () => {
+
+      const events = getEventStream(matchId);
+const turningPoints = detectTurningPoints(events);
+
+      if (!turningPoints.length) return;
+
+      const latest = turningPoints[turningPoints.length - 1];
+
+      setTurn(latest.ballIndex);
+
+    };
+
+    const unsubscribe = subscribeMatch(matchId, update);
+
+    return () => {
+      unsubscribe();
+    };
+
+  }, [matchId]);
+
+  if (!turn) return null;
+
+  return (
+
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-red-600 text-white px-5 py-2 rounded-lg font-bold shadow-lg z-50">
+
+      🎯 Turning Point – Ball {turn}
+
+    </div>
+
+  );
+
+}

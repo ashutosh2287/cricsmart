@@ -1,18 +1,20 @@
 export type BallEvent = {
 
   id: string;
-
   slug: string;
 
   over: number;
-
   runs: number;
 
   wicket?: boolean;
-
   extra?: boolean;
 
-  // ⭐ ONLY REAL CRICKET EVENTS
+  // ⭐ PLAYER INFORMATION
+  batsman: string;
+  nonStriker: string;
+  bowler: string;
+
+  // ⭐ EVENT TYPE
   type:
     | "RUN"
     | "FOUR"
@@ -25,10 +27,8 @@ export type BallEvent = {
 
   isLegalDelivery?: boolean;
 
-  // ⭐ correction metadata
   valid: boolean;
   replacedBy?: string;
 
-  // ⭐ temporal branch support
   branchId?: string;
 };

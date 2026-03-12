@@ -1,189 +1,90 @@
-/*
-================================================
-REPLAY CONTROLLER
+import { getEventStream } from "./matchEngine";
+import { rebuildNarrativeFromStream } from "./narrative/narrativeEngine";
+import { updateMatchPhase } from "./analytics/matchPhaseEngine";
+import { detectMomentumSwing } from "./analytics/momentumSwingEngine";
+import { generateBroadcastInsights } from "./broadcast/broadcastInsightEngine";
+import { runMatchPredictor } from "./prediction/matchPredictorEngine";
 
-ROLE:
+type ReplayState = {
+  position: number;
+};
 
-- orchestrates replay modes
-- selects snapshots
-- converts index/over into actions
+const replayStore: Record<string, ReplayState> = {};
 
-NEVER:
-
-- mutate replay state directly
-- apply events
-================================================
-*/
-
-import {
-  getSnapshot,
-  getMatchState,
-  getEventStream
-} from "./matchEngine";
-
-import {
-  hydrateReplay,
-  setCursorIndex,
-  startCursorPlayback
-} from "./replayEngine";
-
-import {
-  enqueueReplay,
-  startReplayQueue
-} from "./replayEventQueue";
-
-import {
-  rebuildStateFromIndex
-} from "./timelineScrubber";
-
-/*
-================================================
-REPLAY FULL OVER (cinematic queue replay)
-================================================
-*/
-
-export function replayOver(matchId: string, over: number) {
-
-  const matchState = getMatchState(matchId);
-
-  if (!matchState) {
-    console.warn("Match not found");
-    return;
-  }
-
-  const inningsIndex = matchState.currentInningsIndex;
-
-  const snapshot = getSnapshot(
-    matchId,
-    inningsIndex,
-    over - 1
-  );
-
-  if (!snapshot) {
-    console.warn("No snapshot available");
-    return;
-  }
-
-  /*
-  ----------------------------------------------
-  Hydrate replay with snapshot
-  ----------------------------------------------
-  */
-
-  hydrateReplay(snapshot);
-
-  const liveState = getMatchState(matchId);
-
-  if (!liveState) return;
-
-  const innings = liveState.innings[liveState.currentInningsIndex];
-
-  if (!innings) {
-    console.warn("No innings found");
-    return;
-  }
-
-  const events = innings.overs?.[over];
-
-  if (!events?.length) {
-    console.warn("No events for this over");
-    return;
-  }
-
-  /*
-  ----------------------------------------------
-  Queue events for cinematic replay
-  ----------------------------------------------
-  */
-
-  enqueueReplay(events);
-  startReplayQueue();
+export function getReplayPosition(matchId: string) {
+  return replayStore[matchId]?.position ?? 0;
 }
-
-/*
-================================================
-INSTANT SCRUB (INDEX BASED)
-================================================
-*/
 
 export function scrubToPosition(
   matchId: string,
-  targetIndex: number
+  index: number,
+  branchId: string = "main"
 ) {
 
-  const liveState = getMatchState(matchId);
+  const events = getEventStream(matchId) ?? [];
 
-  if (!liveState) return;
+  if (!events.length) return;
 
-  const timeline = getEventStream(matchId);
-
-  if (!timeline.length) return;
-
-  /*
-  ----------------------------------------------
-  Clamp index safely
-  ----------------------------------------------
-  */
-
-  const index = Math.max(
+  const clampedIndex = Math.max(
     0,
-    Math.min(targetIndex, timeline.length - 1)
+    Math.min(index, events.length - 1)
   );
 
-  /*
-  ----------------------------------------------
-  Update cursor
-  ----------------------------------------------
-  */
-
-  setCursorIndex(index);
+  replayStore[matchId] = {
+    position: clampedIndex
+  };
 
   /*
-  ----------------------------------------------
-  Rebuild replay state
-  ----------------------------------------------
+  ========================================
+  Rebuild Narrative Timeline
+  ========================================
   */
 
-  const rebuilt = rebuildStateFromIndex(
+  rebuildNarrativeFromStream(
     matchId,
-    index,
-    liveState
+    branchId,
+    clampedIndex
   );
 
-  if (rebuilt) {
-    hydrateReplay(rebuilt);
-  }
+  /*
+  ========================================
+  Re-run Intelligence Engines
+  ========================================
+  */
+
+  updateMatchPhase(matchId);
+
+  detectMomentumSwing(matchId);
+
+  generateBroadcastInsights(matchId);
+
+  runMatchPredictor(matchId);
+
 }
 
-/*
-================================================
-START CURSOR PLAYBACK
-================================================
-*/
+export function playFromCurrentCursor(
+  matchId: string,
+  branchId: string = "main"
+) {
 
-export function playFromCurrentCursor(matchId: string) {
+  const events = getEventStream(matchId) ?? [];
+  const start = getReplayPosition(matchId);
 
-  const baseState = getMatchState(matchId);
+  if (!events.length) return;
 
-  if (!baseState) return;
+  let cursor = start;
 
-  const timeline = getEventStream(matchId);
+  const interval = setInterval(() => {
 
-  if (!timeline.length) return;
+    if (cursor >= events.length - 1) {
+      clearInterval(interval);
+      return;
+    }
 
-  /*
-  ----------------------------------------------
-  Start deterministic playback
-  ----------------------------------------------
-  */
+    cursor++;
 
-  startCursorPlayback(
-    timeline,
-    (index) =>
-      rebuildStateFromIndex(
-        matchId,
-        index,
-        baseState
-      )
-  );
+    scrubToPosition(matchId, cursor, branchId);
+
+  }, 600); // 600ms per ball replay speed
+
 }

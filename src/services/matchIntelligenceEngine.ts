@@ -5,10 +5,31 @@ import { processAnalyticsEvent } from "./analytics/analyticsEngine";
 import { processHighlightEvent } from "./highlights/highlightEngine";
 import { processNarrativeEvent } from "./narrative/narrativeEngine";
 import { processCommentaryEvent } from "./commentary/commentaryEngine";
+
 import { runTacticalEngine } from "./tacticalEngine";
 import { analyzeHighlightTimeline } from "./highlightTimelineEngine";
+
 import { updateWinProbabilityTimeline } from "./winProbabilityTimeline";
+import { updateMomentumTimeline } from "./analytics/momentumTimelineEngine";
+import { detectMomentumSwing } from "./analytics/momentumSwingEngine";
+
+import { updateMatchPhase } from "./analytics/matchPhaseEngine";
 import { detectTurningPoints } from "./analytics/turningPointEngine";
+
+import { updateMatchIntelligenceGraph } from "./analytics/matchIntelligenceGraphEngine";
+
+import { generateBroadcastInsights } from "./broadcast/broadcastInsightEngine";
+import { runTacticalInsightEngine } from "./tactical/tacticalInsightEngine";
+
+import { runMatchPredictor } from "./prediction/matchPredictorEngine";
+
+import { generateReplaySequence } from "./replay/replayDirectorEngine";
+
+import { updatePlayerRegistry } from "./playerRegistryEngine";
+
+import { updatePlayerStats } from "./analytics/playerStatsEngine";
+
+
 
 type IntelligenceInput = {
   matchId: string;
@@ -32,7 +53,7 @@ export function processMatchIntelligence(
 
   /*
   ========================================
-  Analytics Engine
+  CORE ANALYTICS SIGNALS
   ========================================
   */
 
@@ -40,35 +61,31 @@ export function processMatchIntelligence(
 
   updateWinProbabilityTimeline(matchId);
 
+  updateMomentumTimeline(matchId);
+
+
+  updatePlayerRegistry(matchId);
+  updatePlayerStats(matchId);
+
   /*
   ========================================
-  Highlight Detection
+  MOMENTUM SWING DETECTION
   ========================================
   */
 
-  processHighlightEvent(matchId, ballEvent);
-
-  analyzeHighlightTimeline(matchId);
+  detectMomentumSwing(matchId);
 
   /*
   ========================================
-  Narrative Engine
+  MATCH PHASE ENGINE
   ========================================
   */
 
-  processNarrativeEvent(matchId, ballEvent);
+  updateMatchPhase(matchId);
 
   /*
   ========================================
-  Tactical Engine
-  ========================================
-  */
-
-  runTacticalEngine(matchId, branchId, state);
-
-  /*
-  ========================================
-  Turning Point Detection
+  TURNING POINT DETECTION
   ========================================
   */
 
@@ -77,7 +94,67 @@ export function processMatchIntelligence(
 
   /*
   ========================================
-  Commentary Engine
+  MATCH INTELLIGENCE GRAPH
+  ========================================
+  */
+
+  updateMatchIntelligenceGraph(matchId);
+
+  /*
+  ========================================
+  HIGHLIGHT DETECTION
+  ========================================
+  */
+
+  processHighlightEvent(matchId, ballEvent);
+  analyzeHighlightTimeline(matchId);
+
+  /*
+  ========================================
+  NARRATIVE ENGINE
+  ========================================
+  */
+
+  processNarrativeEvent(matchId, ballEvent);
+
+  /*
+  ========================================
+  TACTICAL ENGINE
+  ========================================
+  */
+
+  runTacticalEngine(matchId, branchId, state);
+
+  /*
+  ========================================
+  TACTICAL INSIGHT ENGINE
+  ========================================
+  */
+
+  runTacticalInsightEngine(matchId);
+
+  /*
+  ========================================
+  BROADCAST INSIGHT ENGINE
+  ========================================
+  */
+
+  generateBroadcastInsights(matchId);
+
+  /*
+  ========================================
+  PREDICTIVE MATCH SIMULATOR
+  ========================================
+  */
+
+  runMatchPredictor(matchId);
+
+
+  updatePlayerRegistry(matchId);
+
+  /*
+  ========================================
+  COMMENTARY ENGINE
   ========================================
   */
 
@@ -86,4 +163,12 @@ export function processMatchIntelligence(
     branchId,
     ballEvent
   );
+
+  /*
+  ========================================
+  REPLAY DIRECTOR ENGINE
+  ========================================
+  */
+
+  generateReplaySequence(matchId);
 }

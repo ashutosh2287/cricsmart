@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { getEventStream } from "@/services/matchEngine";
 import { scrubToPosition } from "@/services/replayController";
 
@@ -12,13 +12,23 @@ export default function MatchTimelineSlider({ matchId }: Props) {
 
   const maxIndex = useMemo(() => {
 
-  const events = getEventStream(matchId) ?? [];
+    const events = getEventStream(matchId) ?? [];
 
-  return events.length > 0 ? events.length - 1 : 0;
+    return events.length > 0 ? events.length - 1 : 0;
 
-}, [matchId]);
+  }, [matchId]);
 
-  const [position, setPosition] = useState(maxIndex);
+  const [position, setPosition] = useState(0);
+
+  /*
+  ========================================
+  Sync slider with latest ball
+  ========================================
+  */
+
+  useEffect(() => {
+    setPosition(maxIndex);
+  }, [maxIndex]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
 
@@ -27,6 +37,7 @@ export default function MatchTimelineSlider({ matchId }: Props) {
     setPosition(index);
 
     scrubToPosition(matchId, index);
+
   }
 
   if (maxIndex <= 0) return null;

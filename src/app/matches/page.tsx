@@ -62,48 +62,67 @@ export default function MatchPage() {
       : sortedMatches.filter(match => match.status === filter);
 
   return (
-    <main className="p-10 space-y-6">
+  <main className="max-w-6xl mx-auto px-6 py-10 space-y-8 text-white">
 
-      <h1 className="text-3xl font-bold">Matches</h1>
+    {/* PAGE HEADER */}
 
-      {/* FILTER BUTTONS */}
-      <div className="flex gap-4 relative bg-gray-200 p-1 rounded-full w-fit">
-        {(["All", "Live", "Upcoming", "Completed"] as const).map(tab => {
+    <div className="flex items-center justify-between">
 
-          const getActiveColor = () => {
-            if (tab === "Live") return "bg-red-500 text-white";
-            if (tab === "Upcoming") return "bg-blue-500 text-white";
-            if (tab === "Completed") return "bg-gray-500 text-white";
-            return "bg-black text-white";
-          };
+      <h1 className="text-3xl font-bold tracking-wide">
+        Matches
+      </h1>
 
-          return (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`
-                relative z-10 px-5 py-2 rounded-full transition-all duration-300
-                ${
-                  filter === tab
-                    ? `${getActiveColor()} scale-105 shadow-md`
-                    : "text-black hover:scale-105"
-                }
-              `}
-            >
-              {tab}
-            </button>
-          );
-        })}
-      </div>
+    </div>
 
-      {/* MATCH LIST */}
+    {/* FILTER BUTTONS */}
+
+    <div className="flex gap-4 relative bg-gray-200 p-1 rounded-full w-fit">
+
+      {(["All", "Live", "Upcoming", "Completed"] as const).map(tab => {
+
+        const getActiveColor = () => {
+          if (tab === "Live") return "bg-red-500 text-white";
+          if (tab === "Upcoming") return "bg-blue-500 text-white";
+          if (tab === "Completed") return "bg-gray-500 text-white";
+          return "bg-black text-white";
+        };
+
+        return (
+          <button
+            key={tab}
+            onClick={() => setFilter(tab)}
+            className={`
+              relative z-10 px-5 py-2 rounded-full transition-all duration-300
+              ${
+                filter === tab
+                  ? `${getActiveColor()} scale-105 shadow-lg`
+                  : "text-black hover:scale-105"
+              }
+            `}
+          >
+            {tab}
+          </button>
+        );
+
+      })}
+
+    </div>
+
+    {/* MATCH CARDS */}
+
+    <div className="space-y-6">
+
       {filteredMatches.map(match => (
+
         <MatchCard
           key={match.slug}
           slug={match.slug}
         />
+
       ))}
 
-    </main>
-  );
+    </div>
+
+  </main>
+);
 }

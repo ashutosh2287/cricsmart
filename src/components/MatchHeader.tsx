@@ -20,33 +20,55 @@ export default function MatchHeader({
 
   return (
 
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-lg">
 
       <div className="flex justify-between items-center">
 
-        <div>
-          <h1 className="text-2xl font-bold">
+        {/* LEFT SIDE — MATCH INFO */}
+
+        <div className="space-y-1">
+
+          <h1 className="text-2xl font-bold flex items-center gap-3">
+
             {team1} vs {team2}
+
+            {/* LIVE INDICATOR */}
+
+            <span className="flex items-center gap-2 text-red-500 text-sm font-semibold">
+
+              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+
+              LIVE
+
+            </span>
+
           </h1>
 
-          <div className="text-sm text-gray-400 mt-1">
-            Live Match
+          <div className="text-sm text-gray-400">
+            Real-Time Match Analytics
           </div>
+
         </div>
 
-        <div className="text-right">
+        {/* RIGHT SIDE — SCORE */}
 
-          <div className="text-3xl font-bold text-green-400">
+        <div className="text-right space-y-1">
+
+          <div className="text-4xl font-bold text-green-400 tracking-wide">
             {runs}/{wickets}
           </div>
 
-          <div className="text-gray-400">
-            ({over}.{ball} overs)
+          <div className="text-sm text-gray-400">
+            Overs {over}.{ball}
           </div>
 
         </div>
 
       </div>
+
+      {/* SUBTLE DIVIDER */}
+
+      <div className="mt-4 border-b border-zinc-800"></div>
 
     </div>
 

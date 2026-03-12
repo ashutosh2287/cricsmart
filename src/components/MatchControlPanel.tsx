@@ -6,6 +6,7 @@ import MomentumMeter from "./MomentumMeter";
 import HighlightTimeline from "./HighlightTimeline";
 import NarrativeTimeline from "./NarrativeTimeline";
 import PartnershipPanel from "./PartnershipPanel";
+
 type Props = {
   matchId: string;
 };
@@ -28,7 +29,7 @@ export default function MatchControlPanel({ matchId }: Props) {
 
       {/* MATCH INSIGHTS */}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <MatchInsightPanel matchId={matchId} />
 

@@ -1,9 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMatchState, subscribeMatch } from "@/services/matchEngine";
-import { computeWinProbability } from "@/services/winProbabilityEngine";
-import { detectTurningPoints, TurningPoint } from "@/services/analytics/turningPointEngine";
+import { subscribeMatch } from "@/services/matchEngine";
+
+import {
+  getProbabilityTimeline,
+  ProbabilityPoint
+} from "@/services/winProbabilityTimeline";
+
+import {
+  detectTurningPoints,
+  TurningPoint
+} from "@/services/analytics/turningPointEngine";
+
 import { getEventStream } from "@/services/matchEngine";
 
 import {
@@ -21,9 +30,12 @@ type Props = {
   matchId: string;
 };
 
+
+
 type ChartPoint = {
-  ball: number;
-  probability: number;
+  over: number;
+  batting: number;
+  bowling: number;
 };
 
 export default function WinProbabilityChart({ matchId }: Props) {
@@ -35,45 +47,30 @@ export default function WinProbabilityChart({ matchId }: Props) {
 
     const update = () => {
 
-      const state = getMatchState(matchId);
-      if (!state) return;
+      const timeline: ProbabilityPoint[] =
+        getProbabilityTimeline(matchId);
 
-      const prob = computeWinProbability(state);
-      if (!prob) return;
+      if (!timeline?.length) return;
 
-      const innings = state.innings[state.currentInningsIndex];
+      const chartData: ChartPoint[] = timeline.map((p: ProbabilityPoint) => ({
+  over: p.over,
+  batting: p.battingProbability,
+  bowling: p.bowlingProbability
+}));
 
-      const ball =
-        innings.over * 6 + innings.ball;
+      setData(chartData);
 
-      const probability =
-        prob.battingWinProbability;
+      // turning points
+      const events = getEventStream(matchId);
+      const points = detectTurningPoints(events);
 
-      setData((prev) => {
+      setMarkers(points);
 
-        const last = prev[prev.length - 1];
-
-        if (last && last.ball === ball) {
-          return prev;
-        }
-
-        return [
-          ...prev,
-          {
-            ball,
-            probability
-          }
-        ];
-
-      });
-
-     const events = getEventStream(matchId);
-const points = detectTurningPoints(events);
-
-setMarkers(points);
     };
 
     const unsubscribe = subscribeMatch(matchId, update);
+
+    update();
 
     return () => {
       unsubscribe();
@@ -82,15 +79,32 @@ setMarkers(points);
   }, [matchId]);
 
   if (!data.length) return null;
+  const latest = data[data.length - 1];
 
   return (
-    <div className="bg-black text-white p-4 rounded-xl">
+    <div className="bg-gray-900 border border-gray-800 text-white p-4 rounded-xl shadow-lg">
 
-      <h3 className="font-bold mb-2">
-        Win Probability
-      </h3>
+      <div className="flex justify-between items-center mb-3">
 
-      <ResponsiveContainer width="100%" height={200}>
+  <h3 className="font-semibold text-gray-300 uppercase text-sm">
+    Win Probability
+  </h3>
+
+  {latest && (
+    <div className="text-xs text-gray-400">
+      <span className="text-green-400 font-semibold">
+        {latest.batting.toFixed(1)}%
+      </span>
+      {" / "}
+      <span className="text-red-400 font-semibold">
+        {latest.bowling.toFixed(1)}%
+      </span>
+    </div>
+  )}
+
+</div>
+
+      <ResponsiveContainer width="100%" height={240}>
 
         <LineChart data={data}>
 
@@ -100,9 +114,9 @@ setMarkers(points);
           />
 
           <XAxis
-            dataKey="ball"
-            stroke="#aaa"
-          />
+  dataKey="over"
+  stroke="#aaa"
+/>
 
           <YAxis
             domain={[0, 100]}
@@ -119,26 +133,38 @@ setMarkers(points);
           />
 
           <Line
-            type="monotone"
-            dataKey="probability"
-            stroke="#4ade80"
-            strokeWidth={2}
-            dot={false}
-          />
+  type="monotone"
+  dataKey="batting"
+  stroke="#22c55e"
+  strokeWidth={3}
+  dot={false}
+  isAnimationActive
+  animationDuration={400}
+/>
+
+<Line
+  type="monotone"
+  dataKey="bowling"
+  stroke="#ef4444"
+  strokeWidth={3}
+  dot={false}
+  isAnimationActive
+  animationDuration={400}
+/>
 
           {/* Turning Point Markers */}
 
           {markers.map((m, i) => {
 
-            const point = data.find(d => d.ball === m.ballIndex);
+            const point = data[Math.min(m.ballIndex, data.length - 1)];
 
             if (!point) return null;
 
             return (
               <ReferenceDot
                 key={i}
-                x={point.ball}
-                y={point.probability}
+               x={point.over}
+                y={point.batting}
                 r={6}
                 fill="#ef4444"
               />

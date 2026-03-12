@@ -13,27 +13,58 @@ export function routeAdminCommand(command: DomainCommand) {
     // ========================
 
     case "SCORE_RUN":
-      engineEvent = { type: "RUN", runs: command.runs };
+      engineEvent = {
+        type: "RUN",
+        runs: command.runs,
+        batsman: command.batsman,
+        nonStriker: command.nonStriker,
+        bowler: command.bowler
+      };
       break;
 
     case "SCORE_FOUR":
-      engineEvent = { type: "FOUR" };
+      engineEvent = {
+        type: "FOUR",
+        batsman: command.batsman,
+        nonStriker: command.nonStriker,
+        bowler: command.bowler
+      };
       break;
 
     case "SCORE_SIX":
-      engineEvent = { type: "SIX" };
+      engineEvent = {
+        type: "SIX",
+        batsman: command.batsman,
+        nonStriker: command.nonStriker,
+        bowler: command.bowler
+      };
       break;
 
     case "SCORE_WICKET":
-      engineEvent = { type: "WICKET" };
+      engineEvent = {
+        type: "WICKET",
+        batsman: command.batsman,
+        nonStriker: command.nonStriker,
+        bowler: command.bowler
+      };
       break;
 
     case "SCORE_WIDE":
-      engineEvent = { type: "WD" };
+      engineEvent = {
+        type: "WD",
+        batsman: command.batsman,
+        nonStriker: command.nonStriker,
+        bowler: command.bowler
+      };
       break;
 
     case "SCORE_NOBALL":
-      engineEvent = { type: "NB" };
+      engineEvent = {
+        type: "NB",
+        batsman: command.batsman,
+        nonStriker: command.nonStriker,
+        bowler: command.bowler
+      };
       break;
 
     // ========================

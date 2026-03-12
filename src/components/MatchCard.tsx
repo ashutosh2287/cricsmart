@@ -118,75 +118,103 @@ export default function MatchCard({ slug }: Props) {
   const status = statusConfig[match.status];
 
   return (
-    <div
-      ref={cardRef}
-      onClick={() => router.push(`/match/${match.slug}`)}
-      className={`
-        border p-4 rounded-xl shadow relative overflow-hidden
-        transition-all cursor-pointer hover:scale-[1.02]
-        ${status.cinematic}
-        ${energy ? "energy-sweep" : ""}
-      `}
-    >
+  <div
+    ref={cardRef}
+    onClick={() => router.push(`/match/${match.slug}`)}
+    className={`
+      border p-5 rounded-xl shadow relative overflow-hidden
+      transition-all duration-200 cursor-pointer hover:scale-[1.02]
+      ${status.cinematic}
+      ${energy ? "energy-sweep" : ""}
+    `}
+  >
 
-      {/* HEADER */}
-      <h2 className="font-bold flex items-center gap-2">
+    {/* HEADER */}
+
+    <div className="flex justify-between items-center">
+
+      <h2 className="font-semibold text-lg flex items-center gap-2">
         {match.team1} vs {match.team2}
+
         {match.status === "Live" && (
           <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"/>
         )}
       </h2>
 
-      {/* LIVE MATCH UI */}
-      {match.status === "Live" && runs !== undefined && wickets !== undefined && (
-
-        <>
-          <div className="relative mt-2">
-
-            <p className="text-lg font-semibold">
-              Score:
-              <span ref={scoreRef} className="ml-1 inline-block">
-                {runs}/{wickets}
-              </span>
-            </p>
-
-            {delta && (
-              <span
-                ref={deltaRef}
-                className="absolute left-28 top-0 text-green-500 font-bold pointer-events-none"
-              />
-            )}
-
-          </div>
-
-          {overs && (
-            <p className="text-sm mt-1">Overs: {overs}</p>
-          )}
-
-          {runRate && (
-            <p className="text-sm">Run Rate: {runRate}</p>
-          )}
-        </>
-      )}
-
-      {/* UPCOMING UI */}
-      {match.status === "Upcoming" && (
-        <p className="text-sm mt-2 text-blue-400">
-          Match not started
-        </p>
-      )}
-
-      {/* COMPLETED UI */}
-      {match.status === "Completed" && (
-        <p className="text-sm mt-2 text-gray-400">
-          Match Finished
-        </p>
-      )}
-
-      <span className={`mt-2 inline-block px-2 py-1 rounded-full text-xs font-semibold ${status.text}`}>
+      <span
+        className={`px-2 py-1 rounded-full text-xs font-semibold ${status.text}`}
+      >
         {match.status}
       </span>
 
     </div>
-  );
+
+    {/* LIVE MATCH UI */}
+
+    {match.status === "Live" &&
+      runs !== undefined &&
+      wickets !== undefined && (
+
+      <div className="mt-3 space-y-1">
+
+        <div className="relative flex items-center gap-3">
+
+          <span className="text-gray-400 text-sm">
+            Score
+          </span>
+
+          <span
+            ref={scoreRef}
+            className="text-xl font-bold"
+          >
+            {runs}/{wickets}
+          </span>
+
+          {delta && (
+            <span
+              ref={deltaRef}
+              className="text-green-500 font-bold"
+            />
+          )}
+
+        </div>
+
+        {overs && (
+          <p className="text-sm text-gray-400">
+            Overs: {overs}
+          </p>
+        )}
+
+        {runRate && (
+          <p className="text-sm text-gray-400">
+            Run Rate: {runRate}
+          </p>
+        )}
+
+      </div>
+
+    )}
+
+    {/* UPCOMING UI */}
+
+    {match.status === "Upcoming" && (
+
+      <p className="text-sm mt-3 text-blue-400">
+        Match not started
+      </p>
+
+    )}
+
+    {/* COMPLETED UI */}
+
+    {match.status === "Completed" && (
+
+      <p className="text-sm mt-3 text-gray-400">
+        Match finished
+      </p>
+
+    )}
+
+  </div>
+);
 }

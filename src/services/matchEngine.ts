@@ -1,7 +1,6 @@
 import { BallEvent } from "@/types/ballEvent";
 import { pushToTimeline } from "./broadcastTimeline";
 import { eventStore } from "@/persistence/eventStore";
-import { detectTurningPoint } from "./turningPointEngine";
 import { getMatchConfig } from "./matchFormat";
 import { advanceClock } from "./timeEngine";
 import { processMatchIntelligence } from "./matchIntelligenceEngine";
@@ -13,15 +12,75 @@ export type CorrectionEvent =
       targetEventId: string;
       replacement: Partial<BallEvent>;
     };
+    type PlayerFields = {
+  batsman: string
+  nonStriker: string
+  bowler: string
+}
 export type ScoringEvent =
-  | { type: "RUN"; runs?: number }
-  | { type: "FOUR" }
-  | { type: "SIX" }
-  | { type: "WICKET" }
-  | { type: "WD" }
-  | { type: "NB" };
+  | ({ type: "RUN"; runs?: number } & PlayerFields)
+  | ({ type: "FOUR" } & PlayerFields)
+  | ({ type: "SIX" } & PlayerFields)
+  | ({ type: "WICKET" } & PlayerFields)
+  | ({ type: "WD" } & PlayerFields)
+  | ({ type: "NB" } & PlayerFields);
 
-  export type EngineBallEvent = ScoringEvent | CorrectionEvent;
+  export type EngineBallEvent =
+  | {
+      type: "RUN";
+      runs: number;
+
+      batsman: string;
+      nonStriker: string;
+      bowler: string;
+    }
+  | {
+      type: "FOUR";
+
+      batsman: string;
+      nonStriker: string;
+      bowler: string;
+    }
+  | {
+      type: "SIX";
+
+      batsman: string;
+      nonStriker: string;
+      bowler: string;
+    }
+  | {
+      type: "WICKET";
+
+      batsman: string;
+      nonStriker: string;
+      bowler: string;
+    }
+  | {
+      type: "WD";
+
+      batsman: string;
+      nonStriker: string;
+      bowler: string;
+    }
+  | {
+      type: "NB";
+
+      batsman: string;
+      nonStriker: string;
+      bowler: string;
+    }
+  | {
+      type: "CORRECTION_UNDO_LAST";
+    }
+  | {
+      type: "CORRECTION_DELETE";
+      targetEventId: string;
+    }
+  | {
+      type: "CORRECTION_REPLACE";
+      targetEventId: string;
+      replacement: EngineBallEvent;
+    };
 
 /* ========================================================
    TYPES
@@ -144,27 +203,35 @@ function reduce(
   const innings = next.innings[next.currentInningsIndex];
 
   const ballEvent: BallEvent = {
-    id: crypto.randomUUID(),
-    slug: state.matchId,
-    over: innings.over + innings.ball / 10,
-    runs:
-      event.type === "FOUR"
-        ? 4
-        : event.type === "SIX"
-        ? 6
-        : event.type === "RUN"
-        ? event.runs ?? 1
-        : event.type === "WD" || event.type === "NB"
-        ? 1
-        : 0,
-    wicket: event.type === "WICKET",
-    extra: event.type === "WD" || event.type === "NB",
-    type: event.type,
-    timestamp: Date.now(),
-    isLegalDelivery: event.type !== "WD" && event.type !== "NB",
-    valid: true,
-    branchId: state.activeBranchId
-  };
+  id: crypto.randomUUID(),
+  slug: state.matchId,
+  over: innings.over + innings.ball / 10,
+
+  runs:
+    event.type === "FOUR"
+      ? 4
+      : event.type === "SIX"
+      ? 6
+      : event.type === "RUN"
+      ? event.runs ?? 1
+      : event.type === "WD" || event.type === "NB"
+      ? 1
+      : 0,
+
+  wicket: event.type === "WICKET",
+  extra: event.type === "WD" || event.type === "NB",
+  type: event.type,
+
+  timestamp: Date.now(),
+  isLegalDelivery: event.type !== "WD" && event.type !== "NB",
+
+  valid: true,
+  branchId: state.activeBranchId,
+
+  batsman: event.batsman ?? "",
+  nonStriker: event.nonStriker ?? "",
+  bowler: event.bowler ?? ""
+};
 
   if (!innings.overs[innings.over])
     innings.overs[innings.over] = [];
@@ -318,10 +385,14 @@ export function reduceStateOnly(
   state: MatchState,
   event: BallEvent
 ): MatchState {
+  
   const engineEvent = {
-    type: event.type,
-    runs: event.runs
-  } as ScoringEvent;
+  type: event.type,
+  runs: event.runs,
+  batsman: event.batsman,
+  nonStriker: event.nonStriker,
+  bowler: event.bowler
+} as ScoringEvent;
 
   const { next } = reduce(state, engineEvent);
   return next;

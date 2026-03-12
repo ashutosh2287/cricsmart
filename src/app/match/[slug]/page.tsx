@@ -1,4 +1,5 @@
 "use client";
+
 import AdminScoringPanel from "@/components/admin/AdminScoringPanel";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -25,6 +26,9 @@ import MatchTimelineSlider from "@/components/MatchTimelineSlider";
 import BroadcastControlDashboard from "@/components/BroadcastControlDashboard";
 import MatchControlPanel from "@/components/MatchControlPanel";
 import MatchHeader from "@/components/MatchHeader";
+import MomentumHeatmap from "@/components/MomentumHeatmap";
+import StrategyDashboard from "@/components/StrategyDashboard";
+import MatchPhaseTimeline from "@/components/MatchPhaseTimeline";
 
 export default function MatchDetailPage() {
 
@@ -45,7 +49,7 @@ export default function MatchDetailPage() {
 
   /*
   =================================================
-  INIT TACTICAL OVERLAY SYSTEM
+  INIT TACTICAL + COMMENTARY SYSTEM
   =================================================
   */
 
@@ -62,22 +66,25 @@ export default function MatchDetailPage() {
 
   useEffect(() => {
 
-    if (!matchId) return;
+  if (!matchId) return;
 
-    const id = matchId;
+  const id = matchId;
 
-    async function loadMatch() {
-      const m = await getMatchBySlug(id);
-      setMatch(m);
+  async function loadMatch() {
 
-      if (m?.engineState) {
-        hydrateMatchState(id, m.engineState);
-      }
+    const m = await getMatchBySlug(id);
+
+    setMatch(m);
+
+    if (m?.engineState) {
+      hydrateMatchState(id, m.engineState);
     }
 
-    loadMatch();
+  }
 
-  }, [matchId]);
+  loadMatch();
+
+}, [matchId]);
 
   /*
   =================================================
@@ -89,13 +96,11 @@ export default function MatchDetailPage() {
 
     if (!matchId) return;
 
-    const id = matchId;
-
-    connectRealtime(id);
+    connectRealtime(matchId!);
 
     return () => {
-      disconnectRealtime();
-    };
+  disconnectRealtime();
+};
 
   }, [matchId]);
 
@@ -109,9 +114,7 @@ export default function MatchDetailPage() {
 
     enableBroadcast();
 
-    return () => {
-      disableBroadcast();
-    };
+    return () => disableBroadcast();
 
   }, []);
 
@@ -123,19 +126,19 @@ export default function MatchDetailPage() {
 
   useEffect(() => {
 
-    if (!matchId) return;
+  if (!matchId) return;
 
-    const id = matchId;
+  const id = matchId;
 
-    const unsubscribe = subscribeMatch(id, () => {
-      setEngineState(getMatchState(id));
-    });
+  const unsubscribe = subscribeMatch(id, () => {
+    setEngineState(getMatchState(id));
+  });
 
-    return () => {
-      unsubscribe();
-    };
+  return () => {
+    unsubscribe();
+  };
 
-  }, [matchId]);
+}, [matchId]);
 
   /*
   =================================================
@@ -155,105 +158,183 @@ export default function MatchDetailPage() {
   }
 
   const innings =
-  currentEngineState?.innings[
-    currentEngineState.currentInningsIndex
-  ];
+    currentEngineState?.innings?.[
+      currentEngineState.currentInningsIndex ?? 0
+    ];
 
-  
   return (
-  <div className="p-6 space-y-8">
 
-    {/* MATCH HEADER */}
+     <div className="max-w-7xl mx-auto px-6 py-6 grid gap-8 lg:grid-cols-[2fr_1fr] items-start">
 
-   {innings && (
-  <MatchHeader
-    team1={match.team1}
-    team2={match.team2}
-    runs={innings.runs}
-    wickets={innings.wickets}
-    over={innings.over}
-    ball={innings.ball}
-  />
+      {/* LEFT SIDE — MAIN MATCH CONTENT */}
+
+      <div className="lg:col-span-2 space-y-8 max-w-[1100px]">
+
+        {/* MATCH HEADER */}
+
+       {innings && (
+  <>
+    <MatchHeader
+      team1={match.team1}
+      team2={match.team2}
+      runs={innings.runs}
+      wickets={innings.wickets}
+      over={innings.over}
+      ball={innings.ball}
+    />
+
+    <div className="border-b border-gray-800"></div>
+  </>
 )}
 
+        {/* MATCH ANALYTICS */}
 
-    {/* MAIN ANALYTICS DASHBOARD */}
+<h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-800 pb-2">
+  Match Analytics
+</h2>
 
-    <MatchControlPanel matchId={matchId} />
+<div className="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg">
+  <MatchControlPanel matchId={matchId} />
+</div>
 
+        {/* MATCH STORY */}
 
-    {/* MATCH STORY */}
+        <MatchStory matchId={matchId} />
 
-    <MatchStory matchId={matchId} />
+        {/* HIGHLIGHT TIMELINE */}
 
+        <HighlightTimeline matchId={matchId} />
 
-    {/* HIGHLIGHT TIMELINE */}
+        {/* TIMELINE SCRUBBER */}
 
-    <HighlightTimeline matchId={matchId} />
+        <MatchTimelineSlider matchId={matchId} />
 
+        {/* MATCH TABS */}
 
-    {/* TIMELINE SCRUBBER */}
+        <TabsArea match={match} />
 
-    <MatchTimelineSlider matchId={matchId} />
-
-
-    {/* LIVE MATCH TABS */}
-
-    <TabsArea match={match} />
-
-
-    {/* OVERLAYS */}
-
-    <TacticalOverlay />
-
-    {showReplay && (
-      <ReplayOverlay
-        matchId={matchId}
-        onClose={() => setShowReplay(false)}
-      />
-    )}
-
-     {/* DEV BROADCAST TOOLS */}
-    {process.env.NODE_ENV === "development" && (
-      <div className="mt-12 border-t border-gray-700 pt-6 space-y-4">
-        <BroadcastDirectorPanel />
-        <BroadcastControlDashboard />
       </div>
-    )}
 
+      {/* RIGHT SIDE — INTELLIGENCE PANELS */}
+
+<div className="space-y-8 sticky top-6">
+
+  <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg">
+    <h2 className="text-sm font-semibold text-gray-400 uppercase mb-3">
+      Strategy Dashboard
+    </h2>
+
+    <StrategyDashboard matchId={matchId} />
   </div>
-);
+
+  <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg">
+    <h2 className="text-sm font-semibold text-gray-400 uppercase mb-3">
+      Momentum Map
+    </h2>
+
+    <MomentumHeatmap matchId={matchId} />
+    
+    <MatchPhaseTimeline matchId={matchId} />
+  </div>
+
+</div>
+
+      {/* GLOBAL OVERLAYS */}
+
+      <TacticalOverlay />
+
+      {showReplay && (
+        <ReplayOverlay
+          matchId={matchId}
+          onClose={() => setShowReplay(false)}
+        />
+      )}
+
+      {/* DEV BROADCAST TOOLS */}
+
+      {process.env.NODE_ENV === "development" && (
+        <div className="mt-12 border-t border-gray-700 pt-6 space-y-4 lg:col-span-3">
+          <BroadcastDirectorPanel />
+          <BroadcastControlDashboard />
+        </div>
+      )}
+
+    </div>
+  );
 }
+
 function TabsArea({ match }: { match: Match }) {
 
   const [activeTab, setActiveTab] = useState("live");
 
-  
-
   return (
     <>
-      <div className="flex gap-6 border-b pb-2">
-        <button onClick={() => setActiveTab("info")}>Info</button>
-        <button onClick={() => setActiveTab("live")}>Live</button>
-        <button onClick={() => setActiveTab("scorecard")}>Scorecard</button>
-        <button onClick={() => setActiveTab("overs")}>Overs</button>
-        <button onClick={() => setActiveTab("highlights")}>Highlights</button>
-        <button onClick={() => setActiveTab("admin")}>Admin</button>
+      <div className="flex gap-6 border-b border-gray-700 pb-3 text-sm font-medium">
+
+        <button
+  className="hover:text-white text-gray-400 transition-colors"
+  onClick={() => setActiveTab("info")}
+>
+  Info
+</button>
+
+        <button
+          className="hover:text-white text-gray-400 transition-colors"
+          onClick={() => setActiveTab("live")}
+        >
+          Live
+        </button>
+
+        <button
+          className="hover:text-white text-gray-400 transition-colors"
+          onClick={() => setActiveTab("scorecard")}
+        >
+          Scorecard
+        </button>
+
+        <button
+          className="hover:text-white text-gray-400 transition-colors"
+          onClick={() => setActiveTab("overs")}
+        >
+          Overs
+        </button>
+
+        <button
+          className="hover:text-white text-gray-400 transition-colors"
+          onClick={() => setActiveTab("highlights")}
+        >
+          Highlights
+        </button>
+
+        <button
+          className="hover:text-white text-gray-400 transition-colors"
+          onClick={() => setActiveTab("admin")}
+        >
+          Admin
+        </button>
+
       </div>
 
       {activeTab === "info" && <div>Match Info Coming Soon...</div>}
+
       {activeTab === "live" && <BroadcastLiveView match={match} />}
-      {activeTab === "scorecard" && <div>Scorecard View Coming Soon...</div>}
 
-      <div className={activeTab === "overs" ? "block" : "hidden"}>
+      {activeTab === "scorecard" && (
+        <div>Scorecard View Coming Soon...</div>
+      )}
+
+      {activeTab === "overs" && (
         <OversTimeline slug={match.slug} />
-      </div>
+      )}
 
-      {activeTab === "highlights" && <div>Highlights Coming Soon...</div>}
+      {activeTab === "highlights" && (
+        <div>Highlights Coming Soon...</div>
+      )}
 
       {activeTab === "admin" && (
         <AdminScoringPanel matchId={match.slug} />
       )}
+
     </>
   );
 }

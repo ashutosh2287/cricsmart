@@ -9,10 +9,11 @@ export { getNarrativeState } from "./narrativeStore";
 import {
   resetNarrative as resetNarrativeInternal
 } from "./narrativeStore";
+
 import { computeChasePressure } from "../pressureEngine";
-import { getMatchState } from "../matchEngine";
-import { getEventStream } from "../matchEngine";
+import { getMatchState, getEventStream } from "../matchEngine";
 import { computeWinProbability } from "../winProbabilityEngine";
+import { getMatchIntelligence } from "../analytics/matchIntelligenceGraphEngine";
 
 export function resetNarrative(
   matchId: string,
@@ -35,11 +36,14 @@ export function rebuildNarrativeFromStream(
       : timeline.length - 1;
 
   for (let i = 0; i <= limit; i++) {
+
     const event = timeline[i];
+
     if (!event?.valid) continue;
     if (event.branchId !== branchId) continue;
 
     processNarrativeEvent(matchId, event);
+
   }
 }
 
@@ -47,6 +51,7 @@ export function processNarrativeEvent(
   matchId: string,
   event: BallEvent
 ) {
+
   if (!event.valid) return;
 
   const branchId = event.branchId ?? "main";
@@ -61,9 +66,11 @@ export function processNarrativeEvent(
   let pressure = state.pressureScore;
   let momentum = state.momentumScore;
 
-  // ------------------------------
-  // SCORE UPDATE (DETERMINISTIC)
-  // ------------------------------
+  /*
+  ========================================
+  EVENT-DRIVEN SCORE UPDATE
+  ========================================
+  */
 
   if (event.wicket) {
     pressure += 3;
@@ -82,34 +89,35 @@ export function processNarrativeEvent(
   pressure = Math.max(0, pressure);
   momentum = Math.max(0, momentum);
 
-  // ------------------------------
-  // ARC PRIORITY SYSTEM
-  // Highest → Lowest
-  // ------------------------------
+  /*
+  ========================================
+  ARC PRIORITY SYSTEM
+  ========================================
+  */
 
   let newArc: NarrativeArc = "NORMAL";
 
-  // 1️⃣ Collapse (highest priority)
+  // Collapse
   if (pressure >= 8 && event.wicket) {
     newArc = "COLLAPSE";
   }
 
-  // 2️⃣ Climax (death over OR extreme momentum)
+  // Climax
   else if (momentum >= 8 || event.over >= 18) {
     newArc = "CLIMAX";
   }
 
-  // 3️⃣ Comeback
+  // Comeback
   else if (momentum >= 5 && pressure <= 2) {
     newArc = "COMEBACK";
   }
 
-  // 4️⃣ Momentum swing
+  // Momentum swing
   else if (momentum >= 5) {
     newArc = "MOMENTUM_SWING";
   }
 
-  // 5️⃣ Pressure build
+  // Pressure build
   else if (pressure >= 5) {
     newArc = "PRESSURE_BUILD";
   }
@@ -125,61 +133,102 @@ export function processNarrativeEvent(
   };
 
   setNarrativeState(matchId, branchId, next);
+
+  /*
+  ========================================
+  MATCH INTELLIGENCE INTEGRATION
+  ========================================
+  */
+
+  const intelligence = getMatchIntelligence(matchId);
+
+  if (intelligence) {
+
+    if (intelligence.phase === "COLLAPSE_RISK") {
+      newArc = "COLLAPSE";
+    }
+
+    if (intelligence.phase === "BATTING_DOMINANCE") {
+      newArc = "MOMENTUM_SWING";
+    }
+
+    if (intelligence.phase === "BOWLING_CONTROL") {
+      newArc = "PRESSURE_BUILD";
+    }
+
+  }
+
+  /*
+  ========================================
+  CHASE PRESSURE ANALYSIS
+  ========================================
+  */
+
   const matchState = getMatchState(matchId);
-const chase = matchState
-  ? computeChasePressure(matchState)
-  : null;
 
-if (chase) {
+  const chase = matchState
+    ? computeChasePressure(matchState)
+    : null;
 
-  // High chase pressure
-  if (chase.pressureIndex > 50) {
-    newArc = "PRESSURE_BUILD";
+  if (chase) {
+
+    if (chase.pressureIndex > 50) {
+      newArc = "PRESSURE_BUILD";
+    }
+
+    if (
+      chase.requiredRuns <= 15 &&
+      chase.ballsRemaining <= 12
+    ) {
+      newArc = "CLIMAX";
+    }
+
+    if (
+      chase.requiredRunRate < chase.currentRunRate &&
+      chase.ballsRemaining < 30
+    ) {
+      newArc = "COMEBACK";
+    }
+
   }
+
+  /*
+  ========================================
+  WIN PROBABILITY SIGNAL
+  ========================================
+  */
+
   const winProb = matchState
-  ? computeWinProbability(matchState)
-  : null;
+    ? computeWinProbability(matchState)
+    : null;
 
-if (winProb) {
+  if (winProb) {
 
-  if (winProb.battingWinProbability < 30) {
-    newArc = "COLLAPSE";
+    if (winProb.battingWinProbability < 30) {
+      newArc = "COLLAPSE";
+    }
+
+    if (winProb.battingWinProbability > 70) {
+      newArc = "COMEBACK";
+    }
+
+    if (
+      winProb.battingWinProbability > 85 ||
+      winProb.battingWinProbability < 15
+    ) {
+      newArc = "CLIMAX";
+    }
+
   }
 
-  if (winProb.battingWinProbability > 70) {
-    newArc = "COMEBACK";
-  }
-
-  if (
-    winProb.battingWinProbability > 85 ||
-    winProb.battingWinProbability < 15
-  ) {
-    newArc = "CLIMAX";
-  }
-}
-
-  // Extreme end-game
-  if (
-    chase.requiredRuns <= 15 &&
-    chase.ballsRemaining <= 12
-  ) {
-    newArc = "CLIMAX";
-  }
-
-  // Comeback detection
-  if (
-    chase.requiredRunRate < chase.currentRunRate &&
-    chase.ballsRemaining < 30
-  ) {
-    newArc = "COMEBACK";
-  }
-}
-
-  // ------------------------------
-  // ARC TRANSITION SIGNAL
-  // ------------------------------
+  /*
+  ========================================
+  ARC TRANSITION SIGNAL
+  ========================================
+  */
 
   if (previousArc !== newArc) {
+
     emitNarrativeSignal({
       type: "ARC_STARTED",
       matchId,
@@ -187,5 +236,7 @@ if (winProb) {
       arc: newArc,
       eventId: event.id
     });
+
   }
+
 }

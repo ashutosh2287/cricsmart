@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { routeAdminCommand } from "@/services/adminCommandRouter";
 
 type Props = {
@@ -8,23 +9,71 @@ type Props = {
 
 export default function AdminScoringPanel({ matchId }: Props) {
 
+  const [striker, setStriker] = useState("");
+  const [nonStriker, setNonStriker] = useState("");
+  const [bowler, setBowler] = useState("");
+
   function run(runs: number) {
     routeAdminCommand({
       type: "SCORE_RUN",
       slug: matchId,
-      runs
+      runs,
+      batsman: striker,
+      nonStriker,
+      bowler
     });
   }
 
   return (
+
     <div className="bg-gray-900 text-white p-6 rounded-lg space-y-6">
 
       <h3 className="text-xl font-bold">Admin Scoring Panel</h3>
 
+      {/* PLAYER SELECTION */}
+
+      <div className="grid grid-cols-3 gap-3">
+
+        <select
+  aria-label="Select striker"
+  value={striker}
+  onChange={(e) => setStriker(e.target.value)}
+  className="bg-gray-800 border border-gray-700 p-2 rounded"
+>
+          <option value="">Select Striker</option>
+          <option value="Virat Kohli">Virat Kohli</option>
+          <option value="Rohit Sharma">Rohit Sharma</option>
+        </select>
+
+        <select
+          aria-label="Select non-striker"
+          value={nonStriker}
+          onChange={(e) => setNonStriker(e.target.value)}
+          className="bg-gray-800 border border-gray-700 p-2 rounded"
+        >
+          <option value="">Select Non-Striker</option>
+          <option value="Virat Kohli">Virat Kohli</option>
+          <option value="Rohit Sharma">Rohit Sharma</option>
+        </select>
+
+        <select
+          aria-label="Select bowler"
+          value={bowler}
+          onChange={(e) => setBowler(e.target.value)}
+          className="bg-gray-800 border border-gray-700 p-2 rounded"
+        >
+          <option value="">Select Bowler</option>
+          <option value="Pat Cummins">Pat Cummins</option>
+          <option value="Mitchell Starc">Mitchell Starc</option>
+        </select>
+
+      </div>
+
       {/* RUN BUTTONS */}
 
       <div className="flex gap-3 flex-wrap">
-        {[0,1,2,3].map(r => (
+
+        {[0, 1, 2, 3].map(r => (
           <button
             key={r}
             onClick={() => run(r)}
@@ -35,18 +84,35 @@ export default function AdminScoringPanel({ matchId }: Props) {
         ))}
 
         <button
-          onClick={() => routeAdminCommand({ type: "SCORE_FOUR", slug: matchId })}
+          onClick={() =>
+            routeAdminCommand({
+              type: "SCORE_FOUR",
+              slug: matchId,
+              batsman: striker,
+              nonStriker,
+              bowler
+            })
+          }
           className="bg-green-600 px-4 py-2 rounded"
         >
           4
         </button>
 
         <button
-          onClick={() => routeAdminCommand({ type: "SCORE_SIX", slug: matchId })}
+          onClick={() =>
+            routeAdminCommand({
+              type: "SCORE_SIX",
+              slug: matchId,
+              batsman: striker,
+              nonStriker,
+              bowler
+            })
+          }
           className="bg-purple-600 px-4 py-2 rounded"
         >
           6
         </button>
+
       </div>
 
       {/* WICKET / EXTRAS */}
@@ -54,21 +120,45 @@ export default function AdminScoringPanel({ matchId }: Props) {
       <div className="flex gap-3 flex-wrap">
 
         <button
-          onClick={() => routeAdminCommand({ type: "SCORE_WICKET", slug: matchId })}
+          onClick={() =>
+            routeAdminCommand({
+              type: "SCORE_WICKET",
+              slug: matchId,
+              batsman: striker,
+              nonStriker,
+              bowler
+            })
+          }
           className="bg-red-600 px-4 py-2 rounded"
         >
           Wicket
         </button>
 
         <button
-          onClick={() => routeAdminCommand({ type: "SCORE_WIDE", slug: matchId })}
+          onClick={() =>
+            routeAdminCommand({
+              type: "SCORE_WIDE",
+              slug: matchId,
+              batsman: striker,
+              nonStriker,
+              bowler
+            })
+          }
           className="bg-yellow-600 px-4 py-2 rounded"
         >
           Wide
         </button>
 
         <button
-          onClick={() => routeAdminCommand({ type: "SCORE_NOBALL", slug: matchId })}
+          onClick={() =>
+            routeAdminCommand({
+              type: "SCORE_NOBALL",
+              slug: matchId,
+              batsman: striker,
+              nonStriker,
+              bowler
+            })
+          }
           className="bg-orange-600 px-4 py-2 rounded"
         >
           No Ball
@@ -77,5 +167,7 @@ export default function AdminScoringPanel({ matchId }: Props) {
       </div>
 
     </div>
+
   );
+
 }

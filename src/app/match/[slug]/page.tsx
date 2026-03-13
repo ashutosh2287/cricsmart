@@ -29,6 +29,8 @@ import MatchHeader from "@/components/MatchHeader";
 import MomentumHeatmap from "@/components/MomentumHeatmap";
 import StrategyDashboard from "@/components/StrategyDashboard";
 import MatchPhaseTimeline from "@/components/MatchPhaseTimeline";
+import PageMotion from "@/components/ui/PageMotion";
+import MatchInsightsPanel from "@/components/analytics/MatchInsightsPanel";
 
 export default function MatchDetailPage() {
 
@@ -164,6 +166,10 @@ export default function MatchDetailPage() {
 
   return (
 
+    <PageMotion>
+
+      <main className=" space-y-8">
+
      <div className="max-w-7xl mx-auto px-6 py-6 grid gap-8 lg:grid-cols-[2fr_1fr] items-start">
 
       {/* LEFT SIDE — MAIN MATCH CONTENT */}
@@ -183,7 +189,7 @@ export default function MatchDetailPage() {
       ball={innings.ball}
     />
 
-    <div className="border-b border-gray-800"></div>
+    <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent"/>
   </>
 )}
 
@@ -196,6 +202,8 @@ export default function MatchDetailPage() {
 <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg">
   <MatchControlPanel matchId={matchId} />
 </div>
+
+<MatchInsightsPanel matchId={matchId} />
 
         {/* MATCH STORY */}
 
@@ -260,8 +268,13 @@ export default function MatchDetailPage() {
       )}
 
     </div>
+    </main>
+    </PageMotion>
   );
+  
 }
+
+
 
 function TabsArea({ match }: { match: Match }) {
 
@@ -272,42 +285,66 @@ function TabsArea({ match }: { match: Match }) {
       <div className="flex gap-6 border-b border-gray-700 pb-3 text-sm font-medium">
 
         <button
-  className="hover:text-white text-gray-400 transition-colors"
+  className={`transition-colors ${
+  activeTab === "live"
+    ? "text-white border-b-2 border-blue-500 pb-2"
+    : "text-gray-400 hover:text-white"
+}`}
   onClick={() => setActiveTab("info")}
 >
   Info
 </button>
 
         <button
-          className="hover:text-white text-gray-400 transition-colors"
+          className={`transition-colors ${
+            activeTab === "live"
+              ? "text-white border-b-2 border-blue-500 pb-2"
+              : "text-gray-400 hover:text-white"
+          }`}
           onClick={() => setActiveTab("live")}
         >
           Live
         </button>
 
         <button
-          className="hover:text-white text-gray-400 transition-colors"
+          className={`transition-colors ${
+            activeTab === "scorecard"
+              ? "text-white border-b-2 border-blue-500 pb-2"
+              : "text-gray-400 hover:text-white"
+          }`}
           onClick={() => setActiveTab("scorecard")}
         >
           Scorecard
         </button>
 
         <button
-          className="hover:text-white text-gray-400 transition-colors"
+          className={`transition-colors ${
+            activeTab === "overs"
+              ? "text-white border-b-2 border-blue-500 pb-2"
+              : "text-gray-400 hover:text-white"
+          }`}
           onClick={() => setActiveTab("overs")}
         >
           Overs
         </button>
 
         <button
-          className="hover:text-white text-gray-400 transition-colors"
+          className={`transition-colors ${
+            activeTab === "highlights"
+              ? "text-white border-b-2 border-blue-500 pb-2"
+              : "text-gray-400 hover:text-white"
+          }`}
           onClick={() => setActiveTab("highlights")}
         >
           Highlights
         </button>
 
         <button
-          className="hover:text-white text-gray-400 transition-colors"
+          className={`transition-colors ${
+            activeTab === "admin"
+              ? "text-white border-b-2 border-blue-500 pb-2"
+              : "text-gray-400 hover:text-white"
+          }`}
           onClick={() => setActiveTab("admin")}
         >
           Admin

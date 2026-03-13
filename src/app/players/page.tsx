@@ -1,7 +1,10 @@
 "use client";
 
+import PageMotion from "@/components/ui/PageMotion";
+import { motion } from "framer-motion";
 import { getPlayers } from "@/services/playerService";
 import PlayerCard from "@/components/players/PlayerCard";
+import PlayerFormGraph from "@/components/analytics/PlayerFormGraph";
 
 export default function PlayersPage() {
 
@@ -9,26 +12,67 @@ export default function PlayersPage() {
 
   return (
 
-    <main className="max-w-7xl mx-auto px-6 py-10 space-y-8">
+    <PageMotion>
 
-      <h1 className="text-3xl font-bold">Players</h1>
+      <main className="max-w-7xl mx-auto px-6 py-12 space-y-10 text-white">
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* PAGE HEADER */}
 
-        {players.map(player => (
+        <div className="space-y-2">
 
-          <PlayerCard
-  key={player.id}
-  matchId="ind-vs-aus"
-  name={player.name}
-  team={player.team}
-/>
+          <h1 className="text-3xl font-bold tracking-wide">
+            Players
+          </h1>
 
-        ))}
+          <p className="text-gray-400 text-sm">
+            Performance analytics and impact statistics
+          </p>
 
-      </div>
+          <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent mt-4"/>
 
-    </main>
+        </div>
+
+
+        {/* PLAYER GRID */}
+
+        <motion.div
+          initial="hidden"
+          animate="show"
+          variants={{
+            hidden: { opacity: 0 },
+            show: {
+              opacity: 1,
+              transition: { staggerChildren: 0.08 }
+            }
+          }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+
+          {players.map(player => (
+
+            <motion.div
+              key={player.id}
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                show: { opacity: 1, y: 0 }
+              }}
+            >
+
+              <PlayerCard
+                matchId="ind-vs-aus"
+                name={player.name}
+                team={player.team}
+              />
+
+            </motion.div>
+
+          ))}
+
+        </motion.div>
+
+      </main>
+
+    </PageMotion>
 
   );
 

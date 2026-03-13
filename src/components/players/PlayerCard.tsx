@@ -2,6 +2,8 @@
 
 import { motion } from "framer-motion";
 import { getPlayerStat } from "@/services/analytics/playerStatsEngine";
+import { getPlayerImpact } from "@/services/analytics/playerImpactEngine";
+import PlayerFormGraph from "@/components/analytics/PlayerFormGraph";
 
 type Props = {
   matchId: string;
@@ -25,42 +27,77 @@ export default function PlayerCard({
 
   const wickets = stats?.bowling.wickets ?? 0;
 
+  const impact = getPlayerImpact(matchId, name);
+
   return (
 
     <motion.div
-      whileHover={{ scale: 1.03 }}
-      className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-lg cursor-pointer hover:border-blue-500 transition-colors"
+      whileHover={{ scale: 1.04 }}
+      className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-lg cursor-pointer hover:border-blue-500 hover:shadow-blue-500/20 transition-all"
     >
 
-      <h3 className="text-lg font-semibold">{name}</h3>
+      {/* PLAYER HEADER */}
 
-      <p className="text-sm text-gray-400 mb-3">{team}</p>
+      <div className="flex items-center justify-between mb-4">
 
-      <div className="space-y-1 text-sm">
-
-        <div className="flex justify-between">
-          <span className="text-gray-400">Runs</span>
-          <span>{runs}</span>
+        <div>
+          <h3 className="text-lg font-semibold">{name}</h3>
+          <p className="text-xs text-gray-400">{team}</p>
         </div>
 
-        <div className="flex justify-between">
-          <span className="text-gray-400">Balls</span>
-          <span>{balls}</span>
-        </div>
-
-        <div className="flex justify-between">
-          <span className="text-gray-400">Strike Rate</span>
-          <span>{strikeRate}</span>
-        </div>
-
-        <div className="flex justify-between">
-          <span className="text-gray-400">Wickets</span>
-          <span className="text-green-400 font-semibold">
-            {wickets}
-          </span>
+        <div className="text-xs px-2 py-1 rounded bg-zinc-800 text-gray-300">
+          Player
         </div>
 
       </div>
+
+
+      {/* STATS GRID */}
+
+      <div className="grid grid-cols-2 gap-4 text-sm">
+
+        <div className="bg-zinc-800 rounded-lg p-3">
+          <p className="text-gray-400 text-xs">Runs</p>
+          <p className="font-semibold">{runs}</p>
+        </div>
+
+        <div className="bg-zinc-800 rounded-lg p-3">
+          <p className="text-gray-400 text-xs">Balls</p>
+          <p className="font-semibold">{balls}</p>
+        </div>
+
+        <div className="bg-zinc-800 rounded-lg p-3">
+          <p className="text-gray-400 text-xs">Strike Rate</p>
+          <p className="font-semibold">{strikeRate}</p>
+        </div>
+
+        <div className="bg-zinc-800 rounded-lg p-3">
+          <p className="text-gray-400 text-xs">Wickets</p>
+          <p className="font-semibold text-green-400">{wickets}</p>
+        </div>
+
+      </div>
+
+
+      {/* IMPACT SCORE */}
+
+      <div className="mt-5 flex items-center justify-between bg-zinc-800 rounded-lg p-3">
+
+        <span className="text-gray-400 text-sm">
+          Impact Score
+        </span>
+
+        <span className="text-green-400 font-bold">
+          {impact}
+        </span>
+
+      </div>
+
+      {/* Player Form Graph */}
+
+      <div className="mt-6">
+  <PlayerFormGraph playerId={name} />
+</div>
 
     </motion.div>
 

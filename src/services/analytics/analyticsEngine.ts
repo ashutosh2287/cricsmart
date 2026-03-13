@@ -8,6 +8,17 @@ import {
   buildNarrativeTimeline,
   NarrativeTimeline
 } from "../narrative/narrativeTimelineEngine";
+import {
+  updateRunRate,
+  updateMomentum,
+  updateNarrative
+} from "./matchAnalyticsAggregator";
+import {
+  updateWinProbability
+} from "../analytics/winProbabilityTimelineEngine";
+import {
+  processMomentumEvent
+} from "./momentumTimelineEngine";
 
 /*
 -------------------------------------------------------
@@ -87,6 +98,7 @@ export function processAnalyticsEvent(
   const overs = state.balls / 6;
   const runRate = overs > 0 ? state.runs / overs : 0;
   state.runRateHistory.push(runRate);
+  updateRunRate(matchId, runRate);
 
   // Momentum (simple version)
   let momentum = event.runs ?? 0;
@@ -94,6 +106,8 @@ export function processAnalyticsEvent(
   if (event.wicket) momentum -= 5;
 
   state.momentumHistory.push(momentum);
+  updateMomentum(matchId, momentum);
+  processMomentumEvent(matchId, event, state.balls);
 
   /*
   -------------------------------------------------------
@@ -119,6 +133,12 @@ export function processAnalyticsEvent(
     });
 
   }
+
+  const matchState = getMatchState(matchId);
+
+if (matchState) {
+  updateWinProbability(matchId, matchState);
+}
 
 }
 
@@ -190,10 +210,13 @@ export function computeAnalytics(
   });
 
   const narrative = buildNarrativeTimeline(narrativeInputs);
+  updateNarrative(matchId, narrative);
 
   return {
     runRate,
     momentum,
     narrative
   };
+
+  
 }

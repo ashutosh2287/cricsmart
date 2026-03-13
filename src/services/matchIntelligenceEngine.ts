@@ -10,7 +10,7 @@ import { runTacticalEngine } from "./tacticalEngine";
 import { analyzeHighlightTimeline } from "./highlightTimelineEngine";
 
 import { updateWinProbabilityTimeline } from "./winProbabilityTimeline";
-import { updateMomentumTimeline } from "./analytics/momentumTimelineEngine";
+import { processMomentumEvent } from "./analytics/momentumTimelineEngine";
 import { detectMomentumSwing } from "./analytics/momentumSwingEngine";
 
 import { updateMatchPhase } from "./analytics/matchPhaseEngine";
@@ -29,7 +29,11 @@ import { updatePlayerRegistry } from "./playerRegistryEngine";
 
 import { updatePlayerStats } from "./analytics/playerStatsEngine";
 
+import { updatePlayerImpact } from "./analytics/playerImpactEngine";
 
+import { generateMatchInsights } from "./analytics/matchInsightsEngine";
+
+import { updatePlayerForm } from "./analytics/playerFormEngine";
 
 type IntelligenceInput = {
   matchId: string;
@@ -50,6 +54,8 @@ export function processMatchIntelligence(
 ) {
 
   const { matchId, branchId, state, ballEvent } = input;
+  const events = getEventStream(matchId);
+const ballIndex = events.length - 1;
 
   /*
   ========================================
@@ -61,11 +67,14 @@ export function processMatchIntelligence(
 
   updateWinProbabilityTimeline(matchId);
 
-  updateMomentumTimeline(matchId);
+
+processMomentumEvent(matchId, ballEvent, ballIndex);
 
 
   updatePlayerRegistry(matchId);
   updatePlayerStats(matchId);
+  updatePlayerImpact(matchId);
+  updatePlayerForm(matchId);
 
   /*
   ========================================
@@ -89,7 +98,6 @@ export function processMatchIntelligence(
   ========================================
   */
 
-  const events = getEventStream(matchId);
   detectTurningPoints(events);
 
   /*
@@ -99,6 +107,14 @@ export function processMatchIntelligence(
   */
 
   updateMatchIntelligenceGraph(matchId);
+
+  /*
+========================================
+AI MATCH INSIGHTS
+========================================
+*/
+
+generateMatchInsights(matchId);
 
   /*
   ========================================

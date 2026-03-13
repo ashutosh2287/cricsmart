@@ -103,7 +103,21 @@ export function updateMatchIntelligence(matchId: string) {
 
   battingControl = Math.max(0, Math.min(100, battingControl));
 
-  const bowlingControl = 100 - battingControl;
+/*
+========================================
+CONTROL SMOOTHING
+========================================
+*/
+
+const previous = intelligenceStore[matchId];
+
+if (previous) {
+  battingControl =
+    previous.battingControl * 0.7 +
+    battingControl * 0.3;
+}
+
+const bowlingControl = 100 - battingControl;
 
   /*
   ========================================

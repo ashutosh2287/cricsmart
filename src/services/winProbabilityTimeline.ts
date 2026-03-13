@@ -21,20 +21,35 @@ export function updateWinProbabilityTimeline(matchId: string) {
 
   const innings = state.innings[state.currentInningsIndex];
 
+  const overValue = innings.over + innings.ball / 10;
+
   const point: ProbabilityPoint = {
-    over: innings.over + innings.ball / 10,
+    over: overValue,
     battingProbability: probability.battingWinProbability,
-    bowlingProbability: probability.bowlingWinProbability,
+    bowlingProbability: probability.bowlingWinProbability
   };
 
   if (!probabilityTimeline[matchId]) {
     probabilityTimeline[matchId] = [];
   }
 
-  probabilityTimeline[matchId].push(point);
+  const timeline = probabilityTimeline[matchId];
+
+  // Prevent duplicate entries for same ball
+  const last = timeline[timeline.length - 1];
+
+  if (last && last.over === point.over) {
+    timeline[timeline.length - 1] = point;
+  } else {
+    timeline.push(point);
+  }
 
 }
 
 export function getProbabilityTimeline(matchId: string) {
   return probabilityTimeline[matchId] ?? [];
+}
+
+export function resetWinProbabilityTimeline(matchId: string) {
+  delete probabilityTimeline[matchId];
 }

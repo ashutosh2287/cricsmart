@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Navbar from "../components/Navbar";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+
 import StadiumOverlay from "@/components/StadiumOverlay";
 import BroadcastDirectorOverlay from "@/components/BroadcastDirectorOverlay";
 import EngineBootstrap from "@/components/EngineBootstrap";
@@ -28,27 +29,50 @@ export default function RootLayout({
 }) {
 
   return (
+
     <html lang="en">
+
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white`}
       >
 
-        {/* Engine startup */}
+        {/* ========================================
+           ENGINE BOOTSTRAP
+        ======================================== */}
+
         <EngineBootstrap />
 
-        {/* Stadium cinematic effects */}
-        <StadiumOverlay />
+        {/* ========================================
+           CINEMATIC OVERLAYS
+        ======================================== */}
 
-        {/* Broadcast director cinematic effects */}
+        <StadiumOverlay />
         <BroadcastDirectorOverlay />
 
-        {/* Navigation */}
+        {/* ========================================
+           NAVBAR
+        ======================================== */}
+
         <Navbar />
 
-        {/* Page Content */}
-        {children}
+        {/* ========================================
+           MAIN CONTENT AREA
+        ======================================== */}
+
+        <main className="min-h-screen">
+
+          <div className="max-w-7xl mx-auto px-6 py-8">
+
+            {children}
+
+          </div>
+
+        </main>
 
       </body>
+
     </html>
+
   );
+
 }

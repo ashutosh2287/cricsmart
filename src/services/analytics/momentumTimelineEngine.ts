@@ -1,47 +1,66 @@
-import { getEventStream } from "../matchEngine";
+import { BallEvent } from "@/types/ballEvent";
 
 export type MomentumPoint = {
   ballIndex: number;
   momentum: number;
 };
 
-const momentumTimelineStore: Record<string, MomentumPoint[]> = {};
+type MomentumState = {
+  momentum: number;
+  timeline: MomentumPoint[];
+};
 
-export function getMomentumTimeline(matchId: string) {
-  return momentumTimelineStore[matchId] ?? [];
+const momentumTimelineStore: Record<string, MomentumState> = {};
+
+export function initMomentumTimeline(matchId: string) {
+  momentumTimelineStore[matchId] = {
+    momentum: 0,
+    timeline: []
+  };
 }
 
-export function updateMomentumTimeline(matchId: string) {
+export function resetMomentumTimeline(matchId: string) {
+  delete momentumTimelineStore[matchId];
+}
 
-  const events = getEventStream(matchId);
-  if (!events.length) return;
+export function processMomentumEvent(
+  matchId: string,
+  event: BallEvent,
+  ballIndex: number
+) {
 
-  const timeline: MomentumPoint[] = [];
+  let state = momentumTimelineStore[matchId];
 
-  let momentum = 0;
+  if (!state) {
+    initMomentumTimeline(matchId);
+    state = momentumTimelineStore[matchId];
+  }
 
-  events.forEach((e, index) => {
+  if (!event.valid) return;
 
-    if (!e.valid) return;
+  let momentum = state.momentum;
 
-    if (e.wicket) momentum -= 2;
+  if (event.wicket) momentum -= 2;
 
-    if (e.type === "FOUR" || e.type === "SIX") {
-      momentum += 2;
-    }
+  if (event.type === "FOUR" || event.type === "SIX") {
+    momentum += 2;
+  }
 
-    if (e.runs === 0 && e.isLegalDelivery) {
-      momentum -= 0.5;
-    }
+  if (event.runs === 0 && event.isLegalDelivery) {
+    momentum -= 0.5;
+  }
 
-    momentum = Math.max(-10, Math.min(10, momentum));
+  momentum = Math.max(-10, Math.min(10, momentum));
 
-    timeline.push({
-      ballIndex: index,
-      momentum
-    });
+  state.momentum = momentum;
 
+  state.timeline.push({
+    ballIndex,
+    momentum
   });
 
-  momentumTimelineStore[matchId] = timeline;
+}
+
+export function getMomentumTimeline(matchId: string) {
+  return momentumTimelineStore[matchId]?.timeline ?? [];
 }

@@ -31,6 +31,9 @@ import StrategyDashboard from "@/components/StrategyDashboard";
 import MatchPhaseTimeline from "@/components/MatchPhaseTimeline";
 import PageMotion from "@/components/ui/PageMotion";
 import MatchInsightsPanel from "@/components/analytics/MatchInsightsPanel";
+import Link from "next/link";
+import { MatchProvider } from "@/context/MatchContext";
+import LiveMatchStatus from "@/components/LiveMatchStatus";
 
 export default function MatchDetailPage() {
 
@@ -156,8 +159,34 @@ export default function MatchDetailPage() {
   if (!matchId) return null;
 
   if (!match) {
-    return <div className="p-6">Match not found</div>;
-  }
+  return (
+
+    <PageMotion>
+   
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-6">
+
+        <h1 className="text-3xl font-bold text-white">
+          Match Not Found
+        </h1>
+
+        <p className="text-gray-400 max-w-md">
+          The match you are looking for does not exist or
+          has not been loaded yet.
+        </p>
+
+        <Link
+          href="/matches"
+          className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg transition shadow-lg shadow-blue-500/30"
+        >
+          Browse Matches
+        </Link>
+
+      </div>
+
+    </PageMotion>
+
+  );
+}
 
   const innings =
     currentEngineState?.innings?.[
@@ -167,6 +196,7 @@ export default function MatchDetailPage() {
   return (
 
     <PageMotion>
+  <MatchProvider value={{ matchId, state: currentEngineState }}>
 
       <main className=" space-y-8">
 
@@ -174,36 +204,47 @@ export default function MatchDetailPage() {
 
       {/* LEFT SIDE — MAIN MATCH CONTENT */}
 
-      <div className="lg:col-span-2 space-y-8 max-w-[1100px]">
+      <div className="lg:col-span-2 space-y-8 max-w-6xl">
 
         {/* MATCH HEADER */}
 
        {innings && (
   <>
     <MatchHeader
-      team1={match.team1}
-      team2={match.team2}
-      runs={innings.runs}
-      wickets={innings.wickets}
-      over={innings.over}
-      ball={innings.ball}
-    />
+  team1={match.team1}
+  team2={match.team2}
+  runs={innings.runs}
+  wickets={innings.wickets}
+  over={innings.over}
+  ball={innings.ball}
+/>
 
-    <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent"/>
+<LiveMatchStatus />
+
+<div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent"/>
   </>
 )}
 
         {/* MATCH ANALYTICS */}
 
-<h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-800 pb-2">
-  Match Analytics
-</h2>
+<div className="relative space-y-6">
 
-<div className="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg">
-  <MatchControlPanel matchId={matchId} />
+  {/* subtle glow background */}
+  <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-600/10 blur-[120px] pointer-events-none"/>
+
+  <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-800 pb-2">
+    Match Analytics
+  </h2>
+
+  <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 shadow-lg">
+    <MatchControlPanel matchId={matchId} />
+  </div>
+
+  <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 shadow-lg">
+    <MatchInsightsPanel matchId={matchId} />
+  </div>
+
 </div>
-
-<MatchInsightsPanel matchId={matchId} />
 
         {/* MATCH STORY */}
 
@@ -227,7 +268,7 @@ export default function MatchDetailPage() {
 
 <div className="space-y-8 sticky top-6">
 
-  <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg">
+ <div className="glass-panel p-5">
     <h2 className="text-sm font-semibold text-gray-400 uppercase mb-3">
       Strategy Dashboard
     </h2>
@@ -235,7 +276,7 @@ export default function MatchDetailPage() {
     <StrategyDashboard matchId={matchId} />
   </div>
 
-  <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg">
+  <div className="glass-panel p-5">
     <h2 className="text-sm font-semibold text-gray-400 uppercase mb-3">
       Momentum Map
     </h2>
@@ -269,6 +310,7 @@ export default function MatchDetailPage() {
 
     </div>
     </main>
+    </MatchProvider>
     </PageMotion>
   );
   

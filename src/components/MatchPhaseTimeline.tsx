@@ -16,7 +16,7 @@ export default function MatchPhaseTimeline({ matchId }: Props) {
 
   if (!narrative) {
     return (
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg">
+      <div className="glass-panel p-5">
         <h3 className="text-sm text-gray-400 uppercase mb-2">
           Match Phases
         </h3>

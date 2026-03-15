@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Navbar from "../components/Navbar";
+import Navbar from "@/components/layout/Navbar";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -33,8 +33,25 @@ export default function RootLayout({
     <html lang="en">
 
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased text-white bg-black`}
       >
+        <div className="stadium-light" />
+
+        {/* ========================================
+           GLOBAL CINEMATIC BACKGROUND
+        ======================================== */}
+
+        <div className="fixed inset-0 -z-10">
+
+          <div className="absolute inset-0 bg-black" />
+
+          {/* Blue glow */}
+          <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[140px]" />
+
+          {/* Purple glow */}
+          <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[140px]" />
+
+        </div>
 
         {/* ========================================
            ENGINE BOOTSTRAP

@@ -20,9 +20,19 @@
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(59,130,246,0.15), transparent 40%),
+    radial-gradient(circle at 80% 0%, rgba(168,85,247,0.15), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(14,165,233,0.12), transparent 45%),
+    #000;
+
   color: var(--foreground);
+
   font-family: Arial, Helvetica, sans-serif;
+
+  min-height: 100vh;
+
+  background-attachment: fixed;
 }
 
 /*
@@ -307,4 +317,102 @@ CAMERA SHAKE EFFECT
 
 .stadium-overlay.tension {
   background: radial-gradient(circle, rgba(249,115,22,0.25), transparent);
+}
+
+/*
+================================================
+✨ GLOBAL UI POLISH
+================================================
+*/
+
+.card-glow:hover {
+
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.6),
+    0 0 20px rgba(59,130,246,0.25);
+
+}
+
+.section-divider {
+
+  height: 1px;
+
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(148,163,184,0.4),
+    transparent
+  );
+
+}
+
+/*
+================================================
+✨ GLASS PANEL SYSTEM
+================================================
+*/
+
+.glass-panel {
+
+  background: rgba(20,20,25,0.65);
+
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  border: 1px solid rgba(255,255,255,0.08);
+
+  border-radius: 14px;
+
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+
+  transition: all 0.25s ease;
+
+}
+
+.glass-panel:hover {
+
+  border: 1px solid rgba(255,255,255,0.15);
+
+  box-shadow:
+    0 14px 40px rgba(0,0,0,0.55),
+    0 0 12px rgba(59,130,246,0.25);
+
+}
+
+/*
+================================================
+🏟 STADIUM LIGHT BACKGROUND
+================================================
+*/
+
+.stadium-light {
+
+  position: fixed;
+  inset: 0;
+
+  background:
+    radial-gradient(
+      circle at 50% 20%,
+      rgba(59,130,246,0.18),
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 20% 80%,
+      rgba(168,85,247,0.15),
+      transparent 60%
+    ),
+    radial-gradient(
+      circle at 80% 70%,
+      rgba(14,165,233,0.12),
+      transparent 60%
+    );
+
+  filter: blur(80px);
+
+  z-index: -1;
+
+  pointer-events: none;
+
 }

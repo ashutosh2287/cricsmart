@@ -10,6 +10,8 @@ export interface EventStore {
   saveSnapshot(matchId: string, over: number, state: MatchState): Promise<void>;
 
   loadLatestSnapshot(matchId: string): Promise<MatchState | null>;
+  
+
 
   
 }

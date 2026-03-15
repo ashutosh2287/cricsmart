@@ -34,6 +34,7 @@ import MatchInsightsPanel from "@/components/analytics/MatchInsightsPanel";
 import Link from "next/link";
 import { MatchProvider } from "@/context/MatchContext";
 import LiveMatchStatus from "@/components/LiveMatchStatus";
+import { startLiveMatchIngestor, stopLiveMatchIngestor } from "@/services/ingestion/liveMatchIngestor";
 
 export default function MatchDetailPage() {
 
@@ -108,6 +109,27 @@ export default function MatchDetailPage() {
 };
 
   }, [matchId]);
+
+  /*
+=================================================
+LIVE API INGESTION
+=================================================
+*/
+
+useEffect(() => {
+
+  if (!matchId) return;
+
+  // Example external API match id
+  const externalMatchId = matchId;
+
+  startLiveMatchIngestor(matchId, externalMatchId);
+
+  return () => {
+    stopLiveMatchIngestor(matchId);
+  };
+
+}, [matchId]);
 
   /*
   =================================================

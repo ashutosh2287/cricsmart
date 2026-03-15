@@ -370,8 +370,9 @@ export function subscribeMatch(
   if (!matchListeners[matchId])
     matchListeners[matchId] = new Set();
   matchListeners[matchId].add(cb);
-  return () =>
-    matchListeners[matchId].delete(cb);
+  return () => {
+  matchListeners[matchId].delete(cb);
+};
 }
 
 export function hydrateMatchState(

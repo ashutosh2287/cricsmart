@@ -1,73 +1,124 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { subscribeMatch, getMatchState } from "@/services/matchEngine";
+import { subscribeMatch } from "@/services/matchEngine";
 import { computeAnalytics } from "@/services/analytics/analyticsEngine";
 import { computeProjectedScore } from "@/services/analytics/projectedScoreEngine";
 import { computeRequiredRunRate } from "@/services/analytics/requiredRunRateEngine";
-import { computeWinProbability } from "@/services/winProbabilityEngine";
+import { getWinProbabilityTimeline } from "@/services/analytics/winProbabilityTimelineEngine";
+import { getPatternInsights } from "@/services/analytics/patternDetectionEngine";
+import { getSituationInsights } from "@/services/analytics/matchSituationEngine";
+import { SituationInsight } from "@/services/analytics/matchSituationEngine";
 type Props = {
   matchId: string;
 };
 
+type PatternInsight = {
+  type: string;
+  text: string;
+};
+
 export default function MatchInsightPanel({ matchId }: Props) {
 
-  const [runRate, setRunRate] = useState<number>(0);
-  const [momentum, setMomentum] = useState<number>(0);
-  const [winProb, setWinProb] = useState<number>(50);
-  const [projection, setProjection] = useState<number>(0);
-  const [rrr, setRRR] = useState<number>(0);
+  const [runRate, setRunRate] = useState(0);
+  const [momentum, setMomentum] = useState(0);
+  const [winProb, setWinProb] = useState(50);
+  const [projection, setProjection] = useState(0);
+  const [rrr, setRRR] = useState(0);
+
+  const [patternInsights, setPatternInsights] =
+    useState<PatternInsight[]>([]);
+
+  const [situationInsights, setSituationInsights] =
+  useState<SituationInsight[]>([]);
 
   useEffect(() => {
 
-  function update() {
+    function update() {
 
-    const state = getMatchState(matchId);
-    if (!state) return;
+      const analytics = computeAnalytics(matchId);
 
-    const analytics = computeAnalytics(matchId);
-    const win = computeWinProbability(state);
+      if (analytics.runRate.length) {
+        setRunRate(
+          analytics.runRate[analytics.runRate.length - 1]
+        );
+      }
 
-    if (analytics.runRate.length) {
-      setRunRate(
-        analytics.runRate[analytics.runRate.length - 1]
-      );
+      if (analytics.momentum.length) {
+        setMomentum(
+          analytics.momentum[analytics.momentum.length - 1]
+        );
+      }
+
+      const winTimeline = getWinProbabilityTimeline(matchId);
+
+      if (winTimeline.timeline.length) {
+        const latest =
+          winTimeline.timeline[
+            winTimeline.timeline.length - 1
+          ];
+
+        setWinProb(latest.batting);
+      }
+
+      const proj = computeProjectedScore(matchId);
+
+      if (proj) {
+        setProjection(proj.projectedScore);
+      }
+
+      const required = computeRequiredRunRate(matchId, 180);
+
+      if (required) {
+        setRRR(required.requiredRunRate);
+      }
+
+      setSituationInsights(getSituationInsights(matchId));
+
+      // Update Pattern Insights
+      const patterns = getPatternInsights(matchId);
+      setPatternInsights(patterns);
+
     }
 
-    if (analytics.momentum.length) {
-      setMomentum(
-        analytics.momentum[analytics.momentum.length - 1]
-      );
-    }
+    update();
 
-    if (win) {
-      setWinProb(win.battingWinProbability);
-    }
-    const proj = computeProjectedScore(matchId);
+    const unsubscribe = subscribeMatch(matchId, update);
 
-if (proj) {
-  setProjection(proj.projectedScore);
-}
-const required = computeRequiredRunRate(matchId, 180);
+    return () => {
+      unsubscribe();
+    };
 
-if (required) {
-  setRRR(required.requiredRunRate);
-}
-
-  }
-
-  update();
-
-  const unsubscribe = subscribeMatch(matchId, update);
-
-  return () => {
-    unsubscribe();
-  };
-
-}, [matchId]);
+  }, [matchId]);
 
   return (
     <div className="bg-zinc-900 text-white p-4 rounded-xl shadow-lg">
+
+      {/* Pattern Insights */}
+
+      {patternInsights.length > 0 && (
+
+        <div className="mb-4 space-y-1">
+
+          {situationInsights.map((s, i) => (
+
+  <div key={i} className="text-sm text-yellow-400">
+    ⚠ {s.text}
+  </div>
+
+))}
+
+          {patternInsights.map((p, i) => (
+
+            <div key={i} className="text-sm text-orange-400">
+              ⚡ {p.text}
+            </div>
+
+          ))}
+
+        </div>
+
+      )}
 
       <h3 className="text-lg font-semibold mb-3">
         Match Insights
@@ -96,9 +147,9 @@ if (required) {
         </div>
 
         <div className="flex justify-between">
-  <span>Required Run Rate</span>
-  <span>{rrr.toFixed(2)}</span>
-</div>
+          <span>Required Run Rate</span>
+          <span>{rrr.toFixed(2)}</span>
+        </div>
 
       </div>
 

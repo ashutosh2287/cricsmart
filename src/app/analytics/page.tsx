@@ -1,7 +1,7 @@
 "use client";
 
 import PageMotion from "@/components/ui/PageMotion";
-import WinProbabilityChart from "@/components/WinProbabilityChart";
+import WinProbabilityChart from "@/components/analytics/WinProbabilityChart";
 import MomentumHeatmap from "@/components/MomentumHeatmap";
 import MatchPhaseTimeline from "@/components/MatchPhaseTimeline";
 

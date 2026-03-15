@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { getEventStream } from "@/services/matchEngine";
-import { scrubToPosition } from "@/services/replayController";
+import { seekReplay } from "@/services/replay/seekReplay";
 
 type Props = {
   matchId: string;
@@ -10,15 +10,13 @@ type Props = {
 
 export default function MatchTimelineSlider({ matchId }: Props) {
 
-  const maxIndex = useMemo(() => {
-
-    const events = getEventStream(matchId) ?? [];
-
-    return events.length > 0 ? events.length - 1 : 0;
-
+  const events = useMemo(() => {
+    return getEventStream(matchId) ?? [];
   }, [matchId]);
 
-  const [position, setPosition] = useState(0);
+  const maxIndex = events.length > 0 ? events.length - 1 : 0;
+
+  const [position, setPosition] = useState(maxIndex);
 
   /*
   ========================================
@@ -30,19 +28,56 @@ export default function MatchTimelineSlider({ matchId }: Props) {
     setPosition(maxIndex);
   }, [maxIndex]);
 
+  /*
+  ========================================
+  Handle slider drag
+  ========================================
+  */
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
 
     const index = Number(e.target.value);
 
     setPosition(index);
 
-    scrubToPosition(matchId, index);
+    seekReplay(matchId, index);
 
   }
+
+  /*
+  ========================================
+  Support graph click → timeline seek
+  ========================================
+  */
+
+  useEffect(() => {
+
+    function handleExternalSeek(e: Event) {
+
+      const custom = e as CustomEvent<{ ballIndex: number }>;
+
+      const index = custom.detail?.ballIndex;
+
+      if (typeof index !== "number") return;
+
+      setPosition(index);
+
+      seekReplay(matchId, index);
+
+    }
+
+    window.addEventListener("timeline-seek", handleExternalSeek);
+
+    return () => {
+      window.removeEventListener("timeline-seek", handleExternalSeek);
+    };
+
+  }, [matchId]);
 
   if (maxIndex <= 0) return null;
 
   return (
+
     <div className="bg-gray-900 text-white p-4 rounded-xl">
 
       <h3 className="font-bold mb-2">
@@ -69,5 +104,7 @@ export default function MatchTimelineSlider({ matchId }: Props) {
       </div>
 
     </div>
+
   );
+
 }

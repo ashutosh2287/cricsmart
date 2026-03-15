@@ -9,7 +9,6 @@ import { processCommentaryEvent } from "./commentary/commentaryEngine";
 import { runTacticalEngine } from "./tacticalEngine";
 import { analyzeHighlightTimeline } from "./highlightTimelineEngine";
 
-import { updateWinProbabilityTimeline } from "./winProbabilityTimeline";
 import { processMomentumEvent } from "./analytics/momentumTimelineEngine";
 import { detectMomentumSwing } from "./analytics/momentumSwingEngine";
 
@@ -35,6 +34,14 @@ import { generateMatchInsights } from "./analytics/matchInsightsEngine";
 
 import { updatePlayerForm } from "./analytics/playerFormEngine";
 
+import { updateWinProbability } from "./analytics/winProbabilityTimelineEngine";
+
+import { generateAIInsights } from "./analytics/aiInsightEngine";
+
+import { detectPatterns } from "./analytics/patternDetectionEngine";
+
+import { detectMatchSituations } from "./analytics/matchSituationEngine";
+
 type IntelligenceInput = {
   matchId: string;
   branchId: string;
@@ -58,23 +65,21 @@ export function processMatchIntelligence(
 const ballIndex = events.length - 1;
 
   /*
-  ========================================
-  CORE ANALYTICS SIGNALS
-  ========================================
-  */
+========================================
+CORE ANALYTICS SIGNALS
+========================================
+*/
 
-  processAnalyticsEvent(matchId, ballEvent);
-
-  updateWinProbabilityTimeline(matchId);
-
+processAnalyticsEvent(matchId, ballEvent);
 
 processMomentumEvent(matchId, ballEvent, ballIndex);
 
+updateWinProbability(matchId, state, ballEvent);
 
-  updatePlayerRegistry(matchId);
-  updatePlayerStats(matchId);
-  updatePlayerImpact(matchId);
-  updatePlayerForm(matchId);
+updatePlayerRegistry(matchId);
+updatePlayerStats(matchId);
+updatePlayerImpact(matchId);
+updatePlayerForm(matchId);
 
   /*
   ========================================
@@ -165,9 +170,6 @@ generateMatchInsights(matchId);
 
   runMatchPredictor(matchId);
 
-
-  updatePlayerRegistry(matchId);
-
   /*
   ========================================
   COMMENTARY ENGINE
@@ -187,4 +189,11 @@ generateMatchInsights(matchId);
   */
 
   generateReplaySequence(matchId);
+
+  generateAIInsights(matchId);
+
+  detectPatterns(matchId);
+
+  detectMatchSituations(matchId);
+
 }

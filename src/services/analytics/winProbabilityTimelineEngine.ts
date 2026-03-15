@@ -1,23 +1,30 @@
 import { MatchState } from "../matchEngine";
 import { computeWinProbability } from "../winProbabilityEngine";
+import { BallEvent } from "@/types/ballEvent";
+
+export type WinProbabilityPoint = {
+  over: number;
+  batting: number;
+  bowling: number;
+  timestamp: number;
+};
 
 type WinProbState = {
-  batting: number[];
-  bowling: number[];
+  timeline: WinProbabilityPoint[];
 };
 
 const winProbStore: Record<string, WinProbState> = {};
 
 export function initWinProbability(matchId: string) {
   winProbStore[matchId] = {
-    batting: [],
-    bowling: []
+    timeline: []
   };
 }
 
 export function updateWinProbability(
   matchId: string,
-  state: MatchState
+  state: MatchState,
+  ballEvent?: BallEvent
 ) {
 
   const result = computeWinProbability(state);
@@ -27,26 +34,28 @@ export function updateWinProbability(
     initWinProbability(matchId);
   }
 
-  winProbStore[matchId].batting.push(
-    result.battingWinProbability
-  );
+  const innings =
+    state.innings[state.currentInningsIndex];
 
-  winProbStore[matchId].bowling.push(
-    result.bowlingWinProbability
-  );
+  const over =
+    innings.over + innings.ball / 10;
+
+  winProbStore[matchId].timeline.push({
+    over,
+    batting: result.battingWinProbability,
+    bowling: result.bowlingWinProbability,
+    timestamp: ballEvent?.timestamp ?? Date.now()
+  });
 }
 
 export function getWinProbabilityTimeline(
   matchId: string
 ) {
-
   return (
     winProbStore[matchId] || {
-      batting: [],
-      bowling: []
+      timeline: []
     }
   );
-
 }
 
 export function resetWinProbability(matchId: string) {

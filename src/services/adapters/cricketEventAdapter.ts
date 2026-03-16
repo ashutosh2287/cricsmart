@@ -2,39 +2,64 @@ import { ApiBallEvent } from "../api/cricketApiService";
 import { EngineBallEvent } from "../matchEngine";
 
 export function adaptApiEventToEngineEvent(
-  apiEvent: ApiBallEvent
+  apiEvent: ApiBallEvent,
+  matchSlug: string,
+  nonStriker: string
 ): EngineBallEvent {
 
-  const basePlayers = {
-    batsman: apiEvent.batsman,
-    nonStriker: "Unknown",
-    bowler: apiEvent.bowler
-  };
+  const batsman = apiEvent.batsman ?? "";
+  const bowler = apiEvent.bowler ?? "";
 
   if (apiEvent.wicket) {
     return {
       type: "WICKET",
-      ...basePlayers
+      batsman,
+      nonStriker,
+      bowler
     };
   }
 
-  if (apiEvent.runs === 6) {
+  if (apiEvent.type === "WD") {
     return {
-      type: "SIX",
-      ...basePlayers
+      type: "WD",
+      batsman,
+      nonStriker,
+      bowler
+    };
+  }
+
+  if (apiEvent.type === "NB") {
+    return {
+      type: "NB",
+      batsman,
+      nonStriker,
+      bowler
     };
   }
 
   if (apiEvent.runs === 4) {
     return {
       type: "FOUR",
-      ...basePlayers
+      batsman,
+      nonStriker,
+      bowler
+    };
+  }
+
+  if (apiEvent.runs === 6) {
+    return {
+      type: "SIX",
+      batsman,
+      nonStriker,
+      bowler
     };
   }
 
   return {
     type: "RUN",
-    runs: apiEvent.runs,
-    ...basePlayers
+    runs: apiEvent.runs ?? 1,
+    batsman,
+    nonStriker,
+    bowler
   };
 }

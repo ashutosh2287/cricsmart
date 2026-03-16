@@ -4,6 +4,10 @@ import PageMotion from "@/components/ui/PageMotion";
 import WinProbabilityChart from "@/components/analytics/WinProbabilityChart";
 import MomentumHeatmap from "@/components/MomentumHeatmap";
 import MatchPhaseTimeline from "@/components/MatchPhaseTimeline";
+import TopPerformersPanel from "@/components/analytics/TopPerformersPanel";
+import ImpactLeaderboard from "@/components/analytics/ImpactLeaderboard";
+import MatchNarrativePanel from "@/components/analytics/MatchNarrativePanel";
+import LiveScoreCard from "@/components/LiveScoreCard";
 
 export default function AnalyticsPage() {
 
@@ -44,6 +48,18 @@ export default function AnalyticsPage() {
           </h2>
 
           <MatchPhaseTimeline matchId={matchId} />
+
+          <div className="grid lg:grid-cols-3 gap-8">
+            <LiveScoreCard matchId={matchId} />
+            
+
+  <TopPerformersPanel matchId={matchId} />
+
+  <ImpactLeaderboard matchId={matchId} />
+
+  <MatchNarrativePanel matchId={matchId} />
+
+</div>
 
         </div>
 

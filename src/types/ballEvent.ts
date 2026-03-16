@@ -11,7 +11,7 @@ export type BallEvent = {
 
   // ⭐ PLAYER INFORMATION
   batsman: string;
-  nonStriker: string;
+  nonStriker?: string;
   bowler: string;
 
   // ⭐ EVENT TYPE

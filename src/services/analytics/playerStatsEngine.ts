@@ -26,7 +26,10 @@ const playerStatsStore: Record<
 export function updatePlayerStats(matchId: string) {
 
   const events = getEventStream(matchId);
-  if (!events.length) return;
+  if (!events.length) {
+  playerStatsStore[matchId] = {};
+  return;
+}
 
   const stats: Record<string, PlayerStats> = {};
 

@@ -118,18 +118,20 @@ LIVE API INGESTION
 
 useEffect(() => {
 
-  if (!matchId) return;
+  if (!matchId || !match?.externalMatchId) return;
 
-  // Example external API match id
-  const externalMatchId = matchId;
+  console.log("Starting live ingestor:", match.externalMatchId);
 
-  startLiveMatchIngestor(matchId, externalMatchId);
+  startLiveMatchIngestor(
+    matchId,
+    match.externalMatchId
+  );
 
   return () => {
     stopLiveMatchIngestor(matchId);
   };
 
-}, [matchId]);
+}, [matchId, match]);
 
   /*
   =================================================

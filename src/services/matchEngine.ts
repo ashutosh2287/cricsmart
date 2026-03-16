@@ -248,17 +248,48 @@ function reduce(
   if (event.type === "WICKET") innings.wickets++;
   if (event.type === "WD" || event.type === "NB") innings.runs++;
 
-  if (innings.ball >= 6) {
-    const completedOver = innings.over;
-    innings.over++;
-    innings.ball = 0;
+  // =====================================================
+// STRIKE ROTATION LOGIC
+// =====================================================
 
-    saveSnapshot(
-      state.matchId,
-      next.currentInningsIndex,
-      completedOver,
-      next
-    );
+const runsScored =
+  event.type === "FOUR"
+    ? 4
+    : event.type === "SIX"
+    ? 6
+    : event.type === "RUN"
+    ? event.runs ?? 1
+    : event.type === "WD" || event.type === "NB"
+    ? 1
+    : 0;
+
+// Swap strike on odd runs
+if (runsScored % 2 === 1) {
+  const striker = ballEvent.batsman ?? "";
+const nonStriker = ballEvent.nonStriker ?? "";
+
+ballEvent.batsman = nonStriker;
+ballEvent.nonStriker = striker;
+}
+
+  if (innings.ball >= 6) {
+    // Swap strike at end of over
+  const striker = ballEvent.batsman ?? "";
+const nonStriker = ballEvent.nonStriker ?? "";
+
+ballEvent.batsman = nonStriker;
+ballEvent.nonStriker = striker;
+
+  const completedOver = innings.over;
+  innings.over++;
+  innings.ball = 0;
+
+  saveSnapshot(
+    state.matchId,
+    next.currentInningsIndex,
+    completedOver,
+    next
+  );
 
     // Limited overs innings completion
     if (

@@ -12,6 +12,9 @@ const matches: Match[] = [
     team1: "India",
     team2: "Australia",
     status: "Live",
+
+    // 🔴 REAL CRICKET API MATCH ID
+externalMatchId: "2aecce96-8565-4919-bc64-82a24d7d6908",
     score: "154/3",
     overs: "17.5",
     runRate: 8.8
@@ -38,13 +41,10 @@ const matches: Match[] = [
 
 // ✅ Get ALL matches
 export async function getAllMatches(): Promise<Match[]> {
-
-
   return matches;
 }
 
 // ✅ Get SINGLE match by slug
 export async function getMatchBySlug(slug: string): Promise<Match | undefined> {
-
   return matches.find(match => match.slug === slug);
 }

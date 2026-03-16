@@ -14,6 +14,9 @@ export type Match = {
 
   // ⭐ engine state (hidden simulation data)
   balls?: number;
+  // external cricket API match id
+  externalMatchId?: string
+
   engineState?: MatchState;
 
 };

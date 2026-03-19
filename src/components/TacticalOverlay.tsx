@@ -88,12 +88,16 @@ TURNING_POINT: {
   if (!overlay) return null;
 
   return (
+  <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50">
+
     <div
-      className={`fixed top-6 left-1/2 -translate-x-1/2
+      className={`pointer-events-auto absolute top-6 left-1/2 -translate-x-1/2
       px-6 py-2 rounded-xl shadow-xl font-semibold text-sm
       animate-overlaySlide ${overlay.color}`}
     >
       {overlay.text}
     </div>
-  );
+
+  </div>
+);
 }

@@ -21,45 +21,62 @@ function generateEventId(matchId: string, over: number, ball: number) {
   return `${matchId}_${over}_${ball}`
 }
 
-async function fetchWithTimeout(url: string) {
+export async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeout = 8000
+) {
+  const controller = new AbortController();
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
+  const id = setTimeout(() => controller.abort(), timeout);
 
   try {
+    const response = await fetch(url, {
+      ...options,
+      signal: options.signal || controller.signal, // ✅ FIX
+    });
 
-    const res = await fetch(url, {
-      signal: controller.signal,
-      cache: "no-store"
-    })
-
-    return res
+    return response;
 
   } finally {
-    clearTimeout(timeout)
+    clearTimeout(id);
   }
-
 }
 
 export async function fetchLiveMatchEvents(
-  matchId: string
+  matchId: string,
+  signal?: AbortSignal // ✅ ADD THIS
 ): Promise<ApiBallEvent[]> {
 
-  const url = `${API_BASE}/match_scorecard?apikey=${API_KEY}&id=${matchId}`
+  const url = `${API_BASE}/match_scorecard?apikey=${API_KEY}&id=${matchId}`;
 
-  const res = await fetchWithTimeout(url)
+  let res: Response;
 
-  if (!res.ok) {
-    throw new Error(`CricAPI error ${res.status}`)
+  try {
+    // ✅ pass signal into fetch
+    res = await fetchWithTimeout(url, { signal });
+
+  } catch (err: any) {
+
+    // ✅ IMPORTANT: ignore abort safely
+    if (err.name === "AbortError") {
+      return [];
+    }
+
+    throw err;
   }
 
-  const data = await res.json()
+  if (!res.ok) {
+    throw new Error(`CricAPI error ${res.status}`);
+  }
 
-  if (!data?.data?.scorecard) return []
+  const data = await res.json();
 
-  const now = Date.now()
+  if (!data?.data?.scorecard) return [];
 
-  const events: ApiBallEvent[] = []
+  const now = Date.now();
+
+  const events: ApiBallEvent[] = [];
 
   for (const innings of data.data.scorecard) {
 
@@ -69,15 +86,20 @@ export async function fetchLiveMatchEvents(
 
         events.push({
           id: generateEventId(matchId, over.over, ball.ball),
+
           over: over.over,
           ball: ball.ball,
+
           batsman: ball.batsman ?? "",
           bowler: ball.bowler ?? "",
+
           runs: ball.runs ?? 0,
           wicket: ball.wicket === 1,
+
           type: ball.type ?? "RUN",
+
           timestamp: now
-        })
+        });
 
       }
 
@@ -85,5 +107,5 @@ export async function fetchLiveMatchEvents(
 
   }
 
-  return events
+  return events;
 }

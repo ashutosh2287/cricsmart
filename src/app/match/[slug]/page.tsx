@@ -35,6 +35,9 @@ import Link from "next/link";
 import { MatchProvider } from "@/context/MatchContext";
 import LiveMatchStatus from "@/components/LiveMatchStatus";
 import { startLiveMatchIngestor, stopLiveMatchIngestor } from "@/services/ingestion/liveMatchIngestor";
+import CommentaryPanel from "@/components/match/CommentaryPanel";
+import { startSimulation, stopSimulation } from "@/services/simulation/matchSimulator";
+import { initMatch } from "@/services/matchEngine";
 
 export default function MatchDetailPage() {
 
@@ -84,7 +87,9 @@ export default function MatchDetailPage() {
 
     if (m?.engineState) {
       hydrateMatchState(id, m.engineState);
-    }
+    } else {
+  initMatch(id);
+}
 
   }
 
@@ -159,9 +164,10 @@ useEffect(() => {
 
   const id = matchId;
 
-  const unsubscribe = subscribeMatch(id, () => {
-    setEngineState(getMatchState(id));
-  });
+  const unsubscribe =subscribeMatch(id, (state) => {
+  console.log("🎯 UI GOT STATE:", state);
+  setEngineState(state);
+});
 
   return () => {
     unsubscribe();
@@ -222,7 +228,7 @@ useEffect(() => {
     <PageMotion>
   <MatchProvider value={{ matchId, state: currentEngineState }}>
 
-      <main className=" space-y-8">
+    <main className="space-y-8 relative overflow-hidden">
 
      <div className="max-w-7xl mx-auto px-6 py-6 grid gap-8 lg:grid-cols-[2fr_1fr] items-start">
 
@@ -264,9 +270,72 @@ useEffect(() => {
     <MatchControlPanel matchId={matchId} />
   </div>
 
+  {process.env.NODE_ENV === "development" && (
+  <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 shadow-lg flex gap-3">
+    
+    <button
+      onClick={() => {
+  console.log("SIM START CLICK");
+
+  if (!matchId) return;
+
+  const id = matchId;
+
+  // 🔥 CRITICAL FIX (ENGINE INIT)
+  initMatch(id);
+
+  startSimulation(
+    {
+      over: 0,
+      ball: 0,
+      totalRuns: 0,
+      wickets: 0,
+
+      striker: "Virat Kohli",
+      nonStriker: "Rohit Sharma",
+      bowler: "Mitchell Starc",
+
+      battingOrder: [
+        "Virat Kohli",
+        "Rohit Sharma",
+        "Gill",
+        "Hardik"
+      ],
+
+      bowlingOrder: [
+        "Mitchell Starc",
+        "Pat Cummins",
+        "Hazlewood"
+      ],
+
+      currentBowlerIndex: 0,
+      nextBatsmanIndex: 2,
+
+      phase: "POWERPLAY",
+    },
+    id
+  );
+}}
+      className="bg-green-600 px-4 py-2 rounded"
+    >
+      ▶ Start Simulation
+    </button>
+
+    <button
+      onClick={() => stopSimulation()}
+      className="bg-red-600 px-4 py-2 rounded"
+    >
+      ⏹ Stop
+    </button>
+
+  </div>
+)}
+
   <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 shadow-lg">
     <MatchInsightsPanel matchId={matchId} />
   </div>
+
+  <CommentaryPanel matchId={matchId} />
 
 </div>
 
@@ -290,9 +359,8 @@ useEffect(() => {
 
       {/* RIGHT SIDE — INTELLIGENCE PANELS */}
 
-<div className="space-y-8 sticky top-6">
-
- <div className="glass-panel p-5">
+<div className="space-y-8 sticky top-6 w-full max-w-[420px]">
+<div className="glass-panel p-5 w-full max-w-full overflow-hidden">
     <h2 className="text-sm font-semibold text-gray-400 uppercase mb-3">
       Strategy Dashboard
     </h2>
@@ -300,12 +368,14 @@ useEffect(() => {
     <StrategyDashboard matchId={matchId} />
   </div>
 
-  <div className="glass-panel p-5">
+  <div className="glass-panel p-5 w-full max-w-full overflow-hidden">
     <h2 className="text-sm font-semibold text-gray-400 uppercase mb-3">
       Momentum Map
     </h2>
 
-    <MomentumHeatmap matchId={matchId} />
+   <div className="w-full max-w-full overflow-hidden">
+  <MomentumHeatmap matchId={matchId} />
+</div>
     
     <MatchPhaseTimeline matchId={matchId} />
   </div>
@@ -314,8 +384,7 @@ useEffect(() => {
 
       {/* GLOBAL OVERLAYS */}
 
-      <TacticalOverlay />
-
+     <TacticalOverlay /> 
       {showReplay && (
         <ReplayOverlay
           matchId={matchId}

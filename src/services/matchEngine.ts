@@ -4,6 +4,7 @@ import { eventStore } from "@/persistence/eventStore";
 import { getMatchConfig } from "./matchFormat";
 import { advanceClock } from "./timeEngine";
 import { processMatchIntelligence } from "./matchIntelligenceEngine";
+import { v4 as uuidv4 } from "uuid";
 export type CorrectionEvent =
   | { type: "CORRECTION_UNDO_LAST" }
   | { type: "CORRECTION_DELETE"; targetEventId: string }
@@ -114,7 +115,7 @@ export type MatchState = {
 
 const matches = new Map<string, MatchState>();
 const eventStreams: Record<string, BallEvent[]> = {};
-const matchListeners: Record<string, Set<() => void>> = {};
+const matchListeners: Record<string, Set<(state: MatchState) => void>> = {};
 const snapshotMap: Record<
   string,
   Record<string, MatchState>
@@ -153,7 +154,8 @@ snapshotMap[matchId][key] = cloneState(state);
 }
 
 function emit(matchId: string) {
-  matchListeners[matchId]?.forEach(l => l());
+  const state = matches.get(matchId);
+  matchListeners[matchId]?.forEach(l => l(state!));
 }
 
 /* ========================================================
@@ -203,7 +205,7 @@ function reduce(
   const innings = next.innings[next.currentInningsIndex];
 
   const ballEvent: BallEvent = {
-  id: crypto.randomUUID(),
+  id: uuidv4(),
   slug: state.matchId,
   over: innings.over + innings.ball / 10,
 
@@ -396,14 +398,16 @@ export function getEventStream(matchId: string) {
 
 export function subscribeMatch(
   matchId: string,
-  cb: () => void
+  cb: (state: MatchState) => void
 ) {
   if (!matchListeners[matchId])
     matchListeners[matchId] = new Set();
+
   matchListeners[matchId].add(cb);
+
   return () => {
-  matchListeners[matchId].delete(cb);
-};
+    matchListeners[matchId].delete(cb);
+  };
 }
 
 export function hydrateMatchState(

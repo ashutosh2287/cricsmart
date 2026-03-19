@@ -79,7 +79,7 @@ export default function BroadcastInsightBanner() {
   return (
 
     <div
-      className="fixed top-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white font-bold text-lg z-50"
+      className="absolute top-6 left-1/2 -translate-x-1/2 z-40"
       style={{ background: banner.color }}
     >
       {banner.text}

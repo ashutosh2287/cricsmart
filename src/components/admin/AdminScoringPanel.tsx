@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { routeAdminCommand } from "@/services/adminCommandRouter";
-
+import { startSimulation, stopSimulation } from "@/services/simulation/matchSimulator";
 type Props = {
   matchId: string;
 };
@@ -23,6 +23,8 @@ export default function AdminScoringPanel({ matchId }: Props) {
       bowler
     });
   }
+
+  
 
   return (
 
@@ -82,6 +84,51 @@ export default function AdminScoringPanel({ matchId }: Props) {
             {r}
           </button>
         ))}
+
+        <button
+  onClick={() =>
+    startSimulation(
+      {
+        over: 0,
+        ball: 0,
+        totalRuns: 0,
+        wickets: 0,
+
+        striker: striker || "Rohit Sharma",
+        nonStriker: nonStriker || "Virat Kohli",
+        bowler: bowler || "Pat Cummins",
+
+      battingOrder: [
+        "Rohit Sharma",
+        "Virat Kohli",
+        "Shubman Gill",
+        "KL Rahul",
+        "Hardik Pandya",
+        "Ravindra Jadeja",
+    ],
+
+    nextBatsmanIndex: 2, // next after openers
+
+    // ✅ ADD THIS
+    bowlingOrder: [
+      "Pat Cummins",
+      "Mitchell Starc",
+      "Josh Hazlewood",
+    ],
+    currentBowlerIndex: 0,
+
+        phase: "POWERPLAY",
+      },
+      matchId
+    )
+  }
+>
+  ▶ Start Simulation
+</button>
+
+<button onClick={stopSimulation}>
+  ⏸ Stop
+</button>
 
         <button
           onClick={() =>

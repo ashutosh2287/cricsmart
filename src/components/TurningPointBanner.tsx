@@ -40,7 +40,7 @@ const turningPoints = detectTurningPoints(events);
 
   return (
 
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-red-600 text-white px-5 py-2 rounded-lg font-bold shadow-lg z-50">
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
 
       🎯 Turning Point – Ball {turn}
 

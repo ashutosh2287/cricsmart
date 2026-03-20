@@ -27,14 +27,15 @@ export function updatePlayerForm(matchId: string) {
 
     }
 
-    if (!playerFormStore[playerId]) {
-      playerFormStore[playerId] = [];
-    }
+    const prev = playerFormStore[playerId] || [];
 
-    playerFormStore[playerId].push({
-      matchId,
-      runs
-    });
+    playerFormStore[playerId] = [
+      ...prev,
+      {
+        matchId,
+        runs
+      }
+    ];
 
   });
 

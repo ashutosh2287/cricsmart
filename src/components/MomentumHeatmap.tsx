@@ -24,7 +24,7 @@ export default function MomentumHeatmap({ matchId }: { matchId: string }) {
       </h3>
 
       {/* 👇 IMPORTANT FIX */}
-      <div className="w-full overflow-x-auto">
+      <div className="flex gap-1 overflow-x-auto max-w-full">
 
         <div className="flex gap-[2px] min-w-max">
 

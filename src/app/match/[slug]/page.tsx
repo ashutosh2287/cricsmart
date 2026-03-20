@@ -38,6 +38,7 @@ import { startLiveMatchIngestor, stopLiveMatchIngestor } from "@/services/ingest
 import CommentaryPanel from "@/components/match/CommentaryPanel";
 import { startSimulation, stopSimulation } from "@/services/simulation/matchSimulator";
 import { initMatch } from "@/services/matchEngine";
+import GlassPanel from "@/components/ui/GlassPanel";
 
 export default function MatchDetailPage() {
 
@@ -164,11 +165,9 @@ useEffect(() => {
 
   const id = matchId;
 
-  const unsubscribe =subscribeMatch(id, (state) => {
-  console.log("🎯 UI GOT STATE:", state);
-  setEngineState(state);
+  const unsubscribe = subscribeMatch(id, () => {
+  setEngineState(getMatchState(id));
 });
-
   return () => {
     unsubscribe();
   };
@@ -226,6 +225,13 @@ useEffect(() => {
   return (
 
     <PageMotion>
+      <div className="
+      min-h-screen 
+      bg-gradient-to-br 
+      from-[#0f172a] 
+      via-[#1e293b] 
+      to-[#020617]
+    ">
   <MatchProvider value={{ matchId, state: currentEngineState }}>
 
     <main className="space-y-8 relative overflow-hidden">
@@ -255,101 +261,8 @@ useEffect(() => {
   </>
 )}
 
-        {/* MATCH ANALYTICS */}
 
-<div className="relative space-y-6">
-
-  {/* subtle glow background */}
-  <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-600/10 blur-[120px] pointer-events-none"/>
-
-  <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-800 pb-2">
-    Match Analytics
-  </h2>
-
-  <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 shadow-lg">
-    <MatchControlPanel matchId={matchId} />
-  </div>
-
-  {process.env.NODE_ENV === "development" && (
-  <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 shadow-lg flex gap-3">
-    
-    <button
-      onClick={() => {
-  console.log("SIM START CLICK");
-
-  if (!matchId) return;
-
-  const id = matchId;
-
-  // 🔥 CRITICAL FIX (ENGINE INIT)
-  initMatch(id);
-
-  startSimulation(
-    {
-      over: 0,
-      ball: 0,
-      totalRuns: 0,
-      wickets: 0,
-
-      striker: "Virat Kohli",
-      nonStriker: "Rohit Sharma",
-      bowler: "Mitchell Starc",
-
-      battingOrder: [
-        "Virat Kohli",
-        "Rohit Sharma",
-        "Gill",
-        "Hardik"
-      ],
-
-      bowlingOrder: [
-        "Mitchell Starc",
-        "Pat Cummins",
-        "Hazlewood"
-      ],
-
-      currentBowlerIndex: 0,
-      nextBatsmanIndex: 2,
-
-      phase: "POWERPLAY",
-    },
-    id
-  );
-}}
-      className="bg-green-600 px-4 py-2 rounded"
-    >
-      ▶ Start Simulation
-    </button>
-
-    <button
-      onClick={() => stopSimulation()}
-      className="bg-red-600 px-4 py-2 rounded"
-    >
-      ⏹ Stop
-    </button>
-
-  </div>
-)}
-
-  <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 shadow-lg">
-    <MatchInsightsPanel matchId={matchId} />
-  </div>
-
-  <CommentaryPanel matchId={matchId} />
-
-</div>
-
-        {/* MATCH STORY */}
-
-        <MatchStory matchId={matchId} />
-
-        {/* HIGHLIGHT TIMELINE */}
-
-        <HighlightTimeline matchId={matchId} />
-
-        {/* TIMELINE SCRUBBER */}
-
-        <MatchTimelineSlider matchId={matchId} />
+       
 
         {/* MATCH TABS */}
 
@@ -359,28 +272,7 @@ useEffect(() => {
 
       {/* RIGHT SIDE — INTELLIGENCE PANELS */}
 
-<div className="space-y-8 sticky top-6 w-full max-w-[420px]">
-<div className="glass-panel p-5 w-full max-w-full overflow-hidden">
-    <h2 className="text-sm font-semibold text-gray-400 uppercase mb-3">
-      Strategy Dashboard
-    </h2>
 
-    <StrategyDashboard matchId={matchId} />
-  </div>
-
-  <div className="glass-panel p-5 w-full max-w-full overflow-hidden">
-    <h2 className="text-sm font-semibold text-gray-400 uppercase mb-3">
-      Momentum Map
-    </h2>
-
-   <div className="w-full max-w-full overflow-hidden">
-  <MomentumHeatmap matchId={matchId} />
-</div>
-    
-    <MatchPhaseTimeline matchId={matchId} />
-  </div>
-
-</div>
 
       {/* GLOBAL OVERLAYS */}
 
@@ -404,6 +296,7 @@ useEffect(() => {
     </div>
     </main>
     </MatchProvider>
+    </div>
     </PageMotion>
   );
   
@@ -413,99 +306,204 @@ useEffect(() => {
 
 function TabsArea({ match }: { match: Match }) {
 
-  const [activeTab, setActiveTab] = useState("live");
+  const isLoading = !match;
+
+  const [activeTab, setActiveTab] = useState("overview");
+  const [isRunning, setIsRunning] = useState(false);
+  if (isLoading) {
+  return (
+    <div className="space-y-4">
+      <div className="h-6 w-40 bg-white/10 animate-pulse rounded" />
+      <div className="h-[200px] bg-white/10 animate-pulse rounded" />
+      <div className="h-[150px] bg-white/10 animate-pulse rounded" />
+    </div>
+  );
+}
 
   return (
     <>
-      <div className="flex gap-6 border-b border-gray-700 pb-3 text-sm font-medium">
+      {/* TAB HEADER */}
+      <div className="
+  flex gap-6 
+  border-b border-gray-700 
+  pb-3 
+  text-sm font-medium
+  sticky top-16 z-40
+  bg-black/40 backdrop-blur-md
+">
 
-        <button
-  className={`transition-colors ${
-  activeTab === "live"
-    ? "text-white border-b-2 border-blue-500 pb-2"
-    : "text-gray-400 hover:text-white"
-}`}
-  onClick={() => setActiveTab("info")}
->
-  Info
-</button>
-
-        <button
-          className={`transition-colors ${
-            activeTab === "live"
-              ? "text-white border-b-2 border-blue-500 pb-2"
-              : "text-gray-400 hover:text-white"
-          }`}
-          onClick={() => setActiveTab("live")}
-        >
-          Live
-        </button>
-
-        <button
-          className={`transition-colors ${
-            activeTab === "scorecard"
-              ? "text-white border-b-2 border-blue-500 pb-2"
-              : "text-gray-400 hover:text-white"
-          }`}
-          onClick={() => setActiveTab("scorecard")}
-        >
-          Scorecard
-        </button>
-
-        <button
-          className={`transition-colors ${
-            activeTab === "overs"
-              ? "text-white border-b-2 border-blue-500 pb-2"
-              : "text-gray-400 hover:text-white"
-          }`}
-          onClick={() => setActiveTab("overs")}
-        >
-          Overs
-        </button>
-
-        <button
-          className={`transition-colors ${
-            activeTab === "highlights"
-              ? "text-white border-b-2 border-blue-500 pb-2"
-              : "text-gray-400 hover:text-white"
-          }`}
-          onClick={() => setActiveTab("highlights")}
-        >
-          Highlights
-        </button>
-
-        <button
-          className={`transition-colors ${
-            activeTab === "admin"
-              ? "text-white border-b-2 border-blue-500 pb-2"
-              : "text-gray-400 hover:text-white"
-          }`}
-          onClick={() => setActiveTab("admin")}
-        >
-          Admin
-        </button>
+        {["overview", "live", "analysis", "timeline", "admin"].map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`capitalize transition-colors ${
+              activeTab === tab
+                ? "text-white border-b-2 border-blue-500 pb-2"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
 
       </div>
 
-      {activeTab === "info" && <div>Match Info Coming Soon...</div>}
+      {/* TAB CONTENT */}
 
-      {activeTab === "live" && <BroadcastLiveView match={match} />}
 
-      {activeTab === "scorecard" && (
-        <div>Scorecard View Coming Soon...</div>
-      )}
 
-      {activeTab === "overs" && (
-        <OversTimeline slug={match.slug} />
-      )}
 
-      {activeTab === "highlights" && (
-        <div>Highlights Coming Soon...</div>
-      )}
+{activeTab === "overview" && (
+  <div className="grid lg:grid-cols-2 gap-6">
 
-      {activeTab === "admin" && (
-        <AdminScoringPanel matchId={match.slug} />
-      )}
+    <GlassPanel className="lg:col-span-2">
+  <MatchControlPanel matchId={match.slug} />
+</GlassPanel>
+
+    {/* STORY */}
+    <GlassPanel className="lg:col-span-2">
+      <MatchStory matchId={match.slug} />
+    </GlassPanel>
+
+    {/* WIN PROBABILITY */}
+    <GlassPanel>
+      <div className="h-[200px] flex items-center justify-center text-gray-500">
+  Win Probability Graph Coming Soon
+</div>
+    </GlassPanel>
+
+    {/* MOMENTUM */}
+    <GlassPanel>
+      <h3 className="text-sm text-gray-400 mb-3 uppercase">
+        Momentum
+      </h3>
+
+      <MomentumHeatmap matchId={match.slug} />
+    </GlassPanel>
+
+    {/* INSIGHTS */}
+    <GlassPanel className="lg:col-span-2">
+      <MatchInsightsPanel matchId={match.slug} />
+    </GlassPanel>
+
+  </div>
+)}
+
+
+{activeTab === "live" && (
+  <div className="space-y-6">
+
+    <GlassPanel>
+      <CommentaryPanel matchId={match.slug} />
+    </GlassPanel>
+
+    <GlassPanel>
+      <MatchTimelineSlider matchId={match.slug} />
+    </GlassPanel>
+
+  </div>
+)}
+
+  
+
+      {activeTab === "timeline" && (
+  <div className="space-y-6">
+
+    <HighlightTimeline matchId={match.slug} />
+
+    <OversTimeline slug={match.slug} />
+
+  </div>
+)}
+
+      
+
+      {activeTab === "admin" && process.env.NODE_ENV === "development" && (
+        
+  <div className="space-y-6">
+
+    <AdminScoringPanel matchId={match.slug} />
+
+    <BroadcastDirectorPanel />
+    <BroadcastControlDashboard />
+
+    {process.env.NODE_ENV === "development" && (
+  <GlassPanel>
+    
+
+<GlassPanel>
+  <div className="flex gap-3">
+
+    <button
+      onClick={() => {
+        const id = match.slug;
+
+        if (!id) {
+          console.log("❌ No matchId");
+          return;
+        }
+
+        if (!isRunning) {
+          console.log("🚀 START");
+
+          initMatch(id);
+
+          startSimulation(
+            {
+              over: 0,
+              ball: 0,
+              totalRuns: 0,
+              wickets: 0,
+
+              striker: "Virat Kohli",
+              nonStriker: "Rohit Sharma",
+              bowler: "Mitchell Starc",
+
+              battingOrder: [
+                "Virat Kohli",
+                "Rohit Sharma",
+                "Gill",
+                "Hardik"
+              ],
+
+              bowlingOrder: [
+                "Mitchell Starc",
+                "Pat Cummins",
+                "Hazlewood"
+              ],
+
+              currentBowlerIndex: 0,
+              nextBatsmanIndex: 2,
+              phase: "POWERPLAY",
+            },
+            id
+          );
+
+          setIsRunning(true);
+
+        } else {
+          console.log("🛑 STOP");
+
+          stopSimulation();
+          setIsRunning(false);
+        }
+      }}
+      className={`px-4 py-2 rounded font-medium transition ${
+        isRunning
+          ? "bg-red-600 hover:bg-red-500"
+          : "bg-green-600 hover:bg-green-500"
+      }`}
+    >
+      {isRunning ? "⏹ Stop Simulation" : "▶ Start Simulation"}
+    </button>
+
+  </div>
+</GlassPanel>
+  </GlassPanel>
+)}
+
+  </div>
+)}
 
     </>
   );

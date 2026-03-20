@@ -9,7 +9,6 @@ import {
   hydrateMatchState
 } from "@/services/matchEngine";
 import { useParams } from "next/navigation";
-import BroadcastLiveView from "@/components/BroadcastLiveView";
 import { enableBroadcast, disableBroadcast } from "@/services/broadcastMode";
 import { Match } from "@/types/match";
 import OversTimeline from "@/components/OversTimeline";
@@ -27,8 +26,6 @@ import BroadcastControlDashboard from "@/components/BroadcastControlDashboard";
 import MatchControlPanel from "@/components/MatchControlPanel";
 import MatchHeader from "@/components/MatchHeader";
 import MomentumHeatmap from "@/components/MomentumHeatmap";
-import StrategyDashboard from "@/components/StrategyDashboard";
-import MatchPhaseTimeline from "@/components/MatchPhaseTimeline";
 import PageMotion from "@/components/ui/PageMotion";
 import MatchInsightsPanel from "@/components/analytics/MatchInsightsPanel";
 import Link from "next/link";
@@ -36,10 +33,22 @@ import { MatchProvider } from "@/context/MatchContext";
 import LiveMatchStatus from "@/components/LiveMatchStatus";
 import { startLiveMatchIngestor, stopLiveMatchIngestor } from "@/services/ingestion/liveMatchIngestor";
 import CommentaryPanel from "@/components/match/CommentaryPanel";
-import { startSimulation, stopSimulation } from "@/services/simulation/matchSimulator";
 import { initMatch } from "@/services/matchEngine";
 import GlassPanel from "@/components/ui/GlassPanel";
+import {
+  startSimulation,
+  stopSimulation,
+  pauseSimulation,
+  resumeSimulation,
+  setSimulationSpeed
+} from "@/services/simulation/matchSimulator";
 
+import {
+  getBattingStats,
+  getBowlingStats,
+  getFallOfWickets,
+  getExtras
+} from "@/services/analytics/scorecardEngine";
 export default function MatchDetailPage() {
 
   const params = useParams();
@@ -310,6 +319,8 @@ function TabsArea({ match }: { match: Match }) {
 
   const [activeTab, setActiveTab] = useState("overview");
   const [isRunning, setIsRunning] = useState(false);
+const [isPaused, setIsPaused] = useState(false);
+const [speed, setSpeed] = useState(1500);
   if (isLoading) {
   return (
     <div className="space-y-4">
@@ -332,7 +343,7 @@ function TabsArea({ match }: { match: Match }) {
   bg-black/40 backdrop-blur-md
 ">
 
-        {["overview", "live", "analysis", "timeline", "admin"].map(tab => (
+        {["overview", "live", "analysis", "timeline", "scorecard", "admin"].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -416,7 +427,155 @@ function TabsArea({ match }: { match: Match }) {
   </div>
 )}
 
-      
+
+{activeTab === "scorecard" && (() => {
+
+  const batting = getBattingStats(match.slug);
+const bowling = getBowlingStats(match.slug);
+const wickets = getFallOfWickets(match.slug);
+const extras = getExtras(match.slug);
+
+  return (
+    <div className="space-y-6">
+
+      {/* BATTING */}
+      <GlassPanel>
+        <h3 className="text-sm text-gray-400 mb-3 uppercase">
+          Batting
+        </h3>
+
+        <table className="w-full text-sm">
+          <thead className="text-gray-400">
+            <tr>
+              <th className="text-left">Batter</th>
+              <th>R</th>
+              <th>B</th>
+              <th>SR</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {Object.entries(batting).map(([name, s]) => {
+
+              const player = s as {
+                runs?: number;
+                balls?: number;
+              };
+
+              const runs = player.runs ?? 0;
+              const balls = player.balls ?? 0;
+
+              const sr =
+                balls > 0 ? ((runs / balls) * 100).toFixed(1) : "0.0";
+
+              return (
+                <tr key={name} className="border-t border-gray-800">
+                  <td>{name}</td>
+                  <td>{runs}</td>
+                  <td>{balls}</td>
+                  <td>{sr}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </GlassPanel>
+
+      <GlassPanel>
+  <h3 className="text-sm text-gray-400 mb-3 uppercase">
+    Fall of Wickets
+  </h3>
+
+  <div className="text-sm text-gray-300 flex flex-wrap gap-3">
+    {wickets.length === 0 && "No wickets yet"}
+
+    {wickets.map((w: {
+  wicket: number;
+  score: number;
+  over: string;
+  player: string;
+}, i) => (
+  <span key={i}>
+    {w.wicket}-{w.score} ({w.player}, {w.over})
+  </span>
+))}
+  </div>
+</GlassPanel>
+
+
+      {/* BOWLING */}
+      <GlassPanel>
+        <h3 className="text-sm text-gray-400 mb-3 uppercase tracking-wide">
+          Bowling
+        </h3>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            
+            <thead className="text-gray-400 border-b border-gray-800">
+              <tr>
+                <th className="text-left py-2">Bowler</th>
+                <th className="text-center">O</th>
+                <th className="text-center">R</th>
+                <th className="text-center">W</th>
+                <th className="text-center">Econ</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {Object.entries(bowling).map(([name, s]) => {
+
+                const bowler = s as {
+                  overs?: number;
+                  runs?: number;
+                  wickets?: number;
+                };
+
+                const overs = bowler.overs ?? 0;
+                const runs = bowler.runs ?? 0;
+                const wickets = bowler.wickets ?? 0;
+
+                const economy =
+                  overs > 0 ? (runs / overs).toFixed(1) : "0.0";
+
+                return (
+                  <tr
+                    key={name}
+                    className="border-b border-gray-800 hover:bg-white/5 transition"
+                  >
+                    <td className="py-2 font-medium">{name}</td>
+                    <td className="text-center">{overs}</td>
+                    <td className="text-center">{runs}</td>
+                    <td className="text-center">{wickets}</td>
+                    <td className="text-center text-blue-400">
+                      {economy}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </GlassPanel>
+
+      <GlassPanel>
+  <h3 className="text-sm text-gray-400 mb-3 uppercase">
+    Extras
+  </h3>
+
+  <div className="text-sm text-gray-300 flex gap-6">
+    <span>W: {extras.wides}</span>
+    <span>NB: {extras.noBalls}</span>
+    <span>B: {extras.byes}</span>
+    <span>LB: {extras.legByes}</span>
+  </div>
+</GlassPanel>
+
+    </div>
+  );
+
+})()}
+
 
       {activeTab === "admin" && process.env.NODE_ENV === "development" && (
         
@@ -428,20 +587,14 @@ function TabsArea({ match }: { match: Match }) {
     <BroadcastControlDashboard />
 
     {process.env.NODE_ENV === "development" && (
-  <GlassPanel>
-    
+ <GlassPanel>
+  <div className="flex flex-col gap-4">
 
-<GlassPanel>
-  <div className="flex gap-3">
-
+    {/* ▶ START / ⏹ STOP */}
     <button
       onClick={() => {
         const id = match.slug;
-
-        if (!id) {
-          console.log("❌ No matchId");
-          return;
-        }
+        if (!id) return;
 
         if (!isRunning) {
           console.log("🚀 START");
@@ -459,47 +612,89 @@ function TabsArea({ match }: { match: Match }) {
               nonStriker: "Rohit Sharma",
               bowler: "Mitchell Starc",
 
-              battingOrder: [
-                "Virat Kohli",
-                "Rohit Sharma",
-                "Gill",
-                "Hardik"
-              ],
-
-              bowlingOrder: [
-                "Mitchell Starc",
-                "Pat Cummins",
-                "Hazlewood"
-              ],
+              battingOrder: ["Virat Kohli", "Rohit Sharma", "Gill", "Hardik"],
+              bowlingOrder: ["Mitchell Starc", "Pat Cummins", "Hazlewood"],
 
               currentBowlerIndex: 0,
               nextBatsmanIndex: 2,
               phase: "POWERPLAY",
             },
-            id
+            id,
+            speed
           );
 
           setIsRunning(true);
-
+          setIsPaused(false);
         } else {
-          console.log("🛑 STOP");
+          console.log("⏹ STOP");
 
           stopSimulation();
           setIsRunning(false);
+          setIsPaused(false);
         }
       }}
-      className={`px-4 py-2 rounded font-medium transition ${
-        isRunning
-          ? "bg-red-600 hover:bg-red-500"
-          : "bg-green-600 hover:bg-green-500"
+      className={`px-4 py-2 rounded font-medium ${
+        isRunning ? "bg-red-600" : "bg-green-600"
       }`}
     >
       {isRunning ? "⏹ Stop Simulation" : "▶ Start Simulation"}
     </button>
 
+    {/* ⏸ PAUSE / ▶ RESUME */}
+    {isRunning && (
+      <button
+        onClick={() => {
+          if (!isPaused) {
+            pauseSimulation();
+            setIsPaused(true);
+          } else {
+            resumeSimulation();
+            setIsPaused(false);
+          }
+        }}
+        className="px-4 py-2 rounded bg-yellow-500"
+      >
+        {isPaused ? "▶ Resume" : "⏸ Pause"}
+      </button>
+    )}
+
+    {/* ⚡ SPEED CONTROL */}
+    <div className="flex gap-2">
+
+      <button
+        onClick={() => {
+          setSpeed(1500);
+          setSimulationSpeed(1500);
+        }}
+        className="px-3 py-1 bg-gray-700 rounded"
+      >
+        1x
+      </button>
+
+      <button
+        onClick={() => {
+          setSpeed(700);
+          setSimulationSpeed(700);
+        }}
+        className="px-3 py-1 bg-gray-700 rounded"
+      >
+        2x
+      </button>
+
+      <button
+        onClick={() => {
+          setSpeed(300);
+          setSimulationSpeed(300);
+        }}
+        className="px-3 py-1 bg-gray-700 rounded"
+      >
+        5x
+      </button>
+
+    </div>
+
   </div>
 </GlassPanel>
-  </GlassPanel>
 )}
 
   </div>

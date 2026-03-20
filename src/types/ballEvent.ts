@@ -9,6 +9,13 @@ export type BallEvent = {
   wicket?: boolean;
   extra?: boolean;
 
+  // ⭐ NEW (IMPORTANT)
+  extraType?: "WD" | "NB" | "BYE" | "LB";
+  extraRuns?: number;
+
+  // ⭐ ADD THIS (VERY IMPORTANT)
+  totalRuns?: number;
+
   // ⭐ PLAYER INFORMATION
   batsman: string;
   nonStriker?: string;
@@ -21,7 +28,9 @@ export type BallEvent = {
     | "SIX"
     | "WICKET"
     | "WD"
-    | "NB";
+    | "NB"
+    | "BYE"
+    | "LB";
 
   timestamp: number;
 

@@ -6,47 +6,107 @@ import { toEngineEvent } from "./simulationEventAdapter";
 import { addCommentary } from "../commentary/commentaryStore";
 import { generateAdvancedCommentary } from "../commentary/advancedCommentaryEngine";
 
-let interval: NodeJS.Timeout | null = null;
+/* =====================================================
+   GLOBAL STATE (IMPORTANT)
+===================================================== */
+
+let timeoutRef: NodeJS.Timeout | null = null;
+let isRunning = false;
+let isPaused = false;
+let currentSpeed = 1500; // default delay
+
+/* =====================================================
+   START SIMULATION
+===================================================== */
 
 export function startSimulation(
   state: SimulationState,
-  matchId: string
+  matchId: string,
+  speed: number = 1500
 ) {
-  // ✅ ALWAYS RESET PREVIOUS SIMULATION
-  stopSimulation();
+  // 🔥 Prevent duplicate runs
+  if (isRunning) {
+    console.log("⚠️ Simulation already running");
+    return;
+  }
+
+  stopSimulation(); // safety reset
+
+  isRunning = true;
+  isPaused = false;
+  currentSpeed = speed;
 
   const runBall = () => {
+    if (!isRunning) return;
+
+    if (isPaused) {
+      // 🔁 Keep checking while paused
+      timeoutRef = setTimeout(runBall, 500);
+      return;
+    }
+
     console.log("🔥 RUN BALL CALLED");
 
     const matchState = getMatchState(matchId);
-    if (!matchState) {
-  console.log("❌ No match state — retrying...");
 
-  interval = setTimeout(runBall, 1000);
-  return;
-}
+    if (!matchState) {
+      console.log("❌ No match state — retrying...");
+      timeoutRef = setTimeout(runBall, 1000);
+      return;
+    }
 
     const innings =
       matchState.innings[matchState.currentInningsIndex];
 
-    // 🛑 Stop if innings complete
-    if (innings.completed) {
-      console.log("🏁 Innings completed");
-      stopSimulation();
-      return;
-    }
+    /* =============================
+       AUTO INNINGS SWITCH
+    ============================= */
+
+   if (innings.completed) {
+
+  const matchState = getMatchState(matchId);
+
+  if (!matchState) {
+    stopSimulation();
+    return;
+  }
+
+  if (matchState.currentInningsIndex === 0) {
+    console.log("🔄 Switching to 2nd innings");
+
+    matchState.currentInningsIndex = 1;
+
+    const firstInnings = matchState.innings[0];
+    state.target = firstInnings.runs + 1;
+
+    state.over = 0;
+    state.ball = 0;
+    state.totalRuns = 0;
+    state.wickets = 0;
+
+    state.striker = state.battingOrder[0];
+    state.nonStriker = state.battingOrder[1];
+    state.nextBatsmanIndex = 2;
+
+    return;
+  }
+
+  console.log("🏆 Match finished");
+  stopSimulation();
+  return;
+}
 
     const over = innings.over;
     const ball = innings.ball;
 
     const prevOver = state.over;
 
-    // ✅ Bowler rotation
+    // 🔄 Bowler rotation
     if (over !== prevOver) {
       rotateBowler(state);
     }
 
-    // ✅ Last ball fetch
+    // 📊 Last ball
     const currentOverBalls = innings.overs[over] || [];
     const prevOverBalls = innings.overs[over - 1] || [];
 
@@ -55,13 +115,12 @@ export function startSimulation(
         ? currentOverBalls[currentOverBalls.length - 1]
         : prevOverBalls[prevOverBalls.length - 1];
 
-    // ✅ Sync striker from engine
     if (lastBall) {
       state.striker = lastBall.batsman ?? state.striker;
       state.nonStriker = lastBall.nonStriker ?? state.nonStriker;
     }
 
-    // ✅ Sync state
+    // 📊 Sync state
     const syncedState: SimulationState = {
       ...state,
       over,
@@ -74,9 +133,8 @@ export function startSimulation(
           : "DEATH",
     };
 
-    // 🎯 Generate ball
+    // 🎯 Generate event
     const event: BallEvent = generateBallEvent(syncedState);
-    console.log("🎯 EVENT:", event);
 
     if (!event) {
       console.log("❌ Event generation failed");
@@ -84,24 +142,16 @@ export function startSimulation(
       return;
     }
 
-    // 🚀 Convert + dispatch
     const engineEvent = toEngineEvent(event);
-    console.log("🚀 ENGINE EVENT:", engineEvent);
-
     dispatchBallEvent(matchId, engineEvent);
 
-    console.log("📊 STATE AFTER:", getMatchState(matchId));
-
-    // 🎙️ Commentary
+    // 🎙 Commentary
     const commentary = generateAdvancedCommentary(event, syncedState);
-    console.log("🎙️ GENERATED:", commentary);
-
     addCommentary(matchId, commentary);
 
-    // 📊 Update simulation stats
+    // 📊 Update sim state
     updateState(state, event);
 
-    // ✅ Update over tracker
     state.over = over;
 
     // 🎯 Target chase stop
@@ -111,25 +161,59 @@ export function startSimulation(
       return;
     }
 
-    // 🔁 Next ball (REALISTIC DELAY)
-    const delay = Math.random() * 800 + 1200;
+    // ⏱ Dynamic delay (based on speed)
+    const delay = Math.random() * 400 + currentSpeed;
 
-    interval = setTimeout(runBall, delay);
+    timeoutRef = setTimeout(runBall, delay);
   };
 
-  // ▶ Start first ball
+  console.log("🚀 Simulation started");
+
   runBall();
 }
 
+/* =====================================================
+   STOP / PAUSE / RESUME
+===================================================== */
+
 export function stopSimulation() {
-  if (interval) {
-    clearTimeout(interval);
-    interval = null;
-    console.log("⏹ Simulation stopped");
+  if (timeoutRef) {
+    clearTimeout(timeoutRef);
+    timeoutRef = null;
   }
+
+  isRunning = false;
+  isPaused = false;
+
+  console.log("⏹ Simulation stopped");
 }
 
-/* ============================= */
+export function pauseSimulation() {
+  if (!isRunning) return;
+
+  isPaused = true;
+  console.log("⏸ Simulation paused");
+}
+
+export function resumeSimulation() {
+  if (!isRunning) return;
+
+  isPaused = false;
+  console.log("▶ Simulation resumed");
+}
+
+/* =====================================================
+   OPTIONAL: SPEED CONTROL
+===================================================== */
+
+export function setSimulationSpeed(speed: number) {
+  currentSpeed = speed;
+  console.log("⚡ Speed changed:", speed);
+}
+
+/* =====================================================
+   HELPERS
+===================================================== */
 
 function updateState(state: SimulationState, event: BallEvent) {
   state.totalRuns += event.runs;

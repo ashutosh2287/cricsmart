@@ -36,6 +36,8 @@ export function startSimulation(
   isPaused = false;
   currentSpeed = speed;
 
+  
+
   const runBall = () => {
     if (!isRunning) return;
 
@@ -55,8 +57,30 @@ export function startSimulation(
       return;
     }
 
-    const innings =
-      matchState.innings[matchState.currentInningsIndex];
+    /* ✅ HARD STOP GUARD (ADD THIS) */
+if (matchState.currentInningsIndex > 1) {
+  console.log("🛑 Invalid innings detected — stopping simulation");
+  stopSimulation();
+  return;
+}
+const index = matchState.currentInningsIndex;
+if (
+  matchState.currentInningsIndex < 0 ||
+  matchState.currentInningsIndex >= matchState.innings.length
+) {
+  console.log("❌ Invalid innings index");
+  stopSimulation();
+  return;
+}
+
+    const innings = matchState.innings[index];
+
+      if (!innings) {
+  console.log("❌ Invalid innings — stopping simulation");
+  stopSimulation();
+  return;
+}
+
 
     /* =============================
        AUTO INNINGS SWITCH
@@ -64,9 +88,9 @@ export function startSimulation(
 
    if (innings.completed) {
 
-  const matchState = getMatchState(matchId);
-
-  if (!matchState) {
+  // 🔒 FINAL MATCH END GUARD
+  if (matchState.currentInningsIndex >= 1) {
+    console.log("🏆 Match finished (2 innings complete)");
     stopSimulation();
     return;
   }
@@ -87,6 +111,8 @@ export function startSimulation(
     state.striker = state.battingOrder[0];
     state.nonStriker = state.battingOrder[1];
     state.nextBatsmanIndex = 2;
+
+    timeoutRef = setTimeout(runBall, currentSpeed);
 
     return;
   }

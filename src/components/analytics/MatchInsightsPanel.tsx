@@ -1,10 +1,9 @@
 "use client";
 
 import { getMatchInsights } from "@/services/analytics/matchInsightsEngine";
-import WinProbabilityChart from "./WinProbabilityChart";
 import MomentumChart from "./MomentumChart";
 import { getAIInsights } from "@/services/analytics/aiInsightEngine";
-
+import WinProbabilityChart from "@/components/analytics/WinProbabilityChart";
 type Props = {
   matchId: string;
 };
@@ -20,7 +19,7 @@ export default function MatchInsightsPanel({ matchId }: Props) {
 
       {/* WIN PROBABILITY + MOMENTUM */}
 
-      <WinProbabilityChart matchId={matchId} />
+      
       <MomentumChart matchId={matchId} />
 
       {/* AI INSIGHTS */}

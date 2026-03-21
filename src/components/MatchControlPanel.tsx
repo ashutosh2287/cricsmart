@@ -1,12 +1,10 @@
 "use client";
 
 import MatchInsightPanel from "./MatchInsightPanel";
-import WinProbabilityChart from "./WinProbabilityChart";
 import MomentumMeter from "./MomentumMeter";
 import HighlightTimeline from "./HighlightTimeline";
 import NarrativeTimeline from "./NarrativeTimeline";
 import PartnershipPanel from "./PartnershipPanel";
-
 import { startReplay } from "@/services/replay/replayEngine";
 import { loadHistoricalMatch } from "@/services/replay/loadHistoricalMatch";
 
@@ -50,7 +48,6 @@ export default function MatchControlPanel({ matchId }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        <WinProbabilityChart matchId={matchId} />
 
         <MomentumMeter matchId={matchId} />
 

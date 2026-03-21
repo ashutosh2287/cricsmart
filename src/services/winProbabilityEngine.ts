@@ -1,22 +1,74 @@
 import { MatchState } from "./matchEngine";
 import { computeChasePressure } from "./pressureEngine";
 
+/* =============================
+   TYPES
+============================= */
+
 export type WinProbabilityContext = {
-  battingWinProbability: number; // 0–100
-  bowlingWinProbability: number; // 0–100
+  battingWinProbability: number;
+  bowlingWinProbability: number;
 };
+
+/* =============================
+   HELPERS
+============================= */
 
 function logistic(x: number): number {
   return 1 / (1 + Math.exp(-x));
 }
 
+/* =============================
+   MAIN ENGINE
+============================= */
+
 export function computeWinProbability(
   state: MatchState
 ): WinProbabilityContext | null {
 
-  // Limited overs only
   if (state.configOvers === null) return null;
-  if (state.innings.length < 2) return null;
+
+  const totalBalls = state.configOvers * 6;
+
+  /* =========================================
+     1️⃣ FIRST INNINGS
+  ========================================= */
+
+  if (state.currentInningsIndex === 0) {
+
+    const innings = state.innings[0];
+
+    const ballsBowled =
+      innings.over * 6 + innings.ball;
+
+    const progress = ballsBowled / totalBalls;
+
+    const wicketsFactor = innings.wickets / 10;
+
+    // Simple par score model
+    const expectedRuns = progress * 160;
+
+    const runFactor =
+      (innings.runs - expectedRuns) / 100;
+
+    let probability =
+      0.5 +
+      runFactor * 0.6 -
+      wicketsFactor * 0.3;
+
+    probability = Math.max(0.2, Math.min(0.8, probability));
+
+    const battingWinProbability = probability * 100;
+
+    return {
+      battingWinProbability,
+      bowlingWinProbability: 100 - battingWinProbability
+    };
+  }
+
+  /* =========================================
+     2️⃣ SECOND INNINGS (CHASE)
+  ========================================= */
 
   const chase = computeChasePressure(state);
   if (!chase) return null;
@@ -25,11 +77,8 @@ export function computeWinProbability(
 
   const wicketsRemaining = 10 - second.wickets;
 
-  // Positive means batting side ahead
   const rrrGap =
     chase.currentRunRate - chase.requiredRunRate;
-
-  const totalBalls = state.configOvers * 6;
 
   const ballsFactor =
     chase.ballsRemaining / totalBalls;
@@ -37,34 +86,27 @@ export function computeWinProbability(
   const wicketFactor =
     wicketsRemaining / 10;
 
-  // Normalize pressure (0–1)
   const pressureFactor =
     chase.pressureIndex / 100;
 
-  // Late game amplification
-  const lateGameBoost =
-    chase.ballsRemaining <= 12 ? 1.4 :
-    chase.ballsRemaining <= 24 ? 1.25 :
-    chase.ballsRemaining <= 48 ? 1.1 :
-    1;
+  let x =
+    rrrGap * 1.2 +
+    ballsFactor * 0.8 +
+    wicketFactor * 0.6 -
+    pressureFactor * 0.8;
 
-  // Improved deterministic score model
-  const x =
-    rrrGap * 2.0 +                 // run rate gap more influential
-    ballsFactor * 1.3 +            // time remaining
-    wicketFactor * 1.0 -           // wickets in hand
-    pressureFactor * 1.2;          // high pressure reduces batting edge
+  // Soft late game boost
+  if (chase.ballsRemaining <= 12) {
+    x *= 1.2;
+  }
 
-  const adjustedX = x * lateGameBoost;
-
-  const probability = logistic(adjustedX);
+  const probability = logistic(x);
 
   const battingWinProbability =
-    Math.max(0, Math.min(100, probability * 100));
+    Math.max(5, Math.min(95, probability * 100));
 
   return {
     battingWinProbability,
-    bowlingWinProbability:
-      100 - battingWinProbability
+    bowlingWinProbability: 100 - battingWinProbability
   };
 }

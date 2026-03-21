@@ -1,4 +1,4 @@
-import { getEventStream } from "../matchEngine";
+import { getMatchState } from "../matchEngine";
 
 export type PartnershipThreat =
   | "LOW"
@@ -11,40 +11,54 @@ export type Partnership = {
   balls: number;
   runRate: number;
   threat: PartnershipThreat;
+  striker?: string;
+  nonStriker?: string;
 };
 
 export function computeCurrentPartnership(
   matchId: string
 ): Partnership | null {
 
-  const events = getEventStream(matchId);
+  
 
-  if (!events.length) return null;
+  const matchState = getMatchState(matchId);
+  if (!matchState) return null;
+
+  const innings =
+    matchState.innings[matchState.currentInningsIndex];
+    const allBalls = Object.values(innings.overs).flat();
+
+const lastBall = allBalls[allBalls.length - 1];
+
+const striker = lastBall?.batsman ?? "";
+const nonStriker = lastBall?.nonStriker ?? "";
+
+  if (!innings) return null;
 
   let runs = 0;
   let balls = 0;
 
-  for (let i = events.length - 1; i >= 0; i--) {
+  // ✅ Flatten only CURRENT innings balls
 
-    const e = events[i];
+  // 🔁 Traverse backwards
+  for (let i = allBalls.length - 1; i >= 0; i--) {
 
-    if (!e.valid) continue;
+    const ball = allBalls[i];
+    if (!ball) continue;
 
-    if (e.wicket) break;
+    // ❗ STOP at last wicket
+    if (ball.wicket) break;
 
-    runs += e.runs ?? 0;
+    runs += ball.runs ?? 0;
 
-    if (e.isLegalDelivery) {
+    if (ball.isLegalDelivery) {
       balls++;
     }
-
   }
 
   if (balls === 0) return null;
 
-  const overs = balls / 6;
-
-  const runRate = runs / Math.max(0.1, overs);
+  const runRate = (runs / balls) * 6;
 
   /*
   ========================================
@@ -70,6 +84,8 @@ export function computeCurrentPartnership(
     runs,
     balls,
     runRate,
-    threat
+    threat,
+    striker,
+    nonStriker
   };
 }

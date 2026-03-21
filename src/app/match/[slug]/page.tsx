@@ -49,6 +49,7 @@ import {
   getFallOfWickets,
   getExtras
 } from "@/services/analytics/scorecardEngine";
+import WinProbabilityChart from "@/components/analytics/WinProbabilityChart";
 export default function MatchDetailPage() {
 
   const params = useParams();
@@ -367,20 +368,19 @@ const [speed, setSpeed] = useState(1500);
 {activeTab === "overview" && (
   <div className="grid lg:grid-cols-2 gap-6">
 
+    {/* CONTROLS */}
     <GlassPanel className="lg:col-span-2">
-  <MatchControlPanel matchId={match.slug} />
-</GlassPanel>
+      <MatchControlPanel matchId={match.slug} />
+    </GlassPanel>
 
     {/* STORY */}
     <GlassPanel className="lg:col-span-2">
       <MatchStory matchId={match.slug} />
     </GlassPanel>
 
-    {/* WIN PROBABILITY */}
-    <GlassPanel>
-      <div className="h-[200px] flex items-center justify-center text-gray-500">
-  Win Probability Graph Coming Soon
-</div>
+    {/* ✅ MAIN GRAPH (ONLY ONE) */}
+    <GlassPanel className="lg:col-span-2">
+      <WinProbabilityChart matchId={match.slug} />
     </GlassPanel>
 
     {/* MOMENTUM */}
@@ -388,14 +388,15 @@ const [speed, setSpeed] = useState(1500);
       <h3 className="text-sm text-gray-400 mb-3 uppercase">
         Momentum
       </h3>
-
       <MomentumHeatmap matchId={match.slug} />
     </GlassPanel>
 
     {/* INSIGHTS */}
-    <GlassPanel className="lg:col-span-2">
+    <GlassPanel>
       <MatchInsightsPanel matchId={match.slug} />
     </GlassPanel>
+
+    
 
   </div>
 )}

@@ -40,12 +40,22 @@ export function updateWinProbability(
   const over =
     innings.over + innings.ball / 10;
 
-  winProbStore[matchId].timeline.push({
-    over,
-    batting: result.battingWinProbability,
-    bowling: result.bowlingWinProbability,
-    timestamp: ballEvent?.timestamp ?? Date.now()
-  });
+ const timeline = winProbStore[matchId].timeline;
+
+// 🛑 prevent duplicate entries (same ball)
+const last = timeline[timeline.length - 1];
+
+if (last && Math.abs(last.over - over) < 0.001) {
+  return;
+}
+const batting = Math.max(5, Math.min(95, result.battingWinProbability));
+const bowling = 100 - batting;
+timeline.push({
+  over,
+  batting,
+  bowling,
+  timestamp: ballEvent?.timestamp ?? Date.now()
+});
 }
 
 export function getWinProbabilityTimeline(

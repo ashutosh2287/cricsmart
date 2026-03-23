@@ -13,75 +13,94 @@ export function startLiveMatchIngestor(
   matchId: string,
   externalMatchId: string
 ) {
-  if (pollingIntervals[matchId]) return;
+  if (pollingIntervals[matchId]) {
+    console.warn(`⚠️ Ingestor already running for match: ${matchId}`);
+    return;
+  }
+
+  console.log(`🚀 Starting live ingestion for match: ${matchId}`);
 
   if (!processedEvents[matchId]) {
     processedEvents[matchId] = new Set();
   }
 
-  // 🔥 Create AbortController
+  if (abortControllers[matchId]) {
+    abortControllers[matchId].abort();
+  }
   abortControllers[matchId] = new AbortController();
 
   pollingIntervals[matchId] = setInterval(async () => {
     try {
       const state = getMatchState(matchId);
 
-      // 🛑 Stop if innings complete
-      if (state?.innings[state.currentInningsIndex]?.completed) {
+      if (
+        !state ||
+        state.innings[state.currentInningsIndex]?.completed
+      ) {
+        console.log("🛑 Match completed. Stopping ingestion.");
         stopLiveMatchIngestor(matchId);
         return;
       }
 
-      // 🔥 Fetch with abort signal
+      const currentInnings = state.innings[state.currentInningsIndex];
+
+      // 🧠 GET REAL STRIKER / NON-STRIKER
+      
+
       const events = await fetchLiveMatchEvents(
         externalMatchId,
         abortControllers[matchId].signal
       );
 
-      console.log("Fetched events:", events);
-
-      for (const apiEvent of events) {
-        const eventKey = apiEvent.id;
-
-        if (processedEvents[matchId].has(eventKey)) continue;
-
-        const engineEvent = adaptApiEventToEngineEvent(
-          apiEvent,
-          matchId,
-          ""
-        );
-
-        dispatchBallEvent(matchId, engineEvent);
-
-        processedEvents[matchId].add(eventKey);
-
-        // 🧹 Limit memory
-        if (processedEvents[matchId].size > MAX_EVENT_CACHE) {
-          const first = processedEvents[matchId]
-            .values()
-            .next().value;
-
-          if (first !== undefined) {
-            processedEvents[matchId].delete(first);
-          }
-        }
-      }
-
-    } catch (err: any) {
-
-      // ✅ Ignore abort errors (very important)
-      if (err.name === "AbortError") {
-        console.log("⛔ Fetch aborted (expected)");
+      if (!events || !Array.isArray(events)) {
+        console.warn("⚠️ No events received or invalid format");
         return;
       }
+    for (const apiEvent of events) {
+  const eventKey = apiEvent?.id;
 
-      console.error("Live ingestion error:", err);
+  if (!eventKey) continue;
+  if (processedEvents[matchId].has(eventKey)) continue;
+
+  const engineEvent = adaptApiEventToEngineEvent(
+    apiEvent,
+    matchId,
+    "" // ✅ TEMP FIX (no non-striker in system)
+  );
+
+  if (!engineEvent) continue;
+
+  dispatchBallEvent(matchId, engineEvent);
+
+  processedEvents[matchId].add(eventKey);
+
+  if (processedEvents[matchId].size > MAX_EVENT_CACHE) {
+    const first = processedEvents[matchId]
+      .values()
+      .next().value;
+
+    if (first) {
+      processedEvents[matchId].delete(first);
     }
+  }
+}
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        if (err.name === "AbortError") {
+          console.log("⛔ Fetch aborted (expected)");
+          return;
+        }
 
+        console.error("❌ Live ingestion error:", err.message);
+      } else {
+        console.error("❌ Unknown ingestion error:", err);
+      }
+    }
   }, POLL_INTERVAL);
 }
 
 export function stopLiveMatchIngestor(matchId: string) {
+  console.log(`🛑 Stopping ingestion for match: ${matchId}`);
 
   const interval = pollingIntervals[matchId];
 
@@ -90,9 +109,10 @@ export function stopLiveMatchIngestor(matchId: string) {
     delete pollingIntervals[matchId];
   }
 
-  // 🔥 Abort pending fetch
   if (abortControllers[matchId]) {
     abortControllers[matchId].abort();
     delete abortControllers[matchId];
   }
+
+  delete processedEvents[matchId];
 }

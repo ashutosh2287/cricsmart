@@ -17,7 +17,6 @@ import { connectRealtime, disconnectRealtime } from "@/services/realtimeService"
 import ReplayOverlay from "@/components/replay/ReplayOverlay";
 import TacticalOverlay from "@/components/TacticalOverlay";
 import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
-import HighlightTimeline from "@/components/HighlightTimeline";
 import MatchStory from "@/components/MatchStory";
 import { initCommentaryVoice } from "@/services/commentary/commentaryVoiceEngine";
 import BroadcastDirectorPanel from "@/components/BroadcastDirectorPanel";
@@ -43,6 +42,9 @@ import {
   setSimulationSpeed
 } from "@/services/simulation/matchSimulator";
 
+import MatchNarrativePanel from "@/components/analytics/MatchNarrativePanel";
+import PartnershipPanel from "@/components/PartnershipPanel";
+import HighlightTimeline from "@/components/HighlightTimeline";
 import {
   getBattingStats,
   getBowlingStats,
@@ -50,9 +52,14 @@ import {
   getExtras
 } from "@/services/analytics/scorecardEngine";
 import WinProbabilityChart from "@/components/analytics/WinProbabilityChart";
+import ReplaySlider from "@/components/match/ReplaySlider";
+type AnalysisFilter = "ALL" | "BATTING" | "BOWLING" | "PRESSURE";
+
+
 export default function MatchDetailPage() {
 
   const params = useParams();
+  
 
   const matchId: string | undefined = useMemo(() => {
     const slug = params.slug;
@@ -317,8 +324,13 @@ useEffect(() => {
 function TabsArea({ match }: { match: Match }) {
 
   const isLoading = !match;
-
   const [activeTab, setActiveTab] = useState("overview");
+  
+
+// 🔥 ADD HERE
+const [analysisFilter, setAnalysisFilter] = useState<
+  "ALL" | "BATTING" | "BOWLING" | "PRESSURE"
+>("ALL");
   const [isRunning, setIsRunning] = useState(false);
 const [isPaused, setIsPaused] = useState(false);
 const [speed, setSpeed] = useState(1500);
@@ -366,41 +378,70 @@ const [speed, setSpeed] = useState(1500);
 
 
 {activeTab === "overview" && (
-  <div className="grid lg:grid-cols-2 gap-6">
+  <div className="space-y-6">
 
     {/* CONTROLS */}
-    <GlassPanel className="lg:col-span-2">
+    <GlassPanel>
       <MatchControlPanel matchId={match.slug} />
     </GlassPanel>
 
     {/* STORY */}
-    <GlassPanel className="lg:col-span-2">
+    <GlassPanel>
       <MatchStory matchId={match.slug} />
     </GlassPanel>
 
-    {/* ✅ MAIN GRAPH (ONLY ONE) */}
-    <GlassPanel className="lg:col-span-2">
+    {/* MAIN GRAPH */}
+    <GlassPanel>
       <WinProbabilityChart matchId={match.slug} />
     </GlassPanel>
 
-    {/* MOMENTUM */}
-    <GlassPanel>
-      <h3 className="text-sm text-gray-400 mb-3 uppercase">
-        Momentum
-      </h3>
-      <MomentumHeatmap matchId={match.slug} />
-    </GlassPanel>
+    {/* MAIN DASHBOARD GRID */}
+    <div className="grid lg:grid-cols-3 gap-6">
 
-    {/* INSIGHTS */}
-    <GlassPanel>
-      <MatchInsightsPanel matchId={match.slug} />
-    </GlassPanel>
+      {/* LEFT SIDE (2 columns) */}
+      <div className="lg:col-span-2 space-y-6">
 
-    
+        
+
+        {/* MOMENTUM */}
+        <GlassPanel>
+          <h3 className="text-sm text-gray-400 mb-3 uppercase">
+            Momentum
+          </h3>
+          <MomentumHeatmap matchId={match.slug} />
+        </GlassPanel>
+
+        {/* INSIGHTS */}
+        <GlassPanel>
+          <MatchInsightsPanel matchId={match.slug} />
+        </GlassPanel>
+
+        {/* NARRATIVE */}
+        <GlassPanel>
+          <MatchNarrativePanel matchId={match.slug} />
+        </GlassPanel>
+
+      </div>
+
+      {/* RIGHT SIDE */}
+      <div className="space-y-6">
+
+        {/* PARTNERSHIP */}
+        <GlassPanel>
+          <PartnershipPanel matchId={match.slug} />
+        </GlassPanel>
+
+        {/* HIGHLIGHTS */}
+        <GlassPanel>
+          <HighlightTimeline matchId={match.slug} />
+        </GlassPanel>
+
+      </div>
+
+    </div>
 
   </div>
 )}
-
 
 {activeTab === "live" && (
   <div className="space-y-6">
@@ -410,12 +451,131 @@ const [speed, setSpeed] = useState(1500);
     </GlassPanel>
 
     <GlassPanel>
-      <MatchTimelineSlider matchId={match.slug} />
+       <ReplaySlider matchId={match.slug} />
+
     </GlassPanel>
 
   </div>
 )}
+{activeTab === "analysis" && (
+  <div className="space-y-6">
 
+    {/* 🔥 FILTER BUTTONS */}
+    <div className="flex gap-3 flex-wrap">
+
+      {[
+        { key: "ALL", label: "📊 All", color: "bg-blue-600" },
+        { key: "BATTING", label: "🏏 Batting", color: "bg-green-600" },
+        { key: "BOWLING", label: "🎯 Bowling", color: "bg-red-600" },
+        { key: "PRESSURE", label: "⚡ Pressure", color: "bg-yellow-500" }
+      ].map(f => (
+        <button
+          key={f.key}
+          onClick={() => setAnalysisFilter(f.key as AnalysisFilter)}
+          className={`px-4 py-1.5 rounded-md text-sm transition ${
+            analysisFilter === f.key
+              ? `${f.color} text-white`
+              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+          }`}
+        >
+          {f.label}
+        </button>
+      ))}
+
+    </div>
+
+    {/* ========================= */}
+    {/* ALL */}
+    {/* ========================= */}
+    {analysisFilter === "ALL" && (
+      <div className="grid lg:grid-cols-3 gap-6">
+
+        <div className="lg:col-span-2 space-y-6">
+
+          <GlassPanel>
+            <WinProbabilityChart matchId={match.slug} />
+          </GlassPanel>
+
+          <GlassPanel>
+            <MomentumHeatmap matchId={match.slug} />
+          </GlassPanel>
+
+        </div>
+
+        <div className="space-y-6">
+
+          <GlassPanel>
+            <MatchInsightsPanel matchId={match.slug} />
+          </GlassPanel>
+
+          <GlassPanel>
+            <MatchNarrativePanel matchId={match.slug} />
+          </GlassPanel>
+
+          <GlassPanel>
+            <PartnershipPanel matchId={match.slug} />
+          </GlassPanel>
+
+        </div>
+
+      </div>
+    )}
+
+    {/* BATTING */}
+    {analysisFilter === "BATTING" && (
+      <div className="space-y-6">
+        <GlassPanel>
+          <WinProbabilityChart matchId={match.slug} />
+        </GlassPanel>
+
+        <GlassPanel>
+          <PartnershipPanel matchId={match.slug} />
+        </GlassPanel>
+
+        <GlassPanel>
+          <MatchNarrativePanel matchId={match.slug} />
+        </GlassPanel>
+      </div>
+    )}
+
+    {/* BOWLING */}
+    {analysisFilter === "BOWLING" && (
+      <div className="space-y-6">
+        <GlassPanel>
+          <MomentumHeatmap matchId={match.slug} />
+        </GlassPanel>
+
+        <GlassPanel>
+          <MatchInsightsPanel matchId={match.slug} />
+        </GlassPanel>
+
+        <GlassPanel>
+          <HighlightTimeline matchId={match.slug} />
+        </GlassPanel>
+      </div>
+    )}
+
+    {/* PRESSURE */}
+    {analysisFilter === "PRESSURE" && (
+      <div className="space-y-6">
+        <GlassPanel>
+          <WinProbabilityChart matchId={match.slug} />
+        </GlassPanel>
+
+        <GlassPanel>
+          <MomentumHeatmap matchId={match.slug} />
+        </GlassPanel>
+
+        <GlassPanel>
+          <MatchInsightsPanel matchId={match.slug} />
+        </GlassPanel>
+      </div>
+    )}
+
+  </div>
+)}
+
+ 
   
 
       {activeTab === "timeline" && (
@@ -432,143 +592,321 @@ const [speed, setSpeed] = useState(1500);
 {activeTab === "scorecard" && (() => {
 
   const batting = getBattingStats(match.slug);
-const bowling = getBowlingStats(match.slug);
-const wickets = getFallOfWickets(match.slug);
-const extras = getExtras(match.slug);
+  const bowling = getBowlingStats(match.slug);
+  const extras = getExtras(match.slug);
+  const topPlayers = Object.entries(batting)
+  .sort((a, b) => (b[1].runs ?? 0) - (a[1].runs ?? 0))
+  .slice(0, 2);
+
+  const players = Object.entries(batting);
+  const wickets = getFallOfWickets(match.slug) ?? [];
+  type Partnership = {
+  players: string;
+  runs: number;
+};
+
+const partnerships: Partnership[] = Object.entries(batting)
+  .slice(-2)
+  .map(([name, s]) => {
+    const player = s as { runs?: number };
+    return {
+      players: name,
+      runs: player.runs ?? 0
+    };
+  });
+
+  type FallOfWicket = {
+  score: number;
+  wicket: number;
+  over: string;
+};
 
   return (
     <div className="space-y-6">
 
-      {/* BATTING */}
+      {/* ========================= */}
+      {/* 🔥 BATTING CARD */}
+      {/* ========================= */}
       <GlassPanel>
-        <h3 className="text-sm text-gray-400 mb-3 uppercase">
-          Batting
-        </h3>
 
-        <table className="w-full text-sm">
-          <thead className="text-gray-400">
-            <tr>
-              <th className="text-left">Batter</th>
-              <th>R</th>
-              <th>B</th>
-              <th>SR</th>
-            </tr>
-          </thead>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-sm text-gray-400 uppercase tracking-wide">
+            Batting
+          </h3>
 
-          <tbody>
-            {Object.entries(batting).map(([name, s]) => {
+          <span className="text-xs text-gray-500">
+            Total Players: {players.length}
+          </span>
+        </div>
 
-              const player = s as {
-                runs?: number;
-                balls?: number;
-              };
+        <div className="space-y-3">
 
-              const runs = player.runs ?? 0;
-              const balls = player.balls ?? 0;
+          {players.map(([name, s], index) => {
 
-              const sr =
-                balls > 0 ? ((runs / balls) * 100).toFixed(1) : "0.0";
+            const player = s as {
+              runs?: number;
+              balls?: number;
+              fours?: number;
+              sixes?: number;
+              out?: boolean;
+            };
 
-              return (
-                <tr key={name} className="border-t border-gray-800">
-                  <td>{name}</td>
-                  <td>{runs}</td>
-                  <td>{balls}</td>
-                  <td>{sr}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+            const runs = player.runs ?? 0;
+            const balls = player.balls ?? 0;
+            const fours = player.fours ?? 0;
+            const sixes = player.sixes ?? 0;
+            const isOut = player.out ?? false;
+
+            const sr =
+              balls > 0 ? ((runs / balls) * 100).toFixed(1) : "0.0";
+
+            const isCurrent = index >= players.length - 2;
+            
+
+            return (
+              <div
+                key={name}
+                className={`p-3 rounded-lg flex justify-between items-center transition
+                  ${isCurrent ? "bg-yellow-500/10 border border-yellow-500/20" : "bg-gray-800/40"}
+                `}
+              >
+
+                {/* LEFT */}
+                <div className="flex flex-col">
+
+                  <span className="font-medium">
+
+                    {isCurrent && (
+                      <span className="text-yellow-400 mr-1">★</span>
+                    )}
+
+                    {name}
+
+                    <span className="ml-2 text-xs text-gray-400">
+                      {isOut ? "out" : "not out"}
+                    </span>
+
+                  </span>
+
+                  <span className="text-xs text-gray-500">
+                    {fours}x4 • {sixes}x6
+                  </span>
+                  {isCurrent && (
+  <span className="animate-pulse text-green-400 ml-2">
+    ●
+  </span>
+)}
+
+                </div>
+
+                {/* RIGHT */}
+                <div className="flex items-center gap-6 text-sm">
+
+                  <span className="text-green-400 font-semibold">
+                    {runs}
+                  </span>
+
+                  <span>{balls}</span>
+
+                  <span
+                    className={`font-medium ${
+                      Number(sr) > 150
+                        ? "text-green-400"
+                        : Number(sr) < 100
+                        ? "text-red-400"
+                        : "text-yellow-400"
+                    }`}
+                  >
+                    {sr}
+                  </span>
+
+                </div>
+
+              </div>
+            );
+          })}
+
+        </div>
+
       </GlassPanel>
-
       <GlassPanel>
   <h3 className="text-sm text-gray-400 mb-3 uppercase">
     Fall of Wickets
   </h3>
 
-  <div className="text-sm text-gray-300 flex flex-wrap gap-3">
-    {wickets.length === 0 && "No wickets yet"}
+  <div className="flex flex-wrap gap-3 text-sm">
 
-    {wickets.map((w: {
-  wicket: number;
-  score: number;
-  over: string;
-  player: string;
-}, i) => (
-  <span key={i}>
-    {w.wicket}-{w.score} ({w.player}, {w.over})
-  </span>
-))}
+    {wickets.map((w, i) => (
+      <div
+        key={i}
+        className="bg-gray-800/40 px-3 py-1 rounded"
+      >
+        {w.score}/{w.wicket} ({w.over})
+      </div>
+    ))}
+
   </div>
 </GlassPanel>
 
-
-      {/* BOWLING */}
+      {/* ========================= */}
+      {/* 🔥 BOWLING CARD */}
+      {/* ========================= */}
       <GlassPanel>
-        <h3 className="text-sm text-gray-400 mb-3 uppercase tracking-wide">
-          Bowling
+
+  <h3 className="text-sm text-gray-400 mb-4 uppercase tracking-wide">
+    Bowling
+  </h3>
+
+  {/* 🔥 HEADER */}
+  <div className="grid grid-cols-5 text-xs text-gray-400 mb-2 px-2">
+    <span className="text-left">Bowler</span>
+    <span className="text-center">O</span>
+    <span className="text-center">R</span>
+    <span className="text-center">W</span>
+    <span className="text-center">Econ</span>
+  </div>
+
+  {/* 🔥 DATA */}
+  <div className="space-y-2">
+
+    {Object.entries(bowling).map(([name, s]) => {
+
+      const bowler = s as {
+        overs?: number;
+        runs?: number;
+        wickets?: number;
+      };
+
+      const overs = bowler.overs ?? 0;
+      const runs = bowler.runs ?? 0;
+      const wickets = bowler.wickets ?? 0;
+
+      const economy =
+        overs > 0 ? (runs / overs).toFixed(1) : "0.0";
+
+      return (
+        <div
+          key={name}
+          className="grid grid-cols-5 items-center bg-gray-800/40 rounded-lg px-2 py-2 hover:bg-gray-800/60 transition"
+        >
+
+          <span className="text-left font-medium">
+            {name}
+          </span>
+
+          <span className="text-center">
+            {overs}
+          </span>
+
+          <span className="text-center">
+            {runs}
+          </span>
+
+          <span className="text-center text-red-400 font-semibold">
+            {wickets}
+          </span>
+
+          <span className="text-center text-blue-400">
+            {economy}
+          </span>
+
+        </div>
+      );
+    })}
+
+  </div>
+
+</GlassPanel>
+
+      {/* ========================= */}
+      {/* 🔥 EXTRAS + SUMMARY */}
+      {/* ========================= */}
+      <GlassPanel>
+
+        <h3 className="text-sm text-gray-400 mb-3 uppercase">
+          Extras
         </h3>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            
-            <thead className="text-gray-400 border-b border-gray-800">
-              <tr>
-                <th className="text-left py-2">Bowler</th>
-                <th className="text-center">O</th>
-                <th className="text-center">R</th>
-                <th className="text-center">W</th>
-                <th className="text-center">Econ</th>
-              </tr>
-            </thead>
+        <div className="grid grid-cols-4 gap-4 text-center text-sm">
 
-            <tbody>
-              {Object.entries(bowling).map(([name, s]) => {
+          <div className="bg-gray-800/40 p-2 rounded">
+            <p className="text-gray-400 text-xs">Wides</p>
+            <p className="font-semibold">{extras.wides}</p>
+          </div>
 
-                const bowler = s as {
-                  overs?: number;
-                  runs?: number;
-                  wickets?: number;
-                };
+          <div className="bg-gray-800/40 p-2 rounded">
+            <p className="text-gray-400 text-xs">No Balls</p>
+            <p className="font-semibold">{extras.noBalls}</p>
+          </div>
 
-                const overs = bowler.overs ?? 0;
-                const runs = bowler.runs ?? 0;
-                const wickets = bowler.wickets ?? 0;
+          <div className="bg-gray-800/40 p-2 rounded">
+            <p className="text-gray-400 text-xs">Byes</p>
+            <p className="font-semibold">{extras.byes}</p>
+          </div>
 
-                const economy =
-                  overs > 0 ? (runs / overs).toFixed(1) : "0.0";
+          <div className="bg-gray-800/40 p-2 rounded">
+            <p className="text-gray-400 text-xs">Leg Byes</p>
+            <p className="font-semibold">{extras.legByes}</p>
+          </div>
 
-                return (
-                  <tr
-                    key={name}
-                    className="border-b border-gray-800 hover:bg-white/5 transition"
-                  >
-                    <td className="py-2 font-medium">{name}</td>
-                    <td className="text-center">{overs}</td>
-                    <td className="text-center">{runs}</td>
-                    <td className="text-center">{wickets}</td>
-                    <td className="text-center text-blue-400">
-                      {economy}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
         </div>
+
       </GlassPanel>
 
       <GlassPanel>
   <h3 className="text-sm text-gray-400 mb-3 uppercase">
-    Extras
+    Partnerships
   </h3>
 
-  <div className="text-sm text-gray-300 flex gap-6">
-    <span>W: {extras.wides}</span>
-    <span>NB: {extras.noBalls}</span>
-    <span>B: {extras.byes}</span>
-    <span>LB: {extras.legByes}</span>
+  <div className="space-y-2">
+
+    {partnerships.map((p, i) => (
+      <div
+        key={i}
+        className="bg-gray-800/40 p-3 rounded flex justify-between"
+      >
+        <span>{p.players}</span>
+        <span className="text-green-400 font-semibold">
+          {p.runs} runs
+        </span>
+      </div>
+    ))}
+
+  </div>
+</GlassPanel>
+
+<GlassPanel>
+  <h3 className="text-sm text-gray-400 mb-3 uppercase">
+    Player Comparison
+  </h3>
+
+  <div className="grid grid-cols-2 gap-4 text-sm">
+
+    {topPlayers.map(([name, s]) => {
+
+      const player = s as {
+        runs?: number;
+        balls?: number;
+      };
+
+      const runs = player.runs ?? 0;
+      const balls = player.balls ?? 0;
+
+      const sr =
+        balls > 0 ? ((runs / balls) * 100).toFixed(1) : "0.0";
+
+      return (
+        <div
+          key={name}
+          className="bg-gray-800/40 p-3 rounded"
+        >
+          <p className="font-medium">{name}</p>
+          <p>{runs} ({balls})</p>
+          <p className="text-yellow-400">SR: {sr}</p>
+        </div>
+      );
+    })}
+
   </div>
 </GlassPanel>
 

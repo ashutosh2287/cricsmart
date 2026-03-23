@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getHighlights,
   subscribeHighlights,
@@ -14,54 +14,104 @@ type Props = {
 export default function HighlightTimeline({ matchId }: Props) {
 
   const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-useEffect(() => {
+  useEffect(() => {
 
-  const update = (id: string) => {
-    if (id !== matchId) return;
+    const update = (id: string) => {
+      if (id !== matchId) return;
 
-    const data = getHighlights(matchId);
-    setHighlights([...data]);
-  };
+      const data = getHighlights(matchId);
+      setHighlights([...data]);
+    };
 
-  const unsubscribe = subscribeHighlights(update);
+    const unsubscribe = subscribeHighlights(update);
 
-  // initial load
-  update(matchId);
+    update(matchId);
 
-  return () => {
-    unsubscribe();
-  };
+    return () => {
+      unsubscribe();
+    };
 
-}, [matchId]);
+  }, [matchId]);
+
+  // 🔥 AUTO SCROLL
+  useEffect(() => {
+  if (containerRef.current) {
+    containerRef.current.scrollTo({
+      top: containerRef.current.scrollHeight,
+      behavior: "smooth"
+    });
+  }
+}, [highlights]);
 
   if (!highlights.length) return null;
 
   return (
-    <div className="fixed right-5 top-20 w-64
-                    bg-black text-white
-                    rounded-xl shadow-xl
-                    p-3 text-sm space-y-2">
+    <div className="backdrop-blur-md bg-white/5 
+                border border-white/10 
+                text-white rounded-xl p-3">
 
-      <div className="font-bold text-center border-b pb-1">
-        Match Highlights
+      {/* HEADER */}
+      <div className="flex items-center justify-between border-b border-gray-700 pb-2 mb-2">
+
+        <h3 className="text-sm font-semibold text-gray-300 uppercase">
+          Match Highlights
+        </h3>
+
+        <span className="text-xs text-gray-500">
+          Live
+        </span>
+
       </div>
 
-      {highlights.slice(-10).reverse().map((h) => (
-        <div
-          key={h.id}
-          className="flex items-center gap-2
-                     border-b border-gray-700 pb-1">
+      {/* LIST */}
+      <div
+        ref={containerRef}
+        className="h-[320px] overflow-y-auto space-y-2 pr-1 
+           scrollbar-thin scrollbar-thumb-gray-600 
+           scrollbar-track-transparent"
+      >
 
-          <span>{getIcon(h.type)}</span>
-          <span className="text-xs">{formatText(h.type)}</span>
+        {highlights.slice(-25).map((h, i) => (
+          <div
+            key={h.id}
+            className="flex items-center justify-between 
+                       bg-zinc-900/80 hover:bg-zinc-800 
+                       px-3 py-2 rounded-md 
+                       transition text-sm"
+          >
 
-        </div>
-      ))}
+            {/* LEFT */}
+            <div className="flex items-center gap-2">
+
+              <span className="text-lg">
+                {getIcon(h.type)}
+              </span>
+
+              <span className={`${getColor(h.type)} font-medium`}>
+                {formatText(h.type)}
+              </span>
+
+            </div>
+
+            {/* RIGHT (index/time feel) */}
+            <span className="text-[10px] text-gray-500">
+              #{highlights.length - i}
+            </span>
+
+          </div>
+        ))}
+
+      </div>
 
     </div>
   );
 }
+
+/* ==============================
+   ICONS
+============================== */
 
 function getIcon(type: string) {
 
@@ -93,6 +143,39 @@ function getIcon(type: string) {
   }
 
 }
+
+/* ==============================
+   COLORS
+============================== */
+
+function getColor(type: string) {
+
+  switch (type) {
+
+    case "WICKET":
+      return "text-red-400";
+
+    case "SIX":
+      return "text-green-400";
+
+    case "BOUNDARY_CLUSTER":
+      return "text-blue-400";
+
+    case "LAST_OVER_THRILLER":
+      return "text-yellow-400";
+
+    case "DOMINANT_PARTNERSHIP":
+      return "text-purple-400";
+
+    default:
+      return "text-gray-300";
+  }
+
+}
+
+/* ==============================
+   TEXT FORMAT
+============================== */
 
 function formatText(type: string) {
 

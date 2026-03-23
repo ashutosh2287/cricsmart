@@ -265,10 +265,9 @@ text = applyCommentaryPersonality(text, personality);
 
 emitCommentary({
   matchId,
-  branchId,
-  eventId: event.id,
   text,
-  tone
+  eventId: event.id, // ✅ FIX
+  category: "INSIGHT"
 });
 
 }

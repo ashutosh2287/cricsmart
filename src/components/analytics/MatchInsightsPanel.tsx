@@ -1,57 +1,81 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { getMatchInsights } from "@/services/analytics/matchInsightsEngine";
-import MomentumChart from "./MomentumChart";
 import { getAIInsights } from "@/services/analytics/aiInsightEngine";
-import WinProbabilityChart from "@/components/analytics/WinProbabilityChart";
+import MomentumChart from "./MomentumChart";
+
 type Props = {
   matchId: string;
+};
+type MatchInsight = {
+  text: string;
+};
+
+type AIInsight = {
+  type: string;
+  text: string;
 };
 
 export default function MatchInsightsPanel({ matchId }: Props) {
 
-  const insights = getMatchInsights(matchId);
-  const aiInsights = getAIInsights(matchId);
+  const [insights, setInsights] = useState<MatchInsight[]>([]);
+  const [aiInsights, setAIInsights] = useState<AIInsight[]>();
+
+  // 🔥 LIVE UPDATE (IMPORTANT)
+  useEffect(() => {
+
+    const interval = setInterval(() => {
+      setInsights(getMatchInsights(matchId));
+      setAIInsights(getAIInsights(matchId) ?? []);
+    }, 1000); // update every second
+
+    return () => clearInterval(interval);
+
+  }, [matchId]);
 
   return (
 
     <div className="space-y-6">
 
-      {/* WIN PROBABILITY + MOMENTUM */}
-
-      
+      {/* 📊 MOMENTUM + WIN PROB */}
       <MomentumChart matchId={matchId} />
 
-      {/* AI INSIGHTS */}
+      {/* 🤖 AI INSIGHTS (PREMIUM CARD) */}
+      {(aiInsights?.length ?? 0) > 0 && (
 
-      {aiInsights.length > 0 && (
+        <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/10 
+                        border border-purple-600 rounded-xl p-4 shadow-lg">
 
-        <div className="bg-purple-900/20 border border-purple-700 rounded-xl p-4">
-
-          <h3 className="text-xs text-purple-300 uppercase mb-3">
-            AI Insights
+          <h3 className="text-xs text-purple-300 uppercase mb-3 tracking-wide">
+            🤖 AI Insights
           </h3>
 
-          {aiInsights.map((insight, i) => (
+          <div className="space-y-2">
 
-            <div key={i} className="text-sm text-purple-400 mb-1">
+            {aiInsights?.slice(-3).map((insight, i) => (
 
-              🤖 {insight.text}
+              <div
+                key={i}
+                className="text-sm text-purple-200 bg-purple-950/40 
+                           px-3 py-2 rounded-md border border-purple-700"
+              >
+                {insight.text}
+              </div>
 
-            </div>
+            ))}
 
-          ))}
+          </div>
 
         </div>
 
       )}
 
-      {/* MATCH INSIGHTS */}
-
+      {/* ⚡ MATCH INSIGHTS */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
 
-        <h3 className="text-xs text-gray-400 uppercase mb-3">
-          Match Insights
+        <h3 className="text-xs text-gray-400 uppercase mb-3 tracking-wide">
+          ⚡ Match Insights
         </h3>
 
         {insights.length === 0 && (
@@ -60,21 +84,25 @@ export default function MatchInsightsPanel({ matchId }: Props) {
           </div>
         )}
 
-        {insights.map((i, index) => (
+        <div className="space-y-2">
 
-          <div
-            key={index}
-            className="text-sm text-gray-300 mb-2"
-          >
-            • {i.text}
-          </div>
+          {insights.slice(-5).map((i, index) => (
 
-        ))}
+            <div
+              key={index}
+              className="text-sm text-gray-300 flex items-start gap-2"
+            >
+              <span className="text-green-400">•</span>
+              <span>{i.text}</span>
+            </div>
+
+          ))}
+
+        </div>
 
       </div>
 
     </div>
 
   );
-
 }

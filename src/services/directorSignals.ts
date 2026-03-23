@@ -6,6 +6,11 @@ All signals that the Director Engine can react to
 */
 
 export type DirectorSignal =
+  /*
+  ===============================================
+  BASE INPUT SIGNALS
+  ===============================================
+  */
   | {
       type: "MOMENTUM_UPDATE";
       matchId: string;
@@ -28,11 +33,10 @@ export type DirectorSignal =
     }
 
   /*
-  -----------------------------------------------
-  REPLAY CONTROL SIGNAL (NEW)
-  -----------------------------------------------
+  ===============================================
+  REPLAY CONTROL
+  ===============================================
   */
-
   | {
       type: "REPLAY_REQUEST";
       matchId: string;
@@ -42,11 +46,10 @@ export type DirectorSignal =
     }
 
   /*
-  -----------------------------------------------
-  TACTICAL SIGNALS
-  -----------------------------------------------
+  ===============================================
+  EXISTING TACTICAL OUTPUTS
+  ===============================================
   */
-
   | {
       type: "COLLAPSE_ALERT";
       matchId: string;
@@ -80,5 +83,62 @@ export type DirectorSignal =
       matchId: string;
       branchId: string;
       eventId: string;
+      intensity: number;
+    }
+
+  /*
+  ===============================================
+  🔥 NEW AI STORY SIGNALS (CRITICAL FIX)
+  ===============================================
+  */
+
+  | {
+      type: "TURNING_POINT";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      winProbChange: number;
+    }
+
+  | {
+      type: "TURNING_POINT_ALERT";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      intensity: number;
+    }
+
+  | {
+      type: "MOMENTUM_SHIFT";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      direction: "BATTING" | "BOWLING";
+      intensity: number;
+    }
+
+  | {
+      type: "MOMENTUM_STORY";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      direction: "BATTING" | "BOWLING";
+      intensity: number;
+    }
+
+  | {
+      type: "DOMINANCE";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      team: "BATTING" | "BOWLING";
+    }
+
+  | {
+      type: "DOMINANCE_PHASE";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      team: "BATTING" | "BOWLING";
       intensity: number;
     };

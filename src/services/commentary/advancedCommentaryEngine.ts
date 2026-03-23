@@ -1,77 +1,57 @@
 import { BallEvent } from "../../types/ballEvent";
-import { SimulationState } from "../simulation/simulationState";
+import { MatchState } from "../matchEngine";
 import { getPlayer } from "../simulation/playerUtils";
 
 export function generateAdvancedCommentary(
   event: BallEvent,
-  state: SimulationState
+  state: MatchState | null | undefined
 ): string {
-  const bat = getPlayer(event.batsman);
-  const bowl = getPlayer(event.bowler);
 
-  const phase = state.phase;
-
-  // 🎯 PRESSURE
-  const ballsUsed = state.over * 6 + state.ball;
-  const requiredRR = state.target
-    ? ((state.target - state.totalRuns) / (120 - ballsUsed)) * 6
-    : null;
-
-  // 🧨 WICKET
-  if (event.type === "WICKET") {
-    if (requiredRR && requiredRR > 10) {
-      return `BIG WICKET! ${event.batsman} falls under pressure!`;
-    }
-    return `${event.bowler} strikes! ${event.batsman} is gone!`;
+  // 🛑 FULL SAFETY (VERY IMPORTANT)
+  if (!event) return "";
+  if (!state || !state.innings || state.innings.length === 0) {
+    return "";
   }
 
+  const currentInningsIndex = state.currentInningsIndex ?? 0;
+  const innings = state.innings[currentInningsIndex];
+
+  if (!innings) return "";
+
+  const batsman = event.batsman || "Batter";
+  const bowler = event.bowler || "Bowler";
+  const runs = event.runs ?? 0;
+
+  // =========================
+  // 🎯 WICKET
+  // =========================
+  if (event.wicket) {
+    return `${bowler} strikes! ${batsman} is OUT!`;
+  }
+
+  // =========================
   // 💥 SIX
-  if (event.type === "SIX") {
-    if (bat.aggression > 0.8) {
-      return `${event.batsman} is taking the attack! That's a HUGE SIX!`;
-    }
-    return `Brilliant shot! ${event.batsman} clears the boundary for six!`;
+  // =========================
+  if (runs === 6) {
+    return `${batsman} launches it for a HUGE SIX!`;
   }
 
+  // =========================
   // 🔥 FOUR
-  if (event.type === "FOUR") {
-    if (bat.consistency > 0.85) {
-      return `${event.batsman} finds the gap effortlessly. FOUR!`;
-    }
-    return `${event.batsman} smashes it for FOUR!`;
+  // =========================
+  if (runs === 4) {
+    return `${batsman} smashes it for FOUR!`;
   }
 
+  // =========================
   // 🧱 DOT BALL
-  if (event.runs === 0) {
-    if (bowl.wicketTaking > 0.8) {
-      return `${event.bowler} is building serious pressure here. Dot ball.`;
-    }
-    return `Tight bowling. No run.`;
+  // =========================
+  if (runs === 0) {
+    return `${bowler} bowls a tight delivery. Dot ball.`;
   }
 
-  // 🎯 PRESSURE COMMENT
-  if (requiredRR && requiredRR > 9) {
-    return `Pressure building! ${event.batsman} manages ${event.runs} run${
-      event.runs > 1 ? "s" : ""
-    }.`;
-  }
-
-  // 🧠 ANCHOR PLAY
-  if (bat.consistency > 0.85 && phase !== "DEATH") {
-    return `${event.batsman} is rotating strike nicely. ${event.runs} run${
-      event.runs > 1 ? "s" : ""
-    }.`;
-  }
-
-  // 🔥 AGGRESSIVE PLAY
-  if (bat.aggression > 0.8) {
-    return `${event.batsman} playing aggressively! ${event.runs} run${
-      event.runs > 1 ? "s" : ""
-    }.`;
-  }
-
-  // DEFAULT
-  return `${event.batsman} takes ${event.runs} run${
-    event.runs > 1 ? "s" : ""
-  }.`;
+  // =========================
+  // 🏃 RUNS
+  // =========================
+  return `${batsman} takes ${runs} run${runs > 1 ? "s" : ""}.`;
 }

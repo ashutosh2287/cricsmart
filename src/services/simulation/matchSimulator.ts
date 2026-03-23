@@ -24,115 +24,99 @@ export function startSimulation(
   matchId: string,
   speed: number = 1500
 ) {
-  // 🔥 Prevent duplicate runs
   if (isRunning) {
     console.log("⚠️ Simulation already running");
     return;
   }
 
-  stopSimulation(); // safety reset
+  stopSimulation();
 
   isRunning = true;
   isPaused = false;
   currentSpeed = speed;
 
-  
-
   const runBall = () => {
     if (!isRunning) return;
 
     if (isPaused) {
-      // 🔁 Keep checking while paused
       timeoutRef = setTimeout(runBall, 500);
       return;
     }
 
-    console.log("🔥 RUN BALL CALLED");
-
     const matchState = getMatchState(matchId);
 
     if (!matchState) {
-      console.log("❌ No match state — retrying...");
       timeoutRef = setTimeout(runBall, 1000);
       return;
     }
 
-    /* ✅ HARD STOP GUARD (ADD THIS) */
-if (matchState.currentInningsIndex > 1) {
-  console.log("🛑 Invalid innings detected — stopping simulation");
-  stopSimulation();
-  return;
-}
-const index = matchState.currentInningsIndex;
-if (
-  matchState.currentInningsIndex < 0 ||
-  matchState.currentInningsIndex >= matchState.innings.length
-) {
-  console.log("❌ Invalid innings index");
-  stopSimulation();
-  return;
-}
+    /* =============================
+       🔒 HARD STOP (MOST IMPORTANT)
+    ============================= */
+    if (matchState.currentInningsIndex >= 2) {
+      console.log("🛑 Prevented invalid innings (>2)");
+      stopSimulation();
+      return;
+    }
 
+    const index = matchState.currentInningsIndex;
     const innings = matchState.innings[index];
 
-      if (!innings) {
-  console.log("❌ Invalid innings — stopping simulation");
-  stopSimulation();
-  return;
-}
-
+    if (!innings) {
+      console.log("❌ Invalid innings");
+      stopSimulation();
+      return;
+    }
 
     /* =============================
-       AUTO INNINGS SWITCH
+       🏁 INNINGS COMPLETION
     ============================= */
+    if (innings.completed) {
 
-   if (innings.completed) {
+      // ✅ FIRST INNINGS → SWITCH TO SECOND
+      if (index === 0) {
+        console.log("🔄 Switching to 2nd innings");
 
-  // 🔒 FINAL MATCH END GUARD
-  if (matchState.currentInningsIndex >= 1) {
-    console.log("🏆 Match finished (2 innings complete)");
-    stopSimulation();
-    return;
-  }
+        matchState.currentInningsIndex = 1;
 
-  if (matchState.currentInningsIndex === 0) {
-    console.log("🔄 Switching to 2nd innings");
+        const first = matchState.innings[0];
+        state.target = first.runs + 1;
 
-    matchState.currentInningsIndex = 1;
+        // 🔁 RESET SIMULATION STATE
+        state.over = 0;
+        state.ball = 0;
+        state.totalRuns = 0;
+        state.wickets = 0;
 
-    const firstInnings = matchState.innings[0];
-    state.target = firstInnings.runs + 1;
+        state.striker = state.battingOrder[0];
+        state.nonStriker = state.battingOrder[1];
+        state.nextBatsmanIndex = 2;
 
-    state.over = 0;
-    state.ball = 0;
-    state.totalRuns = 0;
-    state.wickets = 0;
+        timeoutRef = setTimeout(runBall, currentSpeed);
+        return;
+      }
 
-    state.striker = state.battingOrder[0];
-    state.nonStriker = state.battingOrder[1];
-    state.nextBatsmanIndex = 2;
+      // ✅ SECOND INNINGS → STOP MATCH
+      if (index === 1) {
+        console.log("🏆 Match finished (2 innings only)");
+        stopSimulation();
+        return;
+      }
+    }
 
-    timeoutRef = setTimeout(runBall, currentSpeed);
-
-    return;
-  }
-
-  console.log("🏆 Match finished");
-  stopSimulation();
-  return;
-}
+    /* =============================
+       NORMAL BALL FLOW
+    ============================= */
 
     const over = innings.over;
     const ball = innings.ball;
 
     const prevOver = state.over;
 
-    // 🔄 Bowler rotation
     if (over !== prevOver) {
       rotateBowler(state);
     }
 
-    // 📊 Last ball
     const currentOverBalls = innings.overs[over] || [];
     const prevOverBalls = innings.overs[over - 1] || [];
 
@@ -141,12 +125,8 @@ if (
         ? currentOverBalls[currentOverBalls.length - 1]
         : prevOverBalls[prevOverBalls.length - 1];
 
-    if (lastBall) {
-      state.striker = lastBall.batsman ?? state.striker;
-      state.nonStriker = lastBall.nonStriker ?? state.nonStriker;
-    }
+    
 
-    // 📊 Sync state
     const syncedState: SimulationState = {
       ...state,
       over,
@@ -159,11 +139,10 @@ if (
           : "DEATH",
     };
 
-    // 🎯 Generate event
     const event: BallEvent = generateBallEvent(syncedState);
 
     if (!event) {
-      console.log("❌ Event generation failed");
+      console.log("❌ Event failed");
       stopSimulation();
       return;
     }
@@ -171,33 +150,40 @@ if (
     const engineEvent = toEngineEvent(event);
     dispatchBallEvent(matchId, engineEvent);
 
-    // 🎙 Commentary
-    const commentary = generateAdvancedCommentary(event, syncedState);
+    const commentary = generateAdvancedCommentary(event, {
+  ...matchState,
+  ...syncedState
+});
+
     addCommentary(matchId, commentary);
 
-    // 📊 Update sim state
     updateState(state, event);
 
     state.over = over;
+    // 🔁 OVER COMPLETION ROTATION
+if (ball === 5) { // last ball of over (0-based index)
+  [state.striker, state.nonStriker] = [
+    state.nonStriker,
+    state.striker
+  ];
+}
 
-    // 🎯 Target chase stop
+    /* =============================
+       🎯 TARGET CHASE STOP
+    ============================= */
     if (state.target && state.totalRuns >= state.target) {
-      console.log("🎉 Target chased!");
+      console.log("🎉 Target chased");
       stopSimulation();
       return;
     }
 
-    // ⏱ Dynamic delay (based on speed)
     const delay = Math.random() * 400 + currentSpeed;
-
     timeoutRef = setTimeout(runBall, delay);
   };
 
   console.log("🚀 Simulation started");
-
   runBall();
 }
-
 /* =====================================================
    STOP / PAUSE / RESUME
 ===================================================== */
@@ -242,8 +228,20 @@ export function setSimulationSpeed(speed: number) {
 ===================================================== */
 
 function updateState(state: SimulationState, event: BallEvent) {
-  state.totalRuns += event.runs;
+  const runs = event.runs ?? 0;
 
+  // ✅ update total
+  state.totalRuns += runs;
+
+  // 🔥 STRIKE ROTATION (MAIN FIX)
+  if (runs % 2 === 1) {
+    [state.striker, state.nonStriker] = [
+      state.nonStriker,
+      state.striker
+    ];
+  }
+
+  // ✅ wicket handling
   if (event.wicket) {
     state.wickets++;
     handleWicket(state);
@@ -258,6 +256,7 @@ function handleWicket(state: SimulationState) {
     return;
   }
 
+  // ✅ new batsman comes on strike
   state.striker = next;
   state.nextBatsmanIndex++;
 }

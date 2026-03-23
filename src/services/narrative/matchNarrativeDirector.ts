@@ -1,100 +1,128 @@
-import { subscribeDirectorSignal, emitDirectorSignal } from "../directorSignalBus";
-import { DirectorSignal } from "../directorSignals";
-
-const collapseCounter: Record<string, number> = {};
-const assaultCounter: Record<string, number> = {};
-
-export function initMatchNarrativeDirector() {
-
-  subscribeDirectorSignal((signal: DirectorSignal) => {
-
-    const matchId = signal.matchId;
-
-    if (!collapseCounter[matchId]) collapseCounter[matchId] = 0;
-    if (!assaultCounter[matchId]) assaultCounter[matchId] = 0;
-
-    switch (signal.type) {
-
-      /*
-      ------------------------------------------------
-      MOMENTUM → ASSAULT PHASE
-      ------------------------------------------------
-      */
-
-      case "MOMENTUM_UPDATE":
-
-        if (signal.value >= 4) {
-
-          assaultCounter[matchId]++;
-
-          if (assaultCounter[matchId] >= 2) {
-
-            emitDirectorSignal({
-              type: "ASSAULT_PHASE",
-              matchId: signal.matchId,
-              branchId: signal.branchId,
-              eventId: signal.eventId,
-              intensity: assaultCounter[matchId]
-            });
-
-          }
-
-        } else {
-
-          assaultCounter[matchId] = 0;
-
-        }
-
-        break;
-
-      /*
-      ------------------------------------------------
-      WICKET CLUSTER → COLLAPSE
-      ------------------------------------------------
-      */
-
-      case "HIGHLIGHT_DETECTED":
-
-        if (signal.subtype === "WICKET") {
-
-          collapseCounter[matchId]++;
-
-          if (collapseCounter[matchId] >= 2) {
-
-            emitDirectorSignal({
-              type: "COLLAPSE_ALERT",
-              matchId: signal.matchId,
-              branchId: signal.branchId,
-              eventId: signal.eventId,
-              intensity: collapseCounter[matchId]
-            });
-
-          }
-
-        }
-
-        break;
-
-      /*
-      ------------------------------------------------
-      PRESSURE SPIKE → STRANGLE
-      ------------------------------------------------
-      */
-
-      case "PRESSURE_SPIKE":
-
-        emitDirectorSignal({
-          type: "STRANGLE_ALERT",
-          matchId: signal.matchId,
-          branchId: signal.branchId,
-          eventId: signal.eventId,
-          intensity: 1
-        });
-
-        break;
-
+export type DirectorSignal =
+  /*
+  =========================================
+  EXISTING SIGNALS (KEEP)
+  =========================================
+  */
+  | {
+      type: "MOMENTUM_UPDATE";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      value: number;
+    }
+  | {
+      type: "PRESSURE_SPIKE";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+    }
+  | {
+      type: "HIGHLIGHT_DETECTED";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      subtype: "WICKET" | "BOUNDARY";
+    }
+  | {
+      type: "REPLAY_REQUEST";
+      matchId: string;
+      branchId: string;
+      eventId: string;
     }
 
-  });
+  /*
+  =========================================
+  EXISTING OUTPUT SIGNALS
+  =========================================
+  */
+  | {
+      type: "COLLAPSE_ALERT";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      intensity: number;
+    }
+  | {
+      type: "ASSAULT_PHASE";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      intensity: number;
+    }
+  | {
+      type: "STRANGLE_ALERT";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      intensity: number;
+    }
+  | {
+      type: "PANIC_MODE";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+    }
+  | {
+      type: "RECOVERY_PHASE";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+    }
 
-}
+  /*
+  =========================================
+  🔥 NEW SIGNALS (THIS FIXES YOUR ERRORS)
+  =========================================
+  */
+
+  | {
+      type: "TURNING_POINT";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      winProbChange: number;
+    }
+
+  | {
+      type: "TURNING_POINT_ALERT";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      intensity: number;
+    }
+
+  | {
+      type: "MOMENTUM_SHIFT";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      direction: "BATTING" | "BOWLING";
+      intensity: number;
+    }
+
+  | {
+      type: "MOMENTUM_STORY";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      direction: "BATTING" | "BOWLING";
+      intensity: number;
+    }
+
+  | {
+      type: "DOMINANCE";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      team: "BATTING" | "BOWLING";
+    }
+
+  | {
+      type: "DOMINANCE_PHASE";
+      matchId: string;
+      branchId: string;
+      eventId: string;
+      team: "BATTING" | "BOWLING";
+      intensity: number;
+    };

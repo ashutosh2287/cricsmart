@@ -10,6 +10,19 @@ const partnershipRuns: Record<string, number> = {};
 const lastWinProb: Record<string, number | null> = {};
 const lastOverRuns: Record<string, number[]> = {};
 
+// 🔥 NEW: cooldown system (prevents spam)
+const lastHighlightTime: Record<string, number> = {};
+
+function canTrigger(matchId: string, cooldown = 4000) {
+  const now = Date.now();
+  const last = lastHighlightTime[matchId] ?? 0;
+
+  if (now - last < cooldown) return false;
+
+  lastHighlightTime[matchId] = now;
+  return true;
+}
+
 export function processHighlightEvent(
   matchId: string,
   event: BallEvent
@@ -24,7 +37,7 @@ export function processHighlightEvent(
 
   /*
   -----------------------------------------
-  WICKET
+  🎯 WICKET
   -----------------------------------------
   */
 
@@ -33,19 +46,13 @@ export function processHighlightEvent(
     wicketStreak[matchId]++;
     boundaryStreak[matchId] = 0;
 
-    addHighlight(matchId, {
-      id: `${event.id}_WICKET`,
-      type: "WICKET",
-      event
-    });
-
-    emitDirectorSignal({
-      type: "HIGHLIGHT_DETECTED",
-      matchId,
-      branchId: event.branchId ?? "main",
-      eventId: event.id,
-      subtype: "WICKET"
-    });
+    if (canTrigger(matchId)) {
+      addHighlight(matchId, {
+        id: `${event.id}_WICKET`,
+        type: "WICKET",
+        event
+      });
+    }
 
     emitDirectorSignal({
       type: "REPLAY_REQUEST",
@@ -55,25 +62,22 @@ export function processHighlightEvent(
       replayType: "WICKET"
     });
 
-    if (wicketStreak[matchId] === 2) {
-
+    // 🔥 PRESSURE WICKET
+    if (wicketStreak[matchId] >= 2 && canTrigger(matchId)) {
       addHighlight(matchId, {
-        id: `${event.id}_HATTRICK_THREAT`,
+        id: `${event.id}_PRESSURE_WICKET`,
         type: "HAT_TRICK_THREAT",
         event
       });
-
     }
 
     partnershipRuns[matchId] = 0;
-
     return;
-
   }
 
   /*
   -----------------------------------------
-  BOUNDARY EVENTS
+  💥 BOUNDARY EVENTS
   -----------------------------------------
   */
 
@@ -82,19 +86,13 @@ export function processHighlightEvent(
     boundaryStreak[matchId]++;
     wicketStreak[matchId] = 0;
 
-    addHighlight(matchId, {
-      id: `${event.id}_${event.type}`,
-      type: event.type,
-      event
-    });
-
-    emitDirectorSignal({
-      type: "HIGHLIGHT_DETECTED",
-      matchId,
-      branchId: event.branchId ?? "main",
-      eventId: event.id,
-      subtype: event.type
-    });
+    if (canTrigger(matchId, 2000)) {
+      addHighlight(matchId, {
+        id: `${event.id}_${event.type}`,
+        type: event.type,
+        event
+      });
+    }
 
     emitDirectorSignal({
       type: "REPLAY_REQUEST",
@@ -104,81 +102,71 @@ export function processHighlightEvent(
       replayType: "BOUNDARY"
     });
 
-    /*
-    BOUNDARY CLUSTER
-    */
-
-    if (boundaryStreak[matchId] >= 3) {
-
+    // 🔥 STRONG CLUSTER (3+ boundaries)
+    if (boundaryStreak[matchId] >= 3 && canTrigger(matchId)) {
       addHighlight(matchId, {
         id: `${event.id}_BOUNDARY_CLUSTER`,
         type: "BOUNDARY_CLUSTER",
         event
       });
-
     }
 
   } else {
-
     boundaryStreak[matchId] = 0;
-
   }
 
   /*
   -----------------------------------------
-  LAST OVER DRAMA
+  🚨 LAST OVER DRAMA (FIXED)
   -----------------------------------------
   */
 
-  lastOverRuns[matchId].push(event.runs ?? 0);
+  if (event.over >= 18) {
 
-  if (lastOverRuns[matchId].length > 6) {
-    lastOverRuns[matchId].shift();
-  }
+    lastOverRuns[matchId].push(event.runs ?? 0);
 
-  const runs = lastOverRuns[matchId].reduce((a, b) => a + b, 0);
+    if (lastOverRuns[matchId].length > 6) {
+      lastOverRuns[matchId].shift();
+    }
 
-  if (runs >= 10) {
+    const runs = lastOverRuns[matchId].reduce((a, b) => a + b, 0);
 
-    addHighlight(matchId, {
-      id: `${event.id}_LAST_OVER_DRAMA`,
-      type: "LAST_OVER_THRILLER",
-      event
-    });
-
+    if (runs >= 12 && canTrigger(matchId)) {
+      addHighlight(matchId, {
+        id: `${event.id}_LAST_OVER`,
+        type: "LAST_OVER_THRILLER",
+        event
+      });
+    }
   }
 
   /*
   -----------------------------------------
-  PARTNERSHIP
+  🤝 PARTNERSHIP (SMART)
   -----------------------------------------
   */
 
   partnershipRuns[matchId] += event.runs ?? 0;
 
   if (partnershipRuns[matchId] >= 50 && partnershipRuns[matchId] < 55) {
-
     addHighlight(matchId, {
       id: `${event.id}_PARTNERSHIP50`,
       type: "BIG_PARTNERSHIP",
       event
     });
-
   }
 
   if (partnershipRuns[matchId] >= 100 && partnershipRuns[matchId] < 105) {
-
     addHighlight(matchId, {
       id: `${event.id}_PARTNERSHIP100`,
       type: "DOMINANT_PARTNERSHIP",
       event
     });
-
   }
 
   /*
   -----------------------------------------
-  TURNING POINT
+  ⚡ TURNING POINT (UPGRADED)
   -----------------------------------------
   */
 
@@ -193,10 +181,12 @@ export function processHighlightEvent(
       const current = probability.battingWinProbability;
       const previous = lastWinProb[matchId];
 
+      // 🔥 REALISTIC SWING (15%+ change)
       if (
         previous !== null &&
         previous !== undefined &&
-        Math.abs(current - previous) >= 0.20
+        Math.abs(current - previous) >= 15 &&
+        canTrigger(matchId, 6000)
       ) {
 
         addHighlight(matchId, {
@@ -216,9 +206,6 @@ export function processHighlightEvent(
       }
 
       lastWinProb[matchId] = current;
-
     }
-
   }
-
 }

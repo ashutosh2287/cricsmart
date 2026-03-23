@@ -1,48 +1,81 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { subscribeCommentary } from "@/services/commentary/commentaryStore";
+import { subscribeCommentary } from "@/services/commentary/commentaryBus";
+import { getTimeline } from "@/services/broadcastTimeline";
+import { scrubToPosition } from "@/services/replayController";
+import { getCommentary } from "@/services/commentary/commentaryBus";
+
+type Commentary = {
+  matchId: string;
+  text: string;
+  eventId: string;
+  category: "BALL" | "INSIGHT";
+};
 
 export default function CommentaryPanel({ matchId }: { matchId: string }) {
-  
-  const [messages, setMessages] = useState<string[]>([]);
+
+  const [messages, setMessages] = useState<Commentary[]>(() =>
+  getCommentary(matchId)
+);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+ useEffect(() => {
 
-    const unsubscribe = subscribeCommentary(matchId, (data: string[]) => {
-      setMessages(data);
+  const unsubscribe = subscribeCommentary((c) => {
+    if (c.matchId !== matchId) return;
+
+    setMessages(prev => {
+      if (prev.some(p => p.eventId === c.eventId)) {
+        return prev; // 🔥 ignore duplicate
+      }
+      return [...prev, c];
     });
+  });
 
-    return () => unsubscribe();
+  return () => unsubscribe();
 
-  }, [matchId]);
+}, [matchId]);
 
-  // ✅ Auto-scroll to bottom
+
+useEffect(() => {
+  setMessages(getCommentary(matchId));
+}, [matchId]);
+
+  function handleJump(eventId: string) {
+    const timeline = getTimeline(matchId);
+    const index = timeline.findIndex(e => e.id === eventId);
+
+    if (index === -1) return;
+
+    scrubToPosition(matchId, index);
+  }
+
   useEffect(() => {
     if (containerRef.current) {
-      containerRef.current.scrollTop =
-        containerRef.current.scrollHeight;
+      containerRef.current.scrollTo({
+        top: containerRef.current.scrollHeight,
+        behavior: "smooth"
+      });
     }
   }, [messages]);
 
   return (
     <div className="bg-gray-900 p-4 rounded-xl">
 
-      <h3 className="font-bold mb-3">
-        Live Commentary
-      </h3>
+      <h3 className="font-bold mb-3">Live Commentary</h3>
 
       <div
         ref={containerRef}
         className="h-[250px] overflow-y-auto space-y-2 text-sm"
       >
-        {messages.map((msg, i) => (
+        {messages.map((msg, index) => (
           <div
-            key={`${i}-${msg}`} // ✅ FIX duplicate key issue also
-            className="border-b border-gray-800 pb-1"
+            key={`${msg.eventId}-${index}`}
+            onClick={() => handleJump(msg.eventId)}
+            className="border-b border-gray-800 pb-1 cursor-pointer hover:text-blue-400"
           >
-            {msg}
+            {msg.text}
           </div>
         ))}
       </div>

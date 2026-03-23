@@ -4,6 +4,7 @@ type TimelineHandler = (event: BallEvent) => void;
 
 const queue: BallEvent[] = [];
 const listeners = new Set<TimelineHandler>();
+const timelineStore: Record<string, BallEvent[]> = {};
 
 let running = false;
 let nextEventTime = 0;
@@ -31,9 +32,29 @@ ADD EVENT TO TIMELINE
 
 export function pushToTimeline(event: BallEvent) {
 
+  // 🔥 STORE permanently
+  if (!timelineStore[event.slug]) {
+    timelineStore[event.slug] = [];
+  }
+
+  timelineStore[event.slug].push(event);
+
+  // 🔥 STILL push to playback queue
   queue.push(event);
 
   start();
+}
+
+export function getTimeline(matchId: string): BallEvent[] {
+  return timelineStore[matchId] ?? [];
+}
+
+export function clearTimeline(matchId: string) {
+  timelineStore[matchId] = [];
+}
+
+export function getEventByIndex(matchId: string, index: number) {
+  return timelineStore[matchId]?.[index];
 }
 
 /*

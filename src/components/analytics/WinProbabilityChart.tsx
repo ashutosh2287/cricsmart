@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { subscribeMatch, getEventStream } from "@/services/matchEngine";
 import { getWinProbabilityTimeline } from "@/services/analytics/winProbabilityTimelineEngine";
+import { getHighlights } from "@/services/highlights/highlightStore";
 
 import {
   LineChart,
@@ -27,7 +28,7 @@ type ChartPoint = {
   over: number;
   batting: number;
   bowling: number;
-  marker?: "WICKET" | "SIX" | "FOUR" | "SWING";
+  marker?: "WICKET" | "SIX" | "FOUR" | "SWING" | "TURNING_POINT";
   ballIndex: number;
 };
 
@@ -51,6 +52,7 @@ export default function WinProbabilityChart({
 
       const timeline = getWinProbabilityTimeline(matchId);
       const events = getEventStream(matchId);
+      const highlights = getHighlights(matchId);
 
       if (!timeline?.timeline?.length) {
         setData([]);
@@ -70,7 +72,7 @@ export default function WinProbabilityChart({
 
         const event = events[index];
 
-        // 🎯 Event markers
+        // 🎯 Basic event markers
         if (event) {
           if (event.type === "WICKET") point.marker = "WICKET";
           if (event.type === "SIX") point.marker = "SIX";
@@ -84,6 +86,18 @@ export default function WinProbabilityChart({
           if (swing >= 15) {
             point.marker = "SWING";
           }
+        }
+
+        // 🔥 TURNING POINT SYNC
+        const turningPoint = highlights.find(
+          (h) =>
+            h.type === "TURNING_POINT" &&
+            h.event &&
+            Math.abs(h.event.over - p.over) < 0.2
+        );
+
+        if (turningPoint) {
+          point.marker = "TURNING_POINT";
         }
 
         chartData.push(point);
@@ -127,25 +141,7 @@ export default function WinProbabilityChart({
 
       <ResponsiveContainer width="100%" height={260}>
 
-        <LineChart
-          data={data}
-          onClick={(state) => {
-
-            const payload = (
-              state as {
-                activePayload?: { payload: ChartPoint }[];
-              }
-            )?.activePayload?.[0]?.payload;
-
-            if (!payload) return;
-
-            window.dispatchEvent(
-              new CustomEvent("timeline-seek", {
-                detail: { ballIndex: payload.ballIndex }
-              })
-            );
-          }}
-        >
+        <LineChart data={data}>
 
           {/* 🎨 GRADIENTS */}
           <defs>
@@ -173,43 +169,32 @@ export default function WinProbabilityChart({
           <Area type="monotone" dataKey="bowling" fill="url(#bowlingFill)" stroke="none" />
 
           {/* AXIS */}
-          <XAxis dataKey="over" stroke="#aaa" tick={{ fontSize: 12 }} />
-          <YAxis
-            domain={[0, 100]}
-            stroke="#aaa"
-            tickFormatter={(v) => `${v}%`}
-          />
+          <XAxis dataKey="over" stroke="#aaa" />
+          <YAxis domain={[0, 100]} stroke="#aaa" tickFormatter={(v) => `${v}%`} />
 
           {/* MID LINE */}
           <ReferenceLine y={50} stroke="#666" strokeDasharray="4 4" />
 
           {/* TOOLTIP */}
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "#020617",
-              border: "1px solid #333",
-              borderRadius: "8px"
-            }}
-            formatter={(value) =>
-              typeof value === "number" ? `${value.toFixed(1)}%` : ""
-            }
-          />
+          <Tooltip formatter={(v) => `${Number(v).toFixed(1)}%`} />
 
-          {/* MAIN LINE (BAT) */}
+          {/* MAIN LINE */}
           <Line
             type="monotone"
             dataKey="batting"
             stroke="#22c55e"
             strokeWidth={3}
-            activeDot={{ r: 6, stroke: "#fff", strokeWidth: 2 }}
-            animationDuration={800}
-            animationEasing="ease-in-out"
             dot={({ cx, cy, payload }: DotProps) => {
 
               if (!payload?.marker || cx === undefined || cy === undefined) return null;
 
               let color = "#facc15";
               let label = "";
+
+              if (payload.marker === "TURNING_POINT") {
+                color = "#facc15";
+                label = "TP";
+              }
 
               if (payload.marker === "WICKET") {
                 color = "#ef4444";
@@ -232,14 +217,8 @@ export default function WinProbabilityChart({
 
               return (
                 <g>
-                  <circle cx={cx} cy={cy} r={5} fill={color} stroke="#fff" />
-                  <text
-                    x={cx}
-                    y={cy - 10}
-                    textAnchor="middle"
-                    fontSize="10"
-                    fill="#fff"
-                  >
+                  <circle cx={cx} cy={cy} r={6} fill={color} stroke="#fff" />
+                  <text x={cx} y={cy - 10} textAnchor="middle" fontSize="10" fill="#fff">
                     {label}
                   </text>
                 </g>
@@ -254,7 +233,6 @@ export default function WinProbabilityChart({
             stroke="#ef4444"
             strokeWidth={3}
             dot={false}
-            animationDuration={800}
           />
 
         </LineChart>

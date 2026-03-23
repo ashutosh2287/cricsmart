@@ -1,14 +1,44 @@
-import { CommentaryEvent } from "./commentaryTypes";
+export type Commentary = {
+  matchId: string;
+  text: string;
+  eventId: string;
+  category: "BALL" | "INSIGHT";
+};
 
-const listeners = new Set<(event: CommentaryEvent) => void>();
+type Listener = (c: Commentary) => void;
 
-export function subscribeCommentary(
-  cb: (event: CommentaryEvent) => void
-) {
-  listeners.add(cb);
-  return () => listeners.delete(cb);
+const listeners = new Set<Listener>();
+const commentaryStore: Record<string, Commentary[]> = {};
+
+
+
+// ✅ EMIT COMMENTARY (THIS WAS MISSING)
+export function emitCommentary(c: Commentary) {
+
+  // ✅ store permanently
+  if (!commentaryStore[c.matchId]) {
+    commentaryStore[c.matchId] = [];
+  }
+
+  const exists = commentaryStore[c.matchId]?.some(
+  (item) => item.eventId === c.eventId
+);
+
+if (!exists) {
+  commentaryStore[c.matchId].push(c);
 }
 
-export function emitCommentary(event: CommentaryEvent) {
-  listeners.forEach((l) => l(event));
+  // existing listeners
+  listeners.forEach(cb => cb(c));
+}
+
+export function subscribeCommentary(cb: Listener) {
+  listeners.add(cb);
+
+  return () => {
+    listeners.delete(cb); // ✅ now returns void
+  };
+}
+export function getCommentary(matchId: string): Commentary[] {
+  return commentaryStore[matchId] ?? [];
 }

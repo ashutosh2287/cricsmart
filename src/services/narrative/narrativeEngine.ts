@@ -1,6 +1,6 @@
 import { BallEvent } from "@/types/ballEvent";
 import { NarrativeState, NarrativeArc } from "./narrativeTypes";
-import { emitNarrativeSignal } from "./narrativeSignalBus";
+import { emitDirectorSignal } from "./narrativeSignalBus";
 import {
   getNarrativeState,
   setNarrativeState,
@@ -134,6 +134,11 @@ export function processNarrativeEvent(
 
   setNarrativeState(matchId, branchId, next);
 
+
+  
+
+
+
   /*
   ========================================
   MATCH INTELLIGENCE INTEGRATION
@@ -157,6 +162,7 @@ export function processNarrativeEvent(
     }
 
   }
+  
 
   /*
   ========================================
@@ -191,6 +197,7 @@ export function processNarrativeEvent(
     }
 
   }
+  
 
   /*
   ========================================
@@ -221,22 +228,105 @@ export function processNarrativeEvent(
 
   }
 
+ /*
+========================================
+ADVANCED SIGNAL GENERATION (FIXED ✅)
+========================================
+*/
+
+const lastEventId = event.id ?? "unknown";
+
+// 🔥 1. COLLAPSE DETECTION
+const events = getEventStream(matchId);
+
+if (events.length >= 6) {
+  const recent = events.slice(-6);
+  const wickets = recent.filter(e => e.wicket).length;
+
+  if (wickets >= 3) {
+    emitDirectorSignal({
+      type: "COLLAPSE_ALERT",
+      matchId,
+      branchId,
+      eventId: lastEventId,
+      intensity: wickets
+    });
+  }
+}
+
+// 🔥 2. MOMENTUM SHIFT
+if (momentum >= 6) {
+  emitDirectorSignal({
+    type: "MOMENTUM_SHIFT",
+    matchId,
+    branchId,
+    eventId: lastEventId,
+    direction: momentum > state.momentumScore ? "BATTING" : "BOWLING",
+    intensity: momentum
+  });
+}
+
+// 🔥 3. PRESSURE SPIKE (FIXED from HIGH_PRESSURE ❗)
+if (pressure >= 7) {
+  emitDirectorSignal({
+    type: "PRESSURE_SPIKE",
+    matchId,
+    branchId,
+    eventId: lastEventId
+  });
+}
+
+// 🔥 4. TURNING POINT
+if (winProb) {
+  const prevProb = state.lastWinProb ?? winProb.battingWinProbability;
+  const diff = Math.abs(winProb.battingWinProbability - prevProb);
+
+  if (diff >= 25) {
+    emitDirectorSignal({
+      type: "TURNING_POINT",
+      matchId,
+      branchId,
+      eventId: lastEventId,
+      winProbChange: diff
+    });
+  }
+
+  next.lastWinProb = winProb.battingWinProbability;
+}
+
+// 🔥 5. DOMINANCE
+if (momentum >= 8 && pressure <= 2) {
+  emitDirectorSignal({
+    type: "DOMINANCE",
+    matchId,
+    branchId,
+    eventId: lastEventId,
+    team: "BATTING"
+  });
+}
+
+if (pressure >= 8 && momentum <= 2) {
+  emitDirectorSignal({
+    type: "DOMINANCE",
+    matchId,
+    branchId,
+    eventId: lastEventId,
+    team: "BOWLING"
+  });
+}
   /*
   ========================================
   ARC TRANSITION SIGNAL
   ========================================
   */
 
-  if (previousArc !== newArc) {
-
-    emitNarrativeSignal({
-      type: "ARC_STARTED",
-      matchId,
-      branchId,
-      arc: newArc,
-      eventId: event.id
-    });
-
-  }
+  if (pressure >= 7) {
+  emitDirectorSignal({
+    type: "PRESSURE_SPIKE",
+    matchId,
+    branchId,
+    eventId: event.id ?? "unknown"
+  });
+}
 
 }

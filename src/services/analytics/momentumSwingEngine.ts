@@ -1,9 +1,11 @@
 import { getEventStream } from "../matchEngine";
+import { getHighlights } from "../highlights/highlightStore";
 
 export type MomentumSwingType =
   | "BATTING_SURGE"
   | "BOWLING_STRIKE"
-  | "MATCH_SHIFT";
+  | "MATCH_SHIFT"
+  | "TURNING_POINT";
 
 export type MomentumSwing = {
   ballIndex: number;
@@ -12,6 +14,7 @@ export type MomentumSwing = {
 };
 
 const swingStore: Record<string, MomentumSwing[]> = {};
+const lastSwingIndex: Record<string, number> = {};
 
 export function getMomentumSwings(matchId: string) {
   return swingStore[matchId] ?? [];
@@ -20,14 +23,20 @@ export function getMomentumSwings(matchId: string) {
 export function detectMomentumSwing(matchId: string) {
 
   const events = getEventStream(matchId);
+  const highlights = getHighlights(matchId);
 
-  if (events.length < 3) return;
+  if (events.length < 4) return;
 
   const swings: MomentumSwing[] = [];
 
-  for (let i = 2; i < events.length; i++) {
+  for (let i = 3; i < events.length; i++) {
 
-    const window = events.slice(i - 2, i + 1);
+    // 🔥 COOLDOWN (avoid spam)
+    if (lastSwingIndex[matchId] !== undefined) {
+      if (i - lastSwingIndex[matchId] < 3) continue;
+    }
+
+    const window = events.slice(i - 3, i + 1);
 
     let runs = 0;
     let wickets = 0;
@@ -48,9 +57,29 @@ export function detectMomentumSwing(matchId: string) {
     });
 
     /*
-    ==========================
-    Bowling Strike Swing
-    ==========================
+    =========================================
+    🔥 TURNING POINT SYNC (HIGHEST PRIORITY)
+    =========================================
+    */
+
+    const lastHighlight = highlights[highlights.length - 1];
+
+    if (lastHighlight?.type === "TURNING_POINT") {
+
+      swings.push({
+        ballIndex: i,
+        type: "TURNING_POINT",
+        impact: 1.0 // 🔥 strongest
+      });
+
+      lastSwingIndex[matchId] = i;
+      continue;
+    }
+
+    /*
+    =========================================
+    🎯 BOWLING STRIKE (STRONG)
+    =========================================
     */
 
     if (wickets >= 2) {
@@ -61,30 +90,32 @@ export function detectMomentumSwing(matchId: string) {
         impact: 0.9
       });
 
+      lastSwingIndex[matchId] = i;
       continue;
     }
 
     /*
-    ==========================
-    Batting Surge
-    ==========================
+    =========================================
+    💥 BATTING SURGE (SMART)
+    =========================================
     */
 
-    if (runs >= 12 && boundaries >= 2) {
+    if (runs >= 14 && boundaries >= 2) {
 
       swings.push({
         ballIndex: i,
         type: "BATTING_SURGE",
-        impact: 0.8
+        impact: 0.85
       });
 
+      lastSwingIndex[matchId] = i;
       continue;
     }
 
     /*
-    ==========================
-    Match Shift
-    ==========================
+    =========================================
+    ⚡ MATCH SHIFT (CONTROLLED)
+    =========================================
     */
 
     if (runs >= 10 || wickets === 1) {
@@ -95,10 +126,10 @@ export function detectMomentumSwing(matchId: string) {
         impact: 0.6
       });
 
+      lastSwingIndex[matchId] = i;
     }
 
   }
 
   swingStore[matchId] = swings;
-
 }

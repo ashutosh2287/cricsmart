@@ -5,11 +5,14 @@ export function adaptApiEventToEngineEvent(
   apiEvent: ApiBallEvent,
   matchSlug: string,
   nonStriker: string
-): EngineBallEvent {
+): EngineBallEvent | null {
 
-  const batsman = apiEvent.batsman ?? "";
-  const bowler = apiEvent.bowler ?? "";
+  if (!apiEvent) return null;
 
+  const batsman = apiEvent.batsman ?? "Unknown";
+  const bowler = apiEvent.bowler ?? "Unknown";
+
+  // 🏏 1. WICKET
   if (apiEvent.wicket) {
     return {
       type: "WICKET",
@@ -19,6 +22,7 @@ export function adaptApiEventToEngineEvent(
     };
   }
 
+  // 🎯 2. WIDE
   if (apiEvent.type === "WD") {
     return {
       type: "WD",
@@ -28,6 +32,7 @@ export function adaptApiEventToEngineEvent(
     };
   }
 
+  // 🎯 3. NO BALL
   if (apiEvent.type === "NB") {
     return {
       type: "NB",
@@ -37,6 +42,7 @@ export function adaptApiEventToEngineEvent(
     };
   }
 
+  // 💥 4. BOUNDARIES
   if (apiEvent.runs === 4) {
     return {
       type: "FOUR",
@@ -55,9 +61,10 @@ export function adaptApiEventToEngineEvent(
     };
   }
 
+  // 🏃 5. RUN / DOT (ENGINE SAFE)
   return {
     type: "RUN",
-    runs: apiEvent.runs ?? 1,
+    runs: apiEvent.runs ?? 0,
     batsman,
     nonStriker,
     bowler

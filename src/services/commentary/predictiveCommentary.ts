@@ -161,10 +161,9 @@ if (lastHighlight?.type === "TURNING_POINT") {
 
   emitCommentary({
     matchId,
-    branchId,
     eventId: upcomingEventId,
     text,
-    tone
+    category: "INSIGHT"
   });
 
 }

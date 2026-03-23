@@ -17,4 +17,5 @@ export type NarrativeState = {
 
   lastEventId?: string;
   arcStartEventId?: string;
+  lastWinProb?: number;
 };

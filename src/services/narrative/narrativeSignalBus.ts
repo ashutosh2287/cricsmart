@@ -1,14 +1,14 @@
-import { NarrativeSignal } from "./narrativeSignals";
+import { DirectorSignal } from "../directorSignals";
 
-const listeners = new Set<(signal: NarrativeSignal) => void>();
+const listeners = new Set<(signal: DirectorSignal) => void>();
 
-export function subscribeNarrativeSignal(
-  cb: (signal: NarrativeSignal) => void
+export function subscribeDirectorSignal(
+  cb: (signal: DirectorSignal) => void
 ) {
   listeners.add(cb);
   return () => listeners.delete(cb);
 }
 
-export function emitNarrativeSignal(signal: NarrativeSignal) {
+export function emitDirectorSignal(signal: DirectorSignal) {
   listeners.forEach((l) => l(signal));
 }

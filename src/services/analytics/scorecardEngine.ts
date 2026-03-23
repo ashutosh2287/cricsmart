@@ -1,4 +1,4 @@
-import { getMatchState } from "../matchEngine";
+import { getEventStream, getMatchState } from "../matchEngine";
 import { BallEvent } from "@/types/ballEvent"; // ✅ FIX 1
 
 /* ================= TYPES ================= */
@@ -23,33 +23,55 @@ type WicketEvent = {
 
 /* ================= BATTING ================= */
 
-export function getBattingStats(matchId: string): Record<string, BatterStats> {
+export function getBattingStats(matchId: string) {
 
-  const match = getMatchState(matchId);
-  if (!match) return {};
+  const events = getEventStream(matchId);
 
-  const innings = match.innings[match.currentInningsIndex];
+  const batting: Record<string, {
+    runs: number;
+    balls: number;
+    fours: number;
+    sixes: number;
+    out: boolean;
+  }> = {};
 
-  const stats: Record<string, BatterStats> = {}; // ✅ FIX 2
+  for (const e of events) {
 
-  Object.values(innings.overs).forEach((over: BallEvent[]) => {
-    over.forEach((ball: BallEvent) => {
+    const batsman = e.batsman;
 
-      const name = ball.batsman;
+    // 🔥 skip invalid players
+    if (!batsman || batsman === "Unknown") continue;
 
-      if (!stats[name]) {
-        stats[name] = { runs: 0, balls: 0 };
-      }
+    if (!batting[batsman]) {
+      batting[batsman] = {
+        runs: 0,
+        balls: 0,
+        fours: 0,
+        sixes: 0,
+        out: false
+      };
+    }
 
-      stats[name].runs += ball.runs;
-      stats[name].balls += 1;
+    // ✅ runs
+    batting[batsman].runs += e.runs ?? 0;
 
-    });
-  });
+    // ✅ balls (only legal)
+    if (e.isLegalDelivery) {
+      batting[batsman].balls++;
+    }
 
-  return stats;
+    // ✅ boundaries
+    if (e.type === "FOUR") batting[batsman].fours++;
+    if (e.type === "SIX") batting[batsman].sixes++;
+
+    // ✅ wicket
+    if (e.wicket) {
+      batting[batsman].out = true;
+    }
+  }
+console.log(events.map(e => e.batsman));
+  return batting;
 }
-
 /* ================= BOWLING ================= */
 
 export function getBowlingStats(matchId: string): Record<string, BowlerStats> {
@@ -104,17 +126,20 @@ export function getFallOfWickets(matchId: string): WicketEvent[] {
   const wickets: WicketEvent[] = [];
 
   let wicketCount = 0;
+  let runningScore = 0;
 
   Object.values(innings.overs).forEach((over: BallEvent[], oIndex: number) => {
 
     over.forEach((ball: BallEvent, bIndex: number) => {
+
+      runningScore += ball.runs;
 
       if (ball.wicket) {
         wicketCount++;
 
         wickets.push({
           wicket: wicketCount,
-          score: innings.runs,
+          score: runningScore, // ✅ FIXED
           player: ball.batsman,
           over: `${oIndex}.${bIndex}`
         });

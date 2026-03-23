@@ -4,6 +4,7 @@ import { updateMatchPhase } from "./analytics/matchPhaseEngine";
 import { detectMomentumSwing } from "./analytics/momentumSwingEngine";
 import { generateBroadcastInsights } from "./broadcast/broadcastInsightEngine";
 import { runMatchPredictor } from "./prediction/matchPredictorEngine";
+import { resetMatchState, dispatchBallEvent } from "./matchEngine";
 
 type ReplayState = {
   position: number;
@@ -22,7 +23,6 @@ export function scrubToPosition(
 ) {
 
   const events = getEventStream(matchId) ?? [];
-
   if (!events.length) return;
 
   const clampedIndex = Math.max(
@@ -30,9 +30,27 @@ export function scrubToPosition(
     Math.min(index, events.length - 1)
   );
 
+  // 🔥 SAVE POSITION
   replayStore[matchId] = {
     position: clampedIndex
   };
+
+  // 🔥 STEP 1: RESET MATCH STATE
+  resetMatchState(matchId);
+
+  // 🔥 STEP 2: REBUILD STATE USING EVENTS
+  for (let i = 0; i <= clampedIndex; i++) {
+    const event = events[i];
+
+    dispatchBallEvent(matchId, {
+      id: event.id,
+      type: event.type,
+      runs: event.runs,
+      batsman: event.batsman ?? "Unknown",
+      nonStriker: event.nonStriker ?? "Unknown",
+      bowler: event.bowler ?? "Unknown"
+    });
+  }
 
   /*
   ========================================
@@ -53,13 +71,9 @@ export function scrubToPosition(
   */
 
   updateMatchPhase(matchId);
-
   detectMomentumSwing(matchId);
-
   generateBroadcastInsights(matchId);
-
   runMatchPredictor(matchId);
-
 }
 
 export function playFromCurrentCursor(

@@ -21,6 +21,8 @@ export type BallEvent = {
   nonStriker?: string;
   bowler: string;
 
+  commentary?: string;
+
   // ⭐ EVENT TYPE
   type:
     | "RUN"

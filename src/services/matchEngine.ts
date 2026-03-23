@@ -234,11 +234,9 @@ function reduce(state: MatchState, event: ScoringEventWithId)
 
   // 🧠 SET STRIKER / NON-STRIKER (FIRST TIME ONLY)
 
-if (!innings.striker) {
+// 🧠 Initialize only once
+if (!innings.striker && !innings.nonStriker) {
   innings.striker = event.batsman;
-}
-
-if (!innings.nonStriker) {
   innings.nonStriker = event.nonStriker;
 }
 
@@ -271,8 +269,8 @@ const incomingId = event.id;
     valid: true,
     branchId: state.activeBranchId,
 
-    batsman: event.batsman,
-    nonStriker: innings.nonStriker ?? "",
+  batsman: innings.striker ?? event.batsman,
+nonStriker: innings.nonStriker ?? event.nonStriker,
     bowler: event.bowler ?? ""
   };
 
@@ -288,7 +286,15 @@ const incomingId = event.id;
   if (event.type === "RUN") innings.runs += event.runs ?? 1;
   if (event.type === "FOUR") innings.runs += 4;
   if (event.type === "SIX") innings.runs += 6;
-  if (event.type === "WICKET") innings.wickets++;
+  if (event.type === "WICKET") {
+  innings.wickets++;
+
+  // 🧠 NEW BATSMAN COMES
+  // event.batsman = next batsman (from simulator/UI)
+  innings.striker = event.batsman;
+
+  // nonStriker remains same
+}
   if (event.type === "WD" || event.type === "NB") innings.runs++;
   if (event.type === "BYE" || event.type === "LB") {
   innings.runs += event.runs ?? 0;
@@ -311,7 +317,7 @@ const incomingId = event.id;
     ? 1
     : 0;
     // 🔁 Rotate on odd runs
-if (runsScored % 2 === 1) {
+if (event.type !== "WICKET" && runsScored % 2 === 1) {
   const temp = innings.striker;
   innings.striker = innings.nonStriker;
   innings.nonStriker = temp;
@@ -348,14 +354,16 @@ if (runsScored % 2 === 1) {
 
     if (next.currentInningsIndex === 0) {
       if (next.innings.length < 2) {
-        next.innings.push({
-          runs: 0,
-          wickets: 0,
-          over: 0,
-          ball: 0,
-          overs: {},
-          completed: false
-        });
+       next.innings.push({
+  runs: 0,
+  wickets: 0,
+  over: 0,
+  ball: 0,
+  overs: {},
+  completed: false,
+  striker: "",
+  nonStriker: ""
+});
       }
 
       next.currentInningsIndex = 1;

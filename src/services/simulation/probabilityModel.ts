@@ -2,7 +2,15 @@ import { SimulationState } from "./simulationState";
 import { getPlayer } from "./playerUtils";
 
 type Outcome = {
-  type: "RUN" | "FOUR" | "SIX" | "WICKET" | "WD" | "NB";
+  type:
+    | "RUN"
+    | "FOUR"
+    | "SIX"
+    | "WICKET"
+    | "WD"
+    | "NB"
+    | "BYE"
+    | "LB";
   runs: number;
   prob: number;
 };
@@ -45,19 +53,36 @@ export function getBallOutcome(state: SimulationState): Outcome {
   }
 
   const outcomes: Outcome[] = [
-    { type: "RUN", runs: 0, prob: 0.25 + dotPenalty },
-    { type: "RUN", runs: 1, prob: 0.3 },
-    { type: "RUN", runs: 2, prob: 0.1 },
+  { type: "RUN", runs: 0, prob: 0.22 + dotPenalty },
+  { type: "RUN", runs: 1, prob: 0.28 },
+  { type: "RUN", runs: 2, prob: 0.1 },
 
-    { type: "FOUR", runs: 4, prob: 0.15 * boundaryBoost * pressure },
-    { type: "SIX", runs: 6, prob: 0.08 * boundaryBoost * pressure },
+  { type: "FOUR", runs: 4, prob: 0.14 * boundaryBoost * pressure },
+  { type: "SIX", runs: 6, prob: 0.07 * boundaryBoost * pressure },
 
-    { type: "WICKET", runs: 0, prob: 0.12 * wicketChance },
+  // 🔥 WICKET FIXED
+  { type: "WICKET", runs: 0, prob: 0.25 * wicketChance + 0.02 },
 
-    { type: "WD", runs: 1, prob: 0.03 },
-  ];
+  // 🔥 EXTRAS
+  { type: "WD", runs: 1, prob: 0.025 },
+  { type: "NB", runs: 1, prob: 0.015 },
 
-  return weightedRandom(outcomes);
+  // 🔥 BYES (no batsman credit)
+  { type: "BYE", runs: Math.random() < 0.7 ? 1 : 2, prob: 0.02 },
+
+  // 🔥 LEG BYES
+  { type: "LB", runs: Math.random() < 0.7 ? 1 : 2, prob: 0.02 },
+];
+
+  // 🔥 NORMALIZE PROBABILITIES
+const totalProb = outcomes.reduce((sum, o) => sum + o.prob, 0);
+
+const normalized = outcomes.map(o => ({
+  ...o,
+  prob: o.prob / totalProb
+}));
+
+return weightedRandom(normalized);
 }
 
 function weightedRandom(options: Outcome[]): Outcome {

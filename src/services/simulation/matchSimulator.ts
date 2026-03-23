@@ -127,17 +127,24 @@ export function startSimulation(
 
     
 
-    const syncedState: SimulationState = {
-      ...state,
-      over,
-      ball,
-      phase:
-        over < 6
-          ? "POWERPLAY"
-          : over < 15
-          ? "MIDDLE"
-          : "DEATH",
-    };
+    // 🔥 ALWAYS SYNC FROM ENGINE
+const liveMatchState = getMatchState(matchId);
+const liveInnings =
+  liveMatchState?.innings[liveMatchState.currentInningsIndex];
+
+const syncedState: SimulationState = {
+  ...state,
+  over,
+  ball,
+  striker: liveInnings?.striker || state.striker,
+  nonStriker: liveInnings?.nonStriker || state.nonStriker,
+  phase:
+    over < 6
+      ? "POWERPLAY"
+      : over < 15
+      ? "MIDDLE"
+      : "DEATH",
+};
 
     const event: BallEvent = generateBallEvent(syncedState);
 
@@ -147,7 +154,20 @@ export function startSimulation(
       return;
     }
 
-    const engineEvent = toEngineEvent(event);
+    let batsman = syncedState.striker;
+
+// 🔥 If wicket → send next batsman
+if (event.wicket) {
+  batsman =
+    state.battingOrder[state.nextBatsmanIndex] ||
+    syncedState.striker;
+}
+
+const engineEvent = toEngineEvent({
+  ...event,
+  batsman,
+  nonStriker: syncedState.nonStriker
+});
     dispatchBallEvent(matchId, engineEvent);
 
     const commentary = generateAdvancedCommentary(event, {
@@ -160,13 +180,8 @@ export function startSimulation(
     updateState(state, event);
 
     state.over = over;
-    // 🔁 OVER COMPLETION ROTATION
-if (ball === 5) { // last ball of over (0-based index)
-  [state.striker, state.nonStriker] = [
-    state.nonStriker,
-    state.striker
-  ];
-}
+   
+
 
     /* =============================
        🎯 TARGET CHASE STOP
@@ -233,14 +248,7 @@ function updateState(state: SimulationState, event: BallEvent) {
   // ✅ update total
   state.totalRuns += runs;
 
-  // 🔥 STRIKE ROTATION (MAIN FIX)
-  if (runs % 2 === 1) {
-    [state.striker, state.nonStriker] = [
-      state.nonStriker,
-      state.striker
-    ];
-  }
-
+  
   // ✅ wicket handling
   if (event.wicket) {
     state.wickets++;
@@ -256,7 +264,7 @@ function handleWicket(state: SimulationState) {
     return;
   }
 
-  // ✅ new batsman comes on strike
+  // ✅ NEW BATSMAN COMES
   state.striker = next;
   state.nextBatsmanIndex++;
 }

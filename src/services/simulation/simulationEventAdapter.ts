@@ -57,5 +57,27 @@ export function toEngineEvent(event: BallEvent): EngineBallEvent {
     };
   }
 
+  // 🔥 ADD THIS (VERY IMPORTANT)
+
+  if (event.type === "BYE") {
+    return {
+      type: "BYE",
+      runs: event.runs,
+      batsman: event.batsman,
+      nonStriker: event.nonStriker!,
+      bowler: event.bowler,
+    };
+  }
+
+  if (event.type === "LB") {
+    return {
+      type: "LB",
+      runs: event.runs,
+      batsman: event.batsman,
+      nonStriker: event.nonStriker!,
+      bowler: event.bowler,
+    };
+  }
+
   throw new Error("Invalid event type");
 }

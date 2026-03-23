@@ -20,7 +20,6 @@ import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
 import MatchStory from "@/components/MatchStory";
 import { initCommentaryVoice } from "@/services/commentary/commentaryVoiceEngine";
 import BroadcastDirectorPanel from "@/components/BroadcastDirectorPanel";
-import MatchTimelineSlider from "@/components/MatchTimelineSlider";
 import BroadcastControlDashboard from "@/components/BroadcastControlDashboard";
 import MatchControlPanel from "@/components/MatchControlPanel";
 import MatchHeader from "@/components/MatchHeader";
@@ -34,6 +33,7 @@ import { startLiveMatchIngestor, stopLiveMatchIngestor } from "@/services/ingest
 import CommentaryPanel from "@/components/match/CommentaryPanel";
 import { initMatch } from "@/services/matchEngine";
 import GlassPanel from "@/components/ui/GlassPanel";
+import { useMatch } from "@/context/MatchContext";
 import {
   startSimulation,
   stopSimulation,
@@ -325,6 +325,8 @@ function TabsArea({ match }: { match: Match }) {
 
   const isLoading = !match;
   const [activeTab, setActiveTab] = useState("overview");
+    const { state: currentEngineState } = useMatch();
+
   
 
 // 🔥 ADD HERE
@@ -334,6 +336,7 @@ const [analysisFilter, setAnalysisFilter] = useState<
   const [isRunning, setIsRunning] = useState(false);
 const [isPaused, setIsPaused] = useState(false);
 const [speed, setSpeed] = useState(1500);
+const [selectedInnings, setSelectedInnings] = useState(0);
   if (isLoading) {
   return (
     <div className="space-y-4">
@@ -588,41 +591,95 @@ const [speed, setSpeed] = useState(1500);
   </div>
 )}
 
-
 {activeTab === "scorecard" && (() => {
 
-  const batting = getBattingStats(match.slug);
-  const bowling = getBowlingStats(match.slug);
-  const extras = getExtras(match.slug);
-  const topPlayers = Object.entries(batting)
-  .sort((a, b) => (b[1].runs ?? 0) - (a[1].runs ?? 0))
-  .slice(0, 2);
+  const inningsIndex = selectedInnings;
 
-  const players = Object.entries(batting);
-  const wickets = getFallOfWickets(match.slug) ?? [];
+  const batting = getBattingStats(match.slug, inningsIndex);
+  const bowling = getBowlingStats(match.slug, inningsIndex);
+  const extras = getExtras(match.slug, inningsIndex);
+  const wickets = getFallOfWickets(match.slug, inningsIndex) ?? [];
+
+  const currentInnings =
+    currentEngineState?.innings?.[inningsIndex];
+
+  const striker = currentInnings?.striker;
+  const nonStriker = currentInnings?.nonStriker;
+
+  type PlayerStat = {
+    runs?: number;
+    balls?: number;
+    fours?: number;
+    sixes?: number;
+    out?: boolean;
+  };
+
+  type BowlerStat = {
+    overs?: number;
+    runs?: number;
+    wickets?: number;
+  };
+
+  const players = Object.entries(
+    batting as Record<string, PlayerStat>
+  );
+
+  const topPlayers = [...players]
+    .sort((a, b) => (b[1].runs ?? 0) - (a[1].runs ?? 0))
+    .slice(0, 2);
+
   type Partnership = {
-  players: string;
-  runs: number;
-};
+    players: string;
+    runs: number;
+  };
 
-const partnerships: Partnership[] = Object.entries(batting)
-  .slice(-2)
-  .map(([name, s]) => {
-    const player = s as { runs?: number };
-    return {
-      players: name,
-      runs: player.runs ?? 0
-    };
-  });
+  const partnerships: Partnership[] = players
+    .slice(-2)
+    .map(([name, s]) => {
+      const player = s as PlayerStat;
+      return {
+        players: name,
+        runs: player.runs ?? 0,
+      };
+    });
 
-  type FallOfWicket = {
-  score: number;
-  wicket: number;
-  over: string;
-};
+  const battingTeam =
+    inningsIndex === 0 ? match.team1 : match.team2;
+
+  const bowlingTeam =
+    inningsIndex === 0 ? match.team2 : match.team1;
 
   return (
     <div className="space-y-6">
+
+      {/* 🔥 TABS */}
+      <div className="flex gap-2 mb-2">
+        {(currentEngineState?.innings || []).map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setSelectedInnings(i)}
+            className={`px-4 py-2 rounded-lg text-sm transition
+              ${
+                selectedInnings === i
+                  ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg"
+                  : "bg-gray-800/40 text-gray-300 hover:bg-gray-700/40"
+              }
+            `}
+          >
+            Innings {i + 1}
+          </button>
+        ))}
+      </div>
+
+      {/* 🔥 TEAM INFO */}
+      <div className="flex justify-between text-sm mb-3">
+        <span className="text-green-400 font-medium">
+          Batting: {battingTeam}
+        </span>
+        <span className="text-blue-400 font-medium">
+          Bowling: {bowlingTeam}
+        </span>
+      </div>
 
       {/* ========================= */}
       {/* 🔥 BATTING CARD */}
@@ -641,15 +698,9 @@ const partnerships: Partnership[] = Object.entries(batting)
 
         <div className="space-y-3">
 
-          {players.map(([name, s], index) => {
+          {players.map(([name, s]) => {
 
-            const player = s as {
-              runs?: number;
-              balls?: number;
-              fours?: number;
-              sixes?: number;
-              out?: boolean;
-            };
+            const player = s as PlayerStat;
 
             const runs = player.runs ?? 0;
             const balls = player.balls ?? 0;
@@ -660,24 +711,35 @@ const partnerships: Partnership[] = Object.entries(batting)
             const sr =
               balls > 0 ? ((runs / balls) * 100).toFixed(1) : "0.0";
 
-            const isCurrent = index >= players.length - 2;
-            
+            const isStriker = name === striker;
+            const isNonStriker = name === nonStriker;
 
             return (
               <div
                 key={name}
                 className={`p-3 rounded-lg flex justify-between items-center transition
-                  ${isCurrent ? "bg-yellow-500/10 border border-yellow-500/20" : "bg-gray-800/40"}
+                  ${
+                    isStriker
+                      ? "bg-yellow-500/10 border border-yellow-500/20"
+                      : isNonStriker
+                      ? "bg-gray-700/40 border border-gray-600/20"
+                      : "bg-gray-800/40"
+                  }
                 `}
               >
 
-                {/* LEFT */}
                 <div className="flex flex-col">
 
                   <span className="font-medium">
 
-                    {isCurrent && (
+                    {isStriker && (
                       <span className="text-yellow-400 mr-1">★</span>
+                    )}
+                    {isStriker && (
+                      <span className="animate-pulse text-green-400 ml-2">●</span>
+                    )}
+                    {isNonStriker && (
+                      <span className="text-blue-400 ml-2">○</span>
                     )}
 
                     {name}
@@ -691,15 +753,9 @@ const partnerships: Partnership[] = Object.entries(batting)
                   <span className="text-xs text-gray-500">
                     {fours}x4 • {sixes}x6
                   </span>
-                  {isCurrent && (
-  <span className="animate-pulse text-green-400 ml-2">
-    ●
-  </span>
-)}
 
                 </div>
 
-                {/* RIGHT */}
                 <div className="flex items-center gap-6 text-sm">
 
                   <span className="text-green-400 font-semibold">
@@ -729,98 +785,73 @@ const partnerships: Partnership[] = Object.entries(batting)
         </div>
 
       </GlassPanel>
+
+      {/* 🔥 FALL OF WICKETS */}
       <GlassPanel>
-  <h3 className="text-sm text-gray-400 mb-3 uppercase">
-    Fall of Wickets
-  </h3>
+        <h3 className="text-sm text-gray-400 mb-3 uppercase">
+          Fall of Wickets
+        </h3>
 
-  <div className="flex flex-wrap gap-3 text-sm">
+        <div className="flex flex-wrap gap-3 text-sm">
+          {wickets.map((w, i) => (
+            <div key={i} className="bg-gray-800/40 px-3 py-1 rounded">
+              {w.score}/{w.wicket} ({w.over})
+            </div>
+          ))}
+        </div>
+      </GlassPanel>
 
-    {wickets.map((w, i) => (
-      <div
-        key={i}
-        className="bg-gray-800/40 px-3 py-1 rounded"
-      >
-        {w.score}/{w.wicket} ({w.over})
-      </div>
-    ))}
-
-  </div>
-</GlassPanel>
-
-      {/* ========================= */}
-      {/* 🔥 BOWLING CARD */}
-      {/* ========================= */}
+      {/* 🔥 BOWLING */}
       <GlassPanel>
 
-  <h3 className="text-sm text-gray-400 mb-4 uppercase tracking-wide">
-    Bowling
-  </h3>
+        <h3 className="text-sm text-gray-400 mb-4 uppercase tracking-wide">
+          Bowling
+        </h3>
 
-  {/* 🔥 HEADER */}
-  <div className="grid grid-cols-5 text-xs text-gray-400 mb-2 px-2">
-    <span className="text-left">Bowler</span>
-    <span className="text-center">O</span>
-    <span className="text-center">R</span>
-    <span className="text-center">W</span>
-    <span className="text-center">Econ</span>
-  </div>
+        <div className="grid grid-cols-5 text-xs text-gray-400 mb-2 px-2">
+          <span>Bowler</span>
+          <span className="text-center">O</span>
+          <span className="text-center">R</span>
+          <span className="text-center">W</span>
+          <span className="text-center">Econ</span>
+        </div>
 
-  {/* 🔥 DATA */}
-  <div className="space-y-2">
+        <div className="space-y-2">
 
-    {Object.entries(bowling).map(([name, s]) => {
+          {Object.entries(bowling).map(([name, s]) => {
 
-      const bowler = s as {
-        overs?: number;
-        runs?: number;
-        wickets?: number;
-      };
+            const bowler = s as BowlerStat;
 
-      const overs = bowler.overs ?? 0;
-      const runs = bowler.runs ?? 0;
-      const wickets = bowler.wickets ?? 0;
+            const overs = bowler.overs ?? 0;
+            const runs = bowler.runs ?? 0;
+            const wickets = bowler.wickets ?? 0;
 
-      const economy =
-        overs > 0 ? (runs / overs).toFixed(1) : "0.0";
+            const economy =
+              overs > 0 ? (runs / overs).toFixed(1) : "0.0";
 
-      return (
-        <div
-          key={name}
-          className="grid grid-cols-5 items-center bg-gray-800/40 rounded-lg px-2 py-2 hover:bg-gray-800/60 transition"
-        >
-
-          <span className="text-left font-medium">
-            {name}
-          </span>
-
-          <span className="text-center">
-            {overs}
-          </span>
-
-          <span className="text-center">
-            {runs}
-          </span>
-
-          <span className="text-center text-red-400 font-semibold">
-            {wickets}
-          </span>
-
-          <span className="text-center text-blue-400">
-            {economy}
-          </span>
+            return (
+              <div
+                key={name}
+                className="grid grid-cols-5 items-center bg-gray-800/40 rounded-lg px-2 py-2 hover:bg-gray-800/60 transition"
+              >
+                <span>{name}</span>
+                <span className="text-center">{overs}</span>
+                <span className="text-center">{runs}</span>
+                <span className="text-center text-red-400 font-semibold">
+                  {wickets}
+                </span>
+                <span className="text-center text-blue-400">
+                  {economy}
+                </span>
+              </div>
+            );
+          })}
 
         </div>
-      );
-    })}
 
-  </div>
+      </GlassPanel>
 
-</GlassPanel>
-
-      {/* ========================= */}
-      {/* 🔥 EXTRAS + SUMMARY */}
-      {/* ========================= */}
+      {/* 🔥 EXTRAS */}
       <GlassPanel>
 
         <h3 className="text-sm text-gray-400 mb-3 uppercase">
@@ -853,68 +884,58 @@ const partnerships: Partnership[] = Object.entries(batting)
 
       </GlassPanel>
 
+      {/* 🔥 PARTNERSHIP */}
       <GlassPanel>
-  <h3 className="text-sm text-gray-400 mb-3 uppercase">
-    Partnerships
-  </h3>
+        <h3 className="text-sm text-gray-400 mb-3 uppercase">
+          Partnerships
+        </h3>
 
-  <div className="space-y-2">
-
-    {partnerships.map((p, i) => (
-      <div
-        key={i}
-        className="bg-gray-800/40 p-3 rounded flex justify-between"
-      >
-        <span>{p.players}</span>
-        <span className="text-green-400 font-semibold">
-          {p.runs} runs
-        </span>
-      </div>
-    ))}
-
-  </div>
-</GlassPanel>
-
-<GlassPanel>
-  <h3 className="text-sm text-gray-400 mb-3 uppercase">
-    Player Comparison
-  </h3>
-
-  <div className="grid grid-cols-2 gap-4 text-sm">
-
-    {topPlayers.map(([name, s]) => {
-
-      const player = s as {
-        runs?: number;
-        balls?: number;
-      };
-
-      const runs = player.runs ?? 0;
-      const balls = player.balls ?? 0;
-
-      const sr =
-        balls > 0 ? ((runs / balls) * 100).toFixed(1) : "0.0";
-
-      return (
-        <div
-          key={name}
-          className="bg-gray-800/40 p-3 rounded"
-        >
-          <p className="font-medium">{name}</p>
-          <p>{runs} ({balls})</p>
-          <p className="text-yellow-400">SR: {sr}</p>
+        <div className="space-y-2">
+          {partnerships.map((p, i) => (
+            <div key={i} className="bg-gray-800/40 p-3 rounded flex justify-between">
+              <span>{p.players}</span>
+              <span className="text-green-400 font-semibold">
+                {p.runs} runs
+              </span>
+            </div>
+          ))}
         </div>
-      );
-    })}
+      </GlassPanel>
 
-  </div>
-</GlassPanel>
+      {/* 🔥 PLAYER COMPARISON */}
+      <GlassPanel>
+        <h3 className="text-sm text-gray-400 mb-3 uppercase">
+          Player Comparison
+        </h3>
+
+        <div className="grid grid-cols-2 gap-4 text-sm">
+
+          {topPlayers.map(([name, s]) => {
+
+            const player = s as PlayerStat;
+
+            const runs = player.runs ?? 0;
+            const balls = player.balls ?? 0;
+
+            const sr =
+              balls > 0 ? ((runs / balls) * 100).toFixed(1) : "0.0";
+
+            return (
+              <div key={name} className="bg-gray-800/40 p-3 rounded">
+                <p className="font-medium">{name}</p>
+                <p>{runs} ({balls})</p>
+                <p className="text-yellow-400">SR: {sr}</p>
+              </div>
+            );
+          })}
+
+        </div>
+      </GlassPanel>
 
     </div>
   );
 
 })()}
-
 
       {activeTab === "admin" && process.env.NODE_ENV === "development" && (
         

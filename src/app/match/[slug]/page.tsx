@@ -34,6 +34,9 @@ import CommentaryPanel from "@/components/match/CommentaryPanel";
 import { initMatch } from "@/services/matchEngine";
 import GlassPanel from "@/components/ui/GlassPanel";
 import { useMatch } from "@/context/MatchContext";
+import { getBattingOrder, getBowlingOrder } from "@/services/simulation/lineup";
+import { use } from "react";
+import React from "react";
 import {
   startSimulation,
   stopSimulation,
@@ -53,279 +56,22 @@ import {
 } from "@/services/analytics/scorecardEngine";
 import WinProbabilityChart from "@/components/analytics/WinProbabilityChart";
 import ReplaySlider from "@/components/match/ReplaySlider";
+import TeamSelector from "@/components/teams/TeamSelector";
+import { Team } from "@/data/teams";
+import TossPanel from "@/components/match/TossPanel";
 type AnalysisFilter = "ALL" | "BATTING" | "BOWLING" | "PRESSURE";
 
 
-export default function MatchDetailPage() {
-
-  const params = useParams();
-  
-
-  const matchId: string | undefined = useMemo(() => {
-    const slug = params.slug;
-
-    if (typeof slug === "string") return slug;
-    if (Array.isArray(slug)) return slug[0];
-
-    return undefined;
-  }, [params.slug]);
-
-  const [showReplay, setShowReplay] = useState(false);
-  const [match, setMatch] = useState<Match | undefined>();
-  const [engineState, setEngineState] = useState<MatchState | undefined>();
-
-  /*
-  =================================================
-  INIT TACTICAL + COMMENTARY SYSTEM
-  =================================================
-  */
-
-  useEffect(() => {
-    initTacticalOverlayBridge();
-    initCommentaryVoice();
-  }, []);
-
-  /*
-  =================================================
-  LOAD MATCH DATA
-  =================================================
-  */
-
-  useEffect(() => {
-
-  if (!matchId) return;
-
-  const id = matchId;
-
-  async function loadMatch() {
-
-    const m = await getMatchBySlug(id);
-
-    setMatch(m);
-
-    if (m?.engineState) {
-      hydrateMatchState(id, m.engineState);
-    } else {
-  initMatch(id);
-}
-
-  }
-
-  loadMatch();
-
-}, [matchId]);
-
-  /*
-  =================================================
-  REALTIME CONNECTION
-  =================================================
-  */
-
-  useEffect(() => {
-
-    if (!matchId) return;
-
-    connectRealtime(matchId!);
-
-    return () => {
-  disconnectRealtime();
-};
-
-  }, [matchId]);
-
-  /*
-=================================================
-LIVE API INGESTION
-=================================================
-*/
-
-useEffect(() => {
-
-  if (!matchId || !match?.externalMatchId) return;
-
-  console.log("Starting live ingestor:", match.externalMatchId);
-
-  startLiveMatchIngestor(
-    matchId,
-    match.externalMatchId
-  );
-
-  return () => {
-    stopLiveMatchIngestor(matchId);
-  };
-
-}, [matchId, match]);
-
-  /*
-  =================================================
-  BROADCAST MODE
-  =================================================
-  */
-
-  useEffect(() => {
-
-    enableBroadcast();
-
-    return () => disableBroadcast();
-
-  }, []);
-
-  /*
-  =================================================
-  ENGINE SUBSCRIPTION
-  =================================================
-  */
-
-  useEffect(() => {
-
-  if (!matchId) return;
-
-  const id = matchId;
-
-  const unsubscribe = subscribeMatch(id, () => {
-  setEngineState(getMatchState(id));
-});
-  return () => {
-    unsubscribe();
-  };
-
-}, [matchId]);
-
-  /*
-  =================================================
-  DERIVED ENGINE STATE
-  =================================================
-  */
-
-  const currentEngineState = useMemo(() => {
-    if (!matchId) return undefined;
-    return engineState ?? getMatchState(matchId);
-  }, [engineState, matchId]);
-
-  if (!matchId) return null;
-
-  if (!match) {
-  return (
-
-    <PageMotion>
-   
-      <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-6">
-
-        <h1 className="text-3xl font-bold text-white">
-          Match Not Found
-        </h1>
-
-        <p className="text-gray-400 max-w-md">
-          The match you are looking for does not exist or
-          has not been loaded yet.
-        </p>
-
-        <Link
-          href="/matches"
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg transition shadow-lg shadow-blue-500/30"
-        >
-          Browse Matches
-        </Link>
-
-      </div>
-
-    </PageMotion>
-
-  );
-}
-
-  const innings =
-    currentEngineState?.innings?.[
-      currentEngineState.currentInningsIndex ?? 0
-    ];
-
-  return (
-
-    <PageMotion>
-      <div className="
-      min-h-screen 
-      bg-gradient-to-br 
-      from-[#0f172a] 
-      via-[#1e293b] 
-      to-[#020617]
-    ">
-  <MatchProvider value={{ matchId, state: currentEngineState }}>
-
-    <main className="space-y-8 relative overflow-hidden">
-
-     <div className="max-w-7xl mx-auto px-6 py-6 grid gap-8 lg:grid-cols-[2fr_1fr] items-start">
-
-      {/* LEFT SIDE — MAIN MATCH CONTENT */}
-
-      <div className="lg:col-span-2 space-y-8 max-w-6xl">
-
-        {/* MATCH HEADER */}
-
-       {innings && (
-  <>
-    <MatchHeader
-  team1={match.team1}
-  team2={match.team2}
-  runs={innings.runs}
-  wickets={innings.wickets}
-  over={innings.over}
-  ball={innings.ball}
-/>
-
-<LiveMatchStatus />
-
-<div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent"/>
-  </>
-)}
-
-
-       
-
-        {/* MATCH TABS */}
-
-        <TabsArea match={match} />
-
-      </div>
-
-      {/* RIGHT SIDE — INTELLIGENCE PANELS */}
-
-
-
-      {/* GLOBAL OVERLAYS */}
-
-     <TacticalOverlay /> 
-      {showReplay && (
-        <ReplayOverlay
-          matchId={matchId}
-          onClose={() => setShowReplay(false)}
-        />
-      )}
-
-      {/* DEV BROADCAST TOOLS */}
-
-      {process.env.NODE_ENV === "development" && (
-        <div className="mt-12 border-t border-gray-700 pt-6 space-y-4 lg:col-span-3">
-          <BroadcastDirectorPanel />
-          <BroadcastControlDashboard />
-        </div>
-      )}
-
-    </div>
-    </main>
-    </MatchProvider>
-    </div>
-    </PageMotion>
-  );
-  
-}
-
-
-
-function TabsArea({ match }: { match: Match }) {
-
+const TabsArea = React.memo(function TabsArea({ match }: { match: Match }) {
   const isLoading = !match;
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(() => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("activeTab") || "overview";
+  }
+  return "overview";
+});
     const { state: currentEngineState } = useMatch();
+    
 
   
 
@@ -333,6 +79,14 @@ function TabsArea({ match }: { match: Match }) {
 const [analysisFilter, setAnalysisFilter] = useState<
   "ALL" | "BATTING" | "BOWLING" | "PRESSURE"
 >("ALL");
+const [selectedTeams, setSelectedTeams] = useState<{
+  teamA: Team;
+  teamB: Team;
+} | null>(null);
+const [tossData, setTossData] = useState<{
+  winner: Team;
+  decision: "BAT" | "BOWL";
+} | null>(null);
   const [isRunning, setIsRunning] = useState(false);
 const [isPaused, setIsPaused] = useState(false);
 const [speed, setSpeed] = useState(1500);
@@ -362,7 +116,10 @@ const [selectedInnings, setSelectedInnings] = useState(0);
         {["overview", "live", "analysis", "timeline", "scorecard", "admin"].map(tab => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => {
+  setActiveTab(tab);
+  localStorage.setItem("activeTab", tab);
+}}
             className={`capitalize transition-colors ${
               activeTab === tab
                 ? "text-white border-b-2 border-blue-500 pb-2"
@@ -591,6 +348,7 @@ const [selectedInnings, setSelectedInnings] = useState(0);
   </div>
 )}
 
+
 {activeTab === "scorecard" && (() => {
 
   const inningsIndex = selectedInnings;
@@ -600,8 +358,8 @@ const [selectedInnings, setSelectedInnings] = useState(0);
   const extras = getExtras(match.slug, inningsIndex);
   const wickets = getFallOfWickets(match.slug, inningsIndex) ?? [];
 
-  const currentInnings =
-    currentEngineState?.innings?.[inningsIndex];
+ const currentInnings =
+  currentEngineState?.innings?.[inningsIndex];
 
   const striker = currentInnings?.striker;
   const nonStriker = currentInnings?.nonStriker;
@@ -643,17 +401,37 @@ const [selectedInnings, setSelectedInnings] = useState(0);
       };
     });
 
-  const battingTeam =
-    inningsIndex === 0 ? match.team1 : match.team2;
 
-  const bowlingTeam =
-    inningsIndex === 0 ? match.team2 : match.team1;
 
+const matchState = currentEngineState ?? null;
+
+const battingTeam =
+  selectedInnings === 0
+    ? matchState?.teamA?.name ?? "Team A"
+    : matchState?.teamB?.name ?? "Team B";
+
+const bowlingTeam =
+  selectedInnings === 0
+    ? matchState?.teamB?.name ?? "Team B"
+    : matchState?.teamA?.name ?? "Team A";
+
+if (!currentEngineState?.innings) {
+  return (
+    <div className="text-white text-center p-10">
+      Preparing match data...
+    </div>
+  );
+}
   return (
     <div className="space-y-6">
 
       {/* 🔥 TABS */}
       <div className="flex gap-2 mb-2">
+        {currentEngineState?.matchEnded && (
+  <div className="bg-green-600 text-white p-4 rounded-lg text-center">
+    🏆 {currentEngineState.winner} won by {currentEngineState.winBy}
+  </div>
+)}
         {(currentEngineState?.innings || []).map((_, i) => (
           <button
             key={i}
@@ -938,7 +716,6 @@ const [selectedInnings, setSelectedInnings] = useState(0);
 })()}
 
       {activeTab === "admin" && process.env.NODE_ENV === "development" && (
-        
   <div className="space-y-6">
 
     <AdminScoringPanel matchId={match.slug} />
@@ -947,119 +724,399 @@ const [selectedInnings, setSelectedInnings] = useState(0);
     <BroadcastControlDashboard />
 
     {process.env.NODE_ENV === "development" && (
- <GlassPanel>
-  <div className="flex flex-col gap-4">
+      <GlassPanel>
+        <div className="flex flex-col gap-4">
 
-    {/* ▶ START / ⏹ STOP */}
-    <button
-      onClick={() => {
-        const id = match.slug;
-        if (!id) return;
-
-        if (!isRunning) {
-          console.log("🚀 START");
-
-          initMatch(id);
-
-          startSimulation(
-            {
-              over: 0,
-              ball: 0,
-              totalRuns: 0,
-              wickets: 0,
-
-              striker: "Virat Kohli",
-              nonStriker: "Rohit Sharma",
-              bowler: "Mitchell Starc",
-
-              battingOrder: ["Virat Kohli", "Rohit Sharma", "Gill", "Hardik"],
-              bowlingOrder: ["Mitchell Starc", "Pat Cummins", "Hazlewood"],
-
-              currentBowlerIndex: 0,
-              nextBatsmanIndex: 2,
-              phase: "POWERPLAY",
-            },
-            id,
-            speed
-          );
-
-          setIsRunning(true);
-          setIsPaused(false);
-        } else {
-          console.log("⏹ STOP");
-
-          stopSimulation();
-          setIsRunning(false);
-          setIsPaused(false);
-        }
-      }}
-      className={`px-4 py-2 rounded font-medium ${
-        isRunning ? "bg-red-600" : "bg-green-600"
-      }`}
-    >
-      {isRunning ? "⏹ Stop Simulation" : "▶ Start Simulation"}
-    </button>
-
-    {/* ⏸ PAUSE / ▶ RESUME */}
-    {isRunning && (
-      <button
-        onClick={() => {
-          if (!isPaused) {
-            pauseSimulation();
-            setIsPaused(true);
-          } else {
-            resumeSimulation();
-            setIsPaused(false);
-          }
+          {selectedTeams ? (
+            <p className="text-green-400">
+              Teams Selected: {selectedTeams.teamA.name} vs {selectedTeams.teamB.name}
+            </p>
+          ) : (
+            <GlassPanel>
+              <TeamSelector
+                onStart={(teamA, teamB) => {
+                  setSelectedTeams({ teamA, teamB });
+                }}
+              />
+            </GlassPanel>
+          )}
+          {/* STEP 2: TOSS */}
+  {selectedTeams && !tossData && (
+    <GlassPanel>
+      <TossPanel
+        teamA={selectedTeams.teamA}
+        teamB={selectedTeams.teamB}
+        onConfirm={(winner, decision) => {
+          setTossData({ winner, decision });
         }}
-        className="px-4 py-2 rounded bg-yellow-500"
-      >
-        {isPaused ? "▶ Resume" : "⏸ Pause"}
-      </button>
+      />
+    </GlassPanel>
+  )}
+
+          <button
+            onClick={() => {
+              const id = match.slug;
+              if (!id || !selectedTeams) return;
+
+              if (!isRunning) {
+                console.log("🚀 START");
+
+                initMatch(id);
+
+                if (!tossData) {
+  alert("Please complete toss first");
+  return;
+}
+
+const { teamA, teamB } = selectedTeams;
+const { winner, decision } = tossData;
+
+let firstBattingTeam;
+let firstBowlingTeam;
+
+if (decision === "BAT") {
+  firstBattingTeam = winner;
+  firstBowlingTeam =
+    winner.name === teamA.name ? teamB : teamA;
+} else {
+  firstBowlingTeam = winner;
+  firstBattingTeam =
+    winner.name === teamA.name ? teamB : teamA;
+}
+const battingXI = getBattingOrder(firstBattingTeam.squad);
+const bowlingXI = getBowlingOrder(firstBowlingTeam.squad);
+
+startSimulation(
+  {
+    over: 0,
+    ball: 0,
+    totalRuns: 0,
+    wickets: 0,
+
+    striker: battingXI[0],
+    nonStriker: battingXI[1],
+    bowler: bowlingXI[0],
+
+    battingOrder: battingXI,
+    bowlingOrder: bowlingXI,
+
+    currentBowlerIndex: 0,
+    nextBatsmanIndex: 2,
+
+    phase: "POWERPLAY",
+
+    teamA: selectedTeams.teamA,
+    teamB: selectedTeams.teamB,
+
+    tossWinner: winner.name,
+    decision,
+    currentInningsIndex: 0,
+
+    matchEnded: false,
+    winner: null,
+    winBy: null,
+  },
+  id,
+  speed
+);
+                setIsRunning(true);
+                setIsPaused(false);
+              } else {
+                console.log("⏹ STOP");
+
+                stopSimulation();
+                setIsRunning(false);
+                setIsPaused(false);
+              }
+            }}
+            className={`px-4 py-2 rounded font-medium ${
+              isRunning ? "bg-red-600" : "bg-green-600"
+            }`}
+          >
+            {isRunning ? "⏹ Stop Simulation" : "▶ Start Simulation"}
+          </button>
+
+          {isRunning && (
+            <button
+              onClick={() => {
+                if (!isPaused) {
+                  pauseSimulation();
+                  setIsPaused(true);
+                } else {
+                  resumeSimulation();
+                  setIsPaused(false);
+                }
+              }}
+              className="px-4 py-2 rounded bg-yellow-500"
+            >
+              {isPaused ? "▶ Resume" : "⏸ Pause"}
+            </button>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setSpeed(1500);
+                setSimulationSpeed(1500);
+              }}
+              className="px-3 py-1 bg-gray-700 rounded"
+            >
+              1x
+            </button>
+
+            <button
+              onClick={() => {
+                setSpeed(700);
+                setSimulationSpeed(700);
+              }}
+              className="px-3 py-1 bg-gray-700 rounded"
+            >
+              2x
+            </button>
+
+            <button
+              onClick={() => {
+                setSpeed(300);
+                setSimulationSpeed(300);
+              }}
+              className="px-3 py-1 bg-gray-700 rounded"
+            >
+              5x
+            </button>
+          </div>
+
+        </div>
+      </GlassPanel>
     )}
-
-    {/* ⚡ SPEED CONTROL */}
-    <div className="flex gap-2">
-
-      <button
-        onClick={() => {
-          setSpeed(1500);
-          setSimulationSpeed(1500);
-        }}
-        className="px-3 py-1 bg-gray-700 rounded"
-      >
-        1x
-      </button>
-
-      <button
-        onClick={() => {
-          setSpeed(700);
-          setSimulationSpeed(700);
-        }}
-        className="px-3 py-1 bg-gray-700 rounded"
-      >
-        2x
-      </button>
-
-      <button
-        onClick={() => {
-          setSpeed(300);
-          setSimulationSpeed(300);
-        }}
-        className="px-3 py-1 bg-gray-700 rounded"
-      >
-        5x
-      </button>
-
-    </div>
-
-  </div>
-</GlassPanel>
-)}
 
   </div>
 )}
 
     </>
+    
   );
+
+});
+
+
+export default function MatchDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+
+  const resolvedParams = use(params);
+
+  const matchId: string | undefined = useMemo(() => {
+    const slug = resolvedParams.slug;
+
+    if (typeof slug === "string") return slug;
+    if (Array.isArray(slug)) return slug[0];
+
+    return undefined;
+  }, [resolvedParams.slug]);
+
+  const [showReplay, setShowReplay] = useState(false);
+  const [match, setMatch] = useState<Match | undefined>();
+  const [engineState, setEngineState] = useState<MatchState | undefined>();
+
+  /*
+  =================================================
+  INIT TACTICAL + COMMENTARY SYSTEM
+  =================================================
+  */
+
+  useEffect(() => {
+    initTacticalOverlayBridge();
+    initCommentaryVoice();
+  }, []);
+
+  /*
+  =================================================
+  LOAD MATCH DATA
+  =================================================
+  */
+
+  useEffect(() => {
+
+  if (!matchId) return;
+
+  const id = matchId;
+
+  async function loadMatch() {
+
+    const m = await getMatchBySlug(id);
+
+    setMatch(m);
+
+    if (m?.engineState) {
+  hydrateMatchState(id, m.engineState);
+  setEngineState(getMatchState(id)); // ✅ ADD THIS
+} else {
+  initMatch(id);
+  setEngineState(getMatchState(id)); // ✅ ADD THIS
+}
+
+  }
+
+  loadMatch();
+
+}, [matchId]);
+
+  /*
+  =================================================
+  REALTIME CONNECTION
+  =================================================
+  */
+
+  useEffect(() => {
+
+    if (!matchId) return;
+
+    connectRealtime(matchId!);
+
+    return () => {
+  disconnectRealtime();
+};
+
+  }, [matchId]);
+
+  /*
+=================================================
+LIVE API INGESTION
+=================================================
+*/
+
+useEffect(() => {
+
+  if (!matchId || !match?.externalMatchId) return;
+
+  console.log("Starting live ingestor:", match.externalMatchId);
+
+  startLiveMatchIngestor(
+    matchId,
+    match.externalMatchId
+  );
+
+  return () => {
+    stopLiveMatchIngestor(matchId);
+  };
+
+}, [matchId, match]);
+
+  /*
+  =================================================
+  BROADCAST MODE
+  =================================================
+  */
+
+  useEffect(() => {
+
+    enableBroadcast();
+
+    return () => disableBroadcast();
+
+  }, []);
+
+  /*
+  =================================================
+  ENGINE SUBSCRIPTION
+  =================================================
+  */
+
+  useEffect(() => {
+
+  if (!matchId) return;
+
+  const id = matchId;
+
+  const unsubscribe = subscribeMatch(id, () => {
+  setEngineState(getMatchState(id));
+});
+  return () => {
+    unsubscribe();
+  };
+
+}, [matchId]);
+
+  /*
+  =================================================
+  DERIVED ENGINE STATE
+  =================================================
+  */
+
+  const currentEngineState = useMemo(() => {
+  if (!matchId) return undefined;
+
+  const state = engineState ?? getMatchState(matchId);
+
+  if (!state) {
+    initMatch(matchId); // 🔥 fallback
+    return getMatchState(matchId);
+  }
+
+  return state;
+}, [engineState, matchId]);
+
+const currentInnings = useMemo(() => {
+  if (!currentEngineState) return undefined;
+
+  return currentEngineState.innings?.[
+    currentEngineState.currentInningsIndex ?? 0
+  ];
+}, [currentEngineState]);
+
+const oversKeys = currentInnings?.overs
+  ? Object.keys(currentInnings.overs)
+  : [];
+
+const currentOverNumber = oversKeys.length
+  ? Number(oversKeys[oversKeys.length - 1])
+  : 0;
+
+const currentBalls =
+  currentInnings?.overs?.[currentOverNumber]?.length || 0;
+
+  return (
+  <PageMotion>
+    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#020617]">
+
+<MatchProvider value={{ matchId: matchId!, state: currentEngineState! }}>
+        {!currentEngineState ? (
+          <div className="text-white text-center p-10">
+            Loading match engine...
+          </div>
+        ) : (
+          <main className="space-y-8 relative overflow-hidden">
+
+            <div className="max-w-7xl mx-auto px-6 py-6">
+
+              {/* HEADER */}
+              {currentInnings && (
+                <MatchHeader
+                  team1={currentEngineState.teamA?.name ?? match?.team1 ?? "Team A"}
+                  team2={currentEngineState.teamB?.name ?? match?.team2 ?? "Team B"}
+                  runs={currentInnings.runs || 0}
+                  wickets={currentInnings.wickets || 0}
+                  over={currentOverNumber}
+                  ball={currentBalls}
+                />
+              )}
+
+              <LiveMatchStatus />
+
+              {/* TABS */}
+              {match && <TabsArea match={match} />}
+
+            </div>
+
+          </main>
+        )}
+
+      </MatchProvider>
+
+    </div>
+  </PageMotion>
+);
+
 }

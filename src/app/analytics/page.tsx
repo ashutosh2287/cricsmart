@@ -8,6 +8,7 @@ import TopPerformersPanel from "@/components/analytics/TopPerformersPanel";
 import ImpactLeaderboard from "@/components/analytics/ImpactLeaderboard";
 import MatchNarrativePanel from "@/components/analytics/MatchNarrativePanel";
 import LiveScoreCard from "@/components/LiveScoreCard";
+import TeamList from "@/components/teams/TeamList";
 
 export default function AnalyticsPage() {
 
@@ -58,6 +59,9 @@ export default function AnalyticsPage() {
   <ImpactLeaderboard matchId={matchId} />
 
   <MatchNarrativePanel matchId={matchId} />
+
+  
+  <TeamList />
 
 </div>
 

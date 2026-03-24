@@ -1,3 +1,5 @@
+import { Team } from "@/data/teams";
+
 export type SimulationState = {
   over: number;
   ball: number;
@@ -18,6 +20,16 @@ export type SimulationState = {
 
   // 🔥 TARGET MODE
   target?: number;
+  teamA: Team;
+  teamB: Team;
+
+  tossWinner: string;          // team name
+  decision: "BAT" | "BOWL";   // toss decision
+  currentInningsIndex: number; // 0 or 1
+
+  matchEnded: boolean;
+  winner: string | null;
+  winBy: string | null;
 
   phase: "POWERPLAY" | "MIDDLE" | "DEATH";
 };

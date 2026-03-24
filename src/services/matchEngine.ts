@@ -125,6 +125,24 @@ export type MatchState = {
 
   activeBranchId: string;
   branches: string[];
+
+  teamA: {
+  name: string;
+  squad: { name: string; role: string }[];
+};
+
+teamB: {
+  name: string;
+  squad: { name: string; role: string }[];
+};
+
+tossWinner: string;
+decision: "BAT" | "BOWL";
+
+
+matchEnded: boolean;
+winner: string | null;
+winBy: string | null;
 };
 
 /* ========================================================
@@ -206,7 +224,23 @@ export function initMatch(
     ],
     currentInningsIndex: 0,
     activeBranchId: "main",
-    branches: ["main"]
+    branches: ["main"],
+    teamA: {
+  name: "Team A",
+  squad: []
+},
+teamB: {
+  name: "Team B",
+  squad: []
+},
+
+tossWinner: "",
+decision: "BAT",
+
+
+matchEnded: false,
+winner: null,
+winBy: null,
   });
 
   eventStreams[matchId] = [];

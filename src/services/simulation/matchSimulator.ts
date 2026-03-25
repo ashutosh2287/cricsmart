@@ -10,6 +10,7 @@ import { Player, Team, teams } from "@/data/teams";
 import { getBowlingOrder } from "../teams/bowlingOrder";
 import { getMatchResult } from "../match/resultEngine";
 import { getPlayingXI } from "../teams/playingXI";
+
 /* =====================================================
    GLOBAL STATE (IMPORTANT)
 ===================================================== */
@@ -18,22 +19,34 @@ let timeoutRef: NodeJS.Timeout | null = null;
 let isRunning = false;
 let isPaused = false;
 let currentSpeed = 1500; // default delay
+let originalTeamA: Team | null = null;
+let originalTeamB: Team | null = null;
+let bowlerOvers: Record<string, number> = {};
 
 /* =====================================================
    START SIMULATION
 ===================================================== */
 
 export function startSimulation(
+  
   state: SimulationState,
   matchId: string,
-  speed: number = 1500
+  speed: number = 1500,
+
+  
 ) {
+  bowlerOvers = {}; // reset properly
   const matchState = getMatchState(matchId);
 if (!matchState) return;
 
 // 🔥 SYNC ENGINE STATE → MATCH STATE
 matchState.teamA = state.teamA;
 matchState.teamB = state.teamB;
+// 🔥 STORE ORIGINAL TEAMS (ONLY ONCE)
+if (!originalTeamA && !originalTeamB) {
+  originalTeamA = state.teamA;
+  originalTeamB = state.teamB;
+}
 
 matchState.tossWinner = state.tossWinner;
 matchState.decision = state.decision;
@@ -64,8 +77,28 @@ const teamB = state.teamB;
   }
 
   // 👉 FIRST INNINGS TEAM (India batting)
-  const battingXI = getPlayingXI(teamA).players;
-const bowlingXI = getPlayingXI(teamB).players;
+  let battingTeam, bowlingTeam;
+
+if (state.tossWinner === teamA.name) {
+  if (state.decision === "BAT") {
+    battingTeam = teamA;
+    bowlingTeam = teamB;
+  } else {
+    battingTeam = teamB;
+    bowlingTeam = teamA;
+  }
+} else {
+  if (state.decision === "BAT") {
+    battingTeam = teamB;
+    bowlingTeam = teamA;
+  } else {
+    battingTeam = teamA;
+    bowlingTeam = teamB;
+  }
+}
+
+const battingXI = getPlayingXI(battingTeam).players;
+const bowlingXI = getPlayingXI(bowlingTeam).players;
 
 const battingOrder = getBattingOrder(battingXI);
 const bowlingOrder = getBowlingOrder(bowlingXI);
@@ -140,8 +173,15 @@ state.bowler = bowlingOrder[0];
 
     // 🔥 SWITCH TEAMS
     // 🔥 SWITCH TEAMS (CORRECT)
-const battingXI = getPlayingXI(state.teamB).players;
-const bowlingXI = getPlayingXI(state.teamA).players;
+if (!originalTeamA || !originalTeamB) {
+  console.log("❌ Original teams missing");
+  stopSimulation();
+  return;
+}
+
+// 🔥 CORRECT TEAM SWITCH
+const battingXI = getPlayingXI(originalTeamB).players;
+const bowlingXI = getPlayingXI(originalTeamA).players;
 
     state.battingOrder = getBattingOrder(battingXI);
     state.bowlingOrder = getBowlingOrder(bowlingXI);
@@ -244,8 +284,13 @@ const engineEvent = toEngineEvent({
 
     state.over = over;
     // ✅ OVER COMPLETE LOGIC
-if (ball === 0 && over > 0) {
-  // swap strike at over end
+if (innings.ball === 0 && innings.over > 0) {
+  // previous over just completed
+
+  bowlerOvers[state.bowler] =
+    (bowlerOvers[state.bowler] || 0) + 1;
+
+  // swap strike
   const temp = state.striker;
   state.striker = state.nonStriker;
   state.nonStriker = temp;
@@ -360,17 +405,22 @@ const next = state.battingOrder[state.nextBatsmanIndex];
 }
 
 function rotateBowler(state: SimulationState) {
-  const totalBowlers = state.bowlingOrder.length;
+  const available = state.bowlingOrder.filter(
+    (b) => (bowlerOvers[b] || 0) < 4
+  );
 
-  let nextIndex = (state.currentBowlerIndex + 1) % totalBowlers;
-
-  // ❗ avoid same bowler repeating
-  if (nextIndex === state.currentBowlerIndex) {
-    nextIndex = (nextIndex + 1) % totalBowlers;
+  if (available.length === 0) {
+    console.log("⚠️ All bowlers exhausted, fallback");
+    return;
   }
+  
 
-  state.currentBowlerIndex = nextIndex;
-  state.bowler = state.bowlingOrder[nextIndex];
+  const next =
+    available[Math.floor(Math.random() * available.length)];
+
+  state.bowler = next;
+  state.currentBowlerIndex =
+    state.bowlingOrder.findIndex((b) => b === next);
 
   console.log("🎯 New Over Bowler:", state.bowler);
 }

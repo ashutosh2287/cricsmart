@@ -109,9 +109,12 @@ export type InningsState = {
   over: number;
   ball: number;
   overs: Record<number, BallEvent[]>;
+  battingTeam?: string;
+  bowlingTeam?: string;
   completed: boolean;
   striker?: string;
   nonStriker?: string;
+
 };
 
 export type MatchState = {
@@ -219,7 +222,9 @@ export function initMatch(
         overs: {},
         completed: false,
         striker: "",
-        nonStriker: ""
+        nonStriker: "",
+        battingTeam: "",   
+        bowlingTeam: ""    
       }
     ],
     currentInningsIndex: 0,
@@ -265,6 +270,80 @@ function reduce(state: MatchState, event: ScoringEventWithId)
   
 
   const innings = next.innings[next.currentInningsIndex];
+  // 🧠 TOTAL BALL TRACKING
+const totalBalls = innings.over * 6 + innings.ball;
+
+// 🛑 HARD STOP: 20 overs limit
+if (totalBalls >= 120) {
+  innings.completed = true;
+
+  // 🏁 MOVE TO NEXT INNINGS OR END MATCH
+  if (next.currentInningsIndex === 0) {
+    if (next.innings.length < 2) {
+      next.innings.push({
+        runs: 0,
+        wickets: 0,
+        over: 0,
+        ball: 0,
+        overs: {},
+        completed: false,
+        striker: "",
+        nonStriker: "",
+        battingTeam: next.teamB.name,
+        bowlingTeam: next.teamA.name
+      });
+    }
+
+    next.currentInningsIndex = 1;
+  } else {
+    next.matchEnded = true;
+  }
+
+return {
+  next,
+  ballEvent: {
+    id: "",
+    slug: state.matchId,
+    over: innings.over,
+    runs: 0,
+    wicket: false,
+    extra: false,
+    type: "RUN",
+    timestamp: Date.now(),
+    isLegalDelivery: true,
+    valid: false,
+    branchId: state.activeBranchId,
+    batsman: "",
+    nonStriker: "",
+    bowler: ""
+  }
+};}
+  // 🛑 STOP IF INNINGS ALREADY COMPLETED
+if (innings.completed) {
+  return {
+    next,
+    ballEvent: {
+      id: "",
+      slug: state.matchId,
+      over: innings.over,
+      runs: 0,
+      wicket: false,
+      extra: false,
+      type: "RUN",
+      timestamp: Date.now(),
+      isLegalDelivery: true,
+      valid: false,
+      branchId: state.activeBranchId,
+      batsman: "",
+      nonStriker: "",
+      bowler: ""
+    }
+  };
+}
+
+  // 🔥 HARD STOP: prevent extra balls after innings complete
+
+
 
   // 🧠 SET STRIKER / NON-STRIKER (FIRST TIME ONLY)
 
@@ -272,6 +351,12 @@ function reduce(state: MatchState, event: ScoringEventWithId)
 if (!innings.striker && !innings.nonStriker) {
   innings.striker = event.batsman;
   innings.nonStriker = event.nonStriker;
+
+  // 🔥 SET TEAMS FOR FIRST INNINGS
+  if (!innings.battingTeam && !innings.bowlingTeam) {
+    innings.battingTeam = state.teamA.name;
+    innings.bowlingTeam = state.teamB.name;
+  }
 }
 
 const incomingId = event.id;
@@ -310,11 +395,19 @@ nonStriker: innings.nonStriker ?? event.nonStriker,
 
   if (!innings.overs[innings.over])
     innings.overs[innings.over] = [];
+  if (innings.completed) return { next, ballEvent };
 
   innings.overs[innings.over].push(ballEvent);
 
   if (event.type !== "WD" && event.type !== "NB") {
-    innings.ball++;
+    if (innings.ball < 6) {
+  innings.ball++;
+
+if (innings.ball >= 6) {
+  innings.ball = 0;
+  innings.over++;
+}
+}
   }
 
   if (event.type === "RUN") innings.runs += event.runs ?? 1;
@@ -380,32 +473,36 @@ if (event.type !== "WICKET" && runsScored % 2 === 1) {
   );
 
   // 🏁 T20 INNINGS COMPLETION FIX
-  if (
-    next.configOvers !== null &&
-    innings.over >= next.configOvers
-  ) {
-    innings.completed = true;
+  const totalBalls = innings.over * 6 + innings.ball;
 
-    if (next.currentInningsIndex === 0) {
-      if (next.innings.length < 2) {
-       next.innings.push({
-  runs: 0,
-  wickets: 0,
-  over: 0,
-  ball: 0,
-  overs: {},
-  completed: false,
-  striker: "",
-  nonStriker: ""
-});
-      }
+if (
+  next.configOvers !== null &&
+  totalBalls >= next.configOvers * 6
+) {
+  innings.completed = true;
 
-      next.currentInningsIndex = 1;
-
-    } else {
-      console.log("🏆 Match finished (T20)");
+  if (next.currentInningsIndex === 0) {
+    if (next.innings.length < 2) {
+      next.innings.push({
+        runs: 0,
+        wickets: 0,
+        over: 0,
+        ball: 0,
+        overs: {},
+        completed: false,
+        striker: "",
+        nonStriker: "",
+        battingTeam: state.teamB.name,
+        bowlingTeam: state.teamA.name
+      });
     }
+
+    next.currentInningsIndex = 1;
+
+  } else {
+    next.matchEnded = true;
   }
+}
 }
   // =============================
   // WICKET ALL OUT FIX
@@ -418,11 +515,15 @@ if (event.type !== "WICKET" && runsScored % 2 === 1) {
       if (next.innings.length < 2) {
         next.innings.push({
           runs: 0,
-          wickets: 0,
-          over: 0,
-          ball: 0,
-          overs: {},
-          completed: false
+  wickets: 0,
+  over: 0,
+  ball: 0,
+  overs: {},
+  completed: false,
+  striker: "",
+  nonStriker: "",
+  battingTeam: state.teamB.name,   // 🔥 SWITCH
+  bowlingTeam: state.teamA.name
         });
       }
 
@@ -444,6 +545,17 @@ export function dispatchBallEvent(
   event: EngineBallEvent
 ) {
   let current = matches.get(matchId);
+  // 🛑 STOP IF MATCH ENDED
+if (current?.matchEnded) {
+  return;
+}
+
+// 🛑 STOP IF CURRENT INNINGS COMPLETED
+const innings = current?.innings[current.currentInningsIndex];
+
+if (innings?.completed) {
+  return;
+}
   if (!current) {
     initMatch(matchId);
     current = matches.get(matchId)!;

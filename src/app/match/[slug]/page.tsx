@@ -405,15 +405,13 @@ const [selectedInnings, setSelectedInnings] = useState(0);
 
 const matchState = currentEngineState ?? null;
 
+const inningsData = matchState?.innings?.[selectedInnings];
+
 const battingTeam =
-  selectedInnings === 0
-    ? matchState?.teamA?.name ?? "Team A"
-    : matchState?.teamB?.name ?? "Team B";
+  inningsData?.battingTeam ?? "Unknown";
 
 const bowlingTeam =
-  selectedInnings === 0
-    ? matchState?.teamB?.name ?? "Team B"
-    : matchState?.teamA?.name ?? "Team A";
+  inningsData?.bowlingTeam ?? "Unknown";
 
 if (!currentEngineState?.innings) {
   return (
@@ -761,7 +759,9 @@ if (!currentEngineState?.innings) {
               if (!isRunning) {
                 console.log("🚀 START");
 
-                initMatch(id);
+                if (!getMatchState(id)) {
+  initMatch(id);
+}
 
                 if (!tossData) {
   alert("Please complete toss first");
@@ -951,10 +951,12 @@ export default function MatchDetailPage({
 
     if (m?.engineState) {
   hydrateMatchState(id, m.engineState);
-  setEngineState(getMatchState(id)); // ✅ ADD THIS
+  setEngineState(getMatchState(id));
 } else {
-  initMatch(id);
-  setEngineState(getMatchState(id)); // ✅ ADD THIS
+  if (!getMatchState(id)) {
+    initMatch(id); // ✅ safe now
+  }
+  setEngineState(getMatchState(id));
 }
 
   }
@@ -1051,9 +1053,8 @@ useEffect(() => {
   const state = engineState ?? getMatchState(matchId);
 
   if (!state) {
-    initMatch(matchId); // 🔥 fallback
-    return getMatchState(matchId);
-  }
+  return undefined;
+}
 
   return state;
 }, [engineState, matchId]);
@@ -1076,6 +1077,10 @@ const currentOverNumber = oversKeys.length
 
 const currentBalls =
   currentInnings?.overs?.[currentOverNumber]?.length || 0;
+  const displayOver =
+  currentBalls === 6
+    ? currentOverNumber + 1
+    : currentOverNumber + currentBalls / 10;
 
   return (
   <PageMotion>
@@ -1098,8 +1103,8 @@ const currentBalls =
                   team2={currentEngineState.teamB?.name ?? match?.team2 ?? "Team B"}
                   runs={currentInnings.runs || 0}
                   wickets={currentInnings.wickets || 0}
-                  over={currentOverNumber}
-                  ball={currentBalls}
+                  over={displayOver}
+                  ball={0}
                 />
               )}
 

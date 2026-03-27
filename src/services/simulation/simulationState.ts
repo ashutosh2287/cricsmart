@@ -27,6 +27,9 @@ export type SimulationState = {
   decision: "BAT" | "BOWL";   // toss decision
   currentInningsIndex: number; // 0 or 1
 
+  lastOverUpdated?: number;
+  bowlingPlan?: string[];
+
   matchEnded: boolean;
   winner: string | null;
   winBy: string | null;

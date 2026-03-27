@@ -114,6 +114,10 @@ export type InningsState = {
   completed: boolean;
   striker?: string;
   nonStriker?: string;
+  bowlingStats?: Record<
+  string,
+  { balls: number; runs: number; wickets: number }
+>;
 
 };
 
@@ -224,7 +228,8 @@ export function initMatch(
         striker: "",
         nonStriker: "",
         battingTeam: "",   
-        bowlingTeam: ""    
+        bowlingTeam: "",
+        bowlingStats: {}    
       }
     ],
     currentInningsIndex: 0,
@@ -267,9 +272,23 @@ function reduce(state: MatchState, event: ScoringEventWithId)
     next.innings = next.innings.slice(0, 2);
   }
 
-  
+  console.log("🎯 Engine Bowler:", event.bowler);
 
   const innings = next.innings[next.currentInningsIndex];
+
+  if (!innings.bowlingStats) {
+  innings.bowlingStats = {};
+}
+
+const bowler = event.bowler;
+
+if (!innings.bowlingStats[bowler]) {
+  innings.bowlingStats[bowler] = {
+    balls: 0,
+    runs: 0,
+    wickets: 0
+  };
+}
   // 🧠 TOTAL BALL TRACKING
 const totalBalls = innings.over * 6 + innings.ball;
 
@@ -398,6 +417,35 @@ nonStriker: innings.nonStriker ?? event.nonStriker,
   if (innings.completed) return { next, ballEvent };
 
   innings.overs[innings.over].push(ballEvent);
+
+  // ✅ UPDATE BOWLER STATS (ADD HERE)
+const stats = innings.bowlingStats[bowler];
+
+// BALL COUNT (only legal deliveries)
+if (event.type !== "WD" && event.type !== "NB") {
+  stats.balls++;
+}
+
+// RUNS GIVEN
+const runsGiven =
+  event.type === "FOUR"
+    ? 4
+    : event.type === "SIX"
+    ? 6
+    : event.type === "RUN"
+    ? event.runs ?? 1
+    : event.type === "WD" || event.type === "NB"
+    ? 1
+    : event.type === "BYE" || event.type === "LB"
+    ? event.runs ?? 0
+    : 0;
+
+stats.runs += runsGiven;
+
+// WICKETS
+if (event.type === "WICKET") {
+  stats.wickets++;
+}
 
   if (event.type !== "WD" && event.type !== "NB") {
     if (innings.ball < 6) {

@@ -82,42 +82,34 @@ export function getBattingStats(
 }
 /* ================= BOWLING ================= */
 
-export function getBowlingStats(
-  matchId: string,
-  inningsIndex: number
-) {
-  const allEvents = getEventStream(matchId);
-  const events = filterByInnings(allEvents, inningsIndex);
+export function getBowlingStats(matchId: string, inningsIndex: number) {
+  const match = getMatchState(matchId);
 
-  const stats: Record<string, BowlerStats> = {};
+  if (!match) return {};
 
-  events.forEach(ball => {
-    const name = ball.bowler;
+  const innings = match.innings?.[inningsIndex];
 
-    if (!stats[name]) {
-      stats[name] = { overs: 0, runs: 0, wickets: 0 };
+  if (!innings || !innings.bowlingStats) return {};
+
+  const result: Record<
+    string,
+    { overs: number; runs: number; wickets: number }
+  > = {};
+
+  Object.entries(innings.bowlingStats).forEach(
+    ([name, stats]) => {
+      const overs =
+        Math.floor(stats.balls / 6) + (stats.balls % 6) / 10;
+
+      result[name] = {
+        overs,
+        runs: stats.runs,
+        wickets: stats.wickets,
+      };
     }
+  );
 
-    stats[name].runs += ball.runs;
-
-    if (ball.wicket) stats[name].wickets++;
-  });
-
-  // overs calculation
-  const oversMap: Record<string, Set<number>> = {};
-
-  events.forEach(ball => {
-    if (!oversMap[ball.bowler]) {
-      oversMap[ball.bowler] = new Set();
-    }
-    oversMap[ball.bowler].add(Math.floor(ball.over));
-  });
-
-  Object.keys(oversMap).forEach(bowler => {
-    stats[bowler].overs = oversMap[bowler].size;
-  });
-
-  return stats;
+  return result;
 }
 /* ================= FALL OF WICKETS ================= */
 

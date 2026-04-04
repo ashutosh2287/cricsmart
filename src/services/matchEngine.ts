@@ -19,6 +19,8 @@ export type CorrectionEvent =
   batsman: string
   nonStriker: string
   bowler: string
+  battingTeam: string
+  bowlingTeam: string
 }
 export type ScoringEvent =
   | ({ type: "RUN"; runs?: number } & PlayerFields)
@@ -38,54 +40,30 @@ export type ScoringEvent =
   | (BaseEvent & {
       type: "RUN";
       runs: number;
-      batsman: string;
-      nonStriker: string;
-      bowler: string;
-    })
+    } & PlayerFields)
   | (BaseEvent & {
       type: "FOUR";
-      batsman: string;
-      nonStriker: string;
-      bowler: string;
-    })
+    } & PlayerFields)
   | (BaseEvent & {
       type: "SIX";
-      batsman: string;
-      nonStriker: string;
-      bowler: string;
-    })
+    } & PlayerFields)
   | (BaseEvent & {
       type: "WICKET";
-      batsman: string;
-      nonStriker: string;
-      bowler: string;
-    })
+    } & PlayerFields)
   | (BaseEvent & {
       type: "WD";
-      batsman: string;
-      nonStriker: string;
-      bowler: string;
-    })
+    } & PlayerFields)
   | (BaseEvent & {
       type: "NB";
-      batsman: string;
-      nonStriker: string;
-      bowler: string;
-    })
+    } & PlayerFields)
   | (BaseEvent & {
       type: "BYE";
       runs: number;
-      batsman: string;
-      nonStriker: string;
-      bowler: string;
-    })
+    } & PlayerFields)
   | (BaseEvent & {
       type: "LB";
       runs: number;
-      batsman: string;
-      nonStriker: string;
-      bowler: string;
-    })
+    } & PlayerFields)
   | (BaseEvent & {
       type: "CORRECTION_UNDO_LAST";
     })
@@ -98,7 +76,6 @@ export type ScoringEvent =
       targetEventId: string;
       replacement: EngineBallEvent;
     });
-
 /* ========================================================
    TYPES
 ======================================================== */
@@ -258,6 +235,8 @@ winBy: null,
 type ScoringEventWithId = ScoringEvent & {
   id?: string;
 };
+
+
 /* ========================================================
    REDUCER
 ======================================================== */
@@ -308,8 +287,8 @@ if (totalBalls >= 120) {
         completed: false,
         striker: "",
         nonStriker: "",
-        battingTeam: next.teamB.name,
-        bowlingTeam: next.teamA.name
+        battingTeam: "",
+        bowlingTeam: "",
       });
     }
 
@@ -367,17 +346,17 @@ if (innings.completed) {
   // 🧠 SET STRIKER / NON-STRIKER (FIRST TIME ONLY)
 
 // 🧠 Initialize only once
-if (!innings.striker && !innings.nonStriker) {
+// ✅ ALWAYS ENSURE STRIKER INITIALIZED
+if (!innings.striker || !innings.nonStriker) {
   innings.striker = event.batsman;
   innings.nonStriker = event.nonStriker;
-
-  // 🔥 SET TEAMS FOR FIRST INNINGS
-  if (!innings.battingTeam && !innings.bowlingTeam) {
-    innings.battingTeam = state.teamA.name;
-    innings.bowlingTeam = state.teamB.name;
-  }
 }
 
+// ✅ ALWAYS ENSURE TEAMS SET (VERY IMPORTANT)
+// 🔒 STRICT TEAM ASSIGNMENT (ONLY FROM EVENT)
+// 🔥 ALWAYS SYNC TEAMS (SOURCE OF TRUTH = EVENT)
+innings.battingTeam = event.battingTeam;
+innings.bowlingTeam = event.bowlingTeam;
 const incomingId = event.id;
   const ballEvent: BallEvent = {
     id: incomingId ?? uuidv4(),
@@ -407,8 +386,8 @@ const incomingId = event.id;
     valid: true,
     branchId: state.activeBranchId,
 
-  batsman: innings.striker ?? event.batsman,
-nonStriker: innings.nonStriker ?? event.nonStriker,
+  batsman: event.batsman,
+nonStriker: event.nonStriker,
     bowler: event.bowler ?? ""
   };
 
@@ -450,10 +429,9 @@ if (event.type === "WICKET") {
   if (event.type !== "WD" && event.type !== "NB") {
     if (innings.ball < 6) {
   innings.ball++;
-
 if (innings.ball >= 6) {
-  innings.ball = 0;
   innings.over++;
+  innings.ball = 0;
 }
 }
   }
@@ -532,17 +510,18 @@ if (
   if (next.currentInningsIndex === 0) {
     if (next.innings.length < 2) {
       next.innings.push({
-        runs: 0,
-        wickets: 0,
-        over: 0,
-        ball: 0,
-        overs: {},
-        completed: false,
-        striker: "",
-        nonStriker: "",
-        battingTeam: state.teamB.name,
-        bowlingTeam: state.teamA.name
-      });
+  runs: 0,
+  wickets: 0,
+  over: 0,
+  ball: 0,
+  overs: {},
+  completed: false,
+  striker: "",
+  nonStriker: "",
+  battingTeam: "",
+bowlingTeam: "",
+  bowlingStats: {}
+});
     }
 
     next.currentInningsIndex = 1;
@@ -555,14 +534,13 @@ if (
   // =============================
   // WICKET ALL OUT FIX
   // =============================
-
   if (innings.wickets >= 10) {
     innings.completed = true;
 
     if (next.currentInningsIndex === 0) {
       if (next.innings.length < 2) {
         next.innings.push({
-          runs: 0,
+  runs: 0,
   wickets: 0,
   over: 0,
   ball: 0,
@@ -570,9 +548,10 @@ if (
   completed: false,
   striker: "",
   nonStriker: "",
-  battingTeam: state.teamB.name,   // 🔥 SWITCH
-  bowlingTeam: state.teamA.name
-        });
+  battingTeam: "",
+  bowlingTeam: "",
+  bowlingStats: {}
+});
       }
 
       next.currentInningsIndex = 1;
@@ -609,6 +588,9 @@ if (innings?.completed) {
     current = matches.get(matchId)!;
   }
 
+  // 🔒 HARD VALIDATION (ENGINE LEVEL SAFETY)
+
+
   // ----------------------------------------
   // HANDLE CORRECTION EVENTS (stub for now)
   // ----------------------------------------
@@ -621,6 +603,10 @@ if (innings?.completed) {
     // TODO: implement correction logic later
     return;
   }
+  // 🔒 ✅ ADD VALIDATION HERE (PERFECT PLACE)
+if (!event.battingTeam || !event.bowlingTeam) {
+  throw new Error("❌ Engine received event without teams");
+}
 
   // From here, TypeScript knows event is ScoringEvent
 
@@ -691,10 +677,13 @@ export function hydrateMatchState(
   matches.set(matchId, state);
 }
 
+
 export function reduceStateOnly(
   state: MatchState,
   event: BallEvent
 ): MatchState {
+
+  
   
   const engineEvent = {
   id: event.id, // 🔥 preserve

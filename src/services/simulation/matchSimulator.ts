@@ -6,7 +6,7 @@ import { toEngineEvent } from "./simulationEventAdapter";
 import { addCommentary } from "../commentary/commentaryStore";
 import { generateAdvancedCommentary } from "../commentary/advancedCommentaryEngine";
 import { getBattingOrder } from "../teams/battingOrder";
-import { Player, Team, teams } from "@/data/teams";
+import {  Team } from "@/data/teams";
 import { getBowlingOrder } from "../teams/bowlingOrder";
 import { getMatchResult } from "../match/resultEngine";
 import { getPlayingXI } from "../teams/playingXI";
@@ -19,8 +19,7 @@ let timeoutRef: NodeJS.Timeout | null = null;
 let isRunning = false;
 let isPaused = false;
 let currentSpeed = 1500; // default delay
-let originalTeamA: Team | null = null;
-let originalTeamB: Team | null = null;
+
 
 /* =====================================================
    START SIMULATION
@@ -60,30 +59,91 @@ function createBowlingPlan(bowlingOrder: string[]) {
   return plan;
 }
 
-export function startSimulation(
-  
-  state: SimulationState,
-  matchId: string,
-  speed: number = 1500,
+function startSecondInnings(state: SimulationState) {
+  console.log("🔄 Starting 2nd innings (CLEAN)");
 
-  
-) {
-  const matchState = getMatchState(matchId);
-if (!matchState) return;
+  const teamA = state.teamA;
+  const teamB = state.teamB;
 
-// 🔥 SYNC ENGINE STATE → MATCH STATE
-matchState.teamA = state.teamA;
-matchState.teamB = state.teamB;
-// 🔥 STORE ORIGINAL TEAMS (ONLY ONCE)
-if (!originalTeamA && !originalTeamB) {
-  originalTeamA = state.teamA;
-  originalTeamB = state.teamB;
+  let firstBattingTeam;
+  let secondBattingTeam;
+
+
+  // 🧠 Recalculate based on toss
+  if (state.tossWinner === teamA.name) {
+    if (state.decision === "BAT") {
+      firstBattingTeam = teamA;
+      secondBattingTeam = teamB;
+    } else {
+      firstBattingTeam = teamB;
+      secondBattingTeam = teamA;
+    }
+  } else {
+    if (state.decision === "BAT") {
+      firstBattingTeam = teamB;
+      secondBattingTeam = teamA;
+    } else {
+      firstBattingTeam = teamA;
+      secondBattingTeam = teamB;
+    }
+  }
+  // ✅ SET TEAMS FOR SECOND INNINGS (SOURCE OF TRUTH)
+state.battingTeam = secondBattingTeam;
+state.bowlingTeam = firstBattingTeam;
+
+console.log("✅ 2nd innings teams:", {
+  batting: state.battingTeam.name,
+  bowling: state.bowlingTeam.name
+});
+
+  // ✅ NOW 2ND INNINGS TEAM
+  const battingXI = getPlayingXI(secondBattingTeam).players;
+  const bowlingXI = getPlayingXI(firstBattingTeam).players;
+
+  state.battingOrder = getBattingOrder(battingXI);
+  state.bowlingOrder = getBowlingOrder(bowlingXI);
+
+  state.bowlingPlan = createBowlingPlan(state.bowlingOrder);
+
+  // ✅ Reset core state
+  state.striker = state.battingOrder[0];
+  state.nonStriker = state.battingOrder[1];
+  state.nextBatsmanIndex = 2;
+
+  state.currentBowlerIndex = 0;
+  state.bowler = state.bowlingOrder[0];
+
+  state.over = 0;
+  state.ball = 0;
+  state.totalRuns = 0;
+  state.wickets = 0;
+
+  state.lastOverUpdated = -1;
+
+  console.log("✅ 2nd innings setup complete");
 }
 
-matchState.tossWinner = state.tossWinner;
-matchState.decision = state.decision;
+export function startSimulation(
+  state: SimulationState,
+  matchId: string,
+  speed: number = 1500
+) {
+  const matchState = getMatchState(matchId);
+  if (!matchState) return;
 
-matchState.currentInningsIndex = state.currentInningsIndex;
+  // 🔥 FORCE CLEAN START
+  state.currentInningsIndex = 0;
+  matchState.currentInningsIndex = 0;
+
+  console.log("🚀 Starting with innings index:", state.currentInningsIndex);
+  console.log("🚀 Engine innings index:", matchState.currentInningsIndex);
+
+  // 🔥 SYNC ENGINE STATE
+  matchState.teamA = state.teamA;
+  matchState.teamB = state.teamB;
+  matchState.tossWinner = state.tossWinner;
+  matchState.decision = state.decision;
+
   if (isRunning) {
     console.log("⚠️ Simulation already running");
     return;
@@ -95,132 +155,57 @@ matchState.currentInningsIndex = state.currentInningsIndex;
   isPaused = false;
   currentSpeed = speed;
 
+  /* =====================================================
+     🔒 STEP 1: ALWAYS INIT TEAMS (FIRST INNINGS)
+  ===================================================== */
+
+  if (!state.battingTeam || !state.bowlingTeam) {
+    const teamA = state.teamA;
+    const teamB = state.teamB;
+
+    if (!teamA || !teamB) {
+      throw new Error("❌ Teams not found");
+    }
+
+    let battingTeam: Team;
+    let bowlingTeam: Team;
+
+    if (state.tossWinner === teamA.name) {
+      if (state.decision === "BAT") {
+        battingTeam = teamA;
+        bowlingTeam = teamB;
+      } else {
+        battingTeam = teamB;
+        bowlingTeam = teamA;
+      }
+    } else {
+      if (state.decision === "BAT") {
+        battingTeam = teamB;
+        bowlingTeam = teamA;
+      } else {
+        battingTeam = teamA;
+        bowlingTeam = teamB;
+      }
+    }
+
+    state.battingTeam = battingTeam;
+    state.bowlingTeam = bowlingTeam;
+
+    console.log("✅ First innings teams initialized");
+  }
+
+  /* =====================================================
+     🏏 STEP 2: SET PLAYING XI + ORDERS
+  ===================================================== */
+
   if (!state.battingOrder || state.battingOrder.length === 0) {
-  console.log("🏏 Setting Playing XI + Batting Order");
+    console.log("🏏 Setting Playing XI + Batting Order");
 
-  const teamA = state.teamA;
-  const teamB = state.teamB;
-
-  if (!teamA || !teamB) {
-    console.log("❌ Teams not found");
-    return;
-  }
-
-  let battingTeam, bowlingTeam;
-
-  if (state.tossWinner === teamA.name) {
-    if (state.decision === "BAT") {
-      battingTeam = teamA;
-      bowlingTeam = teamB;
-    } else {
-      battingTeam = teamB;
-      bowlingTeam = teamA;
-    }
-  } else {
-    if (state.decision === "BAT") {
-      battingTeam = teamB;
-      bowlingTeam = teamA;
-    } else {
-      battingTeam = teamA;
-      bowlingTeam = teamB;
-    }
-  }
-
-  const battingXI = getPlayingXI(battingTeam).players;
-  const bowlingXI = getPlayingXI(bowlingTeam).players;
-
-  const battingOrder = getBattingOrder(battingXI);
-  const bowlingOrder = getBowlingOrder(bowlingXI);
-
-  state.battingOrder = battingOrder;
-  state.bowlingOrder = bowlingOrder;
-
-  state.currentBowlerIndex = 0;
-  state.nextBatsmanIndex = 2;
-
-  state.striker = battingOrder[0];
-  state.nonStriker = battingOrder[1];
-
-  console.log("🧠 Batting Order:", battingOrder);
-}
-
-// ✅ ALWAYS ENSURE BOWLING PLAN (THIS IS THE REAL FIX)
-if (!state.bowlingPlan || state.bowlingPlan.length === 0) {
-  state.bowlingPlan = createBowlingPlan(state.bowlingOrder);
-  console.log("📋 Bowling Plan:", state.bowlingPlan);
-}
-
-  const runBall = () => {
-    if (!isRunning) return;
-    
-
-    if (isPaused) {
-      timeoutRef = setTimeout(runBall, 500);
-      return;
-    }
-
-    const matchState = getMatchState(matchId);
-
-    if (!matchState) {
-      timeoutRef = setTimeout(runBall, 1000);
-      return;
-    }
-
-    /* =============================
-       🔒 HARD STOP (MOST IMPORTANT)
-    ============================= */
-    if (matchState.currentInningsIndex >= 2) {
-      console.log("🛑 Prevented invalid innings (>2)");
-      stopSimulation();
-      return;
-    }
-
-    const index = matchState.currentInningsIndex;
-    const innings = matchState.innings[index];
-
-    if (!innings) {
-      console.log("❌ Invalid innings");
-      stopSimulation();
-      return;
-    }
-
-    /* =============================
-       🏁 INNINGS COMPLETION
-    ============================= */
-    
-    if (innings.completed) {
-
-  const matchState = getMatchState(matchId);
-  if (!matchState) return;
-
-  const index = matchState.currentInningsIndex;
-
-  // ✅ FIRST → SECOND INNINGS
-  if (index === 0) {
-
-    console.log("🔄 Switching to 2nd innings");
-
-    matchState.currentInningsIndex = 1;
-
-    const first = matchState.innings[0];
-    state.target = first.runs + 1;
-
-    // 🔥 SWITCH TEAMS
-    // 🔥 SWITCH TEAMS (CORRECT)
-if (!originalTeamA || !originalTeamB) {
-  console.log("❌ Original teams missing");
-  stopSimulation();
-  return;
-}
-
-// 🔥 CORRECT TEAM SWITCH
-const battingXI = getPlayingXI(originalTeamB).players;
-const bowlingXI = getPlayingXI(originalTeamA).players;
+    const battingXI = getPlayingXI(state.battingTeam).players;
+    const bowlingXI = getPlayingXI(state.bowlingTeam).players;
 
     state.battingOrder = getBattingOrder(battingXI);
     state.bowlingOrder = getBowlingOrder(bowlingXI);
-    state.bowlingPlan = createBowlingPlan(state.bowlingOrder);
-    console.log("📋 Bowling Plan:", state.bowlingPlan);
 
     state.striker = state.battingOrder[0];
     state.nonStriker = state.battingOrder[1];
@@ -229,103 +214,168 @@ const bowlingXI = getPlayingXI(originalTeamA).players;
     state.currentBowlerIndex = 0;
     state.bowler = state.bowlingOrder[0];
 
-    // RESET SCORE
-    state.over = 0;
-    state.ball = 0;
-    state.totalRuns = 0;
-    state.wickets = 0;
-
-    state.lastOverUpdated = -1;
-
-    timeoutRef = setTimeout(runBall, currentSpeed);
-    return;
+    console.log("🧠 Batting Order:", state.battingOrder);
   }
 
-  // ✅ MATCH END
-  if (index === 1) {
-    console.log("🏆 Match finished");
+  /* =====================================================
+     🎯 STEP 3: BOWLING PLAN
+  ===================================================== */
 
-    finishMatch(state, matchState);
-    stopSimulation();
-    return;
+  if (!state.bowlingPlan || state.bowlingPlan.length === 0) {
+    state.bowlingPlan = createBowlingPlan(state.bowlingOrder);
+    console.log("📋 Bowling Plan:", state.bowlingPlan);
   }
-}
 
-    /* =============================
-       NORMAL BALL FLOW
-    ============================= */
-    const over = Math.floor(innings.over);
-    const ball = innings.ball;
+  /* =====================================================
+     🔁 MAIN LOOP
+  ===================================================== */
 
-    // 🎯 FORCE BOWLER FROM PLAN EVERY BALL
-if (state.bowlingPlan && state.bowlingPlan[over]) {
-  const newBowler = state.bowlingPlan[over];
+  const runBall = () => {
+    if (!isRunning) return;
 
-  if (state.bowler !== newBowler) {
-    console.log("🎯 Changing Bowler:", newBowler);
-    state.bowler = newBowler;
-  }
-}
+    if (isPaused) {
+      timeoutRef = setTimeout(runBall, 500);
+      return;
+    }
 
-    // 🎯 SET BOWLER FROM PLAN (ONLY SOURCE OF TRUTH)
+    const matchState = getMatchState(matchId);
+    if (!matchState) return;
 
-
-    
-
-    const currentOverBalls = innings.overs[over] || [];
-    const prevOverBalls = innings.overs[over - 1] || [];
-
-    const lastBall =
-      currentOverBalls.length > 0
-        ? currentOverBalls[currentOverBalls.length - 1]
-        : prevOverBalls[prevOverBalls.length - 1];
-
-    
-
-    // 🔥 ALWAYS SYNC FROM ENGINE
-const liveMatchState = getMatchState(matchId);
-const liveInnings =
-  liveMatchState?.innings[liveMatchState.currentInningsIndex];
-
-const syncedState: SimulationState = {
-  ...state,
-  over,
-  ball,
-
-  phase:
-    over < 6
-      ? "POWERPLAY"
-      : over < 15
-      ? "MIDDLE"
-      : "DEATH",
-};
-
-    const event: BallEvent = generateBallEvent(syncedState);
-
-    if (!event) {
-      console.log("❌ Event failed");
+    // 🛑 Prevent invalid innings
+    if (matchState.currentInningsIndex >= 2) {
+      console.log("🛑 Prevented invalid innings");
       stopSimulation();
       return;
     }
 
+    const index = matchState.currentInningsIndex;
+    const innings = matchState.innings[index];
 
-// 🔥 If wicket → send next batsman
-const batsman = syncedState.striker;
+    if (!innings) return;
 
-console.log("🚀 Sending Bowler:", state.bowler, "Over:", over);
+    /* =============================
+       🏁 INNINGS COMPLETE
+    ============================= */
 
-const engineEvent = toEngineEvent({
-  ...event,
-  batsman,
-  nonStriker: syncedState.nonStriker,
-  bowler: state.bowler
+    if (innings.completed) {
+      if (index === 0) {
+        console.log("🔄 Switching to 2nd innings");
+
+        matchState.currentInningsIndex = 1;
+
+        const first = matchState.innings[0];
+        state.target = first.runs + 1;
+
+        startSecondInnings(state);
+        // 🔥 FORCE ENGINE SYNC (VERY IMPORTANT)
+matchState.innings[1].battingTeam = state.battingTeam.name;
+matchState.innings[1].bowlingTeam = state.bowlingTeam.name;
+
+        console.log("🔥 AFTER SWITCH:", {
+  batting: state.battingTeam?.name,
+  bowling: state.bowlingTeam?.name
 });
+
+        if (!matchState.innings[1]) {
+          matchState.innings.push({
+            runs: 0,
+            wickets: 0,
+            over: 0,
+            ball: 0,
+            overs: {},
+            completed: false,
+            striker: "",
+            nonStriker: "",
+            battingTeam: "",
+            bowlingTeam: "",
+            bowlingStats: {}
+          });
+        }
+
+        setTimeout(() => {
+  runBall();
+}, currentSpeed);
+
+        return;
+      }
+
+      if (index === 1) {
+        console.log("🏆 Match finished");
+        finishMatch(state, matchState);
+        stopSimulation();
+        return;
+      }
+    }
+
+    /* =============================
+       🎯 NORMAL BALL
+    ============================= */
+
+    const over = Math.floor(innings.over);
+
+    if (state.bowlingPlan && state.bowlingPlan[over]) {
+      state.bowler = state.bowlingPlan[over];
+    }
+
+   // ✅ ALWAYS SYNC FROM ENGINE (SOURCE OF TRUTH)
+const engineBattingTeam = innings.battingTeam;
+const engineBowlingTeam = innings.bowlingTeam;
+
+// 🔥 FORCE SYNC BACK TO SIMULATION STATE
+if (engineBattingTeam && engineBowlingTeam) {
+  state.battingTeam = {
+    ...state.battingTeam,
+    name: engineBattingTeam
+  };
+
+  state.bowlingTeam = {
+    ...state.bowlingTeam,
+    name: engineBowlingTeam
+  };
+}
+
+// ✅ CREATE CLEAN SYNCED STATE
+const syncedState: SimulationState = {
+  ...state,
+  over: innings.over,
+  ball: innings.ball,
+  phase:
+    over < 6 ? "POWERPLAY" :
+    over < 15 ? "MIDDLE" : "DEATH"
+};
+
+    const event: BallEvent = generateBallEvent(syncedState);
+    console.log("🎯 CURRENT TEAMS:", {
+  innings: getMatchState(matchId)?.currentInningsIndex,
+  batting: state.battingTeam?.name,
+  bowling: state.bowlingTeam?.name
+});
+    if (!event) return;
+
+    // 🔒 FINAL SAFETY (optional)
+    if (!state.battingTeam || !state.bowlingTeam) {
+      console.error("❌ Teams missing");
+      stopSimulation();
+      return;
+    }
+
+    const engineEvent = toEngineEvent({
+  ...event,
+  batsman: syncedState.striker,
+  nonStriker: syncedState.nonStriker,
+  bowler: state.bowler,
+
+  // 🔥 ALWAYS USE ENGINE TEAMS (NOT STATE)
+  battingTeam: engineBattingTeam || state.battingTeam.name,
+  bowlingTeam: engineBowlingTeam || state.bowlingTeam.name
+});
+
     dispatchBallEvent(matchId, engineEvent);
 
     const commentary = generateAdvancedCommentary(event, {
-  ...matchState,
-  ...syncedState
-});
+      ...matchState,
+      ...syncedState
+    });
 
     addCommentary(matchId, commentary);
 
@@ -333,25 +383,17 @@ const engineEvent = toEngineEvent({
 
     state.over = innings.over;
     state.ball = innings.ball;
-    // ✅ OVER COMPLETE LOGIC
-// ✅ OVER COMPLETE LOGIC (SINGLE SOURCE OF TRUTH)
-// ✅ SINGLE SOURCE OF TRUTH (ENGINE BASED)
-// ✅ OVER COMPLETE LOGIC (FINAL FIX)
-
-   
-
 
     /* =============================
-       🎯 TARGET CHASE STOP
+       🎯 TARGET CHASE
     ============================= */
+
     if (state.target && state.totalRuns >= state.target) {
-  console.log("🎉 Target chased");
-
-  finishMatch(state, matchState); // 🔥 ADD THIS
-
-  stopSimulation();
-  return;
-}
+      console.log("🎉 Target chased");
+      finishMatch(state, matchState);
+      stopSimulation();
+      return;
+    }
 
     const delay = Math.random() * 400 + currentSpeed;
     timeoutRef = setTimeout(runBall, delay);

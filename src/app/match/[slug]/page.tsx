@@ -352,11 +352,31 @@ const [selectedInnings, setSelectedInnings] = useState(0);
 {activeTab === "scorecard" && (() => {
 
   const inningsIndex = selectedInnings;
+  console.log("📌 Selected Innings:", inningsIndex);
+console.log("📌 Selected Innings Data:", currentEngineState?.innings?.[inningsIndex]);
 
-  const batting = getBattingStats(match.slug, inningsIndex);
-  const bowling = getBowlingStats(match.slug, inningsIndex);
-  const extras = getExtras(match.slug, inningsIndex);
-  const wickets = getFallOfWickets(match.slug, inningsIndex) ?? [];
+  // 🔥 ALWAYS USE ENGINE STATE FIRST
+const inningsData = currentEngineState?.innings?.[inningsIndex];
+
+if (!inningsData) {
+  return (
+    <div className="text-white text-center p-10">
+      Loading innings data...
+    </div>
+  );
+}
+
+// ✅ PASS ENGINE DATA TO ANALYTICS (SAFE)
+const batting = getBattingStats(match.slug, inningsIndex);
+const bowling = getBowlingStats(match.slug, inningsIndex);
+const extras = getExtras(match.slug, inningsIndex);
+
+// 🔥 STRICT WICKET FILTER (IMPORTANT FIX)
+const wickets = (getFallOfWickets(match.slug, inningsIndex) ?? [])
+  .filter(w => w !== null);
+  console.log("🏏 Batting Stats:", batting);
+console.log("🎯 Bowling Stats:", bowling);
+console.log("📉 Fall of Wickets:", wickets);
 
  const currentInnings =
   currentEngineState?.innings?.[inningsIndex];
@@ -379,8 +399,8 @@ const [selectedInnings, setSelectedInnings] = useState(0);
   };
 
   const players = Object.entries(
-    batting as Record<string, PlayerStat>
-  );
+  batting as Record<string, PlayerStat>
+).filter(([_, p]) => (p?.balls ?? 0) > 0); // ✅ remove ghost players
 
   const topPlayers = [...players]
     .sort((a, b) => (b[1].runs ?? 0) - (a[1].runs ?? 0))
@@ -391,28 +411,35 @@ const [selectedInnings, setSelectedInnings] = useState(0);
     runs: number;
   };
 
-  const partnerships: Partnership[] = players
-    .slice(-2)
-    .map(([name, s]) => {
-      const player = s as PlayerStat;
-      return {
-        players: name,
-        runs: player.runs ?? 0,
-      };
-    });
+  const partnerships: Partnership[] = [];
+
+if (players.length >= 2) {
+  const lastTwo = players.slice(-2);
+
+  partnerships.push({
+    players: `${lastTwo[0][0]} & ${lastTwo[1][0]}`,
+    runs:
+      (lastTwo[0][1].runs ?? 0) +
+      (lastTwo[1][1].runs ?? 0),
+  });
+}
+    
+      
 
 
 
 const matchState = currentEngineState ?? null;
 
-const inningsData = matchState?.innings?.[selectedInnings];
-
-const battingTeam =
-  inningsData?.battingTeam ?? "Unknown";
-
-const bowlingTeam =
-  inningsData?.bowlingTeam ?? "Unknown";
-
+// ✅ ALWAYS TRUST ENGINE (NO FALLBACK GUESSING)
+const battingTeam = inningsData?.battingTeam || "Unknown";
+const bowlingTeam = inningsData?.bowlingTeam || "Unknown";
+if (!batting || !bowling) {
+  return (
+    <div className="text-white text-center p-10">
+      Generating scorecard...
+    </div>
+  );
+}
 if (!currentEngineState?.innings) {
   return (
     <div className="text-white text-center p-10">
@@ -570,10 +597,10 @@ if (!currentEngineState?.innings) {
 
         <div className="flex flex-wrap gap-3 text-sm">
           {wickets.map((w, i) => (
-            <div key={i} className="bg-gray-800/40 px-3 py-1 rounded">
-              {w.score}/{w.wicket} ({w.over})
-            </div>
-          ))}
+  <div key={i} className="bg-gray-800/40 px-3 py-1 rounded">
+    {w.score}/{i + 1} ({w.over})
+  </div>
+))}
         </div>
       </GlassPanel>
 
@@ -815,6 +842,8 @@ startSimulation(
     matchEnded: false,
     winner: null,
     winBy: null,
+    battingTeam: firstBattingTeam,
+bowlingTeam: firstBowlingTeam,
   },
   id,
   speed
@@ -1052,6 +1081,10 @@ useEffect(() => {
 
   const state = engineState ?? getMatchState(matchId);
 
+console.log("📊 FULL ENGINE STATE:", state);
+console.log("📊 INNINGS ARRAY:", state?.innings);
+console.log("📊 INNINGS 1:", state?.innings?.[0]);
+console.log("📊 INNINGS 2:", state?.innings?.[1]);
   if (!state) {
   return undefined;
 }

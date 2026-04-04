@@ -32,7 +32,7 @@ export class IndexedDbStore implements EventStore {
       ...event
     };
 
-    await db.events.add(stored);
+    await db.events.put(stored);
   }
 
   /*

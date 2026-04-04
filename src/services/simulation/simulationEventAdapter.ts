@@ -1,83 +1,60 @@
 import { BallEvent } from "@/types/ballEvent";
-import { EngineBallEvent } from "../matchEngine";
+import { EngineBallEvent } from "@/services/matchEngine";
 
-export function toEngineEvent(event: BallEvent): EngineBallEvent {
-  if (event.type === "RUN") {
-    return {
-      type: "RUN",
-      runs: event.runs,
-      batsman: event.batsman,
-      nonStriker: event.nonStriker!,
-      bowler: event.bowler,
-    };
+type StrictBallEvent = BallEvent & {
+  battingTeam: string;
+  bowlingTeam: string;
+};
+export function toEngineEvent(event: StrictBallEvent): EngineBallEvent {
+
+  
+
+  if (!event.battingTeam || !event.bowlingTeam) {
+    throw new Error("❌ Missing team info in event (Simulator must provide this)");
   }
 
-  if (event.type === "FOUR") {
-    return {
-      type: "FOUR",
-      batsman: event.batsman,
-      nonStriker: event.nonStriker!,
-      bowler: event.bowler,
-    };
+  // 🔥 GENERATE UNIQUE ID + TIMESTAMP
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const timestamp = Date.now();
+
+  const base = {
+    id,
+    timestamp,
+
+    batsman: event.batsman,
+    nonStriker: event.nonStriker!,
+    bowler: event.bowler,
+
+    battingTeam: event.battingTeam,
+    bowlingTeam: event.bowlingTeam
+  };
+
+  switch (event.type) {
+    case "RUN":
+      return { type: "RUN", runs: event.runs, ...base };
+
+    case "FOUR":
+      return { type: "FOUR", ...base };
+
+    case "SIX":
+      return { type: "SIX", ...base };
+
+    case "WICKET":
+      return { type: "WICKET", ...base };
+
+    case "WD":
+      return { type: "WD", ...base };
+
+    case "NB":
+      return { type: "NB", ...base };
+
+    case "BYE":
+      return { type: "BYE", runs: event.runs, ...base };
+
+    case "LB":
+      return { type: "LB", runs: event.runs, ...base };
+
+    default:
+      throw new Error("❌ Invalid event type");
   }
-
-  if (event.type === "SIX") {
-    return {
-      type: "SIX",
-      batsman: event.batsman,
-      nonStriker: event.nonStriker!,
-      bowler: event.bowler,
-    };
-  }
-
-  if (event.type === "WICKET") {
-    return {
-      type: "WICKET",
-      batsman: event.batsman,
-      nonStriker: event.nonStriker!,
-      bowler: event.bowler,
-    };
-  }
-
-  if (event.type === "WD") {
-    return {
-      type: "WD",
-      batsman: event.batsman,
-      nonStriker: event.nonStriker!,
-      bowler: event.bowler,
-    };
-  }
-
-  if (event.type === "NB") {
-    return {
-      type: "NB",
-      batsman: event.batsman,
-      nonStriker: event.nonStriker!,
-      bowler: event.bowler,
-    };
-  }
-
-  // 🔥 ADD THIS (VERY IMPORTANT)
-
-  if (event.type === "BYE") {
-    return {
-      type: "BYE",
-      runs: event.runs,
-      batsman: event.batsman,
-      nonStriker: event.nonStriker!,
-      bowler: event.bowler,
-    };
-  }
-
-  if (event.type === "LB") {
-    return {
-      type: "LB",
-      runs: event.runs,
-      batsman: event.batsman,
-      nonStriker: event.nonStriker!,
-      bowler: event.bowler,
-    };
-  }
-
-  throw new Error("Invalid event type");
 }

@@ -3,6 +3,8 @@ type PlayerFields = {
   batsman: string;
   nonStriker: string;
   bowler: string;
+  battingTeam: string;
+  bowlingTeam: string;
 };
 
 export type DomainCommand =

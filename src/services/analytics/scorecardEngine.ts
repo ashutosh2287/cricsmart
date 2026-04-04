@@ -1,5 +1,5 @@
 
-import { getEventStream, getMatchState } from "../matchEngine";
+import {  getMatchState } from "../matchEngine";
 import { BallEvent } from "@/types/ballEvent"; // ✅ FIX 1
 
 /* ================= TYPES ================= */
@@ -22,26 +22,31 @@ type WicketEvent = {
   player: string;
 };
 
-function filterByInnings(events: BallEvent[], inningsIndex: number) {
-  let currentInnings = 0;
+function getInningsEvents(matchId: string, inningsIndex: number): BallEvent[] {
+  const match = getMatchState(matchId);
+  if (!match) return [];
 
-  return events.filter((e, i) => {
-    if (i > 0 && e.over === 0) {
-      currentInnings++;
-    }
-    return currentInnings === inningsIndex;
-  });
+  const innings = match.innings?.[inningsIndex];
+  if (!innings) return [];
+
+  const events: BallEvent[] = [];
+
+  Object.keys(innings.overs)
+    .map(Number)
+    .sort((a, b) => a - b) // ✅ IMPORTANT
+    .forEach(over => {
+      events.push(...innings.overs[over]);
+    });
+
+  return events;
 }
-
 /* ================= BATTING ================= */
 
 export function getBattingStats(
   matchId: string,
   inningsIndex: number
 ) {
-  const allEvents = getEventStream(matchId);
-  const events = filterByInnings(allEvents, inningsIndex);
-
+  const events = getInningsEvents(matchId, inningsIndex);
   const stats: Record<string, {
     runs: number;
     balls: number;
@@ -51,32 +56,38 @@ export function getBattingStats(
   }> = {};
 
   events.forEach(e => {
-    const name = e.batsman;
+  if (!e.batsman) return; // ✅ FIRST LINE (FIX)
 
-    if (!stats[name]) {
-      stats[name] = {
-        runs: 0,
-        balls: 0,
-        fours: 0,
-        sixes: 0,
-        out: false,
-      };
-    }
+  const name = e.batsman;
 
-    if (e.type === "RUN") stats[name].runs += e.runs;
-    if (e.type === "FOUR") {
-      stats[name].runs += 4;
-      stats[name].fours++;
-    }
-    if (e.type === "SIX") {
-      stats[name].runs += 6;
-      stats[name].sixes++;
-    }
+  if (!stats[name]) {
+    stats[name] = {
+      runs: 0,
+      balls: 0,
+      fours: 0,
+      sixes: 0,
+      out: false,
+    };
+  }
 
-    if (e.isLegalDelivery) stats[name].balls++;
+  if (e.type === "RUN") stats[name].runs += e.runs;
+  if (e.type === "FOUR") {
+    stats[name].runs += 4;
+    stats[name].fours++;
+  }
+  if (e.type === "SIX") {
+    stats[name].runs += 6;
+    stats[name].sixes++;
+  }
 
-    if (e.wicket) stats[name].out = true;
-  });
+  if (e.type !== "WD" && e.type !== "NB") {
+  stats[name].balls++;
+}
+if (e.wicket && e.batsman === name) {
+  stats[name].out = true;
+}
+  
+});
 
   return stats;
 }
@@ -117,8 +128,7 @@ export function getFallOfWickets(
   matchId: string,
   inningsIndex: number
 ) {
-  const allEvents = getEventStream(matchId);
-  const events = filterByInnings(allEvents, inningsIndex);
+ const events = getInningsEvents(matchId, inningsIndex);
 
   const wickets: WicketEvent[] = [];
 
@@ -126,7 +136,15 @@ export function getFallOfWickets(
   let runningScore = 0;
 
   events.forEach((ball, index) => {
-    runningScore += ball.runs;
+if (ball.type === "RUN") runningScore += ball.runs ?? 0;
+if (ball.type === "FOUR") runningScore += 4;
+if (ball.type === "SIX") runningScore += 6;
+
+// ✅ INCLUDE EXTRAS IN TOTAL SCORE
+if (ball.type === "WD") runningScore += 1;
+if (ball.type === "NB") runningScore += 1;
+if (ball.type === "BYE") runningScore += ball.runs ?? 0;
+if (ball.type === "LB") runningScore += ball.runs ?? 0;
 
     if (ball.wicket) {
       wicketCount++;
@@ -134,8 +152,8 @@ export function getFallOfWickets(
       wickets.push({
         wicket: wicketCount,
         score: runningScore,
-        player: ball.batsman,
-        over: ball.over.toFixed(1),
+        player: ball.batsman || "Unknown",
+        over: `${ball.over}`,
       });
     }
   });
@@ -147,9 +165,7 @@ export function getExtras(
   matchId: string,
   inningsIndex: number
 ) {
-  const allEvents = getEventStream(matchId);
-  const events = filterByInnings(allEvents, inningsIndex);
-
+  const events = getInningsEvents(matchId, inningsIndex);
   let wides = 0, noBalls = 0, byes = 0, legByes = 0;
 
   events.forEach(ball => {

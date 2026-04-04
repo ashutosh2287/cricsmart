@@ -34,5 +34,8 @@ export type SimulationState = {
   winner: string | null;
   winBy: string | null;
 
+  battingTeam: Team;
+  bowlingTeam: Team;
+
   phase: "POWERPLAY" | "MIDDLE" | "DEATH";
 };

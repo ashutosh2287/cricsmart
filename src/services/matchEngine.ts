@@ -1,4 +1,4 @@
-import { BallEvent } from "@/types/ballEvent";
+import { BallEvent, WicketBallEvent } from "@/types/ballEvent";
 import { pushToTimeline } from "./broadcastTimeline";
 import { eventStore } from "@/persistence/eventStore";
 import { getMatchConfig } from "./matchFormat";
@@ -7,6 +7,7 @@ import { processMatchIntelligence } from "./matchIntelligenceEngine";
 import { v4 as uuidv4 } from "uuid";
 import { generateAdvancedCommentary } from "./commentary/advancedCommentaryEngine";
 import { emitCommentary } from "@/services/commentary/commentaryBus";
+
 export type CorrectionEvent =
   | { type: "CORRECTION_UNDO_LAST" }
   | { type: "CORRECTION_DELETE"; targetEventId: string }
@@ -15,13 +16,15 @@ export type CorrectionEvent =
       targetEventId: string;
       replacement: Partial<BallEvent>;
     };
-    type PlayerFields = {
-  batsman: string
-  nonStriker: string
-  bowler: string
-  battingTeam: string
-  bowlingTeam: string
-}
+
+type PlayerFields = {
+  batsman: string;
+  nonStriker: string;
+  bowler: string;
+  battingTeam: string;
+  bowlingTeam: string;
+};
+
 export type ScoringEvent =
   | ({ type: "RUN"; runs?: number } & PlayerFields)
   | ({ type: "FOUR" } & PlayerFields)
@@ -32,53 +35,26 @@ export type ScoringEvent =
   | ({ type: "BYE"; runs: number } & PlayerFields)
   | ({ type: "LB"; runs: number } & PlayerFields);
 
-  type BaseEvent = {
-  id?: string; // 🔥 optional for simulation, required for replay
+type BaseEvent = {
+  id?: string;
 };
 
-  export type EngineBallEvent =
-  | (BaseEvent & {
-      type: "RUN";
-      runs: number;
-    } & PlayerFields)
-  | (BaseEvent & {
-      type: "FOUR";
-    } & PlayerFields)
-  | (BaseEvent & {
-      type: "SIX";
-    } & PlayerFields)
-  | (BaseEvent & {
-      type: "WICKET";
-    } & PlayerFields)
-  | (BaseEvent & {
-      type: "WD";
-    } & PlayerFields)
-  | (BaseEvent & {
-      type: "NB";
-    } & PlayerFields)
-  | (BaseEvent & {
-      type: "BYE";
-      runs: number;
-    } & PlayerFields)
-  | (BaseEvent & {
-      type: "LB";
-      runs: number;
-    } & PlayerFields)
-  | (BaseEvent & {
-      type: "CORRECTION_UNDO_LAST";
-    })
-  | (BaseEvent & {
-      type: "CORRECTION_DELETE";
-      targetEventId: string;
-    })
+export type EngineBallEvent =
+  | (BaseEvent & { type: "RUN"; runs: number } & PlayerFields)
+  | (BaseEvent & { type: "FOUR" } & PlayerFields)
+  | (BaseEvent & { type: "SIX" } & PlayerFields)
+  | (BaseEvent & { type: "WICKET" } & PlayerFields)
+  | (BaseEvent & { type: "WD" } & PlayerFields)
+  | (BaseEvent & { type: "NB" } & PlayerFields)
+  | (BaseEvent & { type: "BYE"; runs: number } & PlayerFields)
+  | (BaseEvent & { type: "LB"; runs: number } & PlayerFields)
+  | (BaseEvent & { type: "CORRECTION_UNDO_LAST" })
+  | (BaseEvent & { type: "CORRECTION_DELETE"; targetEventId: string })
   | (BaseEvent & {
       type: "CORRECTION_REPLACE";
       targetEventId: string;
       replacement: EngineBallEvent;
     });
-/* ========================================================
-   TYPES
-======================================================== */
 
 export type InningsState = {
   runs: number;
@@ -91,66 +67,61 @@ export type InningsState = {
   completed: boolean;
   striker?: string;
   nonStriker?: string;
-  bowlingStats?: Record<
-  string,
-  { balls: number; runs: number; wickets: number }
->;
-
+  lastDismissedBatsman?: string;
+  bowlingStats?: Record<string, { balls: number; runs: number; wickets: number }>;
 };
 
 export type MatchState = {
   matchId: string;
-
   format: "T20" | "ODI" | "TEST";
   configOvers: number | null;
-
   innings: InningsState[];
   currentInningsIndex: number;
-
   activeBranchId: string;
   branches: string[];
-
   teamA: {
-  name: string;
-  squad: { name: string; role: string }[];
+    name: string;
+    squad: { name: string; role: string }[];
+  };
+  teamB: {
+    name: string;
+    squad: { name: string; role: string }[];
+  };
+  tossWinner: string;
+  decision: "BAT" | "BOWL";
+  matchEnded: boolean;
+  winner: string | null;
+  winBy: string | null;
 };
-
-teamB: {
-  name: string;
-  squad: { name: string; role: string }[];
-};
-
-tossWinner: string;
-decision: "BAT" | "BOWL";
-
-
-matchEnded: boolean;
-winner: string | null;
-winBy: string | null;
-};
-
-/* ========================================================
-   STORE
-======================================================== */
 
 const matches = new Map<string, MatchState>();
 const eventStreams: Record<string, BallEvent[]> = {};
 const matchListeners: Record<string, Set<(state: MatchState) => void>> = {};
-const snapshotMap: Record<
-  string,
-  Record<string, MatchState>
-> = {};
+const snapshotMap: Record<string, Record<string, MatchState>> = {};
 export const temporalIndex: Record<
   string,
   { index: number; innings: number; over: number }[]
 > = {};
 
-/* ========================================================
-   UTILS
-======================================================== */
-
 function cloneState(state: MatchState): MatchState {
   return JSON.parse(JSON.stringify(state));
+}
+
+function createInningsState(battingTeam = "", bowlingTeam = ""): InningsState {
+  return {
+    runs: 0,
+    wickets: 0,
+    over: 0,
+    ball: 0,
+    overs: {},
+    completed: false,
+    striker: "",
+    nonStriker: "",
+    lastDismissedBatsman: "",
+    battingTeam,
+    bowlingTeam,
+    bowlingStats: {}
+  };
 }
 
 function saveSnapshot(
@@ -161,7 +132,7 @@ function saveSnapshot(
 ) {
   if (!snapshotMap[matchId]) snapshotMap[matchId] = {};
   const key = `${inningsIndex}-${over}`;
-snapshotMap[matchId][key] = cloneState(state);
+  snapshotMap[matchId][key] = cloneState(state);
 
   eventStore.saveSnapshot(matchId, over, state).catch(console.error);
 
@@ -178,9 +149,301 @@ function emit(matchId: string) {
   matchListeners[matchId]?.forEach(l => l(state!));
 }
 
-/* ========================================================
-   INIT
-======================================================== */
+function getInitialBattingBowlingTeams(state: MatchState): {
+  battingTeam: string;
+  bowlingTeam: string;
+} {
+  const teamA = state.teamA?.name ?? "Team A";
+  const teamB = state.teamB?.name ?? "Team B";
+
+  if (!state.tossWinner) {
+    return { battingTeam: teamA, bowlingTeam: teamB };
+  }
+
+  if (state.decision === "BAT") {
+    return state.tossWinner === teamA
+      ? { battingTeam: teamA, bowlingTeam: teamB }
+      : { battingTeam: teamB, bowlingTeam: teamA };
+  }
+
+  return state.tossWinner === teamA
+    ? { battingTeam: teamB, bowlingTeam: teamA }
+    : { battingTeam: teamA, bowlingTeam: teamB };
+}
+
+function ensureFirstInningsTeams(next: MatchState) {
+  const first = next.innings[0];
+  if (!first) return;
+
+  if (!first.battingTeam || !first.bowlingTeam) {
+    const initial = getInitialBattingBowlingTeams(next);
+    first.battingTeam = initial.battingTeam;
+    first.bowlingTeam = initial.bowlingTeam;
+  }
+}
+
+function ensureSecondInningsFromFirst(next: MatchState) {
+  ensureFirstInningsTeams(next);
+
+  const first = next.innings[0];
+  if (!first?.battingTeam || !first?.bowlingTeam) return;
+
+  const expectedBatting = first.bowlingTeam;
+  const expectedBowling = first.battingTeam;
+
+  if (!next.innings[1]) {
+    next.innings.push(createInningsState(expectedBatting, expectedBowling));
+    return;
+  }
+
+  next.innings[1].battingTeam = expectedBatting;
+  next.innings[1].bowlingTeam = expectedBowling;
+}
+function completeCurrentInnings(next: MatchState) {
+  const inningsIndex = next.currentInningsIndex;
+  const innings = next.innings[inningsIndex];
+  if (!innings) return;
+
+  innings.completed = true;
+
+  if (inningsIndex === 0) {
+    ensureSecondInningsFromFirst(next);
+    next.currentInningsIndex = 1;
+  } else {
+    next.matchEnded = true;
+  }
+}
+
+function getTeamByName(
+  next: MatchState,
+  teamName?: string
+): MatchState["teamA"] | MatchState["teamB"] | null {
+  if (!teamName) return null;
+  if (next.teamA?.name === teamName) return next.teamA;
+  if (next.teamB?.name === teamName) return next.teamB;
+  return null;
+}
+
+function getSquadNames(team?: { squad: { name: string; role: string }[] }) {
+  return new Set((team?.squad ?? []).map(player => player.name));
+}
+
+function ensureCurrentInningsTeams(
+  next: MatchState,
+  inningsIndex: number,
+  event: ScoringEventWithId
+) {
+  const innings = next.innings[inningsIndex];
+  if (!innings) return;
+
+  if (!innings.battingTeam && !innings.bowlingTeam) {
+    innings.battingTeam = event.battingTeam;
+    innings.bowlingTeam = event.bowlingTeam;
+    return;
+  }
+
+  if (!innings.battingTeam || !innings.bowlingTeam) {
+    throw new Error(
+      `❌ Incomplete innings team state in innings ${inningsIndex}`
+    );
+  }
+}
+
+function validatePlayersForInnings(
+  next: MatchState,
+  innings: InningsState,
+  event: ScoringEventWithId
+) {
+  const battingTeam = getTeamByName(next, innings.battingTeam);
+  const bowlingTeam = getTeamByName(next, innings.bowlingTeam);
+
+  if (!battingTeam || !bowlingTeam) return;
+
+  const battingNames = getSquadNames(battingTeam);
+  const bowlingNames = getSquadNames(bowlingTeam);
+
+  if (battingTeam.squad.length > 0) {
+    if (!battingNames.has(event.batsman)) {
+      throw new Error(`❌ Invalid batsman ${event.batsman} for batting team ${innings.battingTeam}`);
+    }
+    if (!battingNames.has(event.nonStriker)) {
+      throw new Error(`❌ Invalid non-striker ${event.nonStriker} for batting team ${innings.battingTeam}`);
+    }
+  }
+
+  if (bowlingTeam.squad.length > 0 && !bowlingNames.has(event.bowler)) {
+    throw new Error(`❌ Invalid bowler ${event.bowler} for bowling team ${innings.bowlingTeam}`);
+  }
+}
+
+function getRunsFromEvent(event: ScoringEventWithId): number {
+  switch (event.type) {
+    case "FOUR":
+      return 4;
+    case "SIX":
+      return 6;
+    case "RUN":
+      return event.runs ?? 1;
+    case "WD":
+    case "NB":
+      return 1;
+    case "BYE":
+    case "LB":
+      return event.runs ?? 0;
+    case "WICKET":
+      return 0;
+    default:
+      return 0;
+  }
+}
+
+function createInvalidBallEvent(
+  state: MatchState,
+  inningsIndex: number,
+  over: number
+): BallEvent {
+  return {
+    id: "",
+    slug: state.matchId,
+    over,
+    runs: 0,
+    wicket: false,
+    extra: false,
+    type: "RUN",
+    timestamp: Date.now(),
+    isLegalDelivery: true,
+    valid: false,
+    branchId: state.activeBranchId,
+    batsman: "",
+    nonStriker: "",
+    bowler: "",
+    innings: inningsIndex,
+    totalRuns: 0
+  };
+}
+
+function createBallEvent(
+  state: MatchState,
+  innings: InningsState,
+  inningsIndex: number,
+  event: ScoringEventWithId
+): BallEvent {
+  const common = {
+    id: event.id ?? uuidv4(),
+    slug: state.matchId,
+    over: innings.over + innings.ball / 10,
+    timestamp: Date.now(),
+    valid: true,
+    branchId: state.activeBranchId,
+    batsman: event.batsman,
+    nonStriker: event.nonStriker,
+    bowler: event.bowler,
+    innings: inningsIndex
+  };
+
+  switch (event.type) {
+    case "RUN":
+      return {
+        ...common,
+        type: "RUN",
+        runs: event.runs ?? 1,
+        totalRuns: event.runs ?? 1,
+        wicket: false,
+        extra: false,
+        isLegalDelivery: true
+      };
+
+    case "FOUR":
+      return {
+        ...common,
+        type: "FOUR",
+        runs: 4,
+        totalRuns: 4,
+        wicket: false,
+        extra: false,
+        isLegalDelivery: true
+      };
+
+    case "SIX":
+      return {
+        ...common,
+        type: "SIX",
+        runs: 6,
+        totalRuns: 6,
+        wicket: false,
+        extra: false,
+        isLegalDelivery: true
+      };
+
+    case "WICKET":
+      return {
+        ...common,
+        type: "WICKET",
+        runs: 0,
+        totalRuns: 0,
+        wicket: true,
+        extra: false,
+        isLegalDelivery: true,
+        dismissedBatsman: event.batsman,
+        dismissalKind: "UNKNOWN"
+      };
+
+    case "WD":
+      return {
+        ...common,
+        type: "WD",
+        runs: 1,
+        totalRuns: 1,
+        wicket: false,
+        extra: true,
+        extraType: "WD",
+        extraRuns: 1,
+        isLegalDelivery: false
+      };
+
+    case "NB":
+      return {
+        ...common,
+        type: "NB",
+        runs: 1,
+        totalRuns: 1,
+        wicket: false,
+        extra: true,
+        extraType: "NB",
+        extraRuns: 1,
+        isLegalDelivery: false
+      };
+
+    case "BYE":
+      return {
+        ...common,
+        type: "BYE",
+        runs: event.runs ?? 0,
+        totalRuns: event.runs ?? 0,
+        wicket: false,
+        extra: false,
+        extraType: "BYE",
+        extraRuns: event.runs ?? 0,
+        isLegalDelivery: true
+      };
+
+    case "LB":
+      return {
+        ...common,
+        type: "LB",
+        runs: event.runs ?? 0,
+        totalRuns: event.runs ?? 0,
+        wicket: false,
+        extra: false,
+        extraType: "LB",
+        extraRuns: event.runs ?? 0,
+        isLegalDelivery: true
+      };
+
+    default:
+      throw new Error(`❌ Unsupported scoring event ${(event as { type?: string }).type}`);
+  }
+}
 
 export function initMatch(
   matchId: string,
@@ -194,459 +457,204 @@ export function initMatch(
     matchId,
     format,
     configOvers: config.oversPerInnings,
-    innings: [
-      {
-        runs: 0,
-        wickets: 0,
-        over: 0,
-        ball: 0,
-        overs: {},
-        completed: false,
-        striker: "",
-        nonStriker: "",
-        battingTeam: "",   
-        bowlingTeam: "",
-        bowlingStats: {}    
-      }
-    ],
+    innings: [createInningsState()],
     currentInningsIndex: 0,
     activeBranchId: "main",
     branches: ["main"],
-    teamA: {
-  name: "Team A",
-  squad: []
-},
-teamB: {
-  name: "Team B",
-  squad: []
-},
-
-tossWinner: "",
-decision: "BAT",
-
-
-matchEnded: false,
-winner: null,
-winBy: null,
+    teamA: { name: "Team A", squad: [] },
+    teamB: { name: "Team B", squad: [] },
+    tossWinner: "",
+    decision: "BAT",
+    matchEnded: false,
+    winner: null,
+    winBy: null
   });
 
   eventStreams[matchId] = [];
 }
-type ScoringEventWithId = ScoringEvent & {
-  id?: string;
-};
 
+type ScoringEventWithId = ScoringEvent & { id?: string };
 
-/* ========================================================
-   REDUCER
-======================================================== */
-
-function reduce(state: MatchState, event: ScoringEventWithId)
-: { next: MatchState; ballEvent: BallEvent } {
+function reduce(
+  state: MatchState,
+  event: ScoringEventWithId
+): { next: MatchState; ballEvent: BallEvent } {
   const next = cloneState(state);
 
-  // 🔒 HARD SAFETY (VALID PLACE)
   if (next.innings.length > 2) {
-    console.log("🛑 Fixing innings overflow");
     next.innings = next.innings.slice(0, 2);
   }
 
-  console.log("🎯 Engine Bowler:", event.bowler);
+  ensureFirstInningsTeams(next);
 
-  const innings = next.innings[next.currentInningsIndex];
-
-  if (!innings.bowlingStats) {
-  innings.bowlingStats = {};
-}
-
-const bowler = event.bowler;
-
-if (!innings.bowlingStats[bowler]) {
-  innings.bowlingStats[bowler] = {
-    balls: 0,
-    runs: 0,
-    wickets: 0
-  };
-}
-  // 🧠 TOTAL BALL TRACKING
-const totalBalls = innings.over * 6 + innings.ball;
-
-// 🛑 HARD STOP: 20 overs limit
-if (totalBalls >= 120) {
-  innings.completed = true;
-
-  // 🏁 MOVE TO NEXT INNINGS OR END MATCH
-  if (next.currentInningsIndex === 0) {
-    if (next.innings.length < 2) {
-      next.innings.push({
-        runs: 0,
-        wickets: 0,
-        over: 0,
-        ball: 0,
-        overs: {},
-        completed: false,
-        striker: "",
-        nonStriker: "",
-        battingTeam: "",
-        bowlingTeam: "",
-      });
-    }
-
-    next.currentInningsIndex = 1;
-  } else {
-    next.matchEnded = true;
+  const inningsIndex = next.currentInningsIndex;
+  if (inningsIndex === 1) {
+    ensureSecondInningsFromFirst(next);
   }
 
-return {
-  next,
-  ballEvent: {
-    id: "",
-    slug: state.matchId,
-    over: innings.over,
-    runs: 0,
-    wicket: false,
-    extra: false,
-    type: "RUN",
-    timestamp: Date.now(),
-    isLegalDelivery: true,
-    valid: false,
-    branchId: state.activeBranchId,
-    batsman: "",
-    nonStriker: "",
-    bowler: ""
-  }
-};}
-  // 🛑 STOP IF INNINGS ALREADY COMPLETED
-if (innings.completed) {
-  return {
-    next,
-    ballEvent: {
-      id: "",
-      slug: state.matchId,
-      over: innings.over,
-      runs: 0,
-      wicket: false,
-      extra: false,
-      type: "RUN",
-      timestamp: Date.now(),
-      isLegalDelivery: true,
-      valid: false,
-      branchId: state.activeBranchId,
-      batsman: "",
-      nonStriker: "",
-      bowler: ""
-    }
-  };
-}
-
-  // 🔥 HARD STOP: prevent extra balls after innings complete
-
-
-
-  // 🧠 SET STRIKER / NON-STRIKER (FIRST TIME ONLY)
-
-// 🧠 Initialize only once
-// ✅ ALWAYS ENSURE STRIKER INITIALIZED
-if (!innings.striker || !innings.nonStriker) {
-  innings.striker = event.batsman;
-  innings.nonStriker = event.nonStriker;
-}
-
-// ✅ ALWAYS ENSURE TEAMS SET (VERY IMPORTANT)
-// 🔒 STRICT TEAM ASSIGNMENT (ONLY FROM EVENT)
-// 🔥 ALWAYS SYNC TEAMS (SOURCE OF TRUTH = EVENT)
-innings.battingTeam = event.battingTeam;
-innings.bowlingTeam = event.bowlingTeam;
-const incomingId = event.id;
-  const ballEvent: BallEvent = {
-    id: incomingId ?? uuidv4(),
-    slug: state.matchId,
-    over: innings.over + innings.ball / 10,
-
-    runs:
-      event.type === "FOUR"
-        ? 4
-        : event.type === "SIX"
-        ? 6
-        : event.type === "RUN"
-        ? event.runs ?? 1
-        : event.type === "BYE" || event.type === "LB"
-        ? event.runs ?? 0
-        : event.type === "WD" || event.type === "NB"
-        ? 1
-        : 0,
-
-    wicket: event.type === "WICKET",
-    extra: event.type === "WD" || event.type === "NB",
-    type: event.type,
-
-    timestamp: Date.now(),
-    isLegalDelivery: event.type !== "WD" && event.type !== "NB",
-
-    valid: true,
-    branchId: state.activeBranchId,
-
-  batsman: event.batsman,
-nonStriker: event.nonStriker,
-    bowler: event.bowler ?? ""
-  };
-
-  if (!innings.overs[innings.over])
-    innings.overs[innings.over] = [];
-  if (innings.completed) return { next, ballEvent };
-
-  innings.overs[innings.over].push(ballEvent);
-
-  // ✅ UPDATE BOWLER STATS (ADD HERE)
-const stats = innings.bowlingStats[bowler];
-
-// BALL COUNT (only legal deliveries)
-if (event.type !== "WD" && event.type !== "NB") {
-  stats.balls++;
-}
-
-// RUNS GIVEN
-const runsGiven =
-  event.type === "FOUR"
-    ? 4
-    : event.type === "SIX"
-    ? 6
-    : event.type === "RUN"
-    ? event.runs ?? 1
-    : event.type === "WD" || event.type === "NB"
-    ? 1
-    : event.type === "BYE" || event.type === "LB"
-    ? event.runs ?? 0
-    : 0;
-
-stats.runs += runsGiven;
-
-// WICKETS
-if (event.type === "WICKET") {
-  stats.wickets++;
-}
-
-  if (event.type !== "WD" && event.type !== "NB") {
-    if (innings.ball < 6) {
-  innings.ball++;
-if (innings.ball >= 6) {
-  innings.over++;
-  innings.ball = 0;
-}
-}
+  const innings = next.innings[inningsIndex];
+  if (!innings) {
+    throw new Error(`❌ Missing innings state for innings ${inningsIndex}`);
   }
 
-  if (event.type === "RUN") innings.runs += event.runs ?? 1;
-  if (event.type === "FOUR") innings.runs += 4;
-  if (event.type === "SIX") innings.runs += 6;
-  if (event.type === "WICKET") {
-  innings.wickets++;
+  ensureCurrentInningsTeams(next, inningsIndex, event);
+  validatePlayersForInnings(next, innings, event);
 
-  // 🧠 NEW BATSMAN COMES
-  // event.batsman = next batsman (from simulator/UI)
-  innings.striker = event.batsman;
+  if (!innings.bowlingStats) innings.bowlingStats = {};
 
-  // nonStriker remains same
-}
-  if (event.type === "WD" || event.type === "NB") innings.runs++;
-  if (event.type === "BYE" || event.type === "LB") {
-  innings.runs += event.runs ?? 0;
-}
+  const bowler = event.bowler;
+  if (!innings.bowlingStats[bowler]) {
+    innings.bowlingStats[bowler] = { balls: 0, runs: 0, wickets: 0 };
+  }
 
-  // =============================
-  // STRIKE ROTATION
-  // =============================
-
- const runsScored =
-  event.type === "FOUR"
-    ? 4
-    : event.type === "SIX"
-    ? 6
-    : event.type === "RUN"
-    ? event.runs ?? 1
-    : event.type === "BYE" || event.type === "LB"
-    ? event.runs ?? 0
-    : event.type === "WD" || event.type === "NB"
-    ? 1
-    : 0;
-    // 🔁 Rotate on odd runs
-if (event.type !== "WICKET" && runsScored % 2 === 1) {
-  const temp = innings.striker;
-  innings.striker = innings.nonStriker;
-  innings.nonStriker = temp;
-}
-
-
-  // =============================
-  // OVER COMPLETE
-  // =============================
-
-  if (innings.ball >= 6) {
-  // 🔁 Rotate strike
-  const temp = innings.striker;
-  innings.striker = innings.nonStriker;
-  innings.nonStriker = temp;
-
-  const completedOver = innings.over;
-  innings.over++;
-  innings.ball = 0;
-
-  saveSnapshot(
-    state.matchId,
-    next.currentInningsIndex,
-    completedOver,
-    next
-  );
-
-  // 🏁 T20 INNINGS COMPLETION FIX
   const totalBalls = innings.over * 6 + innings.ball;
 
-if (
-  next.configOvers !== null &&
-  totalBalls >= next.configOvers * 6
-) {
-  innings.completed = true;
-
-  if (next.currentInningsIndex === 0) {
-    if (next.innings.length < 2) {
-      next.innings.push({
-  runs: 0,
-  wickets: 0,
-  over: 0,
-  ball: 0,
-  overs: {},
-  completed: false,
-  striker: "",
-  nonStriker: "",
-  battingTeam: "",
-bowlingTeam: "",
-  bowlingStats: {}
-});
-    }
-
-    next.currentInningsIndex = 1;
-
-  } else {
-    next.matchEnded = true;
+  if (next.configOvers !== null && totalBalls >= next.configOvers * 6) {
+    completeCurrentInnings(next);
+    return { next, ballEvent: createInvalidBallEvent(state, inningsIndex, innings.over) };
   }
-}
-}
-  // =============================
-  // WICKET ALL OUT FIX
-  // =============================
-  if (innings.wickets >= 10) {
-    innings.completed = true;
 
-    if (next.currentInningsIndex === 0) {
-      if (next.innings.length < 2) {
-        next.innings.push({
-  runs: 0,
-  wickets: 0,
-  over: 0,
-  ball: 0,
-  overs: {},
-  completed: false,
-  striker: "",
-  nonStriker: "",
-  battingTeam: "",
-  bowlingTeam: "",
-  bowlingStats: {}
-});
+  if (innings.completed) {
+    return { next, ballEvent: createInvalidBallEvent(state, inningsIndex, innings.over) };
+  }
+
+  if (!innings.striker || !innings.nonStriker) {
+    innings.striker = event.batsman;
+    innings.nonStriker = event.nonStriker;
+  }
+
+  const ballEvent = createBallEvent(state, innings, inningsIndex, event);
+
+  if (!innings.overs[innings.over]) innings.overs[innings.over] = [];
+  innings.overs[innings.over].push(ballEvent);
+
+  const stats = innings.bowlingStats[bowler];
+  if (ballEvent.isLegalDelivery) {
+    stats.balls++;
+  }
+
+  stats.runs += ballEvent.totalRuns;
+
+  if (ballEvent.type === "WICKET") {
+    stats.wickets++;
+  }
+
+  innings.runs += ballEvent.totalRuns;
+
+  if (ballEvent.type === "WICKET") {
+    innings.wickets++;
+    innings.lastDismissedBatsman = ballEvent.dismissedBatsman;
+  } else {
+    innings.lastDismissedBatsman = "";
+    innings.striker = ballEvent.batsman;
+    innings.nonStriker = ballEvent.nonStriker;
+  }
+
+  if (ballEvent.type !== "WICKET" && ballEvent.totalRuns % 2 === 1) {
+    const temp = innings.striker;
+    innings.striker = innings.nonStriker;
+    innings.nonStriker = temp;
+  }
+
+  if (ballEvent.isLegalDelivery) {
+    innings.ball++;
+
+    if (innings.ball === 6) {
+      const completedOver = innings.over;
+
+      if (ballEvent.type !== "WICKET") {
+        const temp = innings.striker;
+        innings.striker = innings.nonStriker;
+        innings.nonStriker = temp;
       }
 
-      next.currentInningsIndex = 1;
+      innings.ball = 0;
+      innings.over++;
 
-    } else {
-      console.log("🏆 Match finished (all out)");
+      saveSnapshot(state.matchId, inningsIndex, completedOver, next);
     }
+  }
+
+  const updatedTotalBalls = innings.over * 6 + innings.ball;
+
+  if (next.configOvers !== null && updatedTotalBalls >= next.configOvers * 6) {
+    completeCurrentInnings(next);
+  }
+
+  if (innings.wickets >= 10) {
+    completeCurrentInnings(next);
   }
 
   return { next, ballEvent };
 }
-/* ========================================================
-   DISPATCH
-======================================================== */
 
-export function dispatchBallEvent(
-  matchId: string,
-  event: EngineBallEvent
-) {
+export function dispatchBallEvent(matchId: string, event: EngineBallEvent) {
   let current = matches.get(matchId);
-  // 🛑 STOP IF MATCH ENDED
-if (current?.matchEnded) {
-  return;
-}
 
-// 🛑 STOP IF CURRENT INNINGS COMPLETED
-const innings = current?.innings[current.currentInningsIndex];
+  if (current?.matchEnded) return;
 
-if (innings?.completed) {
-  return;
-}
   if (!current) {
     initMatch(matchId);
     current = matches.get(matchId)!;
   }
 
-  // 🔒 HARD VALIDATION (ENGINE LEVEL SAFETY)
-
-
-  // ----------------------------------------
-  // HANDLE CORRECTION EVENTS (stub for now)
-  // ----------------------------------------
+  const innings = current.innings[current.currentInningsIndex];
+  if (innings?.completed) return;
 
   if (
     event.type === "CORRECTION_UNDO_LAST" ||
     event.type === "CORRECTION_DELETE" ||
     event.type === "CORRECTION_REPLACE"
   ) {
-    // TODO: implement correction logic later
     return;
   }
-  // 🔒 ✅ ADD VALIDATION HERE (PERFECT PLACE)
-if (!event.battingTeam || !event.bowlingTeam) {
-  throw new Error("❌ Engine received event without teams");
-}
-
-  // From here, TypeScript knows event is ScoringEvent
 
   const { next, ballEvent } = reduce(current, event);
-// ✅ Generate commentary using CORRECT objects
-const commentaryText = generateAdvancedCommentary(ballEvent, next);
-console.log("BallEvent:", ballEvent);
-console.log("🔥 COMMENTARY:", commentaryText);
-emitCommentary({
-  matchId,
-  text: commentaryText,
-  eventId: ballEvent.id,
-  category: "BALL"
-});
 
-// ✅ Attach commentary to event itself
-ballEvent.commentary = commentaryText;
+  const commentaryText = generateAdvancedCommentary(ballEvent, next);
+
+  emitCommentary({
+    matchId,
+    text: commentaryText,
+    eventId: ballEvent.id,
+    category: "BALL"
+  });
+
+  ballEvent.commentary = commentaryText;
   matches.set(matchId, next);
 
-  eventStreams[matchId].push(ballEvent);
+  console.log("ENGINE INNINGS CHECK", {
+  currentInningsIndex: next.currentInningsIndex,
+  innings0: next.innings[0] && {
+    battingTeam: next.innings[0].battingTeam,
+    bowlingTeam: next.innings[0].bowlingTeam
+  },
+  innings1: next.innings[1] && {
+    battingTeam: next.innings[1].battingTeam,
+    bowlingTeam: next.innings[1].bowlingTeam
+  }
+});
+
+  if (ballEvent.valid) {
+    eventStreams[matchId].push(ballEvent);
+    pushToTimeline({
+      ...ballEvent,
+      commentary: commentaryText
+    });
+    eventStore.appendEvent(matchId, ballEvent);
+  }
+
   advanceClock(matchId);
 
   processMatchIntelligence({
-  matchId,
-  branchId: next.activeBranchId,
-  state: next,
-  ballEvent
-});
-  pushToTimeline({
-  ...ballEvent,
-  commentary: commentaryText
-});
-  eventStore.appendEvent(matchId, ballEvent);
+    matchId,
+    branchId: next.activeBranchId,
+    state: next,
+    ballEvent
+  });
 
   emit(matchId);
 }
-
-/* ========================================================
-   ACCESSORS
-======================================================== */
 
 export function getMatchState(matchId: string) {
   return matches.get(matchId);
@@ -660,9 +668,7 @@ export function subscribeMatch(
   matchId: string,
   cb: (state: MatchState) => void
 ) {
-  if (!matchListeners[matchId])
-    matchListeners[matchId] = new Set();
-
+  if (!matchListeners[matchId]) matchListeners[matchId] = new Set();
   matchListeners[matchId].add(cb);
 
   return () => {
@@ -670,58 +676,68 @@ export function subscribeMatch(
   };
 }
 
-export function hydrateMatchState(
-  matchId: string,
-  state: MatchState
-) {
-  matches.set(matchId, state);
+export function hydrateMatchState(matchId: string, state: MatchState) {
+  const next = cloneState(state);
+
+  ensureFirstInningsTeams(next);
+
+  if (
+    next.innings[1] &&
+    next.innings[0]?.battingTeam &&
+    next.innings[0]?.bowlingTeam
+  ) {
+    next.innings[1].battingTeam = next.innings[0].bowlingTeam;
+    next.innings[1].bowlingTeam = next.innings[0].battingTeam;
+  }
+
+  matches.set(matchId, next);
 }
 
+export function reduceStateOnly(state: MatchState, event: BallEvent): MatchState {
+  const inningsIndex = event.innings ?? state.currentInningsIndex;
+  const innings = state.innings[inningsIndex];
+  const fallbackInitial = getInitialBattingBowlingTeams(state);
 
-export function reduceStateOnly(
-  state: MatchState,
-  event: BallEvent
-): MatchState {
+  const replayState = cloneState(state);
+  replayState.currentInningsIndex = inningsIndex;
 
-  
-  
-  const engineEvent = {
-  id: event.id, // 🔥 preserve
+  if (inningsIndex === 1) {
+    ensureSecondInningsFromFirst(replayState);
+  }
+
+  const resolvedBattingTeam =
+  inningsIndex === 1 && replayState.innings[0]?.battingTeam && replayState.innings[0]?.bowlingTeam
+    ? replayState.innings[0].bowlingTeam
+    : innings?.battingTeam || fallbackInitial.battingTeam;
+
+const resolvedBowlingTeam =
+  inningsIndex === 1 && replayState.innings[0]?.battingTeam && replayState.innings[0]?.bowlingTeam
+    ? replayState.innings[0].battingTeam
+    : innings?.bowlingTeam || fallbackInitial.bowlingTeam;
+
+const engineEvent = {
+  id: event.id,
   type: event.type,
   runs: event.runs,
   batsman: event.batsman,
   nonStriker: event.nonStriker,
-  bowler: event.bowler
-} as unknown as ScoringEvent;
+  bowler: event.bowler,
+  battingTeam: resolvedBattingTeam,
+  bowlingTeam: resolvedBowlingTeam
+} as ScoringEventWithId;
 
-  const { next } = reduce(state, engineEvent);
+  const { next } = reduce(replayState, engineEvent);
   return next;
 }
 
-export function setEventStream(
-  matchId: string,
-  events: BallEvent[]
-) {
+export function setEventStream(matchId: string, events: BallEvent[]) {
   eventStreams[matchId] = [...events];
 }
 
-
 export function resetMatchState(matchId: string) {
-  // 🔥 Remove old state
   matches.delete(matchId);
-
-  // 🔥 Reinitialize fresh match
   initMatch(matchId);
 }
-
-/* ========================================================
-   DERIVED INTELLIGENCE LAYER
-======================================================== */
-
-
-/* ========================================================
-   SNAPSHOT ACCESS
-======================================================== */
 
 export function getSnapshot(
   matchId: string,

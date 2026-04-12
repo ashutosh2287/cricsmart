@@ -2,32 +2,126 @@ import { getBallOutcome } from "./probabilityModel";
 import { SimulationState } from "./simulationState";
 import { BallEvent } from "@/types/ballEvent";
 import { v4 as uuidv4 } from "uuid";
+import { getPlayerName } from "@/utils/playerUtils";
 
 export function generateBallEvent(state: SimulationState): BallEvent {
   const outcome = getBallOutcome(state);
 
-  const isLegal = outcome.type !== "WD" && outcome.type !== "NB";
-
-  return {
+  const base = {
     id: uuidv4(),
     slug: `ball-${state.over}-${state.ball}-${Date.now()}`,
-
     over: state.over,
-    runs: outcome.runs,
-
-    wicket: outcome.type === "WICKET",
-    extra: outcome.type === "WD" || outcome.type === "NB",
-
-    batsman: state.striker,
-    nonStriker: state.nonStriker,
-    bowler: state.bowler,
-
-    type: outcome.type,
-
+    batsman: getPlayerName(state.striker),
+    nonStriker: getPlayerName(state.nonStriker),
+    bowler: getPlayerName(state.bowler),
     timestamp: Date.now(),
-
-    isLegalDelivery: isLegal,
-
     valid: true,
+    innings: state.currentInningsIndex,
+    commentary: undefined,
+    branchId: undefined,
+    replacedBy: undefined
   };
+
+  switch (outcome.type) {
+    case "RUN":
+      return {
+        ...base,
+        type: "RUN",
+        runs: outcome.runs ?? 1,
+        totalRuns: outcome.runs ?? 1,
+        wicket: false,
+        extra: false,
+        isLegalDelivery: true
+      };
+
+    case "FOUR":
+      return {
+        ...base,
+        type: "FOUR",
+        runs: 4,
+        totalRuns: 4,
+        wicket: false,
+        extra: false,
+        isLegalDelivery: true
+      };
+
+    case "SIX":
+      return {
+        ...base,
+        type: "SIX",
+        runs: 6,
+        totalRuns: 6,
+        wicket: false,
+        extra: false,
+        isLegalDelivery: true
+      };
+
+    case "WICKET":
+      return {
+        ...base,
+        type: "WICKET",
+        runs: 0,
+        totalRuns: 0,
+        wicket: true,
+        extra: false,
+        isLegalDelivery: true,
+        dismissedBatsman: getPlayerName(state.striker),
+        dismissalKind: "UNKNOWN"
+      };
+
+    case "WD":
+      return {
+        ...base,
+        type: "WD",
+        runs: outcome.runs ?? 1,
+        totalRuns: outcome.runs ?? 1,
+        wicket: false,
+        extra: true,
+        extraType: "WD",
+        extraRuns: outcome.runs ?? 1,
+        isLegalDelivery: false
+      };
+
+    case "NB":
+      return {
+        ...base,
+        type: "NB",
+        runs: outcome.runs ?? 1,
+        totalRuns: outcome.runs ?? 1,
+        wicket: false,
+        extra: true,
+        extraType: "NB",
+        extraRuns: outcome.runs ?? 1,
+        isLegalDelivery: false
+      };
+
+    case "BYE":
+      return {
+        ...base,
+        type: "BYE",
+        runs: outcome.runs ?? 1,
+        totalRuns: outcome.runs ?? 1,
+        wicket: false,
+        extra: false,
+        extraType: "BYE",
+        extraRuns: outcome.runs ?? 1,
+        isLegalDelivery: true
+      };
+
+    case "LB":
+      return {
+        ...base,
+        type: "LB",
+        runs: outcome.runs ?? 1,
+        totalRuns: outcome.runs ?? 1,
+        wicket: false,
+        extra: false,
+        extraType: "LB",
+        extraRuns: outcome.runs ?? 1,
+        isLegalDelivery: true
+      };
+
+    default:
+      throw new Error(`❌ Unsupported outcome type: ${String((outcome as { type?: string }).type)}`);
+  }
 }

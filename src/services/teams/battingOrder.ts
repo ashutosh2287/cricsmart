@@ -1,16 +1,21 @@
-import { Player } from "@/data/teams";
+import { Player } from "@/services/simulation/simulationState";
+import { PlayerRef } from "@/services/simulation/simulationState";
 
-// ✅ Smart batting order
-export function getBattingOrder(players: Player[]): string[] {
+/* =====================================================
+   🏏 SMART BATTING ORDER (UPGRADED)
+===================================================== */
+
+export function getBattingOrder(players: Player[]): PlayerRef[] {
   const batsmen = players.filter(p => p.role === "BAT");
   const allRounders = players.filter(p => p.role === "AR");
   const wicketKeepers = players.filter(p => p.role === "WK");
   const bowlers = players.filter(p => p.role === "BOWL");
 
+  // ✅ RETURN FULL PLAYER OBJECTS (NOT STRING)
   return [
-    ...batsmen,          // top order
-    ...wicketKeepers,    // middle
-    ...allRounders,      // lower middle
-    ...bowlers           // tail
-  ].map(p => p.name);
+    ...batsmen,        // top order
+    ...wicketKeepers,  // middle
+    ...allRounders,    // lower middle
+    ...bowlers         // tail
+  ];
 }

@@ -1,5 +1,36 @@
 import { Team } from "@/data/teams";
 
+/* =====================================================
+   🧠 PLAYER TYPE (NEW CORE)
+===================================================== */
+
+export type PlayerStats = {
+  runs: number;
+  balls: number;
+  fours: number;
+  sixes: number;
+  wickets?: number;
+  runsConceded?: number;
+  ballsBowled?: number;
+};
+
+export type Player = {
+  name: string;
+  role: string;
+  stats: PlayerStats;
+};
+
+/* =====================================================
+   🔁 LEGACY SUPPORT (IMPORTANT)
+===================================================== */
+
+// Allow both string and Player (for gradual migration)
+export type PlayerRef = string | Player;
+
+/* =====================================================
+   🏏 SIMULATION STATE
+===================================================== */
+
 export type SimulationState = {
   over: number;
   ball: number;
@@ -7,28 +38,29 @@ export type SimulationState = {
   totalRuns: number;
   wickets: number;
 
-  striker: string;
-  nonStriker: string;
-  bowler: string;
+  // 🔥 NOW SUPPORTS OBJECTS
+  striker: PlayerRef;
+  nonStriker: PlayerRef;
+  bowler: PlayerRef;
 
-  battingOrder: string[];
+  battingOrder: PlayerRef[];
   nextBatsmanIndex: number;
 
-  // 🔥 NEW
-  bowlingOrder: string[];
+  bowlingOrder: PlayerRef[];
   currentBowlerIndex: number;
 
-  // 🔥 TARGET MODE
+  // 🎯 TARGET MODE
   target?: number;
+
   teamA: Team;
   teamB: Team;
 
-  tossWinner: string;          // team name
-  decision: "BAT" | "BOWL";   // toss decision
-  currentInningsIndex: number; // 0 or 1
+  tossWinner: string;
+  decision: "BAT" | "BOWL";
+  currentInningsIndex: number;
 
   lastOverUpdated?: number;
-  bowlingPlan?: string[];
+  bowlingPlan?: string[]; // keep as string for now (safe)
 
   matchEnded: boolean;
   winner: string | null;

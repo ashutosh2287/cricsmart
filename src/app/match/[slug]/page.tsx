@@ -90,7 +90,9 @@ const [tossData, setTossData] = useState<{
   const [isRunning, setIsRunning] = useState(false);
 const [isPaused, setIsPaused] = useState(false);
 const [speed, setSpeed] = useState(1500);
-const [selectedInnings, setSelectedInnings] = useState(0);
+const [selectedInnings, setSelectedInnings] = useState<number | null>(null);
+
+
   if (isLoading) {
   return (
     <div className="space-y-4">
@@ -351,7 +353,10 @@ const [selectedInnings, setSelectedInnings] = useState(0);
 
 {activeTab === "scorecard" && (() => {
 
-  const inningsIndex = selectedInnings;
+const inningsIndex =
+  selectedInnings !== null
+    ? selectedInnings
+    : currentEngineState?.currentInningsIndex ?? 0;
   console.log("📌 Selected Innings:", inningsIndex);
 console.log("📌 Selected Innings Data:", currentEngineState?.innings?.[inningsIndex]);
 
@@ -463,7 +468,7 @@ if (!currentEngineState?.innings) {
             onClick={() => setSelectedInnings(i)}
             className={`px-4 py-2 rounded-lg text-sm transition
               ${
-                selectedInnings === i
+                inningsIndex === i
                   ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg"
                   : "bg-gray-800/40 text-gray-300 hover:bg-gray-700/40"
               }

@@ -5,56 +5,97 @@ type StrictBallEvent = BallEvent & {
   battingTeam: string;
   bowlingTeam: string;
 };
-export function toEngineEvent(event: StrictBallEvent): EngineBallEvent {
 
-  
-
+function assertRequiredFields(event: StrictBallEvent): void {
   if (!event.battingTeam || !event.bowlingTeam) {
-    throw new Error("❌ Missing team info in event (Simulator must provide this)");
+    throw new Error("❌ Missing team info in event");
   }
 
-  // 🔥 GENERATE UNIQUE ID + TIMESTAMP
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const timestamp = Date.now();
+  if (!event.batsman || !event.nonStriker || !event.bowler) {
+    throw new Error("❌ Missing player info in event");
+  }
+}
+
+function assertNever(x: never): never {
+  throw new Error("❌ Unhandled event variant");
+}
+
+export function toEngineEvent(event: StrictBallEvent): EngineBallEvent {
+  assertRequiredFields(event);
+
+  const id = event.id;
 
   const base = {
     id,
-    timestamp,
-
     batsman: event.batsman,
-    nonStriker: event.nonStriker!,
+    nonStriker: event.nonStriker,
     bowler: event.bowler,
-
     battingTeam: event.battingTeam,
     bowlingTeam: event.bowlingTeam
   };
 
+  console.log("ADAPTER EVENT CHECK", {
+  type: event.type,
+  batsman: event.batsman,
+  nonStriker: event.nonStriker,
+  bowler: event.bowler,
+  battingTeam: event.battingTeam,
+  bowlingTeam: event.bowlingTeam
+});
+
   switch (event.type) {
     case "RUN":
-      return { type: "RUN", runs: event.runs, ...base };
+      return {
+        type: "RUN",
+        runs: event.runs,
+        ...base
+      };
 
     case "FOUR":
-      return { type: "FOUR", ...base };
+      return {
+        type: "FOUR",
+        ...base
+      };
 
     case "SIX":
-      return { type: "SIX", ...base };
+      return {
+        type: "SIX",
+        ...base
+      };
 
     case "WICKET":
-      return { type: "WICKET", ...base };
+      return {
+        type: "WICKET",
+        ...base
+      };
 
     case "WD":
-      return { type: "WD", ...base };
+      return {
+        type: "WD",
+        ...base
+      };
 
     case "NB":
-      return { type: "NB", ...base };
+      return {
+        type: "NB",
+        ...base
+      };
 
     case "BYE":
-      return { type: "BYE", runs: event.runs, ...base };
+      return {
+        type: "BYE",
+        runs: event.extraRuns,
+        ...base
+      };
 
     case "LB":
-      return { type: "LB", runs: event.runs, ...base };
+      return {
+        type: "LB",
+        runs: event.extraRuns,
+        ...base
+      };
 
     default:
-      throw new Error("❌ Invalid event type");
+      return assertNever(event);
   }
 }

@@ -1,11 +1,55 @@
 import { Team, Player } from "@/data/teams";
 
-export type PlayingXI = {
-  team: string;
-  players: Player[];
+/* =====================================================
+   🧠 EXTENDED PLAYER (WITH STATS)
+===================================================== */
+
+type PlayerStats = {
+  runs: number;
+  balls: number;
+  fours: number;
+  sixes: number;
+  wickets?: number;
+  runsConceded?: number;
+  ballsBowled?: number;
 };
 
-// ✅ Auto pick best XI (simple logic)
+export type SimPlayer = Player & {
+  stats: PlayerStats;
+};
+
+/* =====================================================
+   🏏 PLAYING XI
+===================================================== */
+
+export type PlayingXI = {
+  team: string;
+  players: SimPlayer[];
+};
+
+/* =====================================================
+   🔧 HELPER: CREATE PLAYER WITH STATS
+===================================================== */
+
+function createSimPlayer(player: Player): SimPlayer {
+  return {
+    ...player,
+    stats: {
+      runs: 0,
+      balls: 0,
+      fours: 0,
+      sixes: 0,
+      wickets: 0,
+      runsConceded: 0,
+      ballsBowled: 0
+    }
+  };
+}
+
+/* =====================================================
+   ✅ AUTO PICK XI
+===================================================== */
+
 export function getPlayingXI(team: Team): PlayingXI {
   const batsmen = team.squad.filter(p => p.role === "BAT");
   const bowlers = team.squad.filter(p => p.role === "BOWL");
@@ -28,8 +72,13 @@ export function getPlayingXI(team: Team): PlayingXI {
   // 4. Bowlers (4)
   selected.push(...bowlers.slice(0, 4));
 
+  // 🔥 CONVERT TO SIM PLAYERS (IMPORTANT)
+  const simPlayers: SimPlayer[] = selected
+    .slice(0, 11)
+    .map(createSimPlayer);
+
   return {
     team: team.name,
-    players: selected.slice(0, 11),
+    players: simPlayers,
   };
 }

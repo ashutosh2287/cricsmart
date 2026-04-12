@@ -1,6 +1,8 @@
+import React from "react";
+
 export default function GlassPanel({
   children,
-  className = ""
+  className = "",
 }: {
   children: React.ReactNode;
   className?: string;
@@ -8,18 +10,15 @@ export default function GlassPanel({
   return (
     <div
       className={`
-  bg-white/5
-  backdrop-blur-lg
-  border border-white/10
-  rounded-2xl
-  p-5
-  shadow-lg
-  shadow-black/30
-  transition-all duration-300
-  hover:border-white/20
-  hover:scale-[1.01]
-  ${className}
-`}
+        rounded-xl
+        border border-white/10
+        bg-white/[0.03]
+        backdrop-blur-sm
+        p-4
+        transition-colors duration-200
+        hover:border-white/20
+        ${className}
+      `}
     >
       {children}
     </div>

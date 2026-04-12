@@ -91,10 +91,10 @@ export default function HomePage() {
                   India vs Australia
                 </p>
 
-                <p className="text-red-500 text-sm flex items-center gap-2 mt-2">
-                  LIVE
-                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"/>
-                </p>
+                <span className="flex items-center gap-2 text-red-400 text-xs">
+  <span className="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+  LIVE
+</span>
 
                 <p className="text-gray-400 text-sm mt-4">
                   India 122/2 (12.3)

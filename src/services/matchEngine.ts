@@ -68,6 +68,7 @@ export type InningsState = {
   striker?: string;
   nonStriker?: string;
   lastDismissedBatsman?: string;
+  currentBowler?: string; // 🔥 ADD THIS
   bowlingStats?: Record<string, { balls: number; runs: number; wickets: number }>;
 };
 
@@ -503,6 +504,7 @@ function reduce(
   if (!innings.bowlingStats) innings.bowlingStats = {};
 
   const bowler = event.bowler;
+  innings.currentBowler = bowler; // 🔥 ADD THIS
   if (!innings.bowlingStats[bowler]) {
     innings.bowlingStats[bowler] = { balls: 0, runs: 0, wickets: 0 };
   }

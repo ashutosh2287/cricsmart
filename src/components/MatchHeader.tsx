@@ -1,5 +1,19 @@
 "use client";
 
+type Batsman = {
+  name: string;
+  runs: number;
+  balls: number;
+  isStriker?: boolean;
+};
+
+type Bowler = {
+  name: string;
+  overs: number;
+  runs: number;
+  wickets: number;
+};
+
 type Props = {
   team1: string;
   team2: string;
@@ -7,6 +21,12 @@ type Props = {
   wickets: number;
   over: number;
   ball: number;
+
+  // 🔥 NEW DATA
+  striker?: Batsman;
+  nonStriker?: Batsman;
+  bowler?: Bowler;
+  lastOverBalls?: string[]; // ["1", "4", "W", "0", "6"]
 };
 
 export default function MatchHeader({
@@ -15,63 +35,168 @@ export default function MatchHeader({
   runs,
   wickets,
   over,
-  ball
+  ball,
+  striker,
+  nonStriker,
+  bowler,
+  lastOverBalls = [],
 }: Props) {
 
+  const scoreKey = `${runs}-${wickets}`;
+
   return (
+    <div className="sticky top-4 z-30 mb-6">
 
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-lg">
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-sm">
 
-      <div className="flex justify-between items-center">
+        {/* HEADER */}
+        <div className="px-5 py-5 md:px-6 md:py-6">
 
-        {/* LEFT SIDE — MATCH INFO */}
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
 
-        <div className="space-y-1">
+            {/* LEFT SIDE */}
+            <div className="space-y-4">
 
-          <h1 className="text-2xl font-bold flex items-center gap-3">
+              {/* LIVE BADGE */}
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-2 text-red-400 text-xs font-semibold uppercase tracking-[0.2em]">
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                  LIVE
+                </span>
 
-            {team1} vs {team2}
+                <span className="text-xs text-white/50">
+                  Real-time analytics
+                </span>
+              </div>
 
-            {/* LIVE INDICATOR */}
+              {/* TEAMS */}
+              <div>
+                <h1 className="text-xl font-semibold text-white md:text-2xl">
+                  {team1} <span className="text-white/40">vs</span> {team2}
+                </h1>
 
-            <span className="flex items-center gap-2 text-red-500 text-sm font-semibold">
+                <p className="text-xs text-white/50 mt-1">
+                  Match center & live simulation
+                </p>
+              </div>
 
-              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              {/* 🔥 CURRENT PLAYERS */}
+              {(striker || nonStriker || bowler) && (
+                <div className="text-sm text-white/80 space-y-1">
 
-              LIVE
+                  {striker && (
+                    <div>
+                      ⭐ {striker.name} {striker.runs}({striker.balls})
+                    </div>
+                  )}
 
-            </span>
+                  {nonStriker && (
+                    <div className="text-white/60">
+                      {nonStriker.name} {nonStriker.runs}({nonStriker.balls})
+                    </div>
+                  )}
 
-          </h1>
+                  {bowler && (
+                    <div className="text-blue-400 text-xs mt-1">
+                      {bowler.name} {bowler.overs}-{bowler.runs}-{bowler.wickets}
+                    </div>
+                  )}
 
-          <div className="text-sm text-gray-400">
-            Real-Time Match Analytics
+                </div>
+              )}
+
+            </div>
+
+            {/* RIGHT SIDE (SCORE) */}
+            <div className="text-left md:text-right">
+
+              {/* SCORE */}
+              <div
+                key={scoreKey}
+                className="text-3xl font-bold text-white transition duration-200 ease-out animate-[pulse_0.3s]"
+              >
+                {runs}/{wickets}
+              </div>
+
+              {/* OVERS */}
+              <div className="text-sm text-white/60 mt-1">
+                Overs {over}.{ball}
+              </div>
+
+              {/* 🔥 LAST OVER */}
+              {lastOverBalls.length > 0 && (
+                <div className="flex gap-1 justify-start md:justify-end mt-2">
+
+                  {lastOverBalls.map((b, i) => (
+                    <span
+                      key={i}
+                      className={`
+                        text-xs px-2 py-1 rounded
+                        ${
+                          b === "W"
+                            ? "bg-red-500/20 text-red-400"
+                            : b === "4"
+                            ? "bg-green-500/20 text-green-400"
+                            : b === "6"
+                            ? "bg-purple-500/20 text-purple-400"
+                            : "bg-white/10 text-white/70"
+                        }
+                      `}
+                    >
+                      {b}
+                    </span>
+                  ))}
+
+                </div>
+              )}
+
+              {/* LABEL */}
+              <div className="text-[10px] uppercase tracking-[0.18em] text-white/40 mt-2">
+                Current innings
+              </div>
+            </div>
+
           </div>
-
         </div>
 
-        {/* RIGHT SIDE — SCORE */}
+        {/* FOOTER */}
+        <div className="grid grid-cols-2 md:grid-cols-4 border-t border-white/10 text-sm">
 
-        <div className="text-right space-y-1">
-
-          <div className="text-4xl font-bold text-green-400 tracking-wide">
-            {runs}/{wickets}
+          <div className="px-4 py-3 border-r border-white/10">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+              Status
+            </p>
+            <p className="text-white mt-1">Live</p>
           </div>
 
-          <div className="text-sm text-gray-400">
-            Overs {over}.{ball}
+          <div className="px-4 py-3 border-r border-white/10">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+              Format
+            </p>
+            <p className="text-white mt-1">Simulation</p>
+          </div>
+
+          <div className="px-4 py-3 border-r border-white/10">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+              Overs
+            </p>
+            <p className="text-white mt-1">
+              {over}.{ball}
+            </p>
+          </div>
+
+          <div className="px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+              Score
+            </p>
+            <p className="text-white mt-1">
+              {runs}/{wickets}
+            </p>
           </div>
 
         </div>
 
       </div>
-
-      {/* SUBTLE DIVIDER */}
-
-      <div className="mt-4 border-b border-zinc-800"></div>
-
     </div>
-
   );
-
 }

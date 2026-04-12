@@ -59,6 +59,7 @@ import {
   stopSimulation,
 } from "@/services/simulation/matchSimulator";
 import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
+import WagonWheel from "@/components/analytics/WagonWheel";
 
 type AnalysisFilter = "ALL" | "BATTING" | "BOWLING" | "PRESSURE";
 type MainTab = "overview" | "live" | "analysis" | "timeline" | "scorecard" | "admin";
@@ -482,7 +483,7 @@ const TabsArea = React.memo(function TabsArea({ match }: { match: Match }) {
   <SectionHeader eyebrow="Shot Analysis" title="Wagon Wheel" />
 
   <div className="h-[300px] flex items-center justify-center text-white/60">
-    🚧 Wagon Wheel Coming Soon
+    <WagonWheel matchId={match.slug} />
   </div>
 </GlassPanel>
 

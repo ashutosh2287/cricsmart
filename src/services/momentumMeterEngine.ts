@@ -1,7 +1,6 @@
-import { getMatchState } from "./matchEngine";
+import { getMatchState, getEventStream } from "./matchEngine";
 import { computeWinProbability } from "./winProbabilityEngine";
 import { computeMomentumContext } from "./momentumContextEngine";
-import { getEventStream } from "./matchEngine";
 
 export function computeMomentumMeter(matchId: string) {
 
@@ -19,8 +18,30 @@ export function computeMomentumMeter(matchId: string) {
   const events = getEventStream(matchId);
   const momentum = computeMomentumContext(events);
 
-  if (momentum.arc === "SURGE") score += 10;
-  if (momentum.arc === "COLLAPSE") score -= 10;
+  /*
+  ============================================
+  🔥 CONTEXT ADJUSTMENT
+  ============================================
+  */
+
+  score += momentum.score * 0.2;
+
+  if (momentum.arc === "SURGE") score += 8;
+  if (momentum.arc === "COLLAPSE") score -= 12;
+  if (momentum.arc === "STALL") score -= 5;
+
+  /*
+  ============================================
+  🔥 PHASE BOOST (DEATH OVERS)
+  ============================================
+  */
+
+  const innings = state.innings[state.currentInningsIndex];
+  const over = innings?.over ?? 0;
+
+  if (over >= 15) {
+    score += momentum.score * 0.1; // more impact in death
+  }
 
   return Math.max(0, Math.min(100, score));
 }

@@ -23,62 +23,50 @@ function emitMomentum() {
 function handleCommand(command: Command) {
 
   const matchId = command.slug;
+
   switch (command.type) {
 
     case "RUN_SCORED":
-      momentum += 1;
+      momentum += 0.5;
       break;
 
     case "BOUNDARY_FOUR":
-      momentum += 3;
+      momentum += 2;
       break;
 
     case "BOUNDARY_SIX":
-      momentum += 5;
+      momentum += 3;
       break;
 
     case "WICKET_FALL":
-      momentum += 8;
+      momentum -= 5; // ✅ CORRECT (negative)
+      break;
+
+    case "DOT_BALL":
+      momentum -= 1;
       break;
   }
 
   /*
-  ================================================
-  🔥 TURNING POINT SYNC
-  ================================================
+  🔥 HIGHLIGHT BOOST (OPTIONAL)
   */
 
   if (matchId) {
-
     const highlights = getHighlights(matchId);
-
     const last = highlights[highlights.length - 1];
 
     if (last?.type === "TURNING_POINT") {
-      momentum += 12; // 🔥 BIG SPIKE
-    }
-
-    if (last?.type === "BOUNDARY_CLUSTER") {
       momentum += 6;
-    }
-
-    if (last?.type === "LAST_OVER_THRILLER") {
-      momentum += 10;
-    }
-
-    if (last?.type === "HAT_TRICK_THREAT") {
-      momentum += 8;
     }
   }
 
   /*
-  ================================================
   🔻 DECAY (SMOOTH)
-  ================================================
   */
 
-  momentum = momentum * 0.92; // smooth decay instead of -1
-  momentum = Math.max(0, Math.min(momentum, 100));
+  momentum *= 0.9;
+
+  momentum = Math.max(-100, Math.min(100, momentum));
 
   emitMomentum();
 }

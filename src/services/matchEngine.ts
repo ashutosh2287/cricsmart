@@ -7,6 +7,7 @@ import { processMatchIntelligence } from "./matchIntelligenceEngine";
 import { v4 as uuidv4 } from "uuid";
 import { generateAdvancedCommentary } from "./commentary/advancedCommentaryEngine";
 import { emitCommentary } from "@/services/commentary/commentaryBus";
+import { emitCommand } from "./commandBus";
 
 export type CorrectionEvent =
   | { type: "CORRECTION_UNDO_LAST" }
@@ -612,6 +613,18 @@ export function dispatchBallEvent(matchId: string, event: EngineBallEvent) {
   }
 
   const { next, ballEvent } = reduce(current, event);
+  // 🔥 DOT BALL DETECTION
+if (
+  ballEvent.isLegalDelivery &&
+  ballEvent.runs === 0 &&
+  !ballEvent.wicket &&
+  !ballEvent.extra
+) {
+  emitCommand({
+    type: "DOT_BALL",
+    slug: matchId,
+  });
+}
 
   const commentaryText = generateAdvancedCommentary(ballEvent, next);
 

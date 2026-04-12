@@ -13,8 +13,7 @@ export type MomentumContext = {
 
 /*
 ================================================
-PURE LAST 6 BALL MOMENTUM MODEL
-Replay Safe
+🔥 ADVANCED MOMENTUM MODEL (REALISTIC)
 ================================================
 */
 
@@ -49,17 +48,29 @@ export function computeMomentumContext(
     }
   }
 
-  score += runs * 2;
-  score -= wickets * 15;
-  score -= dots * 2;
-  score += boundaries * 5;
+  /*
+  ============================================
+  🔥 NEW WEIGHT MODEL
+  ============================================
+  */
+
+  score += runs * 2;          // scoring pressure
+  score -= wickets * 20;      // BIG penalty
+  score -= dots * 3;          // dot pressure
+  score += boundaries * 6;    // attacking boost
 
   score = Math.max(-100, Math.min(100, score));
 
+  /*
+  ============================================
+  🔥 ARC DETECTION
+  ============================================
+  */
+
   let arc: MiniArc = "NEUTRAL";
 
-  if (score > 25) arc = "SURGE";
-  else if (score < -30) arc = "COLLAPSE";
+  if (score > 30) arc = "SURGE";
+  else if (score < -35) arc = "COLLAPSE";
   else if (dots >= 4) arc = "STALL";
 
   return { score, arc };

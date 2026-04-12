@@ -6,7 +6,8 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
+  Cell
 } from "recharts";
 
 import { getGlobalAnalytics } from "@/services/analytics/globalAnalyticsEngine";
@@ -29,7 +30,6 @@ export default function MomentumLeadersChart() {
   }
 
   return (
-
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
 
       <h3 className="text-xs text-gray-400 uppercase mb-3">
@@ -41,23 +41,35 @@ export default function MomentumLeadersChart() {
         <BarChart data={data}>
 
           <XAxis dataKey="matchId" stroke="#aaa" />
-
           <YAxis stroke="#aaa" />
 
-          <Tooltip />
-
-          <Bar
-            dataKey="score"
-            fill="#3b82f6"
-            radius={[4, 4, 0, 0]}
+          {/* 🔥 UPGRADED TOOLTIP */}
+          <Tooltip
+            contentStyle={{ backgroundColor: "#111", border: "none" }}
+            labelStyle={{ color: "#aaa" }}
           />
+
+          <Bar dataKey="score" radius={[4, 4, 0, 0]}>
+
+            {data.map((entry, index) => (
+              <Cell
+                key={index}
+                fill={
+                  entry.score > 70
+                    ? "#22c55e"   // green
+                    : entry.score < 30
+                    ? "#ef4444"   // red
+                    : "#eab308"   // yellow
+                }
+              />
+            ))}
+
+          </Bar>
 
         </BarChart>
 
       </ResponsiveContainer>
 
     </div>
-
   );
-
 }

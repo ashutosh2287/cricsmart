@@ -6,7 +6,8 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
+  ReferenceArea
 } from "recharts";
 
 import { getPlayerForm } from "@/services/analytics/playerFormEngine";
@@ -33,7 +34,6 @@ export default function PlayerFormGraph({ playerId }: Props) {
   }
 
   return (
-
     <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl">
 
       <h3 className="text-xs text-gray-400 uppercase mb-3">
@@ -44,17 +44,27 @@ export default function PlayerFormGraph({ playerId }: Props) {
 
         <LineChart data={form}>
 
-          <XAxis dataKey="matchId" stroke="#aaa" />
+          {/* 🔥 PERFORMANCE ZONES */}
+          <ReferenceArea y1={50} y2={200} fill="rgba(34,197,94,0.08)" />
+          <ReferenceArea y1={20} y2={50} fill="rgba(234,179,8,0.05)" />
+          <ReferenceArea y1={0} y2={20} fill="rgba(239,68,68,0.08)" />
 
+          <XAxis dataKey="matchId" stroke="#aaa" />
           <YAxis stroke="#aaa" />
 
-          <Tooltip />
+          {/* 🔥 TOOLTIP */}
+          <Tooltip
+            contentStyle={{ backgroundColor: "#111", border: "none" }}
+            labelStyle={{ color: "#aaa" }}
+          />
 
           <Line
+            type="monotone"
             dataKey="runs"
             stroke="#22c55e"
             strokeWidth={3}
-            dot
+            dot={{ r: 3 }}
+            activeDot={{ r: 5 }}
           />
 
         </LineChart>
@@ -62,7 +72,5 @@ export default function PlayerFormGraph({ playerId }: Props) {
       </ResponsiveContainer>
 
     </div>
-
   );
-
 }

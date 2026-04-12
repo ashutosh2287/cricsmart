@@ -4,7 +4,8 @@ export type Command =
   | { type: "RUN_SCORED"; slug: string;runs: number }
   | { type: "BOUNDARY_FOUR"; slug: string }
   | { type: "BOUNDARY_SIX"; slug: string }
-  | { type: "WICKET_FALL" ; slug: string};
+  | { type: "WICKET_FALL" ; slug: string}
+   | { type: "DOT_BALL"; slug: string };
 
 type CommandListener = (command: Command) => void;
 

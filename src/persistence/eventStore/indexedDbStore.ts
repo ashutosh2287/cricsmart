@@ -47,8 +47,10 @@ export class IndexedDbStore implements EventStore {
       .where("matchId")
       .equals(matchId)
       .sortBy("timestamp");
-
-    return rows.map(({ matchId: _, ...event }) => event);
+return rows.map((row) => {
+  const { matchId, ...event } = row;
+  return event as BallEvent;
+});
   }
 
   /*

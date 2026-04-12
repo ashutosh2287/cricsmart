@@ -333,6 +333,7 @@ export function startSimulation(
     }
 
     syncSimFromEngine(state, matchId);
+    
 
     const latestEngineState = getMatchState(matchId);
 const latestEngineInnings =

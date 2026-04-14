@@ -1,7 +1,7 @@
 import { generateBallEvent } from "./ballGenerator";
 import { SimulationState } from "./simulationState";
 import { BallEvent } from "@/types/ballEvent";
-import { dispatchBallEvent, getMatchState } from "../matchEngine";
+import { dispatchBallEvent, getMatchState, initMatch } from "../matchEngine";
 import { toEngineEvent } from "./simulationEventAdapter";
 import { addCommentary } from "../commentary/commentaryStore";
 import { generateAdvancedCommentary } from "../commentary/advancedCommentaryEngine";
@@ -11,11 +11,38 @@ import { getBowlingOrder } from "../teams/bowlingOrder";
 import { getMatchResult } from "../match/resultEngine";
 import { getPlayingXI } from "../teams/playingXI";
 import { getPlayerName } from "@/utils/playerUtils";
+import { broadcast } from "@/services/realtime/realtimeController";
+
 
 let timeoutRef: NodeJS.Timeout | null = null;
 let isRunning = false;
 let isPaused = false;
 let currentSpeed = 1500;
+let currentDelay = 1500;
+let runBallRef: (() => void) | null = null;
+export type SimulationEvent =
+  | {
+      type: "BALL_EVENT";
+      matchId: string;
+      data: {
+        engineEvent: ReturnType<typeof toEngineEvent>;
+        simulationState: SimulationState;
+        teams: {
+          teamA: Team;
+          teamB: Team;
+        };
+      };
+    }
+  | {
+      type: "MATCH_ENDED";
+      matchId: string;
+      data: {
+        winner?: string;
+        winBy?: string;
+      };
+    };
+
+
 
 function createBowlingPlan(bowlingOrder: string[]) {
   const plan: string[] = [];
@@ -272,8 +299,18 @@ export function startSimulation(
   matchId: string,
   speed: number = 1500
 ) {
-  const matchState = getMatchState(matchId);
-  if (!matchState) return;
+ let matchState = getMatchState(matchId);
+
+if (!matchState) {
+  console.log("⚠️ matchState missing → initializing...");
+  initMatch(matchId);
+  matchState = getMatchState(matchId);
+}
+
+if (!matchState) {
+  console.error("❌ matchState STILL missing after init");
+  return;
+}
 
   if (isRunning) {
     console.log("⚠️ Simulation already running");
@@ -294,6 +331,8 @@ export function startSimulation(
   initializeFirstInnings(state);
 
   const runBall = () => {
+  runBallRef = runBall;
+    console.log("🏏 RUNNING BALL LOOP");
     if (!isRunning) return;
 
     if (isPaused) {
@@ -417,6 +456,28 @@ if (
     console.log("ENGINE EVENT", engineEvent);
 
     dispatchBallEvent(matchId, engineEvent);
+    console.log("🚀 EMITTING EVENT", {
+  matchId,
+  type: "BALL_EVENT",
+  over: engineInnings.over,
+  ball: engineInnings.ball
+});
+  if (!matchId) {
+  console.error("❌ Missing matchId in broadcast");
+} else {
+  broadcast(matchId, {
+  type: "BALL_EVENT",
+  matchId,
+  data: {
+    engineEvent,
+    simulationState: syncedState,
+    teams: {
+      teamA: state.teamA,
+      teamB: state.teamB
+    }
+  }
+});
+}
 
     const latestAfterDispatch = getMatchState(matchId);
     if (!latestAfterDispatch) {
@@ -469,12 +530,26 @@ if (
 
     if (state.target && state.totalRuns >= state.target) {
       finishMatch(state, latestAfterDispatch);
+
+      if (matchId) {
+  broadcast(matchId, {
+    type: "MATCH_ENDED",
+    matchId,
+    data: {
+      winner: state.winner ?? undefined,
+      winBy: state.winBy ?? undefined
+    }
+  });
+}
       stopSimulation();
       return;
     }
 
-    const delay = Math.random() * 400 + currentSpeed;
-    timeoutRef = setTimeout(runBall, delay);
+   const jitter = currentDelay * 0.1;
+const delay = currentDelay + (Math.random() * jitter - jitter / 2);
+
+timeoutRef = setTimeout(runBall, delay);
+
   };
 
   runBall();
@@ -501,5 +576,15 @@ export function resumeSimulation() {
 }
 
 export function setSimulationSpeed(speed: number) {
-  currentSpeed = speed;
+  console.log("⚡ Updating simulation speed to:", speed);
+
+  currentDelay = speed;
+
+  if (timeoutRef) {
+    clearTimeout(timeoutRef);
+  }
+
+  if (runBallRef) {
+    timeoutRef = setTimeout(runBallRef, currentDelay);
+  }
 }

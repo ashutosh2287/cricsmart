@@ -1,22 +1,19 @@
 import type { MatchState } from "@/services/matchEngine";
 
-export type Match = {
+export type MatchStatus = "Live" | "Upcoming" | "Completed";
 
+export type Match = {
+  id: string;
   slug: string;
   team1: string;
   team2: string;
-  status: "Live" | "Upcoming" | "Completed";
+  status: MatchStatus;
 
   score?: string;
   overs?: string;
   runRate?: number;
-  id: string;
-
-  // ⭐ engine state (hidden simulation data)
   balls?: number;
-  // external cricket API match id
-  externalMatchId?: string
 
+  externalMatchId?: string;
   engineState?: MatchState;
-
 };

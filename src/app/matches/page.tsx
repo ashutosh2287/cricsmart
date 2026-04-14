@@ -7,6 +7,7 @@ import MatchCard from "@/components/MatchCard";
 import { Match } from "@/types/match";
 
 export default function MatchPage() {
+  const [refresh, setRefresh] = useState(0);
 
   const [matches, setMatches] = useState<Match[]>(getMatches());
 
@@ -31,6 +32,18 @@ export default function MatchPage() {
     return unsubscribe;
 
   }, []);
+
+  useEffect(() => {
+  const handler = () => {
+    setRefresh((prev) => prev + 1);
+  };
+
+  window.addEventListener("MATCH_UPDATE", handler);
+
+  return () => {
+    window.removeEventListener("MATCH_UPDATE", handler);
+  };
+}, []);
 
   const priority: Record<"Live" | "Upcoming" | "Completed", number> = {
     Live: 1,

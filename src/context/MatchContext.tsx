@@ -1,7 +1,18 @@
 "use client";
 
-import { createContext, useContext } from "react";
-import { MatchState } from "@/services/matchEngine";
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useSyncExternalStore,
+} from "react";
+
+import type { MatchState } from "@/services/matchEngine";
+
+import {
+  getMatchSnapshot,
+  subscribeMatch,
+} from "@/persistence/eventStore/eventStore";
 
 type MatchContextType = {
   matchId: string;
@@ -10,15 +21,38 @@ type MatchContextType = {
 
 const MatchContext = createContext<MatchContextType | null>(null);
 
-export function MatchProvider({
-  children,
-  value
-}: {
+type MatchProviderProps = {
   children: React.ReactNode;
-  value: MatchContextType;
-}) {
+  value: {
+    matchId: string;
+    state?: MatchState;
+  };
+};
+
+const emptySubscribe = () => () => {};
+const getEmptySnapshot = () => undefined;
+
+export function MatchProvider({ children, value }: MatchProviderProps) {
+  const { matchId, state: fallbackState } = value;
+
+const state = useSyncExternalStore(
+    matchId ? (listener) => subscribeMatch(matchId, listener) : emptySubscribe,
+    matchId
+      ? () => getMatchSnapshot(matchId) ?? fallbackState
+      : getEmptySnapshot,
+    () => fallbackState
+  );
+
+  const contextValue = useMemo<MatchContextType>(
+    () => ({
+      matchId,
+      state,
+    }),
+    [matchId, state]
+  );
+
   return (
-    <MatchContext.Provider value={value}>
+    <MatchContext.Provider value={contextValue}>
       {children}
     </MatchContext.Provider>
   );

@@ -1,81 +1,76 @@
 import { Match } from "../types/match";
-
 import {
   MatchState,
   MatchEvent,
-  nextMatchState
+  nextMatchState,
 } from "@/services/matchStateMachine";
 
+type Listener = () => void;
 
-type Listener = (matches: Match[], matchState: MatchState) => void;
+type BallEventLike = {
+  over?: number;
+  ballInOver?: number;
+};
 
+type MatchWithRuntimeState = Match & {
+  currentOver?: number;
+  currentBall?: number;
+};
 
-// ------------------
-// STORE DATA
-// ------------------
-
-let matches: Match[] = [];
+let matches: MatchWithRuntimeState[] = [];
 let matchState: MatchState = "PRE_MATCH";
-
 let listeners: Listener[] = [];
 
+export const selectMatches = (): MatchWithRuntimeState[] => matches;
 
-// ------------------
-// SET MATCHES
-// ------------------
+export const selectMatchState = (): MatchState => matchState;
 
-export const setMatches = (data: Match[]) => {
+export const selectMatchById = (matchId: string): MatchWithRuntimeState | null =>
+  matches.find((match) => match.id === matchId) ?? null;
 
-  matches = data;
+export const setMatches = (data: Match[]): void => {
+  matches = data.map((match) => ({
+    ...match,
+    currentOver: undefined,
+    currentBall: undefined,
+  }));
+  notify();
+};
+
+export const dispatchMatchEvent = (event: MatchEvent): void => {
+  matchState = nextMatchState(matchState, event);
+  notify();
+};
+
+export const dispatchBallEvent = (
+  matchId: string,
+  ballEvent: BallEventLike
+): void => {
+  matches = matches.map((match) =>
+    match.id === matchId
+      ? {
+          ...match,
+          currentOver: ballEvent.over ?? match.currentOver,
+          currentBall: ballEvent.ballInOver ?? match.currentBall,
+        }
+      : match
+  );
 
   notify();
 };
 
+export const getStoreMatches = (): MatchWithRuntimeState[] => matches;
 
-// ------------------
-// STATE MACHINE DISPATCH
-// ------------------
+export const getMatchState = (): MatchState => matchState;
 
-export const dispatchMatchEvent = (event: MatchEvent) => {
-
-  const next = nextMatchState(matchState, event);
-
-  matchState = next;
-
-  notify();
-};
-
-
-// ------------------
-// GETTERS
-// ------------------
-
-export const getStoreMatches = () => matches;
-
-export const getMatchState = () => matchState;
-
-
-// ------------------
-// SUBSCRIBE
-// ------------------
-
-export const subscribeStore = (listener: Listener) => {
-
+export const subscribeStore = (listener: Listener): (() => void) => {
   listeners.push(listener);
 
-  // initial call
-  listener(matches, matchState);
-
   return () => {
-    listeners = listeners.filter(l => l !== listener);
+    listeners = listeners.filter((l) => l !== listener);
   };
 };
 
-
-// ------------------
-// INTERNAL NOTIFY
-// ------------------
-
-const notify = () => {
-  listeners.forEach(l => l(matches, matchState));
+const notify = (): void => {
+  listeners.forEach((listener) => listener());
 };

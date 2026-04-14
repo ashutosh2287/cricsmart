@@ -70,4 +70,6 @@ export type SimulationState = {
   bowlingTeam: Team;
 
   phase: "POWERPLAY" | "MIDDLE" | "DEATH";
+
+  
 };

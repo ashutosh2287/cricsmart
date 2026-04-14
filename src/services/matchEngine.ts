@@ -1,6 +1,5 @@
-import { BallEvent, WicketBallEvent } from "@/types/ballEvent";
+import { BallEvent } from "@/types/ballEvent";
 import { pushToTimeline } from "./broadcastTimeline";
-import { eventStore } from "@/persistence/eventStore";
 import { getMatchConfig } from "./matchFormat";
 import { advanceClock } from "./timeEngine";
 import { processMatchIntelligence } from "./matchIntelligenceEngine";
@@ -8,6 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 import { generateAdvancedCommentary } from "./commentary/advancedCommentaryEngine";
 import { emitCommentary } from "@/services/commentary/commentaryBus";
 import { emitCommand } from "./commandBus";
+import { setMatchState } from "@/persistence/eventStore/eventStore";
 
 export type CorrectionEvent =
   | { type: "CORRECTION_UNDO_LAST" }
@@ -69,7 +69,7 @@ export type InningsState = {
   striker?: string;
   nonStriker?: string;
   lastDismissedBatsman?: string;
-  currentBowler?: string; // 🔥 ADD THIS
+  currentBowler?: string;
   bowlingStats?: Record<string, { balls: number; runs: number; wickets: number }>;
 };
 
@@ -106,7 +106,32 @@ export const temporalIndex: Record<
 > = {};
 
 function cloneState(state: MatchState): MatchState {
-  return JSON.parse(JSON.stringify(state));
+  return {
+    ...state,
+    innings: state.innings.map((innings) => ({
+      ...innings,
+      overs: Object.fromEntries(
+        Object.entries(innings.overs).map(([over, balls]) => [Number(over), [...balls]])
+      ),
+      bowlingStats: innings.bowlingStats
+        ? Object.fromEntries(
+            Object.entries(innings.bowlingStats).map(([bowler, stats]) => [
+              bowler,
+              { ...stats },
+            ])
+          )
+        : {},
+    })),
+    branches: [...state.branches],
+    teamA: {
+      ...state.teamA,
+      squad: state.teamA.squad.map((player) => ({ ...player })),
+    },
+    teamB: {
+      ...state.teamB,
+      squad: state.teamB.squad.map((player) => ({ ...player })),
+    },
+  };
 }
 
 function createInningsState(battingTeam = "", bowlingTeam = ""): InningsState {
@@ -122,7 +147,7 @@ function createInningsState(battingTeam = "", bowlingTeam = ""): InningsState {
     lastDismissedBatsman: "",
     battingTeam,
     bowlingTeam,
-    bowlingStats: {}
+    bowlingStats: {},
   };
 }
 
@@ -136,19 +161,18 @@ function saveSnapshot(
   const key = `${inningsIndex}-${over}`;
   snapshotMap[matchId][key] = cloneState(state);
 
-  eventStore.saveSnapshot(matchId, over, state).catch(console.error);
-
   if (!temporalIndex[matchId]) temporalIndex[matchId] = [];
   temporalIndex[matchId].push({
-    index: eventStreams[matchId].length,
+    index: eventStreams[matchId]?.length ?? 0,
     innings: inningsIndex,
-    over
+    over,
   });
 }
 
 function emit(matchId: string) {
   const state = matches.get(matchId);
-  matchListeners[matchId]?.forEach(l => l(state!));
+  if (!state) return;
+  matchListeners[matchId]?.forEach((listener) => listener(state));
 }
 
 function getInitialBattingBowlingTeams(state: MatchState): {
@@ -201,6 +225,7 @@ function ensureSecondInningsFromFirst(next: MatchState) {
   next.innings[1].battingTeam = expectedBatting;
   next.innings[1].bowlingTeam = expectedBowling;
 }
+
 function completeCurrentInnings(next: MatchState) {
   const inningsIndex = next.currentInningsIndex;
   const innings = next.innings[inningsIndex];
@@ -227,7 +252,7 @@ function getTeamByName(
 }
 
 function getSquadNames(team?: { squad: { name: string; role: string }[] }) {
-  return new Set((team?.squad ?? []).map(player => player.name));
+  return new Set((team?.squad ?? []).map((player) => player.name));
 }
 
 function ensureCurrentInningsTeams(
@@ -245,9 +270,7 @@ function ensureCurrentInningsTeams(
   }
 
   if (!innings.battingTeam || !innings.bowlingTeam) {
-    throw new Error(
-      `❌ Incomplete innings team state in innings ${inningsIndex}`
-    );
+    throw new Error(`❌ Incomplete innings team state in innings ${inningsIndex}`);
   }
 }
 
@@ -266,36 +289,21 @@ function validatePlayersForInnings(
 
   if (battingTeam.squad.length > 0) {
     if (!battingNames.has(event.batsman)) {
-      throw new Error(`❌ Invalid batsman ${event.batsman} for batting team ${innings.battingTeam}`);
+      throw new Error(
+        `❌ Invalid batsman ${event.batsman} for batting team ${innings.battingTeam}`
+      );
     }
     if (!battingNames.has(event.nonStriker)) {
-      throw new Error(`❌ Invalid non-striker ${event.nonStriker} for batting team ${innings.battingTeam}`);
+      throw new Error(
+        `❌ Invalid non-striker ${event.nonStriker} for batting team ${innings.battingTeam}`
+      );
     }
   }
 
   if (bowlingTeam.squad.length > 0 && !bowlingNames.has(event.bowler)) {
-    throw new Error(`❌ Invalid bowler ${event.bowler} for bowling team ${innings.bowlingTeam}`);
-  }
-}
-
-function getRunsFromEvent(event: ScoringEventWithId): number {
-  switch (event.type) {
-    case "FOUR":
-      return 4;
-    case "SIX":
-      return 6;
-    case "RUN":
-      return event.runs ?? 1;
-    case "WD":
-    case "NB":
-      return 1;
-    case "BYE":
-    case "LB":
-      return event.runs ?? 0;
-    case "WICKET":
-      return 0;
-    default:
-      return 0;
+    throw new Error(
+      `❌ Invalid bowler ${event.bowler} for bowling team ${innings.bowlingTeam}`
+    );
   }
 }
 
@@ -320,7 +328,7 @@ function createInvalidBallEvent(
     nonStriker: "",
     bowler: "",
     innings: inningsIndex,
-    totalRuns: 0
+    totalRuns: 0,
   };
 }
 
@@ -340,7 +348,7 @@ function createBallEvent(
     batsman: event.batsman,
     nonStriker: event.nonStriker,
     bowler: event.bowler,
-    innings: inningsIndex
+    innings: inningsIndex,
   };
 
   switch (event.type) {
@@ -352,7 +360,7 @@ function createBallEvent(
         totalRuns: event.runs ?? 1,
         wicket: false,
         extra: false,
-        isLegalDelivery: true
+        isLegalDelivery: true,
       };
 
     case "FOUR":
@@ -363,7 +371,7 @@ function createBallEvent(
         totalRuns: 4,
         wicket: false,
         extra: false,
-        isLegalDelivery: true
+        isLegalDelivery: true,
       };
 
     case "SIX":
@@ -374,7 +382,7 @@ function createBallEvent(
         totalRuns: 6,
         wicket: false,
         extra: false,
-        isLegalDelivery: true
+        isLegalDelivery: true,
       };
 
     case "WICKET":
@@ -387,7 +395,7 @@ function createBallEvent(
         extra: false,
         isLegalDelivery: true,
         dismissedBatsman: event.batsman,
-        dismissalKind: "UNKNOWN"
+        dismissalKind: "UNKNOWN",
       };
 
     case "WD":
@@ -400,7 +408,7 @@ function createBallEvent(
         extra: true,
         extraType: "WD",
         extraRuns: 1,
-        isLegalDelivery: false
+        isLegalDelivery: false,
       };
 
     case "NB":
@@ -413,7 +421,7 @@ function createBallEvent(
         extra: true,
         extraType: "NB",
         extraRuns: 1,
-        isLegalDelivery: false
+        isLegalDelivery: false,
       };
 
     case "BYE":
@@ -426,7 +434,7 @@ function createBallEvent(
         extra: false,
         extraType: "BYE",
         extraRuns: event.runs ?? 0,
-        isLegalDelivery: true
+        isLegalDelivery: true,
       };
 
     case "LB":
@@ -439,7 +447,7 @@ function createBallEvent(
         extra: false,
         extraType: "LB",
         extraRuns: event.runs ?? 0,
-        isLegalDelivery: true
+        isLegalDelivery: true,
       };
 
     default:
@@ -459,7 +467,7 @@ export function initMatch(
     matchId,
     format,
     configOvers: config.oversPerInnings,
-    innings: [createInningsState()],
+    innings: [createInningsState(), createInningsState()],
     currentInningsIndex: 0,
     activeBranchId: "main",
     branches: ["main"],
@@ -469,7 +477,7 @@ export function initMatch(
     decision: "BAT",
     matchEnded: false,
     winner: null,
-    winBy: null
+    winBy: null,
   });
 
   eventStreams[matchId] = [];
@@ -505,7 +513,8 @@ function reduce(
   if (!innings.bowlingStats) innings.bowlingStats = {};
 
   const bowler = event.bowler;
-  innings.currentBowler = bowler; // 🔥 ADD THIS
+  innings.currentBowler = bowler;
+
   if (!innings.bowlingStats[bowler]) {
     innings.bowlingStats[bowler] = { balls: 0, runs: 0, wickets: 0 };
   }
@@ -514,11 +523,17 @@ function reduce(
 
   if (next.configOvers !== null && totalBalls >= next.configOvers * 6) {
     completeCurrentInnings(next);
-    return { next, ballEvent: createInvalidBallEvent(state, inningsIndex, innings.over) };
+    return {
+      next,
+      ballEvent: createInvalidBallEvent(state, inningsIndex, innings.over),
+    };
   }
 
   if (innings.completed) {
-    return { next, ballEvent: createInvalidBallEvent(state, inningsIndex, innings.over) };
+    return {
+      next,
+      ballEvent: createInvalidBallEvent(state, inningsIndex, innings.over),
+    };
   }
 
   if (!innings.striker || !innings.nonStriker) {
@@ -613,18 +628,18 @@ export function dispatchBallEvent(matchId: string, event: EngineBallEvent) {
   }
 
   const { next, ballEvent } = reduce(current, event);
-  // 🔥 DOT BALL DETECTION
-if (
-  ballEvent.isLegalDelivery &&
-  ballEvent.runs === 0 &&
-  !ballEvent.wicket &&
-  !ballEvent.extra
-) {
-  emitCommand({
-    type: "DOT_BALL",
-    slug: matchId,
-  });
-}
+
+  if (
+    ballEvent.isLegalDelivery &&
+    ballEvent.runs === 0 &&
+    !ballEvent.wicket &&
+    !ballEvent.extra
+  ) {
+    emitCommand({
+      type: "DOT_BALL",
+      slug: matchId,
+    });
+  }
 
   const commentaryText = generateAdvancedCommentary(ballEvent, next);
 
@@ -632,49 +647,56 @@ if (
     matchId,
     text: commentaryText,
     eventId: ballEvent.id,
-    category: "BALL"
+    category: "BALL",
   });
 
   ballEvent.commentary = commentaryText;
-  matches.set(matchId, next);
+
+  const freshState = cloneState(next);
+  matches.set(matchId, freshState);
+
+// 🔥 ADD THIS LINE (MOST IMPORTANT)
+setMatchState(matchId, freshState);
 
   console.log("ENGINE INNINGS CHECK", {
-  currentInningsIndex: next.currentInningsIndex,
-  innings0: next.innings[0] && {
-    battingTeam: next.innings[0].battingTeam,
-    bowlingTeam: next.innings[0].bowlingTeam
-  },
-  innings1: next.innings[1] && {
-    battingTeam: next.innings[1].battingTeam,
-    bowlingTeam: next.innings[1].bowlingTeam
-  }
-});
+    currentInningsIndex: freshState.currentInningsIndex,
+    innings0: freshState.innings[0] && {
+      battingTeam: freshState.innings[0].battingTeam,
+      bowlingTeam: freshState.innings[0].bowlingTeam,
+    },
+    innings1: freshState.innings[1] && {
+      battingTeam: freshState.innings[1].battingTeam,
+      bowlingTeam: freshState.innings[1].bowlingTeam,
+    },
+  });
 
   if (ballEvent.valid) {
     eventStreams[matchId].push(ballEvent);
     pushToTimeline({
       ...ballEvent,
-      commentary: commentaryText
+      commentary: commentaryText,
     });
-    eventStore.appendEvent(matchId, ballEvent);
   }
 
   advanceClock(matchId);
 
   processMatchIntelligence({
     matchId,
-    branchId: next.activeBranchId,
-    state: next,
-    ballEvent
+    branchId: freshState.activeBranchId,
+    state: freshState,
+    ballEvent,
   });
 
   emit(matchId);
 }
 
 export function getMatchState(matchId: string) {
-  return matches.get(matchId);
-}
+  const state = matches.get(matchId);
 
+  console.log("📦 STATE FROM STORE:", state); // ✅ ADD HERE
+
+  return state;
+}
 export function getEventStream(matchId: string) {
   return eventStreams[matchId] ?? [];
 }
@@ -706,6 +728,7 @@ export function hydrateMatchState(matchId: string, state: MatchState) {
   }
 
   matches.set(matchId, next);
+  emit(matchId);
 }
 
 export function reduceStateOnly(state: MatchState, event: BallEvent): MatchState {
@@ -721,25 +744,29 @@ export function reduceStateOnly(state: MatchState, event: BallEvent): MatchState
   }
 
   const resolvedBattingTeam =
-  inningsIndex === 1 && replayState.innings[0]?.battingTeam && replayState.innings[0]?.bowlingTeam
-    ? replayState.innings[0].bowlingTeam
-    : innings?.battingTeam || fallbackInitial.battingTeam;
+    inningsIndex === 1 &&
+    replayState.innings[0]?.battingTeam &&
+    replayState.innings[0]?.bowlingTeam
+      ? replayState.innings[0].bowlingTeam
+      : innings?.battingTeam || fallbackInitial.battingTeam;
 
-const resolvedBowlingTeam =
-  inningsIndex === 1 && replayState.innings[0]?.battingTeam && replayState.innings[0]?.bowlingTeam
-    ? replayState.innings[0].battingTeam
-    : innings?.bowlingTeam || fallbackInitial.bowlingTeam;
+  const resolvedBowlingTeam =
+    inningsIndex === 1 &&
+    replayState.innings[0]?.battingTeam &&
+    replayState.innings[0]?.bowlingTeam
+      ? replayState.innings[0].battingTeam
+      : innings?.bowlingTeam || fallbackInitial.bowlingTeam;
 
-const engineEvent = {
-  id: event.id,
-  type: event.type,
-  runs: event.runs,
-  batsman: event.batsman,
-  nonStriker: event.nonStriker,
-  bowler: event.bowler,
-  battingTeam: resolvedBattingTeam,
-  bowlingTeam: resolvedBowlingTeam
-} as ScoringEventWithId;
+  const engineEvent = {
+    id: event.id,
+    type: event.type,
+    runs: event.runs,
+    batsman: event.batsman,
+    nonStriker: event.nonStriker,
+    bowler: event.bowler,
+    battingTeam: resolvedBattingTeam,
+    bowlingTeam: resolvedBowlingTeam,
+  } as ScoringEventWithId;
 
   const { next } = reduce(replayState, engineEvent);
   return next;
@@ -751,6 +778,10 @@ export function setEventStream(matchId: string, events: BallEvent[]) {
 
 export function resetMatchState(matchId: string) {
   matches.delete(matchId);
+  eventStreams[matchId] = [];
+  delete matchListeners[matchId];
+  delete snapshotMap[matchId];
+  delete temporalIndex[matchId];
   initMatch(matchId);
 }
 

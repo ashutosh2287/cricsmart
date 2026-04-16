@@ -544,7 +544,15 @@ function reduce(
   const ballEvent = createBallEvent(state, innings, inningsIndex, event);
 
   if (!innings.overs[innings.over]) innings.overs[innings.over] = [];
-  innings.overs[innings.over].push(ballEvent);
+
+if (innings.overs[innings.over].length >= 6 && ballEvent.isLegalDelivery) {
+  return {
+    next,
+    ballEvent: createInvalidBallEvent(state, inningsIndex, innings.over),
+  };
+}
+
+innings.overs[innings.over].push(ballEvent);
 
   const stats = innings.bowlingStats[bowler];
   if (ballEvent.isLegalDelivery) {
@@ -627,6 +635,11 @@ export function dispatchBallEvent(matchId: string, event: EngineBallEvent) {
     return;
   }
 
+  const eventId = event.id;
+if (eventId && eventStreams[matchId]?.some((e) => e.id === eventId)) {
+  return;
+}
+
   const { next, ballEvent } = reduce(current, event);
 
   if (
@@ -688,6 +701,11 @@ setMatchState(matchId, freshState);
   });
 
   emit(matchId);
+  console.log("🔥 EMIT SENT:", {
+  matchId,
+  subscribers: matchListeners[matchId]?.size ?? 0,
+  innings: freshState.innings[freshState.currentInningsIndex],
+});
 }
 
 export function getMatchState(matchId: string) {

@@ -23,7 +23,10 @@ import ReplaySlider from "@/components/match/ReplaySlider";
 import TeamSelector from "@/components/teams/TeamSelector";
 import TossPanel from "@/components/match/TossPanel";
 import WinProbabilityChart from "@/components/analytics/WinProbabilityChart";
-
+import {
+  getMatchMeta,
+  subscribeStore,
+} from "@/store/matchStore";
 import { MatchProvider, useMatch } from "@/context/MatchContext";
 import { Team } from "@/data/teams";
 import { Match } from "@/types/match";
@@ -60,6 +63,10 @@ import {
 import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
 import WagonWheel from "@/components/analytics/WagonWheel";
 
+import { setMatchMeta } from "@/store/matchStore";
+import { v4 as uuidv4 } from "uuid";
+import { useRouter } from "next/navigation";
+
 type AnalysisFilter = "ALL" | "BATTING" | "BOWLING" | "PRESSURE";
 type MainTab = "overview" | "live" | "analysis" | "timeline" | "scorecard" | "admin";
 
@@ -81,17 +88,26 @@ function cls(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-function formatOverDisplay(overs?: Record<string, unknown[]>) {
+function formatOverDisplay(overs?: Record<string, unknown>) {
   if (!overs) return 0;
-  const keys = Object.keys(overs);
+
+  const keys = Object.keys(overs)
+    .map(Number)
+    .filter((n) => Number.isFinite(n))
+    .sort((a, b) => a - b);
+
   if (!keys.length) return 0;
 
-  const currentOverNumber = Number(keys[keys.length - 1]);
-  const currentBalls = overs[currentOverNumber]?.length || 0;
+  const lastOverNumber = keys[keys.length - 1];
+  const balls = Array.isArray(overs[lastOverNumber])
+    ? (overs[lastOverNumber] as unknown[]).length
+    : 0;
 
-  return currentBalls === 6
-    ? currentOverNumber + 1
-    : currentOverNumber + currentBalls / 10;
+  if (balls >= 6) {
+    return lastOverNumber + 1;
+  }
+
+  return Number(`${lastOverNumber}.${balls}`);
 }
 
 function StatPill({
@@ -157,12 +173,18 @@ const currentInnings =
   console.log("🔥 UI SCORE:", currentInnings?.runs);
   const displayOver = formatOverDisplay(currentInnings?.overs);
 
-  const lastOverKey = currentInnings?.overs
-    ? Object.keys(currentInnings.overs).at(-1)
-    : undefined;
+  const overKeys = currentInnings?.overs
+  ? Object.keys(currentInnings.overs)
+      .map(Number)
+      .filter((n) => Number.isFinite(n))
+      .sort((a, b) => a - b)
+  : [];
 
-  const lastOverBalls = lastOverKey
-    ? currentInnings?.overs?.[Number(lastOverKey)] ?? []
+const lastOverKey = overKeys.length ? overKeys[overKeys.length - 1] : undefined;
+
+const lastOverBalls =
+  lastOverKey !== undefined && Array.isArray(currentInnings?.overs?.[lastOverKey])
+    ? currentInnings.overs[lastOverKey].slice(0, 6)
     : [];
 
   return (
@@ -216,29 +238,44 @@ const currentInnings =
       </GlassPanel>
 
       <GlassPanel>
-        <SectionHeader eyebrow="Quick access" title="Control Deck" />
-        <div className="space-y-3">
-          <LiveMatchStatus />
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <p className="text-sm font-medium text-white">Fixture</p>
-            <p className="mt-1 text-sm text-white/70">
-              {match.team1} vs {match.team2}
-            </p>
-          </div>
-        </div>
-      </GlassPanel>
+  <SectionHeader eyebrow="Quick access" title="Control Deck" />
+
+  <div className="space-y-3">
+    <LiveMatchStatus />
+
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      
+      {/* TITLE */}
+      <p className="text-sm font-medium text-white">
+        Fixture
+      </p>
+
+      {/* TEAMS */}
+      <p className="mt-1 text-sm text-white/70">
+  {match.team1} <span className="text-white/40">vs</span> {match.team2}
+</p>
+
+      {/* OVER INFO (FIXED) */}
+      <div className="text-sm text-gray-400 mt-1">
+        Over: {match.currentOver ?? 0}.{match.currentBall ?? 0}
+      </div>
+
+    </div>
+  </div>
+</GlassPanel>
     </div>
   );
 }
 
 const TabsArea = React.memo(function TabsArea({
   match,
-  onTeamsSelect,
 }: {
   match: Match;
-  onTeamsSelect: (teams: { teamA: Team; teamB: Team }) => void;
 }) {
   const { state: currentEngineState } = useMatch();
+  const [, forceMatchStoreUpdate] = useState(0);
+  const [matchMeta, setLocalMatchMeta] = useState(() => getMatchMeta(match.slug));
+  const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<MainTab>("overview");
   const [analysisFilter, setAnalysisFilter] = useState<AnalysisFilter>("ALL");
@@ -248,16 +285,48 @@ const TabsArea = React.memo(function TabsArea({
     decision: "BAT" | "BOWL";
   } | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
+const [isPaused, setIsPaused] = useState(false);
+const [isStarting, setIsStarting] = useState(false);
+const [startError, setStartError] = useState<string | null>(null);
+const [speed, setSpeed] = useState(1500);
 
-  const [selectedTeams, setSelectedTeams] = useState<{
-  teamA: Team;
-  teamB: Team;
-} | null>(null);
+const hasLiveMatchState =
+  !!currentEngineState &&
+  !!currentEngineState.innings?.length &&
+  !currentEngineState.matchEnded &&
+  (
+    (currentEngineState.innings[0]?.runs ?? 0) > 0 ||
+    (currentEngineState.innings[0]?.wickets ?? 0) > 0 ||
+    Object.keys(currentEngineState.innings[0]?.overs ?? {}).length > 0 ||
+    currentEngineState.currentInningsIndex > 0
+  );
 
+const effectiveIsRunning = isStarting || isRunning || hasLiveMatchState;
+const [selectedInnings, setSelectedInnings] = useState<number | null>(null);
 
-  const [speed, setSpeed] = useState(1500);
-  const [selectedInnings, setSelectedInnings] = useState<number | null>(null);
+useEffect(() => {
+  if (hasLiveMatchState) {
+    setIsRunning(true);
+    setStartError(null);
+  }
+
+  if (currentEngineState?.matchEnded) {
+    setIsRunning(false);
+    setIsPaused(false);
+    setIsStarting(false);
+  }
+}, [hasLiveMatchState, currentEngineState?.matchEnded]);
+
+useEffect(() => {
+  const unsubscribe = subscribeStore(() => {
+    forceMatchStoreUpdate((prev) => prev + 1);
+    setLocalMatchMeta(getMatchMeta(match.slug));
+  });
+
+  setLocalMatchMeta(getMatchMeta(match.slug));
+
+  return unsubscribe;
+}, [match.slug]);
 
   if (!match) {
     return (
@@ -596,14 +665,16 @@ const TabsArea = React.memo(function TabsArea({
 
         {activeTab === "scorecard" && (
           <div className="space-y-6">
-            {currentEngineState?.matchEnded &&
-            currentEngineState.winner &&
-            currentEngineState.winBy ? (
-              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-center text-white">
-                🏆 {currentEngineState.winner} won by {currentEngineState.winBy}
-              </div>
-            ) : null}
-
+            {currentEngineState?.matchEnded && currentEngineState?.winner ? (
+  <div className="mt-3 border-t border-white/10 pt-3 text-center text-sm text-white">
+    {currentEngineState.winner} won{" "}
+    {typeof currentEngineState.winBy === "string"
+      ? `by ${currentEngineState.winBy}`
+      : typeof currentEngineState.winBy === "number"
+        ? `by ${currentEngineState.winBy}`
+        : ""}
+  </div>
+) : null}
             <GlassPanel>
               <SectionHeader eyebrow="Innings" title="Scorecard" />
               <div className="mb-5 flex flex-wrap gap-2">
@@ -819,9 +890,12 @@ const TabsArea = React.memo(function TabsArea({
         {activeTab === "admin" && process.env.NODE_ENV === "development" && (
           <div className="space-y-6">
             <GlassPanel>
-              <SectionHeader eyebrow="Scoring" title="Admin Scoring Panel" />
-              <AdminScoringPanel matchId={match.slug} />
-            </GlassPanel>
+  <SectionHeader eyebrow="Scoring" title="Admin Scoring Panel" />
+  
+  <div className="relative z-[9999] pointer-events-auto">
+    <AdminScoringPanel matchId={match.slug} />
+  </div>
+</GlassPanel>
 
             <div className="grid gap-6 xl:grid-cols-2">
               <GlassPanel>
@@ -838,25 +912,34 @@ const TabsArea = React.memo(function TabsArea({
             <GlassPanel>
               <SectionHeader eyebrow="Simulation" title="Simulation Controls" />
               <div className="flex flex-col gap-4">
-                {selectedTeams ? (
-                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-300">
-                    Teams Selected: {selectedTeams.teamA.name} vs {selectedTeams.teamB.name}
-                  </div>
-                ) : (
-                  <TeamSelector
+                {!matchMeta ? (
+  <TeamSelector
   onStart={(teamA, teamB) => {
-    const teams = { teamA, teamB };
-    setSelectedTeams(teams);
-    onTeamsSelect(teams); // 🔥 THIS LINE FIXES EVERYTHING
+    console.log("Teams selected", teamA.name, teamB.name);
+
+    const nextMeta = {
+      matchId: match.slug,
+      teamA: { id: teamA.short, name: teamA.name },
+      teamB: { id: teamB.short, name: teamB.name },
+    };
+
+    setMatchMeta(nextMeta);
+    setLocalMatchMeta(nextMeta);
+    setStartError(null);
   }}
 />
-                )}
+) : (
+  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-300">
+    Teams Selected: {matchMeta.teamA.name} vs {matchMeta.teamB.name}
+  </div>
+)}
 
-                {selectedTeams && !tossData && (
+                {matchMeta && !tossData && (
                   <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
                     <TossPanel
-                      teamA={selectedTeams.teamA}
-                      teamB={selectedTeams.teamB}
+                      teamA={{ name: matchMeta?.teamA.name } as Team}
+                      teamB={{ name: matchMeta?.teamB.name } as Team}
+                      
                       onConfirm={(winner, decision) => {
                         setTossData({ winner, decision });
                       }}
@@ -865,95 +948,138 @@ const TabsArea = React.memo(function TabsArea({
                 )}
 
                 <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={ async () => {
-                      const id = match.slug;   // ✅ SINGLE SOURCE OF TRUTH
-                      if (!id || !selectedTeams) return;
+                 <button
+  type="button"
+  disabled={effectiveIsRunning}
+  onClick={async () => {
+    const id = match.slug;
 
-                      if (!isRunning) {
-                        if (!getMatchState(id)) {
-                          initMatch(id);
-                        }
+    if (!id) {
+      setStartError("Missing match id.");
+      return;
+    }
 
-                        if (!tossData) {
-                          alert("Please complete toss first");
-                          return;
-                        }
+    if (!matchMeta) {
+      setStartError("Please select teams first.");
+      return;
+    }
 
-                        const { teamA, teamB } = selectedTeams;
-                        const { winner, decision } = tossData;
+    if (!tossData) {
+      setStartError("Please complete toss first.");
+      return;
+    }
 
-                        let firstBattingTeam: Team;
-                        let firstBowlingTeam: Team;
+    if (effectiveIsRunning) {
+  return;
+}
 
-                        if (decision === "BAT") {
-                          firstBattingTeam = winner;
-                          firstBowlingTeam = winner.name === teamA.name ? teamB : teamA;
-                        } else {
-                          firstBowlingTeam = winner;
-                          firstBattingTeam = winner.name === teamA.name ? teamB : teamA;
-                        }
+    const latestMeta = getMatchMeta(id);
 
-                        const battingXI = getBattingOrder(firstBattingTeam.squad);
-                        const bowlingXI = getBowlingOrder(firstBowlingTeam.squad);
+if (!latestMeta?.teamA?.name || !latestMeta?.teamB?.name) {
+  setStartError("Please select teams first.");
+  return;
+}
 
-                        console.log("📤 Sending to API:", {
-  matchId: id,
-  teamA: selectedTeams.teamA,
-  teamB: selectedTeams.teamB,
-});
+const teamAName = latestMeta.teamA.name;
+const teamBName = latestMeta.teamB.name;
+    const { winner, decision } = tossData;
 
-                        // 🔥 Ensure SSE client is ready before simulation
-                         await fetch("/api/start-simulation", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
+    try {
+  setIsStarting(true);
+  setStartError(null);
+
+  if (!getMatchState(id)) initMatch(id);
+
+  const latestMeta = getMatchMeta(id);
+
+  if (!latestMeta?.teamA?.name || !latestMeta?.teamB?.name) {
+    setStartError("Please select teams first.");
+    return;
+  }
+
+  const teamAName = latestMeta.teamA.name;
+  const teamBName = latestMeta.teamB.name;
+  const { winner, decision } = tossData;
+
+  console.log("START PAYLOAD", {
     matchId: id,
-    teamAName: selectedTeams.teamA?.name,
-    teamBName: selectedTeams.teamB?.name,
-  }),
-});
+    teamAName,
+    teamBName,
+    tossWinner: winner.name,
+    tossDecision: decision,
+  });
 
-                        setIsRunning(true);
-                        setIsPaused(false);
-                      } else {
-                        stopSimulation();
-                        setIsRunning(false);
-                        setIsPaused(false);
-                      }
-                    }}
-                    className={cls(
-                      "rounded-xl px-4 py-2.5 font-medium text-white transition",
-                      isRunning
-                        ? "bg-rose-600 hover:bg-rose-500"
-                        : "bg-emerald-600 hover:bg-emerald-500"
-                    )}
-                  >
-                    {isRunning ? "⏹ Stop Simulation" : "▶ Start Simulation"}
+  const response = await fetch("/api/start-simulation", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      matchId: id,
+      teamAName,
+      teamBName,
+      tossWinner: winner.name,
+      tossDecision: decision,
+    }),
+  });
 
-                    
+  const data = await response.json().catch(() => null);
 
+  if (!response.ok) {
+    throw new Error(data?.error ?? "Failed to start simulation.");
+  }
 
-                  </button>
+  setIsRunning(true);
+  setIsPaused(false);
+} catch (error) {
+  console.error("Start simulation failed", error);
+  setIsRunning(false);
+  setIsPaused(false);
+  setStartError(error instanceof Error ? error.message : "Failed to start simulation.");
+} finally {
+  setIsStarting(false);
+}
+  }}
+  className={cls(
+    "rounded-xl px-4 py-2.5 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60",
+    effectiveIsRunning
+  ? "bg-white/10"
+  : "bg-emerald-600 hover:bg-emerald-500"
+  )}
+>
+  {isStarting ? "Starting..." : effectiveIsRunning ? "Running" : "▶ Start Simulation"}
+</button>
 
-                  {isRunning ? (
-                    <button
-                      onClick={() => {
-                        if (!isPaused) {
-                          pauseSimulation();
-                          setIsPaused(true);
-                        } else {
-                          resumeSimulation();
-                          setIsPaused(false);
-                        }
-                      }}
-                      className="rounded-xl bg-amber-500 px-4 py-2.5 font-medium text-slate-950 transition hover:bg-amber-400"
-                    >
-                      {isPaused ? "▶ Resume" : "⏸ Pause"}
-                    </button>
-                  ) : null}
+{startError ? (
+  <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+    {startError}
+  </div>
+) : null}
+                  {effectiveIsRunning ? (
+  <button
+    type="button"
+    onClick={() => {
+      try {
+        if (isPaused) {
+          resumeSimulation(match.slug);
+          setIsPaused(false);
+        } else {
+          pauseSimulation(match.slug);
+          setIsPaused(true);
+        }
+        setStartError(null);
+      } catch (error) {
+        console.error("Pause/resume failed:", error);
+        setStartError(
+          error instanceof Error ? error.message : "Failed to update simulation state."
+        );
+      }
+    }}
+    className="rounded-xl bg-amber-500 px-4 py-2.5 font-medium text-slate-950 transition hover:bg-amber-400"
+  >
+    {isPaused ? "Resume" : "Pause"}
+  </button>
+) : null}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -965,11 +1091,13 @@ const TabsArea = React.memo(function TabsArea({
                     <button
                       key={option.label}
                       onClick={async () => {
+
+                     
   setSpeed(option.value);
 
   console.log("⚡ Changing speed:", option.value);
 
-  setSimulationSpeed(option.value);
+  setSimulationSpeed(option.value, match.slug);
 }}
                       className={cls(
                         "rounded-xl border px-3 py-2 text-sm transition",
@@ -1000,10 +1128,7 @@ export default function MatchDetailPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const [selectedTeams, setSelectedTeams] = useState<{
-    teamA: Team;
-    teamB: Team;
-  } | null>(null);
+  
   const resolvedParams = use(params);
 
   const matchId: string | undefined = useMemo(() => {
@@ -1069,25 +1194,16 @@ export default function MatchDetailPage({
 
   useEffect(() => {
   if (!matchId) return;
+
   const id = matchId;
 
   const unsubscribe = subscribeMatch(id, () => {
-  const state = getMatchState(id);
-
-  console.log("🔥 UI UPDATE", state?.innings?.[0]?.runs);
-
-  setEngineState(prev => {
-    // 🔥 prevent unnecessary updates
-    if (JSON.stringify(prev) === JSON.stringify(state)) {
-      return prev;
-    }
-    return structuredClone(state);
+    const state = getMatchState(id);
+    console.log("UI UPDATE", state?.innings?.[0]?.runs);
+    setEngineState(state ? structuredClone(state) : state);
   });
-});
 
-  return () => {
-    unsubscribe();
-  };
+  return unsubscribe;
 }, [matchId]);
 
   const currentEngineState = useMemo(() => {
@@ -1161,29 +1277,42 @@ if (bowlerName) {
 let lastOverBalls: string[] = [];
 
 if (currentInnings?.overs) {
-  const overKeys = Object.keys(currentInnings.overs);
+  const overKeys = Object.keys(currentInnings.overs)
+    .map(Number)
+    .filter((n) => Number.isFinite(n))
+    .sort((a, b) => a - b);
+
   const lastKey = overKeys[overKeys.length - 1];
 
-  const balls = currentInnings.overs[Number(lastKey)] || [];
+  const rawBalls = Array.isArray(currentInnings.overs[lastKey])
+    ? currentInnings.overs[lastKey]
+    : [];
 
-  lastOverBalls = balls.map((b: { runs?: number; outcome?: string }) => {
-    if (b.outcome === "WICKET") return "W";
-    if (b.runs === 6) return "6";
-    if (b.runs === 4) return "4";
-    return String(b.runs ?? 0);
-  });
+  const visibleBalls = rawBalls.slice(0, 6);
+
+  lastOverBalls = visibleBalls.map(
+    (b: { runs?: number; outcome?: string; extraType?: string; label?: string }) => {
+      if (b.outcome === "WICKET") return "W";
+      if (b.extraType === "WD") return "Wd";
+      if (b.extraType === "NB") return "Nb";
+      if (b.runs === 6) return "6";
+      if (b.runs === 4) return "4";
+      return String(b.runs ?? b.label ?? 0);
+    }
+  );
 }
   const innings1 = currentEngineState?.innings?.[0];
   const innings2 = currentEngineState?.innings?.[1];
+  const matchMeta = getMatchMeta(matchId);
 
  const team1Name =
-  selectedTeams?.teamA?.name ??
+  matchMeta?.teamA?.name ??
   currentEngineState?.teamA?.name ??
   match?.team1 ??
   "Team A";
 
 const team2Name =
-  selectedTeams?.teamB?.name ??
+  matchMeta?.teamB?.name ??
   currentEngineState?.teamB?.name ??
   match?.team2 ??
   "Team B";
@@ -1291,16 +1420,8 @@ const providerValue = useMemo(() => {
 
                         {/* MAIN SCORE */}
                       <MatchHeader
-  team1={
-    currentEngineState?.teamA?.name ||
-    selectedTeams?.teamA?.name ||
-    "Team A"
-  }
-  team2={
-    currentEngineState?.teamB?.name ||
-    selectedTeams?.teamB?.name ||
-    "Team B"
-  }
+  team1={matchMeta?.teamA?.name ?? currentEngineState?.teamA?.name ?? match?.team1 ?? "Team A"}
+  team2={matchMeta?.teamB?.name ?? currentEngineState?.teamB?.name ?? match?.team2 ?? "Team B"}
   runs={runs}
   wickets={wickets}
   over={Math.floor(displayOver)}
@@ -1416,13 +1537,23 @@ const providerValue = useMemo(() => {
 
                         </div>
                         {/* ✅ ADD THIS HERE (EXACT PLACE) */}
-{currentEngineState.matchEnded &&
-  currentEngineState.winner && (
-    <div className="mt-3 text-center text-sm text-white border-t border-white/10 pt-3">
-      🏆 {currentEngineState.winner} won by {currentEngineState.winBy}
-{ballsLeft > 0 ? ` (${ballsLeft} balls left)` : ""}
-    </div>
-)}
+{currentEngineState.matchEnded && currentEngineState.winner ? (
+  <div className="mt-3 border-t border-white/10 pt-3 text-center text-sm text-white">
+    {`${currentEngineState.winner} won by ${
+      typeof currentEngineState.winBy === "string"
+        ? currentEngineState.winBy
+        : typeof currentEngineState.winBy === "number"
+        ? innings2 && (innings2.runs ?? 0) >= target
+          ? `${currentEngineState.winBy} wickets`
+          : `${currentEngineState.winBy} runs`
+        : "result unavailable"
+    }${
+      innings2 && (innings2.runs ?? 0) >= target && ballsLeft > 0
+        ? ` with ${ballsLeft} balls left`
+        : ""
+    }`}
+  </div>
+) : null}
 
                       </div>
                     </GlassPanel>
@@ -1433,9 +1564,8 @@ const providerValue = useMemo(() => {
 
               {match ? (
   <TabsArea
-    match={match}
-    onTeamsSelect={(teams) => setSelectedTeams(teams)}
-  />
+  match={match}
+/>
 ) : null}
 
             </div>

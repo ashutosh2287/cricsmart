@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { getMatchMeta } from "@/store/matchStore";
 import { startReplay } from "@/services/replay/replayEngine";
 import { loadHistoricalMatch } from "@/services/replay/loadHistoricalMatch";
 
@@ -8,29 +10,116 @@ type Props = {
 };
 
 export default function MatchControlPanel({ matchId }: Props) {
+  const [isStarting, setIsStarting] = useState(false);
+  const [isReplaying, setIsReplaying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function startHistoricalReplay() {
-
-    const events = await loadHistoricalMatch(matchId);
-
-    if (!events.length) {
-      console.warn("No historical events found for replay");
+  async function startMatch() {
+    if (!matchId) {
+      setError("Missing matchId");
       return;
     }
 
-    startReplay(matchId, events);
+    if (isStarting) return;
+
+    const matchMeta = getMatchMeta(matchId);
+
+    if (!matchMeta) {
+      setError("Match meta not found. Please reselect teams before starting.");
+      console.error("[MatchControlPanel] Missing matchMeta for match:", matchId);
+      return;
+    }
+
+    try {
+      setIsStarting(true);
+      setError(null);
+
+      console.log("[MatchControlPanel] Start Match clicked", {
+        matchId,
+        matchMeta,
+      });
+
+      const response = await fetch("/api/start-simulation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          matchId,
+          matchMeta,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to start simulation");
+      }
+
+      console.log("[MatchControlPanel] Simulation start success", data);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to start simulation";
+      console.error("[MatchControlPanel] Simulation start failed:", err);
+      setError(message);
+    } finally {
+      setIsStarting(false);
+    }
+  }
+
+  async function startHistoricalReplay() {
+    if (!matchId || isReplaying) return;
+
+    try {
+      setIsReplaying(true);
+      setError(null);
+
+      const events = await loadHistoricalMatch(matchId);
+
+      if (!events.length) {
+        console.warn("No historical events found for replay");
+        setError("No historical events found for replay.");
+        return;
+      }
+
+      startReplay(matchId, events);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to start replay";
+      console.error("[MatchControlPanel] Replay failed:", err);
+      setError(message);
+    } finally {
+      setIsReplaying(false);
+    }
   }
 
   return (
-    <div className="flex gap-3">
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={startMatch}
+          disabled={isStarting}
+          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-md text-sm"
+        >
+          {isStarting ? "Starting..." : "▶ Start Match"}
+        </button>
 
-      <button
-        onClick={startHistoricalReplay}
-        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-sm"
-      >
-        ▶ Replay Match
-      </button>
+        <button
+          type="button"
+          onClick={startHistoricalReplay}
+          disabled={isReplaying}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-md text-sm"
+        >
+          {isReplaying ? "Loading Replay..." : "▶ Replay Match"}
+        </button>
+      </div>
 
+      {error ? (
+        <div className="text-sm text-red-400">
+          {error}
+        </div>
+      ) : null}
     </div>
   );
 }

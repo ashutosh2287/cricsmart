@@ -4,51 +4,72 @@ let socket: EventSource | null = null;
 let activeMatchId: string | null = null;
 
 export function connectRealtime(matchId: string) {
-  // ✅ Prevent duplicate same match
-  if (socket && activeMatchId === matchId) {
-    console.log("⚠️ Already connected to this match");
+  if (!matchId) {
+    console.error("❌ Cannot connect realtime without matchId");
     return;
   }
 
-  // ❌ Close previous connection if switching match
-  if (socket) {
+  if (socket && activeMatchId === matchId) {
+    if (socket.readyState === EventSource.OPEN || socket.readyState === EventSource.CONNECTING) {
+      console.log("⚠️ Already connected or connecting to this match:", matchId);
+      return;
+    }
+  }
+
+  if (socket && activeMatchId !== matchId) {
     socket.close();
+    socket = null;
     console.log("🔌 Previous connection closed");
   }
 
   activeMatchId = matchId;
 
   console.log("🔌 Connecting to realtime:", matchId);
-  console.log("🆔 CONNECTING TO:", matchId);
 
-  socket = new EventSource(`/api/realtime/${matchId}`);
+  const nextSocket = new EventSource(`/api/realtime/${matchId}`);
+  socket = nextSocket;
 
-  socket.onmessage = (event) => {
+  nextSocket.onopen = () => {
+    console.log("✅ Realtime connected:", matchId);
+  };
+
+  nextSocket.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
-
-      console.log("📥 EVENT RECEIVED:", data.type); // 🔥 DEBUG
-
+      console.log("📥 EVENT RECEIVED:", data?.type, "for", matchId);
       routeRealtimeEvent(data);
     } catch (err) {
       console.error("❌ Failed to parse SSE event", err);
     }
   };
 
-  socket.onerror = (err) => {
-    console.error("❌ SSE connection error", err);
-  };
+  nextSocket.onerror = (err) => {
+    console.error("❌ SSE connection error", err, {
+      matchId,
+      readyState: nextSocket.readyState,
+    });
 
-  socket.onopen = () => {
-    console.log("✅ Realtime connected");
+    if (nextSocket.readyState === EventSource.CLOSED) {
+      console.warn("🔌 SSE closed for match:", matchId);
+      if (socket === nextSocket) {
+        socket = null;
+      }
+      if (activeMatchId === matchId) {
+        activeMatchId = null;
+      }
+    }
   };
 }
 
-export function disconnectRealtime() {
-  if (socket) {
-    socket.close();
-    socket = null;
-    activeMatchId = null;
-    console.log("🔌 Realtime disconnected");
+export function disconnectRealtime(matchId?: string) {
+  if (!socket) return;
+
+  if (matchId && activeMatchId !== matchId) {
+    return;
   }
+
+  socket.close();
+  socket = null;
+  activeMatchId = null;
+  console.log("🔌 Realtime disconnected");
 }

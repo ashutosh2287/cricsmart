@@ -135,6 +135,9 @@ export default function MatchCard({ slug }: Props) {
 
       <h2 className="font-semibold text-lg flex items-center gap-2">
         {match.team1} vs {match.team2}
+        <div className="text-sm text-gray-400">
+  Over: {match.currentOver ?? 0}.{match.currentBall ?? 0}
+</div>
 
         {match.status === "Live" && (
           <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"/>

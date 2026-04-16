@@ -1,93 +1,181 @@
-import { startSimulation } from "@/services/simulation/matchSimulator";
+import {
+  startSimulation,
+  isSimulationRunning,
+} from "@/services/simulation/matchSimulator";
 import type { SimulationState } from "@/services/simulation/simulationState";
 import { teams } from "@/data/teams";
-import type { Player as TeamPlayer } from "@/data/teams";
-import { initMatch } from "@/services/matchEngine";
+import { initMatch, getMatchState } from "@/services/matchEngine";
+
 export const runtime = "nodejs";
 
+const startLocks = new Set<string>();
+
+type StartSimulationBody = {
+  matchId?: string;
+  teamAName?: string;
+  teamBName?: string;
+  tossWinner?: string;
+  tossDecision?: "BAT" | "BOWL";
+};
 
 export async function POST(req: Request) {
+  let lockedMatchId: string | undefined;
+
   try {
-    const { matchId, teamAName, teamBName } = await req.json();
-    console.log("🆔 API MATCH ID:", matchId);
-    console.log("🔥 Teams received:", teamAName, "vs", teamBName);
+    const body = (await req.json()) as StartSimulationBody;
 
-    console.log("🚀 Starting simulation on server:", matchId);
-    console.log("🔥 FINAL TEAMS:", teamAName, "vs", teamBName);
+    const matchId = body?.matchId?.trim();
+    const teamAName = body?.teamAName?.trim();
+    const teamBName = body?.teamBName?.trim();
+    const tossWinner = body?.tossWinner?.trim();
+    const tossDecision = body?.tossDecision;
 
-    
+    if (!matchId) {
+      return Response.json(
+        { success: false, error: "matchId is required" },
+        { status: 400 }
+      );
+    }
 
-    // 🔥 USE squad INSTEAD OF players
-   
-const teamA = teams.find(t => t.name === teamAName);
-const teamB = teams.find(t => t.name === teamBName);
+    if (!teamAName || !teamBName) {
+      return Response.json(
+        { success: false, error: "teamAName and teamBName are required" },
+        { status: 400 }
+      );
+    }
 
-if (!teamA || !teamB) {
-  console.error("❌ Invalid teams received");
-  return Response.json({ success: false }, { status: 400 });
-}
-const batting = mapToSimulationPlayers(teamA.squad);
-const bowling = mapToSimulationPlayers(teamB.squad);
+    if (!tossWinner || !tossDecision) {
+      return Response.json(
+        { success: false, error: "tossWinner and tossDecision are required" },
+        { status: 400 }
+      );
+    }
 
-const state: SimulationState = {
-  over: 0,
-  ball: 0,
+    if (startLocks.has(matchId)) {
+      return Response.json(
+        {
+          success: true,
+          alreadyRunning: true,
+          matchId,
+        },
+        { status: 200 }
+      );
+    }
 
-  totalRuns: 0,
-  wickets: 0,
+    if (isSimulationRunning(matchId)) {
+      return Response.json(
+        {
+          success: true,
+          alreadyRunning: true,
+          matchId,
+        },
+        { status: 200 }
+      );
+    }
 
-  striker: batting[0],
-  nonStriker: batting[1],
-  bowler: bowling[0],
+    startLocks.add(matchId);
+    lockedMatchId = matchId;
 
-  battingOrder: batting,
-  nextBatsmanIndex: 2,
+    let existingState = getMatchState(matchId);
+    if (!existingState) {
+      initMatch(matchId);
+      existingState = getMatchState(matchId);
+    }
 
-  bowlingOrder: bowling,
-  currentBowlerIndex: 0,
+    if (!existingState) {
+      return Response.json(
+        { success: false, error: "Failed to initialize match state" },
+        { status: 500 }
+      );
+    }
 
+    const teamA = teams.find((team) => team.name === teamAName);
+    const teamB = teams.find((team) => team.name === teamBName);
+
+    if (!teamA || !teamB) {
+      return Response.json(
+        {
+          success: false,
+          error: `Invalid teams provided: ${teamAName} vs ${teamBName}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const normalizedTossWinner =
+      tossWinner === teamA.name
+        ? teamA.name
+        : tossWinner === teamB.name
+          ? teamB.name
+          : undefined;
+
+    if (!normalizedTossWinner) {
+      return Response.json(
+        {
+          success: false,
+          error: `Invalid tossWinner: ${tossWinner}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const initialState: SimulationState = {
   teamA,
   teamB,
-
-  tossWinner: teamA.name,
-  decision: "BAT",
-
+  tossWinner: normalizedTossWinner,
+  decision: tossDecision,
+  battingTeam: teamA,
+  bowlingTeam: teamB,
+  battingOrder: [],
+  bowlingOrder: [],
+  striker: null as never,
+  nonStriker: null as never,
+  bowler: null as never,
+  nextBatsmanIndex: 0,
+  currentBowlerIndex: 0,
+  bowlingPlan: [],
+  over: 0,
+  ball: 0,
+  totalRuns: 0,
+  wickets: 0,
   currentInningsIndex: 0,
-
+  target: 0,
+  phase: "POWERPLAY",
   matchEnded: false,
   winner: null,
   winBy: null,
-
-  battingTeam: teamA,
-  bowlingTeam: teamB,
-
-  phase: "POWERPLAY",
 };
-    // ✅ INIT ENGINE FIRST (CRITICAL FIX)
-initMatch(matchId);
 
-// 🔥 START SIMULATION
-startSimulation(state, matchId, 1500);
-    
+    const result = startSimulation(initialState, matchId, 1500);
 
-    return Response.json({ success: true });
+    if (!result?.started && !result?.alreadyRunning) {
+      return Response.json(
+        {
+          success: false,
+          error: result?.reason ?? "Failed to start simulation",
+        },
+        { status: 500 }
+      );
+    }
+
+    return Response.json({
+      success: true,
+      alreadyRunning: !!result?.alreadyRunning,
+      matchId,
+    });
   } catch (err) {
     console.error("❌ Failed to start simulation", err);
-    return Response.json({ success: false }, { status: 500 });
+
+    return Response.json(
+      {
+        success: false,
+        error: err instanceof Error ? err.message : "Failed to start simulation",
+      },
+      { status: 500 }
+    );
+  } finally {
+    if (lockedMatchId) {
+      startLocks.delete(lockedMatchId);
+    }
   }
-}
-function mapToSimulationPlayers(players: TeamPlayer[]) {
-  return players.map((p) => ({
-    name: p.name,
-    role: p.role,
-    stats: {
-      runs: 0,
-      balls: 0,
-      fours: 0,
-      sixes: 0,
-      wickets: 0,
-      runsConceded: 0,
-      ballsBowled: 0,
-    },
-  }));
 }

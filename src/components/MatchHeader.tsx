@@ -1,4 +1,7 @@
+
 "use client";
+
+import { getMatchMeta } from "@/store/matchStore";
 
 type Batsman = {
   name: string;
@@ -42,6 +45,13 @@ export default function MatchHeader({
   lastOverBalls = [],
 }: Props) {
 
+  // ✅ GET FROM STORE
+  const matchMeta = getMatchMeta();
+
+  // ✅ FINAL TEAM RESOLUTION
+  const finalTeam1 = matchMeta?.teamA.name ?? team1 ?? "Team A";
+  const finalTeam2 = matchMeta?.teamB.name ?? team2 ?? "Team B";
+
   const scoreKey = `${runs}-${wickets}`;
 
   return (
@@ -72,7 +82,7 @@ export default function MatchHeader({
               {/* TEAMS */}
               <div>
                 <h1 className="text-xl font-semibold text-white md:text-2xl">
-                  {team1} <span className="text-white/40">vs</span> {team2}
+                  {finalTeam1} <span className="text-white/40">vs</span> {finalTeam2}
                 </h1>
 
                 <p className="text-xs text-white/50 mt-1">

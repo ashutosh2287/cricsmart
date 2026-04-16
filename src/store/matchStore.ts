@@ -5,6 +5,10 @@ import {
   nextMatchState,
 } from "@/services/matchStateMachine";
 
+// ✅ Match Metadata (Persistent)
+
+
+
 type Listener = () => void;
 
 type BallEventLike = {
@@ -15,6 +19,37 @@ type BallEventLike = {
 type MatchWithRuntimeState = Match & {
   currentOver?: number;
   currentBall?: number;
+  currentRuns?: number;
+  currentWickets?: number;
+};
+type MatchMeta = {
+  matchId: string;
+  teamA: { id: string; name: string };
+  teamB: { id: string; name: string };
+};
+
+const matchMetaStore: Record<string, MatchMeta> = {};
+
+export const setMatchMeta = (meta: MatchMeta) => {
+  matchMetaStore[meta.matchId] = meta;
+
+  // ✅ ALSO UPDATE MATCH LIST
+  matches = matches.map((m) =>
+    m.id === meta.matchId
+      ? {
+          ...m,
+          team1: meta.teamA.name,
+          team2: meta.teamB.name,
+        }
+      : m
+  );
+
+  notify();
+};
+
+export const getMatchMeta = (matchId?: string) => {
+  if (!matchId) return null;
+  return matchMetaStore[matchId] ?? null;
 };
 
 let matches: MatchWithRuntimeState[] = [];
@@ -31,8 +66,7 @@ export const selectMatchById = (matchId: string): MatchWithRuntimeState | null =
 export const setMatches = (data: Match[]): void => {
   matches = data.map((match) => ({
     ...match,
-    currentOver: undefined,
-    currentBall: undefined,
+    
   }));
   notify();
 };
@@ -44,17 +78,26 @@ export const dispatchMatchEvent = (event: MatchEvent): void => {
 
 export const dispatchBallEvent = (
   matchId: string,
-  ballEvent: BallEventLike
+  ballEvent: BallEventLike & {
+    runs?: number;
+    isWicket?: boolean;
+  }
 ): void => {
-  matches = matches.map((match) =>
-    match.id === matchId
-      ? {
-          ...match,
-          currentOver: ballEvent.over ?? match.currentOver,
-          currentBall: ballEvent.ballInOver ?? match.currentBall,
-        }
-      : match
-  );
+  matches = matches.map((match) => {
+    if (match.id !== matchId) return match;
+
+    const newRuns = (match.currentRuns ?? 0) + (ballEvent.runs ?? 0);
+    const newWickets =
+      (match.currentWickets ?? 0) + (ballEvent.isWicket ? 1 : 0);
+
+    return {
+      ...match,
+      currentOver: ballEvent.over ?? match.currentOver,
+      currentBall: ballEvent.ballInOver ?? match.currentBall,
+      currentRuns: newRuns,
+      currentWickets: newWickets,
+    };
+  });
 
   notify();
 };
@@ -74,3 +117,4 @@ export const subscribeStore = (listener: Listener): (() => void) => {
 const notify = (): void => {
   listeners.forEach((listener) => listener());
 };
+

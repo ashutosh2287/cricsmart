@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { routeAdminCommand } from "@/services/adminCommandRouter";
-import { startSimulation, stopSimulation } from "@/services/simulation/matchSimulator";
+import { getMatchMeta } from "@/store/matchStore";
+
 type Props = {
   matchId: string;
 };
@@ -12,23 +13,36 @@ export default function AdminScoringPanel({ matchId }: Props) {
   const [striker, setStriker] = useState("");
   const [nonStriker, setNonStriker] = useState("");
   const [bowler, setBowler] = useState("");
+  const matchMeta = getMatchMeta(matchId);
+
+  if (!matchMeta) {
+  return (
+    <div className="text-yellow-400">
+      ⚠️ Please select teams first in Overview tab
+    </div>
+  );
+}
 
   function run(runs: number) {
-    routeAdminCommand({
-      type: "SCORE_RUN",
-      slug: matchId,
-      runs,
-      batsman: striker,
-      nonStriker,
-      bowler
-    });
-  }
+  routeAdminCommand({
+    type: "SCORE_RUN",
+    slug: matchId,
+    runs,
+    batsman: striker,
+    nonStriker,
+    bowler,
+
+    // ✅ ADD THESE
+    battingTeam: matchMeta?.teamA.name || "",
+bowlingTeam: matchMeta?.teamB.name || "",
+  });
+}
 
   
 
   return (
 
-    <div className="bg-gray-900 text-white p-6 rounded-lg space-y-6">
+    <div className="bg-gray-900 text-white p-6 rounded-lg space-y-6 relative z-[9999] pointer-events-auto">
 
       <h3 className="text-xl font-bold">Admin Scoring Panel</h3>
 
@@ -85,51 +99,23 @@ export default function AdminScoringPanel({ matchId }: Props) {
           </button>
         ))}
 
-        <button
-  onClick={() =>
-    startSimulation(
-      {
-        over: 0,
-        ball: 0,
-        totalRuns: 0,
-        wickets: 0,
-
-        striker: striker || "Rohit Sharma",
-        nonStriker: nonStriker || "Virat Kohli",
-        bowler: bowler || "Pat Cummins",
-
-      battingOrder: [
-        "Rohit Sharma",
-        "Virat Kohli",
-        "Shubman Gill",
-        "KL Rahul",
-        "Hardik Pandya",
-        "Ravindra Jadeja",
-    ],
-
-    nextBatsmanIndex: 2, // next after openers
-
-    // ✅ ADD THIS
-    bowlingOrder: [
-      "Pat Cummins",
-      "Mitchell Starc",
-      "Josh Hazlewood",
-    ],
-    currentBowlerIndex: 0,
-
-        phase: "POWERPLAY",
-      },
-      matchId
-    )
-  }
+  <button
+  type="button"
+  onMouseDown={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("🖱️ MOUSEDOWN WORKS");
+  }}
+  onClick={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    alert("✅ CLICK WORKING");
+    console.log("🔥 CLICK WORKING");
+  }}
+  className="w-full bg-red-600 py-4 rounded"
 >
-  ▶ Start Simulation
+  TEST START MATCH
 </button>
-
-<button onClick={stopSimulation}>
-  ⏸ Stop
-</button>
-
         <button
           onClick={() =>
             routeAdminCommand({
@@ -137,7 +123,9 @@ export default function AdminScoringPanel({ matchId }: Props) {
               slug: matchId,
               batsman: striker,
               nonStriker,
-              bowler
+              bowler,
+              battingTeam: matchMeta?.teamA.name || "",
+              bowlingTeam: matchMeta?.teamB.name || "",
             })
           }
           className="bg-green-600 px-4 py-2 rounded"
@@ -152,7 +140,9 @@ export default function AdminScoringPanel({ matchId }: Props) {
               slug: matchId,
               batsman: striker,
               nonStriker,
-              bowler
+              bowler,
+              battingTeam: matchMeta?.teamA.name || "",
+              bowlingTeam: matchMeta?.teamB.name || "",
             })
           }
           className="bg-purple-600 px-4 py-2 rounded"
@@ -173,7 +163,9 @@ export default function AdminScoringPanel({ matchId }: Props) {
               slug: matchId,
               batsman: striker,
               nonStriker,
-              bowler
+              bowler,
+              battingTeam: matchMeta?.teamA.name || "",
+              bowlingTeam: matchMeta?.teamB.name || "",
             })
           }
           className="bg-red-600 px-4 py-2 rounded"
@@ -188,7 +180,9 @@ export default function AdminScoringPanel({ matchId }: Props) {
               slug: matchId,
               batsman: striker,
               nonStriker,
-              bowler
+              bowler,
+              battingTeam: matchMeta?.teamA.name || "",
+              bowlingTeam: matchMeta?.teamB.name || "",
             })
           }
           className="bg-yellow-600 px-4 py-2 rounded"
@@ -203,7 +197,9 @@ export default function AdminScoringPanel({ matchId }: Props) {
               slug: matchId,
               batsman: striker,
               nonStriker,
-              bowler
+              bowler,
+              battingTeam: matchMeta?.teamA.name || "",
+              bowlingTeam: matchMeta?.teamB.name || "",
             })
           }
           className="bg-orange-600 px-4 py-2 rounded"

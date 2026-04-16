@@ -13,13 +13,53 @@ import { getPlayingXI } from "../teams/playingXI";
 import { getPlayerName } from "@/utils/playerUtils";
 import { broadcast } from "@/services/realtime/realtimeController";
 
+type RuntimeSimulationControl = {
+  timeoutRef: NodeJS.Timeout | null;
+  isRunning: boolean;
+  isPaused: boolean;
+  currentSpeed: number;
+  currentDelay: number;
+  runBallRef: (() => void) | null;
+};
 
-let timeoutRef: NodeJS.Timeout | null = null;
-let isRunning = false;
-let isPaused = false;
-let currentSpeed = 1500;
-let currentDelay = 1500;
-let runBallRef: (() => void) | null = null;
+const simulationRegistry = new Map<string, RuntimeSimulationControl>();
+
+function getSimulationControl(matchId: string): RuntimeSimulationControl {
+  const existing = simulationRegistry.get(matchId);
+  if (existing) return existing;
+
+  const created: RuntimeSimulationControl = {
+    timeoutRef: null,
+    isRunning: false,
+    isPaused: false,
+    currentSpeed: 1500,
+    currentDelay: 1500,
+    runBallRef: null,
+  };
+
+  simulationRegistry.set(matchId, created);
+  return created;
+}
+
+export function isSimulationRunning(matchId?: string) {
+  if (!matchId) return false;
+  const control = simulationRegistry.get(matchId);
+  return !!control?.isRunning;
+}
+
+export function getSimulationRuntime(matchId?: string) {
+  if (!matchId) return null;
+  const control = simulationRegistry.get(matchId);
+  if (!control) return null;
+
+  return {
+    isRunning: control.isRunning,
+    isPaused: control.isPaused,
+    currentSpeed: control.currentSpeed,
+    currentDelay: control.currentDelay,
+  };
+}
+
 export type SimulationEvent =
   | {
       type: "BALL_EVENT";
@@ -42,15 +82,13 @@ export type SimulationEvent =
       };
     };
 
-
-
 function createBowlingPlan(bowlingOrder: string[]) {
   const plan: string[] = [];
   const maxOvers = 20;
   const maxPerBowler = 4;
 
   const counts: Record<string, number> = {};
-  bowlingOrder.forEach(b => (counts[b] = 0));
+  bowlingOrder.forEach((b) => (counts[b] = 0));
 
   let index = 0;
 
@@ -186,6 +224,9 @@ function initializeFirstInnings(state: SimulationState) {
   state.totalRuns = 0;
   state.wickets = 0;
   state.currentInningsIndex = 0;
+  state.matchEnded = false;
+  state.winner = null;
+  state.winBy = null;
 
   assertStateTeamsAndPlayers(state);
 }
@@ -273,7 +314,7 @@ function handleWicket(state: SimulationState) {
 
 type MatchStateType = NonNullable<ReturnType<typeof getMatchState>>;
 
-function finishMatch(state: SimulationState, matchState: MatchStateType) {
+function finishMatch(state: SimulationState, matchState: MatchStateType, matchId: string) {
   if (state.matchEnded) return;
 
   state.matchEnded = true;
@@ -292,6 +333,15 @@ function finishMatch(state: SimulationState, matchState: MatchStateType) {
 
   state.winner = result.winner;
   state.winBy = result.winBy;
+
+  broadcast(matchId, {
+    type: "MATCH_ENDED",
+    matchId,
+    data: {
+      winner: state.winner ?? undefined,
+      winBy: state.winBy ?? undefined,
+    },
+  });
 }
 
 export function startSimulation(
@@ -299,29 +349,53 @@ export function startSimulation(
   matchId: string,
   speed: number = 1500
 ) {
- let matchState = getMatchState(matchId);
+  const control = getSimulationControl(matchId);
 
-if (!matchState) {
-  console.log("⚠️ matchState missing → initializing...");
-  initMatch(matchId);
-  matchState = getMatchState(matchId);
+  if (control.isRunning || control.runBallRef) {
+  console.log(`⚠️ Simulation already starting/running for match ${matchId}`);
+  return {
+    started: false,
+    alreadyRunning: true,
+    reason: "ALREADY_RUNNING" as const,
+  };
 }
 
-if (!matchState) {
-  console.error("❌ matchState STILL missing after init");
-  return;
-}
+  let matchState = getMatchState(matchId);
 
-  if (isRunning) {
-    console.log("⚠️ Simulation already running");
-    return;
+  if (!matchState) {
+    console.log("⚠️ matchState missing → initializing...");
+    initMatch(matchId);
+    matchState = getMatchState(matchId);
   }
 
-  stopSimulation();
+  if (!matchState) {
+    console.error("❌ matchState STILL missing after init");
+    return {
+      started: false,
+      alreadyRunning: false,
+      reason: "MATCH_STATE_MISSING" as const,
+    };
+  }
 
-  isRunning = true;
-  isPaused = false;
-  currentSpeed = speed;
+  if (control.isRunning || control.runBallRef || control.timeoutRef) {
+  console.log(`⚠️ Simulation already starting/running for match ${matchId}`);
+  return {
+    started: false,
+    alreadyRunning: true,
+    reason: "ALREADY_RUNNING" as const,
+  };
+}
+
+if (control.timeoutRef) {
+  clearTimeout(control.timeoutRef);
+  control.timeoutRef = null;
+}
+
+control.isRunning = true;
+control.isPaused = false;
+control.currentSpeed = speed;
+control.currentDelay = speed;
+control.runBallRef = null;
 
   matchState.teamA = state.teamA;
   matchState.teamB = state.teamB;
@@ -331,72 +405,88 @@ if (!matchState) {
   initializeFirstInnings(state);
 
   const runBall = () => {
-  runBallRef = runBall;
-    console.log("🏏 RUNNING BALL LOOP");
-    if (!isRunning) return;
+  control.runBallRef = runBall;
 
-    if (isPaused) {
-      timeoutRef = setTimeout(runBall, 500);
+  console.log("🏏 RUNNING BALL LOOP", matchId);
+
+  if (!control.isRunning) return;
+
+  if (control.timeoutRef) {
+    clearTimeout(control.timeoutRef);
+    control.timeoutRef = null;
+  }
+
+  if (control.isPaused) {
+    control.timeoutRef = setTimeout(runBall, 500);
+    return;
+  }
+    const engineState = getMatchState(matchId);
+    if (!engineState) {
+      stopSimulation(matchId);
       return;
     }
 
-    const engineState = getMatchState(matchId);
-    if (!engineState) return;
-
     if (engineState.currentInningsIndex >= 2) {
-      stopSimulation();
+      stopSimulation(matchId);
       return;
     }
 
     const engineInningsIndex = engineState.currentInningsIndex;
     const engineInnings = engineState.innings[engineInningsIndex];
-    if (!engineInnings) return;
+    if (!engineInnings) {
+      stopSimulation(matchId);
+      return;
+    }
 
     if (engineInnings.completed) {
-      if (engineInningsIndex === 0) {
-        state.target = engineState.innings[0]?.runs + 1;
+  if (engineInningsIndex === 0) {
+    state.target = engineState.innings[0]?.runs + 1;
 
-        if (state.currentInningsIndex !== 1) {
-          startSecondInnings(state);
-        }
+    if (state.currentInningsIndex !== 1) {
+      startSecondInnings(state);
+    }
 
-        timeoutRef = setTimeout(runBall, currentSpeed);
-        return;
-      }
+    if (control.timeoutRef) {
+      clearTimeout(control.timeoutRef);
+      control.timeoutRef = null;
+    }
+
+    control.timeoutRef = setTimeout(runBall, control.currentDelay);
+    return;
+  }
 
       if (engineInningsIndex === 1) {
-        finishMatch(state, engineState);
-        stopSimulation();
+        finishMatch(state, engineState, matchId);
+        stopSimulation(matchId);
         return;
       }
     }
 
     syncSimFromEngine(state, matchId);
-    
 
     const latestEngineState = getMatchState(matchId);
-const latestEngineInnings =
-  latestEngineState?.innings[latestEngineState.currentInningsIndex];
+    const latestEngineInnings =
+      latestEngineState?.innings[latestEngineState.currentInningsIndex];
 
-if (
-  latestEngineState &&
-  latestEngineInnings &&
-  latestEngineState.currentInningsIndex === 1 &&
-  latestEngineInnings.battingTeam &&
-  latestEngineInnings.bowlingTeam &&
-  (
-    state.battingTeam.name !== latestEngineInnings.battingTeam ||
-    state.bowlingTeam.name !== latestEngineInnings.bowlingTeam
-  )
-) {
-  startSecondInnings(state);
-}
+    if (
+      latestEngineState &&
+      latestEngineInnings &&
+      latestEngineState.currentInningsIndex === 1 &&
+      latestEngineInnings.battingTeam &&
+      latestEngineInnings.bowlingTeam &&
+      (
+        state.battingTeam.name !== latestEngineInnings.battingTeam ||
+        state.bowlingTeam.name !== latestEngineInnings.bowlingTeam
+      )
+    ) {
+      startSecondInnings(state);
+    }
 
     const over = Math.floor(engineInnings.over);
     if (state.bowlingPlan && state.bowlingPlan[over]) {
       const bowlerName = state.bowlingPlan[over];
       const bowlerObj = state.bowlingOrder.find(
-        b => getPlayerName(b) === bowlerName
+        (b) => getPlayerName(b) === bowlerName
       );
       if (bowlerObj) {
         state.bowler = bowlerObj;
@@ -433,7 +523,15 @@ if (
     };
 
     const event: BallEvent = generateBallEvent(syncedState);
-    if (!event) return;
+if (!event) {
+  if (control.timeoutRef) {
+    clearTimeout(control.timeoutRef);
+    control.timeoutRef = null;
+  }
+
+  control.timeoutRef = setTimeout(runBall, control.currentDelay);
+  return;
+}
 
     const engineEvent = toEngineEvent({
       ...event,
@@ -456,32 +554,35 @@ if (
     console.log("ENGINE EVENT", engineEvent);
 
     dispatchBallEvent(matchId, engineEvent);
+
     console.log("🚀 EMITTING EVENT", {
-  matchId,
-  type: "BALL_EVENT",
-  over: engineInnings.over,
-  ball: engineInnings.ball
-});
-  if (!matchId) {
-  console.error("❌ Missing matchId in broadcast");
-} else {
-  broadcast(matchId, {
-  type: "BALL_EVENT",
-  matchId,
-  data: {
-    engineEvent,
-    simulationState: syncedState,
-    teams: {
-      teamA: state.teamA,
-      teamB: state.teamB
+      matchId,
+      type: "BALL_EVENT",
+      over: engineInnings.over,
+      ball: engineInnings.ball
+    });
+
+    if (!matchId) {
+      console.error("❌ Missing matchId in broadcast");
+    } else {
+      broadcast(matchId, {
+        type: "BALL_EVENT",
+        matchId,
+        data: {
+          engineEvent,
+          simulationState: syncedState,
+          teams: {
+            teamA: state.teamA,
+            teamB: state.teamB
+          }
+        }
+      });
     }
-  }
-});
-}
 
     const latestAfterDispatch = getMatchState(matchId);
     if (!latestAfterDispatch) {
       console.groupEnd();
+      stopSimulation(matchId);
       return;
     }
 
@@ -529,62 +630,105 @@ if (
     console.groupEnd();
 
     if (state.target && state.totalRuns >= state.target) {
-      finishMatch(state, latestAfterDispatch);
-
-      if (matchId) {
-  broadcast(matchId, {
-    type: "MATCH_ENDED",
-    matchId,
-    data: {
-      winner: state.winner ?? undefined,
-      winBy: state.winBy ?? undefined
-    }
-  });
-}
-      stopSimulation();
+      finishMatch(state, latestAfterDispatch, matchId);
+      stopSimulation(matchId);
       return;
     }
 
-   const jitter = currentDelay * 0.1;
-const delay = currentDelay + (Math.random() * jitter - jitter / 2);
+    const jitter = control.currentDelay * 0.1;
+const delay = control.currentDelay + (Math.random() * jitter - jitter / 2);
 
-timeoutRef = setTimeout(runBall, delay);
+if (control.timeoutRef) {
+  clearTimeout(control.timeoutRef);
+  control.timeoutRef = null;
+}
 
+control.timeoutRef = setTimeout(runBall, delay);
   };
 
-  runBall();
+  control.runBallRef = runBall;
+runBall();
+
+  return {
+    started: true,
+    alreadyRunning: false,
+    reason: null,
+  };
 }
 
-export function stopSimulation() {
-  if (timeoutRef) {
-    clearTimeout(timeoutRef);
-    timeoutRef = null;
+export function stopSimulation(matchId?: string) {
+  if (!matchId) {
+    for (const [id, control] of simulationRegistry.entries()) {
+      if (control.timeoutRef) {
+        clearTimeout(control.timeoutRef);
+        control.timeoutRef = null;
+      }
+      control.isRunning = false;
+      control.isPaused = false;
+      control.runBallRef = null;
+      simulationRegistry.delete(id);
+    }
+    return;
   }
 
-  isRunning = false;
-  isPaused = false;
-}
+  const control = simulationRegistry.get(matchId);
+  if (!control) return;
 
-export function pauseSimulation() {
-  if (!isRunning) return;
-  isPaused = true;
-}
-
-export function resumeSimulation() {
-  if (!isRunning) return;
-  isPaused = false;
-}
-
-export function setSimulationSpeed(speed: number) {
-  console.log("⚡ Updating simulation speed to:", speed);
-
-  currentDelay = speed;
-
-  if (timeoutRef) {
-    clearTimeout(timeoutRef);
+  if (control.timeoutRef) {
+    clearTimeout(control.timeoutRef);
+    control.timeoutRef = null;
   }
 
-  if (runBallRef) {
-    timeoutRef = setTimeout(runBallRef, currentDelay);
+  control.isRunning = false;
+  control.isPaused = false;
+  control.runBallRef = null;
+  simulationRegistry.delete(matchId);
+}
+
+export function pauseSimulation(matchId?: string) {
+  if (!matchId) return;
+  const control = simulationRegistry.get(matchId);
+  if (!control || !control.isRunning) return;
+  control.isPaused = true;
+}
+
+export function resumeSimulation(matchId?: string) {
+  if (!matchId) return;
+  const control = simulationRegistry.get(matchId);
+  if (!control || !control.isRunning) return;
+  control.isPaused = false;
+}
+
+export function setSimulationSpeed(speed: number, matchId?: string) {
+  console.log("⚡ Updating simulation speed to:", speed, "for", matchId ?? "all");
+
+  if (!matchId) {
+    for (const control of simulationRegistry.values()) {
+      control.currentSpeed = speed;
+      control.currentDelay = speed;
+
+      if (control.timeoutRef) {
+        clearTimeout(control.timeoutRef);
+      }
+
+      if (control.runBallRef) {
+        control.timeoutRef = setTimeout(control.runBallRef, control.currentDelay);
+      }
+    }
+    return;
+  }
+
+  const control = simulationRegistry.get(matchId);
+  if (!control) return;
+
+  control.currentSpeed = speed;
+  control.currentDelay = speed;
+
+  if (control.timeoutRef) {
+    clearTimeout(control.timeoutRef);
+  }
+
+  if (control.runBallRef) {
+    control.timeoutRef = setTimeout(control.runBallRef, control.currentDelay);
   }
 }

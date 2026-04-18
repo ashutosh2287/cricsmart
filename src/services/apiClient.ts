@@ -8,8 +8,14 @@ export async function fetchMatches() {
     throw new Error("Failed to fetch matches");
   }
 
-  const data = await res.json();
+  let data;
 
+try {
+  data = await res.json();
+} catch {
+  console.warn("Empty response from runtime API");
+  return;
+}
   // IMPORTANT: return array only
   return data.matches;
 }

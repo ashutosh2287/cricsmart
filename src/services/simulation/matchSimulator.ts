@@ -12,18 +12,34 @@ import { getMatchResult } from "../match/resultEngine";
 import { getPlayingXI } from "../teams/playingXI";
 import { getPlayerName } from "@/utils/playerUtils";
 import { broadcast } from "@/services/realtime/realtimeController";
+import { emitEvent } from "@/services/realtime/eventBus";
+
+
 
 type RuntimeSimulationControl = {
   timeoutRef: NodeJS.Timeout | null;
   isRunning: boolean;
   isPaused: boolean;
-  currentSpeed: number;
-  currentDelay: number;
+  speed: number; // ms per ball
   runBallRef: (() => void) | null;
 };
 
 const simulationRegistry = new Map<string, RuntimeSimulationControl>();
 
+function emitSimulationState(
+  matchId: string,
+  control: RuntimeSimulationControl
+) {
+  emitEvent({
+    type: "SIMULATION_STATE_UPDATE",
+    matchId,
+    data: {
+      isRunning: control.isRunning,
+      isPaused: control.isPaused,
+      speed: control.speed,
+    },
+  });
+}
 function getSimulationControl(matchId: string): RuntimeSimulationControl {
   const existing = simulationRegistry.get(matchId);
   if (existing) return existing;
@@ -32,8 +48,7 @@ function getSimulationControl(matchId: string): RuntimeSimulationControl {
     timeoutRef: null,
     isRunning: false,
     isPaused: false,
-    currentSpeed: 1500,
-    currentDelay: 1500,
+    speed: 1500,
     runBallRef: null,
   };
 
@@ -55,10 +70,10 @@ export function getSimulationRuntime(matchId?: string) {
   return {
     isRunning: control.isRunning,
     isPaused: control.isPaused,
-    currentSpeed: control.currentSpeed,
-    currentDelay: control.currentDelay,
+    speed: control.speed,
   };
 }
+
 
 export type SimulationEvent =
   | {
@@ -79,6 +94,15 @@ export type SimulationEvent =
       data: {
         winner?: string;
         winBy?: string;
+      };
+    }
+  | {
+      type: "SIMULATION_STATE_UPDATE"; // 🔥 NEW
+      matchId: string;
+      data: {
+        isRunning: boolean;
+        isPaused: boolean;
+        speed: number;
       };
     };
 
@@ -392,9 +416,9 @@ if (control.timeoutRef) {
 }
 
 control.isRunning = true;
+emitSimulationState(matchId, control);
 control.isPaused = false;
-control.currentSpeed = speed;
-control.currentDelay = speed;
+control.speed = speed;
 control.runBallRef = null;
 
   matchState.teamA = state.teamA;
@@ -417,9 +441,8 @@ control.runBallRef = null;
   }
 
   if (control.isPaused) {
-    control.timeoutRef = setTimeout(runBall, 500);
-    return;
-  }
+  return; // ⛔ stop loop here (no polling)
+}
     const engineState = getMatchState(matchId);
     if (!engineState) {
       stopSimulation(matchId);
@@ -451,7 +474,7 @@ control.runBallRef = null;
       control.timeoutRef = null;
     }
 
-    control.timeoutRef = setTimeout(runBall, control.currentDelay);
+    control.timeoutRef = setTimeout(runBall, control.speed);
     return;
   }
 
@@ -529,7 +552,7 @@ if (!event) {
     control.timeoutRef = null;
   }
 
-  control.timeoutRef = setTimeout(runBall, control.currentDelay);
+  control.timeoutRef = setTimeout(runBall, control.speed);
   return;
 }
 
@@ -635,8 +658,8 @@ if (!event) {
       return;
     }
 
-    const jitter = control.currentDelay * 0.1;
-const delay = control.currentDelay + (Math.random() * jitter - jitter / 2);
+    const jitter = control.speed * 0.1;
+    const delay = control.speed + (Math.random() * jitter - jitter / 2);
 
 if (control.timeoutRef) {
   clearTimeout(control.timeoutRef);
@@ -671,6 +694,8 @@ export function stopSimulation(matchId?: string) {
     return;
   }
 
+  
+
   const control = simulationRegistry.get(matchId);
   if (!control) return;
 
@@ -680,6 +705,7 @@ export function stopSimulation(matchId?: string) {
   }
 
   control.isRunning = false;
+  emitSimulationState(matchId, control);
   control.isPaused = false;
   control.runBallRef = null;
   simulationRegistry.delete(matchId);
@@ -690,30 +716,47 @@ export function pauseSimulation(matchId?: string) {
   const control = simulationRegistry.get(matchId);
   if (!control || !control.isRunning) return;
   control.isPaused = true;
+  emitSimulationState(matchId, control);
 }
 
 export function resumeSimulation(matchId?: string) {
   if (!matchId) return;
+
   const control = simulationRegistry.get(matchId);
   if (!control || !control.isRunning) return;
+
+  if (!control.isPaused) return;
+
   control.isPaused = false;
+  emitSimulationState(matchId, control);
+
+  // 🔥 Restart loop immediately
+  if (control.runBallRef) {
+    control.runBallRef();
+  }
 }
 
 export function setSimulationSpeed(speed: number, matchId?: string) {
-  console.log("⚡ Updating simulation speed to:", speed, "for", matchId ?? "all");
+  console.log("⚡ Speed updated:", speed, "match:", matchId ?? "all");
+
+  const apply = (control: RuntimeSimulationControl) => {
+    control.speed = speed;
+    emitSimulationState(matchId!, control);
+
+    // 🔥 Restart timer safely
+    if (control.timeoutRef) {
+      clearTimeout(control.timeoutRef);
+      control.timeoutRef = null;
+    }
+
+    if (!control.isPaused && control.runBallRef) {
+      control.timeoutRef = setTimeout(control.runBallRef, control.speed);
+    }
+  };
 
   if (!matchId) {
     for (const control of simulationRegistry.values()) {
-      control.currentSpeed = speed;
-      control.currentDelay = speed;
-
-      if (control.timeoutRef) {
-        clearTimeout(control.timeoutRef);
-      }
-
-      if (control.runBallRef) {
-        control.timeoutRef = setTimeout(control.runBallRef, control.currentDelay);
-      }
+      apply(control);
     }
     return;
   }
@@ -721,14 +764,5 @@ export function setSimulationSpeed(speed: number, matchId?: string) {
   const control = simulationRegistry.get(matchId);
   if (!control) return;
 
-  control.currentSpeed = speed;
-  control.currentDelay = speed;
-
-  if (control.timeoutRef) {
-    clearTimeout(control.timeoutRef);
-  }
-
-  if (control.runBallRef) {
-    control.timeoutRef = setTimeout(control.runBallRef, control.currentDelay);
-  }
+  apply(control);
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getMatchBySlug } from "@/services/matchService";
+import { runtime } from "../../start-simulation/route";
 
 export async function GET(
   request: Request,
@@ -17,7 +18,11 @@ export async function GET(
   }
 
   return NextResponse.json({
-    success: true,
-    match
-  });
+  success: true,
+  runtime: runtime ?? {
+    isRunning: false,
+    isPaused: false,
+    speed: 1500,
+  },
+});
 }

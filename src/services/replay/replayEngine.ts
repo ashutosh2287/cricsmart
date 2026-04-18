@@ -1,29 +1,59 @@
 import { BallEvent } from "@/types/ballEvent";
-import { dispatchBallEvent } from "../matchEngine";
-import { resetMatchState } from "../matchEngine"; // ADD THIS
+import {
+  dispatchBallEvent,
+  resetMatchState,
+  getMatchState,
+} from "../matchEngine";
 import { clearTimeline } from "../broadcastTimeline";
+import { toEngineEvent } from "@/services/simulation/simulationEventAdapter";
+import { getNearestSnapshot } from "./snapshotStore";
 
-
+// 🔥 Active replay timers
 const activeReplays: Record<string, NodeJS.Timeout> = {};
-let replaySpeed = 800; // ms per ball (adjustable)
 
+// 🔥 Replay runtime state
+const replayState: Record<
+  string,
+  {
+    index: number;
+    isPlaying: boolean;
+    isReplayMode: boolean;
+  }
+> = {};
 
-export function startReplay(
-  matchId: string,
-  events: BallEvent[]
-) {
+let replaySpeed = 800;
 
-if (activeReplays[matchId]) {
-  stopReplay(matchId); // stop previous replay
+// 🧠 Helper → safely get teams from engine
+function getCurrentTeams(matchId: string) {
+  const matchState = getMatchState(matchId);
+
+  const innings =
+    matchState?.innings?.[matchState.currentInningsIndex];
+
+  return {
+    battingTeam: innings?.battingTeam ?? "Unknown",
+    bowlingTeam: innings?.bowlingTeam ?? "Unknown",
+  };
 }
-  // 🔥 FIX 1: RESET STATE
+
+// 🚀 START REPLAY
+export function startReplay(matchId: string, events: BallEvent[]) {
+  if (activeReplays[matchId]) {
+    stopReplay(matchId);
+  }
+
   resetMatchState(matchId);
   clearTimeline(matchId);
 
   let index = 0;
 
-  activeReplays[matchId] = setInterval(() => {
+  replayState[matchId] = {
+    index: 0,
+    isPlaying: true,
+    isReplayMode: true,
+  };
 
+  activeReplays[matchId] = setInterval(() => {
     if (index >= events.length) {
       stopReplay(matchId);
       return;
@@ -31,35 +61,46 @@ if (activeReplays[matchId]) {
 
     const event = events[index];
 
-    dispatchBallEvent(matchId, {
-  id: event.id, // 🔥 PRESERVE ID
-  type: event.type,
-  runs: event.runs,
-  batsman: event.batsman ?? "Unknown",
-  nonStriker: event.nonStriker ?? "Unknown",
-  bowler: event.bowler ?? "Unknown"
-});
+    const { battingTeam, bowlingTeam } = getCurrentTeams(matchId);
+
+    const engineEvent = toEngineEvent({
+      ...event,
+      batsman: event.batsman ?? "Unknown",
+      nonStriker: event.nonStriker ?? "Unknown",
+      bowler: event.bowler ?? "Unknown",
+      battingTeam,
+      bowlingTeam,
+    });
+
+    dispatchBallEvent(matchId, engineEvent);
+
+    replayState[matchId].index = index;
 
     index++;
-
   }, replaySpeed);
 }
 
+// 🛑 STOP REPLAY
 export function stopReplay(matchId: string) {
-
   const replay = activeReplays[matchId];
 
-  if (!replay) return;
+  if (replay) {
+    clearInterval(replay);
+    delete activeReplays[matchId];
+  }
 
-  clearInterval(replay);
-
-  delete activeReplays[matchId];
+  if (replayState[matchId]) {
+    replayState[matchId].isPlaying = false;
+    replayState[matchId].isReplayMode = false;
+  }
 }
 
+// ⚡ SET SPEED
 export function setReplaySpeed(speed: number) {
   replaySpeed = speed;
 }
 
+// 🎯 SNAPSHOT SEEK (INSTANT JUMP)
 export function replayTillIndex(
   matchId: string,
   events: BallEvent[],
@@ -70,16 +111,52 @@ export function replayTillIndex(
   resetMatchState(matchId);
   clearTimeline(matchId);
 
-  for (let i = 0; i <= targetIndex; i++) {
+  // 🔥 STEP 1: restore snapshot
+  const snapshot = getNearestSnapshot(matchId, targetIndex);
+
+  let startIndex = 0;
+
+  if (snapshot) {
+    const matchState = getMatchState(matchId);
+
+    if (matchState) {
+      Object.assign(matchState, snapshot.state);
+      startIndex = snapshot.index;
+    }
+  }
+
+  // 🔥 STEP 2: replay remaining events
+  for (let i = startIndex; i <= targetIndex; i++) {
     const event = events[i];
 
-    dispatchBallEvent(matchId, {
-      id: event.id,
-      type: event.type,
-      runs: event.runs,
+    const { battingTeam, bowlingTeam } = getCurrentTeams(matchId);
+
+    const engineEvent = toEngineEvent({
+      ...event,
       batsman: event.batsman ?? "Unknown",
       nonStriker: event.nonStriker ?? "Unknown",
-      bowler: event.bowler ?? "Unknown"
+      bowler: event.bowler ?? "Unknown",
+      battingTeam,
+      bowlingTeam,
     });
+
+    dispatchBallEvent(matchId, engineEvent);
   }
+
+  replayState[matchId] = {
+    index: targetIndex,
+    isPlaying: false,
+    isReplayMode: true,
+  };
+}
+
+// 📊 GET REPLAY STATE
+export function getReplayState(matchId: string) {
+  return (
+    replayState[matchId] || {
+      index: 0,
+      isPlaying: false,
+      isReplayMode: false,
+    }
+  );
 }

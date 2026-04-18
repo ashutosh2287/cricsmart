@@ -13,8 +13,11 @@ import { getPlayingXI } from "../teams/playingXI";
 import { getPlayerName } from "@/utils/playerUtils";
 import { broadcast } from "@/services/realtime/realtimeController";
 import { emitEvent } from "@/services/realtime/eventBus";
-
-
+import { saveSimulation } from "@/services/storage/simulationStorage";
+import { loadSimulation } from "@/services/storage/simulationStorage";
+import { getReplayState } from "@/services/replay/replayEngine";
+import { saveSnapshot } from "@/services/replay/snapshotStore";
+import { clearSnapshots } from "@/services/replay/snapshotStore";
 
 type RuntimeSimulationControl = {
   timeoutRef: NodeJS.Timeout | null;
@@ -374,6 +377,17 @@ export function startSimulation(
   speed: number = 1500
 ) {
   const control = getSimulationControl(matchId);
+  const saved = loadSimulation(matchId);
+
+if (saved) {
+  console.log("♻️ Resuming saved match:", matchId);
+
+  Object.assign(state, saved.state);
+
+  control.isRunning = saved.control.isRunning;
+  control.isPaused = saved.control.isPaused;
+  control.speed = saved.control.speed;
+}
 
   if (control.isRunning || control.runBallRef) {
   console.log(`⚠️ Simulation already starting/running for match ${matchId}`);
@@ -429,8 +443,14 @@ control.runBallRef = null;
   initializeFirstInnings(state);
 
   const runBall = () => {
-  control.runBallRef = runBall;
 
+    
+  control.runBallRef = runBall;
+const replay = getReplayState(matchId);
+
+if (replay?.isReplayMode) {
+  return;
+}
   console.log("🏏 RUNNING BALL LOOP", matchId);
 
   if (!control.isRunning) return;
@@ -622,6 +642,14 @@ if (!event) {
       nonStriker: getPlayerName(syncedState.nonStriker),
       bowler: getPlayerName(state.bowler)
     });
+    saveSimulation(matchId, state, {
+  isRunning: control.isRunning,
+  isPaused: control.isPaused,
+  speed: control.speed,
+});
+saveSnapshot(matchId, engineInnings.over * 6 + engineInnings.ball, state);
+
+clearSnapshots(matchId);
 
     const latestInnings =
       latestAfterDispatch.innings[latestAfterDispatch.currentInningsIndex];

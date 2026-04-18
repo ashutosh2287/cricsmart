@@ -312,6 +312,21 @@ useEffect(() => {
   }
 }, [hasLiveMatchState, currentEngineState?.matchEnded]);
 
+useEffect(() => {
+  if (!match.slug) return;
+
+  fetch("/api/simulation/runtime", {
+    method: "POST",
+    body: JSON.stringify({ matchId: match.slug }),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data?.runtime?.isRunning) {
+        setIsRunning(true);
+      }
+    });
+}, [match.slug]);
+
 // 🔥 ADD THIS EXACTLY HERE
 useEffect(() => {
   if (!match.slug) return;

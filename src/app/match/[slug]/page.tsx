@@ -30,7 +30,7 @@ import {
 import { MatchProvider, useMatch } from "@/context/MatchContext";
 import { Team } from "@/data/teams";
 import { Match } from "@/types/match";
-
+import { motion } from "framer-motion";
 import {
   getMatchState,
   hydrateMatchState,
@@ -61,6 +61,7 @@ import WagonWheel from "@/components/analytics/WagonWheel";
 import { setMatchMeta } from "@/store/matchStore";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
+import AnimatedScore from "@/components/ui/AnimatedScore";
 
 type AnalysisFilter = "ALL" | "BATTING" | "BOWLING" | "PRESSURE";
 type MainTab = "overview" | "live" | "analysis" | "timeline" | "scorecard" | "admin";
@@ -206,7 +207,11 @@ const lastOverBalls =
           />
           <StatPill
             label="Score"
-            value={`${currentInnings?.runs ?? 0}/${currentInnings?.wickets ?? 0}`}
+            value={
+  <AnimatedScore
+    value={`${currentInnings?.runs ?? 0}/${currentInnings?.wickets ?? 0}`}
+  />
+}
             tone="neutral"
           />
           <StatPill label="Over" value={displayOver} tone="neutral" />
@@ -776,7 +781,11 @@ useEffect(() => {
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <StatPill label="Batting team" value={inningsData?.battingTeam ?? "Unknown"} tone="green" />
                 <StatPill label="Bowling team" value={inningsData?.bowlingTeam ?? "Unknown"} tone="blue" />
-                <StatPill label="Score" value={`${inningsData?.runs ?? 0}/${inningsData?.wickets ?? 0}`} tone="neutral" />
+                <StatPill label="Score" value={
+  <AnimatedScore
+    value={`${inningsData?.runs ?? 0}/${inningsData?.wickets ?? 0}`}
+  />
+} tone="neutral" />
                 <StatPill label="Over" value={displayOver} tone="amber" />
               </div>
             </GlassPanel>
@@ -1590,25 +1599,16 @@ const providerValue = useMemo(() => {
                           </div>
 
                           <div className="flex flex-wrap gap-2">
-                           <Link
-  href="/"
-  className="inline-flex items-center gap-2 rounded-xl border border-white/10 
-             bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80
-             backdrop-blur-md transition-all duration-200
-             hover:bg-white/[0.08] hover:text-white hover:scale-[1.03]
-             active:scale-95"
->
-  <svg
-    className="w-4 h-4"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    viewBox="0 0 24 24"
+                           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+  <Link
+    href="/"
+    className="inline-flex items-center gap-2 rounded-xl border border-white/10 
+               bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80
+               backdrop-blur-md transition"
   >
-    <path d="M15 18l-6-6 6-6" />
-  </svg>
-  Back to Home
-</Link>
+    ← Back to Home
+  </Link>
+</motion.div>
                           </div>
                         </div>
 

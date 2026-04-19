@@ -6,6 +6,7 @@ import "./globals.css";
 import StadiumOverlay from "@/components/StadiumOverlay";
 import BroadcastDirectorOverlay from "@/components/BroadcastDirectorOverlay";
 import EngineBootstrap from "@/components/EngineBootstrap";
+import PageTransition from "@/components/ui/PageTransition";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,22 +28,15 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-
   return (
-
     <html lang="en">
-
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased text-white bg-black`}
       >
-        <div className="stadium-light" />
-
         {/* ========================================
-           GLOBAL CINEMATIC BACKGROUND
+           CINEMATIC BACKGROUND
         ======================================== */}
-
-        <div className="fixed inset-0 -z-10">
-
+        <div className="fixed inset-0 -z-10 overflow-hidden">
           <div className="absolute inset-0 bg-black" />
 
           {/* Blue glow */}
@@ -50,46 +44,35 @@ export default function RootLayout({
 
           {/* Purple glow */}
           <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[140px]" />
-
         </div>
 
         {/* ========================================
-           ENGINE BOOTSTRAP
+           ENGINE
         ======================================== */}
-
         <EngineBootstrap />
 
         {/* ========================================
-           CINEMATIC OVERLAYS
+           OVERLAYS
         ======================================== */}
-
         <StadiumOverlay />
         <BroadcastDirectorOverlay />
 
         {/* ========================================
-           NAVBAR
+           NAVBAR (UPGRADED)
         ======================================== */}
-
-        <Navbar />
+        <div className="sticky top-0 z-50 backdrop-blur-lg bg-black/40 border-b border-white/10">
+          <Navbar />
+        </div>
 
         {/* ========================================
-           MAIN CONTENT AREA
+           MAIN CONTENT (ANIMATED)
         ======================================== */}
-
         <main className="min-h-screen">
-
           <div className="max-w-7xl mx-auto px-6 py-8">
-
-            {children}
-
+            <PageTransition>{children}</PageTransition>
           </div>
-
         </main>
-
       </body>
-
     </html>
-
   );
-
 }

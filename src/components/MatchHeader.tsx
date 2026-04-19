@@ -2,6 +2,7 @@
 "use client";
 
 import { getMatchMeta } from "@/store/matchStore";
+import AnimatedScore from "./ui/AnimatedScore";
 
 type Batsman = {
   name: string;
@@ -125,7 +126,7 @@ export default function MatchHeader({
                 key={scoreKey}
                 className="text-3xl font-bold text-white transition duration-200 ease-out animate-[pulse_0.3s]"
               >
-                {runs}/{wickets}
+                <AnimatedScore value={`${runs}/${wickets}`} />
               </div>
 
               {/* OVERS */}
@@ -199,9 +200,9 @@ export default function MatchHeader({
             <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
               Score
             </p>
-            <p className="text-white mt-1">
-              {runs}/{wickets}
-            </p>
+            <div className="text-white mt-1">
+  <AnimatedScore value={`${runs}/${wickets}`} />
+</div>
           </div>
 
         </div>

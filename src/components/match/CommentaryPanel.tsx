@@ -5,6 +5,7 @@ import { subscribeCommentary, getCommentary } from "@/services/commentary/commen
 import { getTimeline } from "@/services/broadcastTimeline";
 import { scrubToPosition } from "@/services/replayController";
 import { translateCommentary } from "@/services/commentary/commentaryTranslator";
+import TypingText from "../ui/TypingText";
 
 type Commentary = {
   matchId: string;
@@ -83,6 +84,10 @@ export default function CommentaryPanel({ matchId }: { matchId: string }) {
     return acc;
   }, {} as Record<number, (Commentary & { index: number })[]>);
 
+  const latestEventId = messages.length
+  ? messages[messages.length - 1].eventId
+  : null;
+
   return (
     <div className="bg-gray-900 p-4 rounded-xl">
 
@@ -125,7 +130,7 @@ export default function CommentaryPanel({ matchId }: { matchId: string }) {
                 <div
                   key={`${msg.eventId}-${i}`}
                   onClick={() => handleJump(msg.eventId)}
-                  className="border-b border-gray-800 pb-2 cursor-pointer hover:bg-white/5 px-2 py-1 rounded transition animate-[fadeIn_0.3s_ease]"
+                  className="border-b border-gray-800 pb-2 cursor-pointer hover:bg-white/5 px-2 py-1 rounded transition animate-[fadeInUp_0.35s_ease]"
                 >
 
                   {/* HEADER */}
@@ -151,13 +156,17 @@ export default function CommentaryPanel({ matchId }: { matchId: string }) {
 
                   {/* TEXT */}
                   <div
-                    className={`text-sm mt-1 leading-relaxed
-                      ${isWicket ? "text-red-400" : ""}
-                      ${isBoundary ? "text-green-300" : "text-gray-200"}
-                    `}
-                  >
-                    {translateCommentary(msg.text, lang)}
-                  </div>
+  className={`text-sm mt-1 leading-relaxed
+    ${isWicket ? "text-red-400" : ""}
+    ${isBoundary ? "text-green-300" : "text-gray-200"}
+  `}
+>
+  {msg.eventId === latestEventId ? (
+    <TypingText text={translateCommentary(msg.text, lang)} />
+  ) : (
+    translateCommentary(msg.text, lang)
+  )}
+</div>
 
                 </div>
               );

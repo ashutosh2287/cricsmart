@@ -16,6 +16,7 @@ import {
 } from "@/services/animationBus";
 
 import { playAnimation } from "@/services/animationController";
+import AnimatedScore from "./ui/AnimatedScore";
 
 type Props = {
   match: {
@@ -141,7 +142,7 @@ export default function MatchCard({ match: initialMatch }: Props) {
             <span className="text-gray-400 text-sm">Score</span>
 
             <span ref={scoreRef} className="text-xl font-bold">
-              {runs}/{wickets}
+              <AnimatedScore value={`${runs}/${wickets}`} />
             </span>
 
             {delta && (

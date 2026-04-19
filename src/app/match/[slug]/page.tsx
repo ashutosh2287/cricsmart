@@ -1590,7 +1590,7 @@ const providerValue = useMemo(() => {
                           </div>
 
                           <div className="flex flex-wrap gap-2">
-                            <Link
+                           <Link
   href="/"
   className="inline-flex items-center gap-2 rounded-xl border border-white/10 
              bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80
@@ -1598,7 +1598,15 @@ const providerValue = useMemo(() => {
              hover:bg-white/[0.08] hover:text-white hover:scale-[1.03]
              active:scale-95"
 >
-  <span className="text-lg">←</span>
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+  >
+    <path d="M15 18l-6-6 6-6" />
+  </svg>
   Back to Home
 </Link>
                           </div>

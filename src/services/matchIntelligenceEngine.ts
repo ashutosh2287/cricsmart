@@ -22,7 +22,7 @@ import { runTacticalInsightEngine } from "./tactical/tacticalInsightEngine";
 
 import { runMatchPredictor } from "./prediction/matchPredictorEngine";
 
-import { generateReplaySequence } from "./replay/replayDirectorEngine";
+import { generateReplaySequence } from "./replayDirectorEngine";
 
 import { updatePlayerRegistry } from "./playerRegistryEngine";
 
@@ -58,7 +58,7 @@ Deterministic execution order
 ========================================
 */
 
-export function processMatchIntelligence(
+export async function processMatchIntelligence(
   input: IntelligenceInput
 ) {
 
@@ -192,7 +192,7 @@ generateMatchInsights(matchId);
   ========================================
   */
 
-  generateReplaySequence(matchId);
+  await generateReplaySequence(matchId)
 
   generateAIInsights(matchId);
 

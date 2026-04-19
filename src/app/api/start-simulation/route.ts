@@ -2,9 +2,17 @@ import {
   startSimulation,
   isSimulationRunning,
 } from "@/services/simulation/matchSimulator";
+
 import type { SimulationState } from "@/services/simulation/simulationState";
+
 import { teams } from "@/data/teams";
-import { initMatch, getMatchState } from "@/services/matchEngine";
+
+import {
+  getMatchState,
+  hydrateMatchState,
+} from "@/services/matchEngine";
+
+import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 
 export const runtime = "nodejs";
 
@@ -30,6 +38,7 @@ export async function POST(req: Request) {
     const tossWinner = body?.tossWinner?.trim();
     const tossDecision = body?.tossDecision;
 
+    // ✅ VALIDATION
     if (!matchId) {
       return Response.json(
         { success: false, error: "matchId is required" },
@@ -51,24 +60,10 @@ export async function POST(req: Request) {
       );
     }
 
-    if (startLocks.has(matchId)) {
+    // ✅ LOCK CHECK (avoid duplicate starts)
+    if (startLocks.has(matchId) || isSimulationRunning(matchId)) {
       return Response.json(
-        {
-          success: true,
-          alreadyRunning: true,
-          matchId,
-        },
-        { status: 200 }
-      );
-    }
-
-    if (isSimulationRunning(matchId)) {
-      return Response.json(
-        {
-          success: true,
-          alreadyRunning: true,
-          matchId,
-        },
+        { success: true, alreadyRunning: true, matchId },
         { status: 200 }
       );
     }
@@ -76,93 +71,135 @@ export async function POST(req: Request) {
     startLocks.add(matchId);
     lockedMatchId = matchId;
 
+    // ✅ GET TEAMS
+    const teamA = teams.find((t) => t.name === teamAName);
+    const teamB = teams.find((t) => t.name === teamBName);
+
+    if (!teamA || !teamB) {
+      return Response.json(
+        { success: false, error: `Invalid teams: ${teamAName} vs ${teamBName}` },
+        { status: 400 }
+      );
+    }
+
+    // ✅ NORMALIZE TOSS
+    const normalizedTossWinner =
+      tossWinner === teamA.name
+        ? teamA.name
+        : tossWinner === teamB.name
+        ? teamB.name
+        : undefined;
+
+    if (!normalizedTossWinner) {
+      return Response.json(
+        { success: false, error: `Invalid tossWinner: ${tossWinner}` },
+        { status: 400 }
+      );
+    }
+
+    // ====================================================
+    // 🔥 LOAD STATE FROM ENGINE OR REDIS (CRITICAL FIX)
+    // ====================================================
+
     let existingState = getMatchState(matchId);
+
     if (!existingState) {
-      initMatch(matchId);
+      const storage = new RedisSimulationStorage();
+      const stored = await storage.load(matchId);
+
+      if (!stored?.state) {
+        return Response.json(
+          { success: false, error: "Match not found in storage" },
+          { status: 400 }
+        );
+      }
+
+      // ✅ Hydrate engine from Redis
+      hydrateMatchState(matchId, stored.state);
+
       existingState = getMatchState(matchId);
     }
 
     if (!existingState) {
       return Response.json(
-        { success: false, error: "Failed to initialize match state" },
+        { success: false, error: "Failed to hydrate match state" },
         { status: 500 }
       );
     }
 
-    const teamA = teams.find((team) => team.name === teamAName);
-    const teamB = teams.find((team) => team.name === teamBName);
+    // ====================================================
+    // ✅ UPDATE MATCH STATE (TEAMS + TOSS)
+    // ====================================================
 
-    if (!teamA || !teamB) {
-      return Response.json(
-        {
-          success: false,
-          error: `Invalid teams provided: ${teamAName} vs ${teamBName}`,
-        },
-        { status: 400 }
-      );
-    }
+    existingState.teamA = teamA;
+    existingState.teamB = teamB;
+    existingState.tossWinner = normalizedTossWinner;
+    existingState.decision = tossDecision;
 
-    const normalizedTossWinner =
-      tossWinner === teamA.name
-        ? teamA.name
-        : tossWinner === teamB.name
-          ? teamB.name
-          : undefined;
+    // ✅ SET FIRST INNINGS
+    const battingTeam =
+      tossDecision === "BAT"
+        ? normalizedTossWinner
+        : normalizedTossWinner === teamA.name
+        ? teamB.name
+        : teamA.name;
 
-    if (!normalizedTossWinner) {
-      return Response.json(
-        {
-          success: false,
-          error: `Invalid tossWinner: ${tossWinner}`,
-        },
-        { status: 400 }
-      );
-    }
+    const bowlingTeam =
+      battingTeam === teamA.name ? teamB.name : teamA.name;
+
+    existingState.innings[0].battingTeam = battingTeam;
+    existingState.innings[0].bowlingTeam = bowlingTeam;
+
+    // ====================================================
+    // 🎮 SIMULATION STATE
+    // ====================================================
 
     const initialState: SimulationState = {
-  teamA,
-  teamB,
-  tossWinner: normalizedTossWinner,
-  decision: tossDecision,
-  battingTeam: teamA,
-  bowlingTeam: teamB,
-  battingOrder: [],
-  bowlingOrder: [],
-  striker: null as never,
-  nonStriker: null as never,
-  bowler: null as never,
-  nextBatsmanIndex: 0,
-  currentBowlerIndex: 0,
-  bowlingPlan: [],
-  over: 0,
-  ball: 0,
-  totalRuns: 0,
-  wickets: 0,
-  currentInningsIndex: 0,
-  target: 0,
-  phase: "POWERPLAY",
-  matchEnded: false,
-  winner: null,
-  winBy: null,
-};
+      teamA,
+      teamB,
+      tossWinner: normalizedTossWinner,
+      decision: tossDecision,
+      battingTeam: teamA,
+      bowlingTeam: teamB,
+      battingOrder: [],
+      bowlingOrder: [],
+      striker: null as never,
+      nonStriker: null as never,
+      bowler: null as never,
+      nextBatsmanIndex: 0,
+      currentBowlerIndex: 0,
+      bowlingPlan: [],
+      over: 0,
+      ball: 0,
+      totalRuns: 0,
+      wickets: 0,
+      currentInningsIndex: 0,
+      target: 0,
+      phase: "POWERPLAY",
+      matchEnded: false,
+      winner: null,
+      winBy: null,
+    };
 
-    const result = startSimulation(initialState, matchId, 1500);
+    // ====================================================
+    // 🚀 START SIMULATION
+    // ====================================================
 
-    if (!result?.started && !result?.alreadyRunning) {
+    const result = await startSimulation(initialState, matchId, 1500);
+
+    if (!result.started && !result.alreadyRunning) {
       return Response.json(
-        {
-          success: false,
-          error: result?.reason ?? "Failed to start simulation",
-        },
+        { success: false, error: result.reason ?? "Failed to start simulation" },
         { status: 500 }
       );
     }
 
     return Response.json({
       success: true,
-      alreadyRunning: !!result?.alreadyRunning,
+      alreadyRunning: result.alreadyRunning,
       matchId,
     });
+
   } catch (err) {
     console.error("❌ Failed to start simulation", err);
 

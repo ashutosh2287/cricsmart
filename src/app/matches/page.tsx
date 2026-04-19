@@ -2,54 +2,102 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { getMatches, subscribeStore } from "@/store/realtimeStore";
 import MatchCard from "@/components/MatchCard";
-import { Match } from "@/types/match";
+
+/*
+========================================
+TYPES
+========================================
+*/
+
+type ApiMatch = {
+  matchId: string;
+  teamA: string;
+  teamB: string;
+  status: "LIVE" | "UPCOMING" | "COMPLETED";
+};
+
+type Match = {
+  matchId: string;
+  teamA: string;
+  teamB: string;
+  status: "Live" | "Upcoming" | "Completed";
+};
+
+/*
+========================================
+STABLE PRIORITY (OUTSIDE COMPONENT)
+========================================
+*/
+
+const priority: Record<"Live" | "Upcoming" | "Completed", number> = {
+  Live: 1,
+  Upcoming: 2,
+  Completed: 3,
+};
 
 export default function MatchPage() {
-  const [refresh, setRefresh] = useState(0);
-
-  const [matches, setMatches] = useState<Match[]>(getMatches());
+  
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [filter, setFilter] = useState<
     "All" | "Live" | "Upcoming" | "Completed"
   >("All");
 
-  // Subscribe to store updates
-  useEffect(() => {
+  /*
+  ========================================
+  FETCH MATCHES (API → NORMALIZE → STATE)
+  ========================================
+  */
 
-    const unsubscribe = subscribeStore((updatedMatches?: Match[]) => {
+  const fetchMatches = async () => {
+    try {
+      const res = await fetch("/api/matches");
+      const data: ApiMatch[] = await res.json();
 
-      const data = updatedMatches ?? getMatches();
+      const normalized: Match[] = data.map((m) => {
+        let status: Match["status"];
 
-      setMatches(prev => {
-        if (prev === data) return prev;
-        return data;
+        if (m.status === "LIVE") status = "Live";
+        else if (m.status === "COMPLETED") status = "Completed";
+        else status = "Upcoming";
+
+        return {
+          matchId: m.matchId,
+          teamA: m.teamA,
+          teamB: m.teamB,
+          status,
+        };
       });
 
-    });
+      setMatches(normalized);
+    } catch (err) {
+      console.error("❌ Failed to fetch matches", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return unsubscribe;
-
-  }, []);
+  /*
+  ========================================
+  EFFECT (INITIAL + POLLING)
+  ========================================
+  */
 
   useEffect(() => {
-  const handler = () => {
-    setRefresh((prev) => prev + 1);
-  };
+    fetchMatches();
 
-  window.addEventListener("MATCH_UPDATE", handler);
+    // simple polling (replace later with SSE)
+    const interval = setInterval(fetchMatches, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
-  return () => {
-    window.removeEventListener("MATCH_UPDATE", handler);
-  };
-}, []);
-
-  const priority: Record<"Live" | "Upcoming" | "Completed", number> = {
-    Live: 1,
-    Upcoming: 2,
-    Completed: 3
-  };
+  /*
+  ========================================
+  SORTING
+  ========================================
+  */
 
   const sortedMatches = useMemo(() => {
     return [...matches].sort(
@@ -57,38 +105,38 @@ export default function MatchPage() {
     );
   }, [matches]);
 
+  /*
+  ========================================
+  FILTERING
+  ========================================
+  */
+
   const filteredMatches =
     filter === "All"
       ? sortedMatches
-      : sortedMatches.filter(match => match.status === filter);
+      : sortedMatches.filter((m) => m.status === filter);
 
+  /*
+  ========================================
+  UI
+  ========================================
+  */
 
   return (
-
     <motion.main
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
       className="max-w-7xl mx-auto px-6 py-10 space-y-10 text-white"
     >
-
       {/* HEADER */}
-
       <div className="flex items-center justify-between">
-
-        <h1 className="text-3xl font-bold tracking-wide">
-          Matches
-        </h1>
-
+        <h1 className="text-3xl font-bold tracking-wide">Matches</h1>
       </div>
 
-
       {/* FILTER BAR */}
-
       <div className="flex gap-3 bg-zinc-900 border border-zinc-800 p-1 rounded-full w-fit">
-
-        {(["All", "Live", "Upcoming", "Completed"] as const).map(tab => {
-
+        {(["All", "Live", "Upcoming", "Completed"] as const).map((tab) => {
           const getActiveColor = () => {
             if (tab === "Live") return "bg-red-500 text-white";
             if (tab === "Upcoming") return "bg-blue-500 text-white";
@@ -97,7 +145,6 @@ export default function MatchPage() {
           };
 
           return (
-
             <button
               key={tab}
               onClick={() => setFilter(tab)}
@@ -106,21 +153,15 @@ export default function MatchPage() {
                   filter === tab
                     ? `${getActiveColor()} scale-105 shadow-lg`
                     : "text-gray-400 hover:text-white"
-                }
-              `}
+                }`}
             >
               {tab}
             </button>
-
           );
-
         })}
-
       </div>
 
-
       {/* MATCH LIST */}
-
       <motion.div
         initial="hidden"
         animate="show"
@@ -128,30 +169,29 @@ export default function MatchPage() {
           hidden: { opacity: 0 },
           show: {
             opacity: 1,
-            transition: { staggerChildren: 0.1 }
-          }
+            transition: { staggerChildren: 0.1 },
+          },
         }}
         className="space-y-6"
       >
-
-        {filteredMatches.map(match => (
-
-          <motion.div
-            key={match.slug}
-            variants={{
-              hidden: { opacity: 0, y: 15 },
-              show: { opacity: 1, y: 0 }
-            }}
-          >
-            <MatchCard slug={match.slug} />
-          </motion.div>
-
-        ))}
-
+        {loading ? (
+          <p className="text-gray-400">Loading matches...</p>
+        ) : filteredMatches.length === 0 ? (
+          <p className="text-gray-500">No matches found</p>
+        ) : (
+          filteredMatches.map((match) => (
+            <motion.div
+              key={match.matchId}
+              variants={{
+                hidden: { opacity: 0, y: 15 },
+                show: { opacity: 1, y: 0 },
+              }}
+            >
+              <MatchCard match={match} />
+            </motion.div>
+          ))
+        )}
       </motion.div>
-
     </motion.main>
-
   );
-
 }

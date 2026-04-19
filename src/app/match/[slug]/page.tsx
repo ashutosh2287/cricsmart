@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState, use } from "react";
 import Link from "next/link";
-
+import { useSearchParams } from "next/navigation";
 import AdminScoringPanel from "@/components/admin/AdminScoringPanel";
 import BroadcastControlDashboard from "@/components/BroadcastControlDashboard";
 import BroadcastDirectorPanel from "@/components/BroadcastDirectorPanel";
@@ -78,6 +78,8 @@ type BowlerStat = {
   runs?: number;
   wickets?: number;
 };
+
+
 
 function cls(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -267,12 +269,26 @@ const TabsArea = React.memo(function TabsArea({
 }: {
   match: Match;
 }) {
+   const isAdmin = true; // ✅ FIX HERE
   const { state: currentEngineState } = useMatch();
   const [, forceMatchStoreUpdate] = useState(0);
   const [matchMeta, setLocalMatchMeta] = useState(() => getMatchMeta(match.slug));
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<MainTab>("overview");
+  
+
+const searchParams = useSearchParams();
+
+const initialTab = "overview";
+
+const [activeTab, setActiveTab] = useState<MainTab>(initialTab);
+
+useEffect(() => {
+  const tab = searchParams.get("tab") as MainTab;
+  if (tab) {
+    setActiveTab(tab);
+  }
+}, [searchParams]);
   const [analysisFilter, setAnalysisFilter] = useState<AnalysisFilter>("ALL");
 
   const [tossData, setTossData] = useState<{
@@ -458,7 +474,7 @@ useEffect(() => {
         <div className="sticky top-24 z-20 mb-6 overflow-x-auto pb-1">
           <div className="inline-flex min-w-full gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-2 backdrop-blur-xl">
             {tabs.map((tab) => {
-              if (tab === "admin" && process.env.NODE_ENV !== "development") return null;
+              //if (tab === "admin" && process.env.NODE_ENV !== "development") return null;
 
               const isActive = activeTab === tab;
 
@@ -950,8 +966,10 @@ useEffect(() => {
           </div>
         )}
 
-        {activeTab === "admin" && process.env.NODE_ENV === "development" && (
-          <div className="space-y-6">
+
+
+          {activeTab === "admin" && isAdmin && (
+  <div className="space-y-6">
             <GlassPanel>
   <SectionHeader eyebrow="Scoring" title="Admin Scoring Panel" />
   
@@ -1045,52 +1063,51 @@ useEffect(() => {
 
       const { winner, decision } = tossData;
 
-      try {
-        setIsStarting(true);
-        setStartError(null);
+     try {
+  setIsStarting(true);
+  setStartError(null);
 
-        if (!getMatchState(id)) initMatch(id);
+  console.log("START PAYLOAD", {
+    matchId: id,
+    teamAName: latestMeta.teamA.name,
+    teamBName: latestMeta.teamB.name,
+    tossWinner: winner.name,
+    tossDecision: decision,
+  });
 
-        console.log("START PAYLOAD", {
-          matchId: id,
-          teamAName: latestMeta.teamA.name,
-          teamBName: latestMeta.teamB.name,
-          tossWinner: winner.name,
-          tossDecision: decision,
-        });
+  const response = await fetch("/api/start-simulation", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      matchId: id,
+      teamAName: latestMeta.teamA.name,
+      teamBName: latestMeta.teamB.name,
+      tossWinner: winner.name,
+      tossDecision: decision,
+    }),
+  });
 
-        const response = await fetch("/api/start-simulation", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            matchId: id,
-            teamAName: latestMeta.teamA.name,
-            teamBName: latestMeta.teamB.name,
-            tossWinner: winner.name,
-            tossDecision: decision,
-          }),
-        });
+  const data = await response.json().catch(() => null);
 
-        const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(data?.error ?? "Failed to start simulation.");
+  }
 
-        if (!response.ok) {
-          throw new Error(data?.error ?? "Failed to start simulation.");
-        }
+  setIsRunning(true);
+  setIsPaused(false);
 
-        setIsRunning(true);
-        setIsPaused(false);
-      } catch (error) {
-        console.error("Start simulation failed", error);
-        setIsRunning(false);
-        setIsPaused(false);
-        setStartError(
-          error instanceof Error ? error.message : "Failed to start simulation."
-        );
-      } finally {
-        setIsStarting(false);
-      }
+} catch (error) {
+  console.error("Start simulation failed", error);
+  setIsRunning(false);
+  setIsPaused(false);
+  setStartError(
+    error instanceof Error ? error.message : "Failed to start simulation."
+  );
+} finally {
+  setIsStarting(false);
+}
     }}
     className={cls(
       "rounded-xl px-4 py-2.5 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60",
@@ -1258,22 +1275,83 @@ export default function MatchDetailPage({
     const id = matchId;
 
     async function loadMatch() {
-      const m = await getMatchBySlug(id);
-      setMatch(m);
+  try {
+    console.log("📥 FRONTEND LOAD:", id);
 
-      if (m?.engineState) {
-        hydrateMatchState(id, m.engineState);
+    const res = await fetch(`/api/match/${id}`);
+    if (!res.ok) {
+  const text = await res.text();
+  console.error("❌ API ERROR:", text);
+  return;
+}
+    const data = await res.json();
+
+    if (data?.success && data?.match) {
+      // ✅ Hydrate engine from Redis state
+      hydrateMatchState(id, data.match);
+
+      requestAnimationFrame(() => {
         setEngineState(getMatchState(id));
-      } else {
-        if (!getMatchState(id)) {
-          initMatch(id);
-        }
-        setEngineState(getMatchState(id));
-      }
+      });
+
+    } else {
+      console.error("❌ Match not found in Redis for:", id);
+      setEngineState(undefined);
+      return;
     }
+
+    // ✅ Minimal match object (UI only)
+    setMatch({
+      id: id,
+      slug: id,
+      team1: "Team A",
+      team2: "Team B",
+      currentOver: 0,
+      currentBall: 0,
+      status: "Live",
+    });
+
+  } catch (err) {
+    console.error("LOAD MATCH ERROR:", err);
+  }
+}
 
     loadMatch();
   }, [matchId]);
+
+  useEffect(() => {
+  if (!matchId) return;
+
+  const eventSource = new EventSource(`/api/realtime/${matchId}`);
+
+  console.log("📡 SSE connected for:", matchId);
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+
+      if (data?.state) {
+        hydrateMatchState(matchId, data.state);
+
+        requestAnimationFrame(() => {
+          setEngineState(getMatchState(matchId));
+        });
+      }
+    } catch (err) {
+      console.error("❌ SSE parse error", err);
+    }
+  };
+
+  eventSource.onerror = (err) => {
+    console.error("❌ SSE error", err);
+    eventSource.close();
+  };
+
+  return () => {
+    console.log("❌ SSE disconnected for:", matchId);
+    eventSource.close();
+  };
+}, [matchId]);
 
  useEffect(() => {
   if (!matchId) return;

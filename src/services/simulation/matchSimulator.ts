@@ -371,18 +371,24 @@ function finishMatch(state: SimulationState, matchState: MatchStateType, matchId
   });
 }
 
-export function startSimulation(
+export async function startSimulation(
   state: SimulationState,
   matchId: string,
   speed: number = 1500
 ) {
   const control = getSimulationControl(matchId);
-  const saved = loadSimulation(matchId);
+  const saved = await loadSimulation(matchId);
 
 if (saved) {
   console.log("♻️ Resuming saved match:", matchId);
 
-  Object.assign(state, saved.state);
+  const engineState = getMatchState(matchId);
+
+if (engineState && saved) {
+  // Sync ONLY required simulation fields if needed
+  state.over = engineState.innings[engineState.currentInningsIndex]?.over ?? 0;
+  state.ball = engineState.innings[engineState.currentInningsIndex]?.ball ?? 0;
+}
 
   control.isRunning = saved.control.isRunning;
   control.isPaused = saved.control.isPaused;
@@ -642,11 +648,15 @@ if (!event) {
       nonStriker: getPlayerName(syncedState.nonStriker),
       bowler: getPlayerName(state.bowler)
     });
-    saveSimulation(matchId, state, {
-  isRunning: control.isRunning,
-  isPaused: control.isPaused,
-  speed: control.speed,
-});
+    const matchState = getMatchState(matchId);
+
+if (matchState) {
+  saveSimulation(matchId, matchState, {
+    isRunning: control.isRunning,
+    isPaused: control.isPaused,
+    speed: control.speed,
+  }).catch(console.error);
+}
 saveSnapshot(matchId, engineInnings.over * 6 + engineInnings.ball, state);
 
 clearSnapshots(matchId);

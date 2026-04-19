@@ -9,6 +9,17 @@ import { emitCommentary } from "@/services/commentary/commentaryBus";
 import { emitCommand } from "./commandBus";
 import { setMatchState } from "@/persistence/eventStore/eventStore";
 
+type StorageModuleType = typeof import("@/services/storage/eventStorage");
+
+let storageModule: StorageModuleType | null = null;
+
+async function getStorageModule(): Promise<StorageModuleType> {
+  if (!storageModule) {
+    storageModule = await import("@/services/storage/eventStorage");
+  }
+  return storageModule;
+}
+
 export type CorrectionEvent =
   | { type: "CORRECTION_UNDO_LAST" }
   | { type: "CORRECTION_DELETE"; targetEventId: string }
@@ -209,8 +220,6 @@ function ensureFirstInningsTeams(next: MatchState) {
 }
 
 function ensureSecondInningsFromFirst(next: MatchState) {
-  ensureFirstInningsTeams(next);
-
   const first = next.innings[0];
   if (!first?.battingTeam || !first?.bowlingTeam) return;
 
@@ -218,12 +227,12 @@ function ensureSecondInningsFromFirst(next: MatchState) {
   const expectedBowling = first.battingTeam;
 
   if (!next.innings[1]) {
-    next.innings.push(createInningsState(expectedBatting, expectedBowling));
-    return;
+    next.innings[1] = createInningsState(expectedBatting, expectedBowling);
+  } else {
+    // 🔥 FORCE UPDATE (IMPORTANT FIX)
+    next.innings[1].battingTeam = expectedBatting;
+    next.innings[1].bowlingTeam = expectedBowling;
   }
-
-  next.innings[1].battingTeam = expectedBatting;
-  next.innings[1].bowlingTeam = expectedBowling;
 }
 
 function completeCurrentInnings(next: MatchState) {
@@ -684,21 +693,39 @@ setMatchState(matchId, freshState);
   });
 
   if (ballEvent.valid) {
-    eventStreams[matchId].push(ballEvent);
-    pushToTimeline({
-      ...ballEvent,
-      commentary: commentaryText,
-    });
-  }
+
+  getStorageModule()
+    .then(({ appendEvent }) => appendEvent(matchId, ballEvent))
+    .catch(console.error);
+
+  // 🔥 SAFETY INIT (CRITICAL FIX)
+if (!eventStreams[matchId]) {
+  console.warn("⚠️ eventStreams missing, initializing:", matchId);
+  eventStreams[matchId] = [];
+}
+
+// 🔥 FINAL SAFETY GUARD (MANDATORY)
+if (!eventStreams[matchId]) {
+  console.warn("⚠️ eventStreams missing at runtime, fixing:", matchId);
+  eventStreams[matchId] = [];
+}
+
+eventStreams[matchId].push(ballEvent);
+
+  pushToTimeline({
+    ...ballEvent,
+    commentary: commentaryText,
+  });
+}
 
   advanceClock(matchId);
 
   processMatchIntelligence({
-    matchId,
-    branchId: freshState.activeBranchId,
-    state: freshState,
-    ballEvent,
-  });
+  matchId,
+  branchId: freshState.activeBranchId,
+  state: freshState,
+  ballEvent,
+}).catch(console.error);
 
   emit(matchId);
   console.log("🔥 EMIT SENT:", {
@@ -746,9 +773,14 @@ export function hydrateMatchState(matchId: string, state: MatchState) {
   }
 
   matches.set(matchId, next);
+
+  // 🔥 CRITICAL FIX
+  if (!eventStreams[matchId]) {
+    eventStreams[matchId] = [];
+  }
+
   emit(matchId);
 }
-
 export function reduceStateOnly(state: MatchState, event: BallEvent): MatchState {
   const inningsIndex = event.innings ?? state.currentInningsIndex;
   const innings = state.innings[inningsIndex];
@@ -810,4 +842,7 @@ export function getSnapshot(
 ): MatchState | undefined {
   const key = `${inningsIndex}-${over}`;
   return snapshotMap[matchId]?.[key];
+}
+export function restoreMatchState(matchId: string, state: MatchState) {
+  matches.set(matchId, state);
 }

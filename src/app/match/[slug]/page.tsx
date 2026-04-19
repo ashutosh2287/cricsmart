@@ -1591,11 +1591,16 @@ const providerValue = useMemo(() => {
 
                           <div className="flex flex-wrap gap-2">
                             <Link
-                              href="/matches"
-                              className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white transition hover:bg-white/[0.08]"
-                            >
-                              ← Back to matches
-                            </Link>
+  href="/"
+  className="inline-flex items-center gap-2 rounded-xl border border-white/10 
+             bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80
+             backdrop-blur-md transition-all duration-200
+             hover:bg-white/[0.08] hover:text-white hover:scale-[1.03]
+             active:scale-95"
+>
+  <span className="text-lg">←</span>
+  Back to Home
+</Link>
                           </div>
                         </div>
 

@@ -1,10 +1,20 @@
-import { dispatchBallEvent } from "@/services/matchEngine";
+import { hydrateMatchState } from "@/services/matchEngine";
 import type { SimulationState } from "@/services/simulation/simulationState";
-
+import { getCommentary } from "../commentary/commentaryStore";
+import { getBroadcastInsights } from "../broadcast/broadcastInsightEngine";
+import { getAnalytics } from "../analytics/liveAnalyticsStore";
 type TeamsPayload = {
   teamA: { name: string };
   teamB: { name: string };
 };
+
+type SimulationRuntimePayload = {
+  isRunning?: boolean;
+  isPaused?: boolean;
+  speed?: number;
+};
+
+type MatchStateLike = Parameters<typeof hydrateMatchState>[1];
 
 type RealtimeEvent =
   | {
@@ -12,12 +22,34 @@ type RealtimeEvent =
       matchId: string;
     }
   | {
+      type: "INITIAL_STATE";
+      matchId: string;
+      data: MatchStateLike;
+    }
+  | {
       type: "BALL_EVENT";
       matchId: string;
       data: {
-        engineEvent: Parameters<typeof dispatchBallEvent>[1];
-        simulationState?: SimulationState;
-        teams?: TeamsPayload;
+  committedState: MatchStateLike; // 🔥 FIX
+  simulationState?: SimulationState | SimulationRuntimePayload;
+  teams?: TeamsPayload;
+  engineEvent?: {
+    id?: string;
+  } | null;
+
+  // ✅ ADD THESE
+  commentary?: unknown[];
+insights?: unknown[];
+analytics?: Record<string, unknown>;
+};
+    }
+  | {
+      type: "SIMULATION_STATE_UPDATE";
+      matchId: string;
+      data: {
+        isRunning: boolean;
+        isPaused: boolean;
+        speed: number;
       };
     }
   | {
@@ -25,9 +57,12 @@ type RealtimeEvent =
       matchId: string;
       data: {
         winner?: string;
-        winBy?: string;
+        winBy?: string | number;
       };
     };
+
+const lastAcceptedEventIdByMatch = new Map<string, string>();
+const lastAcceptedFingerprintByMatch = new Map<string, string>();
 
 function emitCricUpdate(detail: Record<string, unknown>) {
   if (typeof window === "undefined") return;
@@ -39,87 +74,231 @@ function emitCricUpdate(detail: Record<string, unknown>) {
   );
 }
 
+function toSimulationRuntimePayload(
+  simulationState?: SimulationState | SimulationRuntimePayload
+): SimulationRuntimePayload | undefined {
+  if (!simulationState || typeof simulationState !== "object") {
+    return undefined;
+  }
+
+  const candidate = simulationState as Record<string, unknown>;
+
+  return {
+    isRunning:
+      typeof candidate.isRunning === "boolean"
+        ? candidate.isRunning
+        : undefined,
+    isPaused:
+      typeof candidate.isPaused === "boolean"
+        ? candidate.isPaused
+        : undefined,
+    speed: typeof candidate.speed === "number" ? candidate.speed : undefined,
+  };
+}
+
+function updateWindowRuntime(data: {
+  teams?: TeamsPayload;
+  simulationState?: SimulationState | SimulationRuntimePayload;
+}) {
+  if (typeof window === "undefined") return;
+
+  window.__CRIC_STATE__ = {
+    ...window.__CRIC_STATE__,
+    teams: data.teams ?? window.__CRIC_STATE__?.teams,
+    simulationState:
+      toSimulationRuntimePayload(data.simulationState) ??
+      window.__CRIC_STATE__?.simulationState,
+  };
+}
+
+function getInningsIndex(state: MatchStateLike): number {
+  return typeof state?.currentInningsIndex === "number"
+    ? state.currentInningsIndex
+    : 0;
+}
+
+function getCurrentInnings(state: MatchStateLike) {
+  return state?.innings?.[getInningsIndex(state)];
+}
+
+function getProgressFingerprint(state: MatchStateLike): string {
+  const inningsIndex = getInningsIndex(state);
+  const innings = getCurrentInnings(state);
+
+  const runs = Number(innings?.runs ?? 0);
+  const wickets = Number(innings?.wickets ?? 0);
+
+  const overNumbers = innings?.overs
+    ? Object.keys(innings.overs)
+        .map(Number)
+        .filter((n) => Number.isFinite(n))
+        .sort((a, b) => a - b)
+    : [];
+
+  const lastOver = overNumbers.length ? overNumbers[overNumbers.length - 1] : 0;
+  const ballsInLastOver =
+    innings?.overs && Array.isArray(innings.overs[lastOver])
+      ? innings.overs[lastOver].length
+      : 0;
+
+  const striker = String(innings?.striker ?? "");
+  const nonStriker = String(innings?.nonStriker ?? "");
+  const bowler = String((innings as Record<string, unknown>)?.currentBowler ?? "");
+
+  return [
+    inningsIndex,
+    runs,
+    wickets,
+    lastOver,
+    ballsInLastOver,
+    striker,
+    nonStriker,
+    bowler,
+    state?.matchEnded ? 1 : 0,
+  ].join("|");
+}
+
+function shouldAcceptInitialState(matchId: string, incoming: MatchStateLike) {
+  const incomingFingerprint = getProgressFingerprint(incoming);
+  const lastAcceptedFingerprint = lastAcceptedFingerprintByMatch.get(matchId);
+
+  if (lastAcceptedFingerprint === incomingFingerprint) {
+    return false;
+  }
+
+  return true;
+}
+
+function shouldAcceptBallState(
+  matchId: string,
+  incoming: MatchStateLike,
+  engineEventId?: string
+) {
+  if (engineEventId) {
+    const lastAcceptedEventId = lastAcceptedEventIdByMatch.get(matchId);
+    if (lastAcceptedEventId === engineEventId) {
+      return false;
+    }
+  }
+
+  const incomingFingerprint = getProgressFingerprint(incoming);
+  const lastAcceptedFingerprint = lastAcceptedFingerprintByMatch.get(matchId);
+
+  if (lastAcceptedFingerprint === incomingFingerprint) {
+    return false;
+  }
+
+  return true;
+}
+
 export function routeRealtimeEvent(event: RealtimeEvent) {
-  console.log("📡 ROUTER RECEIVED:", event.type, "for", event.matchId);
+  if (!event?.matchId) {
+    console.warn("⚠️ Realtime event missing matchId", event);
+    return;
+  }
 
   switch (event.type) {
     case "CONNECTED":
-      handleConnected(event);
-      break;
+      emitCricUpdate({
+        matchId: event.matchId,
+        type: "CONNECTED",
+      });
+      return;
 
-    case "BALL_EVENT":
-      handleBallEvent(event);
-      break;
+    case "INITIAL_STATE": {
+      if (!event.data) {
+        console.warn("⚠️ INITIAL_STATE missing data", event);
+        return;
+      }
 
-    case "MATCH_ENDED":
-      handleMatchEnd(event);
-      break;
+      if (!shouldAcceptInitialState(event.matchId, event.data)) {
+        return;
+      }
+
+      hydrateMatchState(event.matchId, event.data);
+      lastAcceptedFingerprintByMatch.set(
+        event.matchId,
+        getProgressFingerprint(event.data)
+      );
+
+      emitCricUpdate({
+        matchId: event.matchId,
+        type: "INITIAL_STATE",
+      });
+      return;
+    }
+
+    case "BALL_EVENT": {
+      if (!event.data?.committedState) {
+  console.warn("⚠️ BALL_EVENT missing committed state", event);
+  return;
+}
+
+const state = event.data.committedState;
+
+const engineEventId = event.data.engineEvent?.id;
+
+if (!shouldAcceptBallState(event.matchId, state, engineEventId)) {
+  return;
+}
+
+hydrateMatchState(event.matchId, state);
+updateWindowRuntime(event.data);
+
+if (engineEventId) {
+  lastAcceptedEventIdByMatch.set(event.matchId, engineEventId);
+}
+
+lastAcceptedFingerprintByMatch.set(
+  event.matchId,
+  getProgressFingerprint(state)
+);
+
+     
+
+emitCricUpdate({
+  matchId: event.matchId,
+  type: "BALL_EVENT",
+
+  simulationState:
+    toSimulationRuntimePayload(event.data.simulationState) ?? null,
+
+  // ✅ USE SERVER DATA
+  commentary: event.data.commentary ?? [],
+  insights: event.data.insights ?? [],
+  analytics: event.data.analytics ?? null,
+});
+      return;
+    }
+
+    case "SIMULATION_STATE_UPDATE": {
+      updateWindowRuntime({
+        simulationState: event.data,
+      });
+
+      emitCricUpdate({
+        matchId: event.matchId,
+        type: "SIMULATION_STATE_UPDATE",
+        simulationState: {
+          isRunning: event.data.isRunning,
+          isPaused: event.data.isPaused,
+          speed: event.data.speed,
+        },
+      });
+      return;
+    }
+
+    case "MATCH_ENDED": {
+      emitCricUpdate({
+        matchId: event.matchId,
+        type: "MATCH_ENDED",
+        winner: event.data?.winner,
+        winBy: event.data?.winBy,
+      });
+      return;
+    }
 
     default:
       console.warn("⚠️ Unknown realtime event", event);
   }
-}
-
-function handleConnected(
-  event: Extract<RealtimeEvent, { type: "CONNECTED" }>
-) {
-  console.log("🟢 Connected to match:", event.matchId || "UNKNOWN");
-
-  emitCricUpdate({
-    matchId: event.matchId,
-    type: "CONNECTED",
-  });
-}
-
-function handleBallEvent(
-  event: Extract<RealtimeEvent, { type: "BALL_EVENT" }>
-) {
-  const { matchId, data } = event;
-
-  if (!matchId) {
-    console.warn("⚠️ Missing matchId in BALL_EVENT", event);
-    return;
-  }
-
-  if (!data?.engineEvent) {
-    console.warn("⚠️ Missing engineEvent", event);
-    return;
-  }
-
-  console.log("📤 Dispatching to matchEngine", matchId);
-  dispatchBallEvent(matchId, data.engineEvent);
-
-  if (typeof window !== "undefined") {
-    window.__CRIC_STATE__ = {
-      ...window.__CRIC_STATE__,
-      teams: data.teams ?? window.__CRIC_STATE__?.teams,
-      simulationState:
-        data.simulationState ?? window.__CRIC_STATE__?.simulationState,
-    };
-  }
-
-  emitCricUpdate({
-    matchId,
-    type: "BALL_EVENT",
-    engineEvent: data.engineEvent,
-  });
-}
-
-function handleMatchEnd(
-  event: Extract<RealtimeEvent, { type: "MATCH_ENDED" }>
-) {
-  const { matchId, data } = event;
-
-  console.log("🏆 Match Ended:", {
-    matchId,
-    winner: data?.winner,
-    winBy: data?.winBy,
-  });
-
-  emitCricUpdate({
-    matchId,
-    type: "MATCH_ENDED",
-    winner: data?.winner,
-    winBy: data?.winBy,
-  });
 }

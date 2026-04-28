@@ -1,183 +1,174 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { subscribeCommentary, getCommentary } from "@/services/commentary/commentaryBus";
-import { getTimeline } from "@/services/broadcastTimeline";
-import { scrubToPosition } from "@/services/replayController";
 import { translateCommentary } from "@/services/commentary/commentaryTranslator";
-import TypingText from "../ui/TypingText";
 
-type Commentary = {
-  matchId: string;
-  text: string;
-  eventId: string;
-  category: "BALL" | "INSIGHT";
+type Commentary = string;
+
+type BroadcastInsight = {
+  type: string;
+  message: string;
+  severity: "LOW" | "MEDIUM" | "HIGH";
 };
 
-export default function CommentaryPanel({ matchId }: { matchId: string }) {
+type Props = {
+  matchId: string;
+  insights?: BroadcastInsight[];
+};
 
-  const [messages, setMessages] = useState<Commentary[]>(() =>
-    getCommentary(matchId)
-  );
-
-  const containerRef = useRef<HTMLDivElement>(null);
+export default function CommentaryPanel({ matchId, insights }: Props) {
+  const [messages, setMessages] = useState<Commentary[]>([]);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [lang, setLang] = useState<"EN" | "HI">("EN");
 
-  /* =============================
-     SUBSCRIBE REALTIME
-  ============================= */
+  /*
+  =============================
+  REALTIME SSE LISTENER (FIXED)
+  =============================
+  */
   useEffect(() => {
-    const unsubscribe = subscribeCommentary((c) => {
-      if (c.matchId !== matchId) return;
+    function handleUpdate(e: Event) {
+      const event = e as CustomEvent;
+      const data = event.detail;
 
-      setMessages(prev => {
-        if (prev.some(p => p.eventId === c.eventId)) {
-          return prev;
-        }
-        return [...prev, c];
-      });
-    });
+      if (!data || data.matchId !== matchId) return;
+      if (data.type !== "BALL_EVENT") return;
 
-    return () => unsubscribe();
-  }, [matchId]);
-
-  /* =============================
-     RESET ON MATCH CHANGE
-  ============================= */
-  useEffect(() => {
-    setMessages(getCommentary(matchId));
-  }, [matchId]);
-
-  /* =============================
-     SCROLL
-  ============================= */
-  useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTo({
-        top: containerRef.current.scrollHeight,
-        behavior: messages.length < 5 ? "auto" : "smooth"
-      });
+      if (Array.isArray(data.commentary)) {
+        setMessages(data.commentary);
+      }
     }
+
+    window.addEventListener("CRIC_UPDATE", handleUpdate);
+
+    return () => {
+      window.removeEventListener("CRIC_UPDATE", handleUpdate);
+    };
+  }, [matchId]);
+
+  /*
+  =============================
+  AUTO SCROLL
+  =============================
+  */
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    containerRef.current.scrollTo({
+      top: containerRef.current.scrollHeight,
+      behavior: messages.length < 5 ? "auto" : "smooth",
+    });
   }, [messages]);
 
-  /* =============================
-     JUMP TO BALL
-  ============================= */
-  function handleJump(eventId: string) {
-    const timeline = getTimeline(matchId);
-    const index = timeline.findIndex(e => e.id === eventId);
+  /*
+  =============================
+  GROUP BY OVER
+  =============================
+  */
+  const grouped = messages.reduce(
+    (
+      acc: Record<number, { text: string; index: number }[]>,
+      msg,
+      index
+    ) => {
+      const over = Math.floor(index / 6);
 
-    if (index === -1) return;
+      if (!acc[over]) acc[over] = [];
+      acc[over].push({ text: msg, index });
 
-    scrubToPosition(matchId, index);
-  }
-
-  /* =============================
-     GROUP BY OVER (SIMPLE)
-  ============================= */
-  const grouped = messages.reduce((acc, msg, index) => {
-    const over = Math.floor(index / 6);
-
-    if (!acc[over]) acc[over] = [];
-    acc[over].push({ ...msg, index });
-
-    return acc;
-  }, {} as Record<number, (Commentary & { index: number })[]>);
-
-  const latestEventId = messages.length
-  ? messages[messages.length - 1].eventId
-  : null;
+      return acc;
+    },
+    {}
+  );
 
   return (
     <div className="bg-gray-900 p-4 rounded-xl">
 
+      {/* 🔥 INSIGHTS */}
+      {insights && insights.length > 0 && (
+        <div className="mb-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded">
+          <div className="text-xs text-yellow-400 font-semibold mb-1">
+            Match Insights
+          </div>
 
+          {insights.map((i, idx) => (
+            <div key={idx} className="text-xs text-yellow-300">
+              {i.message}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* HEADER */}
       <div className="flex justify-between items-center mb-2">
-  <h3 className="font-bold">Live Commentary</h3>
+        <h3 className="font-bold">Live Commentary</h3>
 
-  <button
-    onClick={() => setLang(lang === "EN" ? "HI" : "EN")}
-    className="text-xs px-2 py-1 bg-white/10 rounded hover:bg-white/20"
-  >
-    {lang === "EN" ? "हिंदी" : "English"}
-  </button>
-</div>
+        <button
+          onClick={() => setLang(lang === "EN" ? "HI" : "EN")}
+          className="text-xs px-2 py-1 bg-white/10 rounded hover:bg-white/20"
+        >
+          {lang === "EN" ? "हिंदी" : "English"}
+        </button>
+      </div>
 
+      {/* LIST */}
       <div
         ref={containerRef}
         className="h-[250px] overflow-y-auto text-sm"
       >
+        {messages.length === 0 && (
+          <div className="text-gray-500 text-sm">
+            Waiting for commentary...
+          </div>
+        )}
 
         {Object.entries(grouped).map(([over, balls]) => (
-
           <div key={over} className="mb-3">
 
-            {/* 🔥 OVER HEADER */}
             <div className="text-xs text-gray-400 mb-1">
               Over {Number(over) + 1}
             </div>
 
-            {/* 🔥 BALLS */}
             {balls.map((msg, i) => {
-
               const isBoundary =
-                msg.text.includes("FOUR") || msg.text.includes("SIX");
+                msg.text.includes("FOUR") ||
+                msg.text.includes("SIX");
 
               const isWicket =
-                msg.text.includes("OUT") || msg.text.includes("WICKET");
+                msg.text.includes("OUT") ||
+                msg.text.includes("WICKET");
 
               return (
                 <div
-                  key={`${msg.eventId}-${i}`}
-                  onClick={() => handleJump(msg.eventId)}
-                  className="border-b border-gray-800 pb-2 cursor-pointer hover:bg-white/5 px-2 py-1 rounded transition animate-[fadeInUp_0.35s_ease]"
+                  key={i}
+                  className="border-b border-gray-800 pb-2 px-2 py-1 rounded"
                 >
-
-                  {/* HEADER */}
-                  <div className="flex items-center justify-between">
-
-                    <span className="text-xs text-gray-500">
-                      Ball {msg.index + 1}
-                    </span>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Ball {msg.index + 1}</span>
 
                     {isBoundary && (
-                      <span className="text-green-400 text-xs font-bold">
+                      <span className="text-green-400 font-bold">
                         BOUNDARY
                       </span>
                     )}
 
                     {isWicket && (
-                      <span className="text-red-400 text-xs font-bold">
+                      <span className="text-red-400 font-bold">
                         WICKET
                       </span>
                     )}
-
                   </div>
 
-                  {/* TEXT */}
-                  <div
-  className={`text-sm mt-1 leading-relaxed
-    ${isWicket ? "text-red-400" : ""}
-    ${isBoundary ? "text-green-300" : "text-gray-200"}
-  `}
->
-  {msg.eventId === latestEventId ? (
-    <TypingText text={translateCommentary(msg.text, lang)} />
-  ) : (
-    translateCommentary(msg.text, lang)
-  )}
-</div>
-
+                  <div className="mt-1 text-sm text-gray-200">
+                    {translateCommentary(msg.text, lang)}
+                  </div>
                 </div>
               );
             })}
 
           </div>
-
         ))}
-
       </div>
-
     </div>
   );
 }

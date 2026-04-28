@@ -1,11 +1,18 @@
-// ❌ REMOVE eventBus completely
-// import { subscribeSimulation, unsubscribeSimulation } from "@/services/realtime/eventBus";
-import type { SimulationEvent } from "@/services/simulation/matchSimulator";
+import { getCommentary } from "@/services/commentary/commentaryStore";
+import { getBroadcastInsights } from "@/services/broadcast/broadcastInsightEngine";
+import { getAnalytics } from "@/services/analytics/liveAnalyticsStore";
 
 type Client = {
   id: string;
   send: (data: string) => void;
 };
+
+type RealtimePayload = {
+  type: string;
+  matchId: string;
+  data?: unknown;
+};
+
 type GlobalWithClients = typeof globalThis & {
   __MATCH_CLIENTS__?: Map<string, Set<Client>>;
 };
@@ -19,27 +26,57 @@ if (!globalStore.__MATCH_CLIENTS__) {
 const matchClients = globalStore.__MATCH_CLIENTS__;
 
 function getClients(matchId: string) {
-  if (!matchClients.has(matchId)) {
-    matchClients.set(matchId, new Set());
+  let clients = matchClients.get(matchId);
+  if (!clients) {
+    clients = new Set<Client>();
+    matchClients.set(matchId, clients);
   }
-  return matchClients.get(matchId)!;
+  return clients;
 }
 
-// ✅ Add client
 export function addClient(matchId: string, client: Client) {
   const clients = getClients(matchId);
-  clients.add(client);
 
+  for (const existing of clients) {
+    if (existing.id === client.id) {
+      clients.delete(existing);
+      break;
+    }
+  }
+
+  clients.add(client);
   console.log(`➕ Client added to match ${matchId} (total: ${clients.size})`);
 }
 
-// ❌ Remove client
-export function removeClient(matchId: string, client: Client) {
+export function removeClient(matchId: string, clientOrId: Client | string) {
   const clients = matchClients.get(matchId);
   if (!clients) return;
 
-  clients.delete(client);
+  let target: Client | undefined;
 
+  if (typeof clientOrId === "string") {
+    for (const client of clients) {
+      if (client.id === clientOrId) {
+        target = client;
+        break;
+      }
+    }
+  } else {
+    if (clients.has(clientOrId)) {
+      target = clientOrId;
+    } else {
+      for (const client of clients) {
+        if (client.id === clientOrId.id) {
+          target = client;
+          break;
+        }
+      }
+    }
+  }
+
+  if (!target) return;
+
+  clients.delete(target);
   console.log(`➖ Client removed from match ${matchId} (remaining: ${clients.size})`);
 
   if (clients.size === 0) {
@@ -47,29 +84,42 @@ export function removeClient(matchId: string, client: Client) {
   }
 }
 
-// 📡 Broadcast event directly (NO EVENT BUS)
-export function broadcast(matchId: string, payload: SimulationEvent) {
+export function broadcast(matchId: string, payload: RealtimePayload) {
   const clients = matchClients.get(matchId);
+  if (!clients || clients.size === 0) return;
 
-  if (!clients || clients.size === 0) {
-    console.warn(`⚠️ No clients for match ${matchId}`);
-    return;
-  }
+  // 🔥 ENRICH PAYLOAD FOR BALL_EVENT
+let enrichedPayload = payload;
 
-  const data = `data: ${JSON.stringify(payload)}\n\n`;
+if (payload.type === "BALL_EVENT" && payload.data) {
+  enrichedPayload = {
+    ...payload,
+    data: {
+      ...(payload.data as Record<string, unknown>),
+
+      // ✅ ADD THESE
+      commentary: getCommentary(matchId),
+      insights: getBroadcastInsights(matchId),
+      analytics: getAnalytics(matchId),
+    },
+  };
+}
+
+const data = `event: ${payload.type}\ndata: ${JSON.stringify(enrichedPayload)}\n\n`;
+  const deadClients: string[] = [];
 
   console.log(`📡 Broadcasting to ${clients.size} clients → ${payload.type}`);
 
-  clients.forEach((client) => {
+  for (const client of Array.from(clients)) {
     try {
       client.send(data);
     } catch (err) {
-      console.error("❌ Failed to send to client", err);
+      console.error(`❌ Failed to send to client ${client.id}`, err);
+      deadClients.push(client.id);
     }
-  });
+  }
+
+  for (const clientId of deadClients) {
+    removeClient(matchId, clientId);
+  }
 }
-
-// ❌ REMOVE initRealtimeController completely
-// ❌ REMOVE shutdownRealtimeController completely
-
-// 🚀 This file is now PURE SSE broadcaster

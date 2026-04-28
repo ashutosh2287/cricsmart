@@ -26,3 +26,8 @@ export function subscribeCommentary(
     listeners[matchId] = listeners[matchId].filter(l => l !== cb);
   };
 }
+
+// ✅ NEW: Getter for realtime pipeline
+export function getCommentary(matchId: string): string[] {
+  return store[matchId] ?? [];
+}

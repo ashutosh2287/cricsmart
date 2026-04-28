@@ -67,11 +67,11 @@ type AnalysisFilter = "ALL" | "BATTING" | "BOWLING" | "PRESSURE";
 type MainTab = "overview" | "live" | "analysis" | "timeline" | "scorecard" | "admin";
 
 type PlayerStat = {
-  runs?: number;
-  balls?: number;
-  fours?: number;
-  sixes?: number;
-  out?: boolean;
+  runs: number;
+  balls: number;
+  fours: number;
+  sixes: number;
+  out: boolean;
 };
 
 type BowlerStat = {
@@ -79,7 +79,17 @@ type BowlerStat = {
   runs?: number;
   wickets?: number;
 };
+type BroadcastInsight = {
+  type:
+    | "KEY_MOMENT"
+    | "PARTNERSHIP_ALERT"
+    | "MOMENTUM_SHIFT"
+    | "PHASE_UPDATE"
+    | "COLLAPSE_ALERT";
 
+  message: string;
+  severity: "LOW" | "MEDIUM" | "HIGH";
+};
 
 
 function cls(...classes: Array<string | false | null | undefined>) {
@@ -118,17 +128,23 @@ function StatPill({
   tone?: "neutral" | "green" | "blue" | "amber" | "red";
 }) {
   const toneMap = {
-  neutral: "border-white/10 bg-white/[0.03] text-white",
-  green: "border-white/10 bg-white/[0.03] text-white",
-  blue: "border-white/10 bg-white/[0.03] text-white",
-  amber: "border-white/10 bg-white/[0.03] text-white",
-  red: "border-white/10 bg-white/[0.03] text-white",
-};
+    neutral: "border-white/10 bg-white/[0.03] text-white",
+    green: "border-white/10 bg-white/[0.03] text-white",
+    blue: "border-white/10 bg-white/[0.03] text-white",
+    amber: "border-white/10 bg-white/[0.03] text-white",
+    red: "border-white/10 bg-white/[0.03] text-white",
+  };
 
   return (
     <div className={cls("rounded-2xl border px-4 py-3", toneMap[tone])}>
-      <p className="text-[11px] uppercase tracking-[0.18em] text-white/55">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-white">{value}</p>
+      <p className="text-[11px] uppercase tracking-[0.18em] text-white/55">
+        {label}
+      </p>
+
+      {/* ✅ FIXED */}
+      <div className="mt-1 text-sm font-semibold text-white">
+        {value}
+      </div>
     </div>
   );
 }
@@ -268,11 +284,17 @@ const lastOverBalls =
     </div>
   );
 }
-
 const TabsArea = React.memo(function TabsArea({
   match,
+  analytics,
+  insights,
 }: {
   match: Match;
+  analytics: {
+    winProbability: { over: number; value: number }[];
+    momentum: { over: number; score: number }[];
+  };
+  insights: BroadcastInsight[];
 }) {
    const isAdmin = true; // ✅ FIX HERE
   const { state: currentEngineState } = useMatch();
@@ -306,6 +328,7 @@ const [isStarting, setIsStarting] = useState(false);
 const [startError, setStartError] = useState<string | null>(null);
 const [speed, setSpeed] = useState(1500);
 
+
 const hasLiveMatchState =
   !!currentEngineState &&
   !!currentEngineState.innings?.length &&
@@ -333,73 +356,11 @@ useEffect(() => {
   }
 }, [hasLiveMatchState, currentEngineState?.matchEnded]);
 
-useEffect(() => {
-  if (!match.slug) return;
-
-  fetch("/api/simulation/runtime", {
-    method: "POST",
-    body: JSON.stringify({ matchId: match.slug }),
-  })
-    .then((res) => res.json())
-    .then((data) => {
-      if (data?.runtime?.isRunning) {
-        setIsRunning(true);
-      }
-    });
-}, [match.slug]);
 
 // 🔥 ADD THIS EXACTLY HERE
-useEffect(() => {
-  if (!match.slug) return;
 
-  const eventSource = new EventSource(`/api/realtime/${match.slug}`);
 
-  eventSource.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
 
-      if (data.type === "SIMULATION_STATE_UPDATE") {
-        setIsRunning(data.data.isRunning);
-        setIsPaused(data.data.isPaused);
-        setSpeed(data.data.speed);
-      }
-    } catch (err) {
-      console.error("SSE parse error", err);
-    }
-  };
-
-  eventSource.onerror = (err) => {
-    console.error("SSE connection error", err);
-  };
-
-  return () => {
-    eventSource.close();
-  };
-}, [match.slug]);
-
-useEffect(() => {
-  if (!match.slug) return;
-
-  const eventSource = new EventSource(`/api/realtime/${match.slug}`);
-
-  eventSource.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-
-      if (data.type === "SIMULATION_STATE_UPDATE") {
-        setIsRunning(data.data.isRunning);
-        setIsPaused(data.data.isPaused);
-        setSpeed(data.data.speed);
-      }
-    } catch (err) {
-      console.error("SSE parse error", err);
-    }
-  };
-
-  return () => {
-    eventSource.close();
-  };
-}, [match.slug]);
 
 useEffect(() => {
   const unsubscribe = subscribeStore(() => {
@@ -435,19 +396,105 @@ useEffect(() => {
   const extras = getExtras(match.slug, inningsIndex);
   const wickets = (getFallOfWickets(match.slug, inningsIndex) ?? []).filter(Boolean);
 
-  const players = Object.entries(batting).filter(([_, p]) => (p?.balls ?? 0) > 0);
-  const topPlayers = [...players]
-    .sort((a, b) => (b[1].runs ?? 0) - (a[1].runs ?? 0))
-    .slice(0, 2);
+ const battingRecords = Array.isArray(inningsData?.battingRecords)
+  ? inningsData.battingRecords
+  : [];
 
-  const partnerships = players.slice(0, -1).map(([name, stat], i) => {
-    const next = players[i + 1];
-    return {
-      players: `${name} & ${next?.[0] ?? ""}`,
-      runs: (stat.runs ?? 0) + (next?.[1]?.runs ?? 0),
-    };
-  });
+type PlayerRow = {
+  name: string;
+  runs: number;
+  balls: number;
+  fours: number;
+  sixes: number;
+  out: boolean;
+  isStriker: boolean;
+  isNonStriker: boolean;
+};
 
+const strikerName =
+  typeof inningsData?.striker === "string" ? inningsData.striker.trim() : "";
+const nonStrikerName =
+  typeof inningsData?.nonStriker === "string" ? inningsData.nonStriker.trim() : "";
+
+const playerMap = new Map<string, PlayerRow>();
+
+const ensurePlayerRow = (name: string): PlayerRow => {
+  const trimmedName = name.trim();
+
+  const existing = playerMap.get(trimmedName);
+  if (existing) return existing;
+
+  const newRow: PlayerRow = {
+    name: trimmedName,
+    runs: 0,
+    balls: 0,
+    fours: 0,
+    sixes: 0,
+    out: false,
+    isStriker: false,
+    isNonStriker: false,
+  };
+
+  playerMap.set(trimmedName, newRow);
+  return newRow;
+};
+
+for (const record of battingRecords) {
+  if (typeof record?.name !== "string") continue;
+
+  const name = record.name.trim();
+  if (!name) continue;
+
+  const row = ensurePlayerRow(name);
+
+  row.runs = Number(record.runs ?? row.runs ?? 0);
+  row.balls = Number(record.balls ?? row.balls ?? 0);
+  row.fours = Number(record.fours ?? row.fours ?? 0);
+  row.sixes = Number(record.sixes ?? row.sixes ?? 0);
+  row.out = Boolean(record.isOut ?? row.out);
+}
+
+if (strikerName) {
+  ensurePlayerRow(strikerName).isStriker = true;
+}
+
+if (nonStrikerName) {
+  ensurePlayerRow(nonStrikerName).isNonStriker = true;
+}
+
+const allPlayers: PlayerRow[] = Array.from(playerMap.values());
+
+const activePlayers = allPlayers.filter(
+  (player) => player.isStriker || player.isNonStriker
+);
+
+const inactivePlayers = allPlayers.filter(
+  (player) => !player.isStriker && !player.isNonStriker
+);
+
+const players: PlayerRow[] =
+  activePlayers.length > 0
+    ? [...activePlayers, ...inactivePlayers]
+    : allPlayers;
+
+const topPlayers = [...allPlayers]
+  .sort((a, b) => {
+    if (b.runs !== a.runs) return b.runs - a.runs;
+    if (a.out !== b.out) return Number(a.out) - Number(b.out);
+    return a.name.localeCompare(b.name);
+  })
+  .slice(0, 2);
+
+const partnerships =
+  strikerName && nonStrikerName
+    ? [
+        {
+          players: `${strikerName} & ${nonStrikerName}`,
+          runs: 0,
+        },
+      ]
+    : [];
+    
   const tabs: MainTab[] = ["overview", "live", "analysis", "timeline", "scorecard", "admin"];
 
   const summaryCards = [
@@ -535,13 +582,19 @@ useEffect(() => {
 
                 <GlassPanel>
                   <SectionHeader eyebrow="Prediction" title="Win Probability" />
-                  <WinProbabilityChart matchId={match.slug} />
+                  <WinProbabilityChart
+  data={analytics.winProbability.map(p => ({
+    over: p.over,
+    batting: p.value,
+    bowling: 100 - p.value,
+  }))}
+/>
                 </GlassPanel>
 
                 <div className="grid gap-6 lg:grid-cols-2">
                   <GlassPanel>
                     <SectionHeader eyebrow="Flow" title="Momentum" />
-                    <MomentumHeatmap matchId={match.slug} />
+                    <MomentumHeatmap data={analytics.momentum} />
                   </GlassPanel>
 
                   <GlassPanel>
@@ -575,7 +628,10 @@ useEffect(() => {
           <div className="space-y-6">
             <GlassPanel>
               <SectionHeader eyebrow="Ball by ball" title="Live Commentary" />
-              <CommentaryPanel matchId={match.slug} />
+              <CommentaryPanel 
+  matchId={match.slug} 
+  insights={insights}
+/>
             </GlassPanel>
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
@@ -657,11 +713,17 @@ useEffect(() => {
                 <div className="space-y-6">
                   <GlassPanel>
                     <SectionHeader eyebrow="Model" title="Win Probability" />
-                    <WinProbabilityChart matchId={match.slug} />
+                    <WinProbabilityChart
+  data={analytics.winProbability.map(p => ({
+    over: p.over,
+    batting: p.value,
+    bowling: 100 - p.value,
+  }))}
+/>
                   </GlassPanel>
                   <GlassPanel>
                     <SectionHeader eyebrow="Energy" title="Momentum Heatmap" />
-                    <MomentumHeatmap matchId={match.slug} />
+                    <MomentumHeatmap data={analytics.momentum} />
                   </GlassPanel>
                 </div>
                 <div className="space-y-6">
@@ -685,7 +747,13 @@ useEffect(() => {
               <div className="space-y-6">
                 <GlassPanel>
                   <SectionHeader eyebrow="Batting" title="Run Pressure & Projection" />
-                  <WinProbabilityChart matchId={match.slug} />
+                  <WinProbabilityChart
+  data={analytics.winProbability.map(p => ({
+    over: p.over,
+    batting: p.value,
+    bowling: 100 - p.value,
+  }))}
+/>
                 </GlassPanel>
                 <GlassPanel>
                   <SectionHeader eyebrow="Pairs" title="Partnership Strength" />
@@ -702,7 +770,7 @@ useEffect(() => {
               <div className="space-y-6">
                 <GlassPanel>
                   <SectionHeader eyebrow="Bowling" title="Momentum Swing" />
-                  <MomentumHeatmap matchId={match.slug} />
+                  <MomentumHeatmap data={analytics.momentum} />
                 </GlassPanel>
                 <GlassPanel>
                   <SectionHeader eyebrow="Insights" title="Pressure Signals" />
@@ -719,11 +787,17 @@ useEffect(() => {
               <div className="space-y-6">
                 <GlassPanel>
                   <SectionHeader eyebrow="Pressure" title="Win Pressure Curve" />
-                  <WinProbabilityChart matchId={match.slug} />
+                  <WinProbabilityChart
+  data={analytics.winProbability.map(p => ({
+    over: p.over,
+    batting: p.value,
+    bowling: 100 - p.value,
+  }))}
+/>
                 </GlassPanel>
                 <GlassPanel>
                   <SectionHeader eyebrow="Pressure" title="Momentum Zones" />
-                  <MomentumHeatmap matchId={match.slug} />
+                  <MomentumHeatmap data={analytics.momentum} />
                 </GlassPanel>
                 <GlassPanel>
                   <SectionHeader eyebrow="Pressure" title="Decision Insights" />
@@ -798,7 +872,9 @@ useEffect(() => {
                     title="Batters"
                     action={
                       <span className="text-xs uppercase tracking-[0.18em] text-white/45">
-                        {players.length} active records
+                        {activePlayers.length === 2
+  ? `${activePlayers.length} active • ${allPlayers.length} total`
+  : `${allPlayers.length} total records`}
                       </span>
                     }
                   />
@@ -812,45 +888,60 @@ useEffect(() => {
 
                   <div className="mt-3 space-y-2">
                     {players.length ? (
-                      players.map(([name, stat]) => {
-                        const runs = stat.runs ?? 0;
-                        const balls = stat.balls ?? 0;
-                        const fours = stat.fours ?? 0;
-                        const sixes = stat.sixes ?? 0;
-                        const isOut = stat.out ?? false;
-                        const sr = balls > 0 ? ((runs / balls) * 100).toFixed(1) : "0.0";
-                        const isStriker = name === inningsData?.striker;
-                        const isNonStriker = name === inningsData?.nonStriker;
+                      players.map((player) => {
+  const runs = player.runs;
+  const balls = player.balls;
+  const fours = player.fours;
+  const sixes = player.sixes;
+  const isOut = player.out;
 
-                        return (
-                          <div
-                            key={name}
-                            className={cls(
-                              "grid grid-cols-[minmax(160px,1.6fr)_0.7fr_0.7fr_0.7fr_0.8fr] items-center gap-3 rounded-2xl border px-3 py-3 text-sm transition",
-                              isStriker
-                                ? "border-amber-400/20 bg-amber-400/10"
-                                : isNonStriker
-                                ? "border-sky-400/15 bg-sky-400/10"
-                                : "border-white/10 bg-white/[0.04]"
-                            )}
-                          >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                {isStriker ? <span className="text-amber-300">★</span> : null}
-                                {isNonStriker ? <span className="text-sky-300">○</span> : null}
-                                <span className="truncate font-medium text-white">{name}</span>
-                              </div>
-                              <p className="mt-1 text-xs text-white/55">
-                                {isOut ? "out" : "not out"}
-                              </p>
-                            </div>
-                            <span className="text-center font-semibold text-emerald-300">{runs}</span>
-                            <span className="text-center text-white">{balls}</span>
-                            <span className="text-center text-white/70">{fours}/{sixes}</span>
-                            <span className="text-center text-amber-300">{sr}</span>
-                          </div>
-                        );
-                      })
+  const sr =
+    balls > 0 ? ((runs / balls) * 100).toFixed(1) : "0.0";
+
+  const isStriker = player.isStriker;
+const isNonStriker = player.isNonStriker;
+
+  return (
+    <div
+      key={player.name}
+      className={cls(
+        "grid grid-cols-[minmax(160px,1.6fr)_0.7fr_0.7fr_0.7fr_0.8fr] items-center gap-3 rounded-2xl border px-3 py-3 text-sm transition",
+        isStriker
+          ? "border-amber-400/20 bg-amber-400/10"
+          : isNonStriker
+          ? "border-sky-400/15 bg-sky-400/10"
+          : "border-white/10 bg-white/[0.04]"
+      )}
+    >
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          {isStriker && <span className="text-amber-300">★</span>}
+          {isNonStriker && <span className="text-sky-300">○</span>}
+          <span className="truncate font-medium text-white">
+            {player.name}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-white/55">
+          {isOut ? "out" : "not out"}
+        </p>
+      </div>
+
+      <span className="text-center font-semibold text-emerald-300">
+        {runs}
+      </span>
+
+      <span className="text-center text-white">{balls}</span>
+
+      <span className="text-center text-white/70">
+        {fours}/{sixes}
+      </span>
+
+      <span className="text-center text-amber-300">
+        {sr}
+      </span>
+    </div>
+  );
+})
                     ) : (
                       <p className="text-sm text-white/60">No batting records available yet.</p>
                     )}
@@ -947,24 +1038,30 @@ useEffect(() => {
                   <SectionHeader eyebrow="Top batters" title="Player Comparison" />
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
                     {topPlayers.length ? (
-                      topPlayers.map(([name, stat]) => {
-                        const runs = stat.runs ?? 0;
-                        const balls = stat.balls ?? 0;
-                        const sr = balls > 0 ? ((runs / balls) * 100).toFixed(1) : "0.0";
+                      topPlayers.map((player) => {
+  const runs = player.runs;
+  const balls = player.balls;
 
-                        return (
-                          <div
-                            key={name}
-                            className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
-                          >
-                            <p className="font-medium text-white">{name}</p>
-                            <p className="mt-1 text-sm text-white/70">
-                              {runs} ({balls})
-                            </p>
-                            <p className="mt-2 text-sm text-amber-300">SR: {sr}</p>
-                          </div>
-                        );
-                      })
+  const sr =
+    balls > 0 ? ((runs / balls) * 100).toFixed(1) : "0.0";
+
+  return (
+    <div
+      key={player.name}
+      className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+    >
+      <p className="font-medium text-white">{player.name}</p>
+
+      <p className="mt-1 text-sm text-white/70">
+        {runs} ({balls})
+      </p>
+
+      <p className="mt-2 text-sm text-amber-300">
+        SR: {sr}
+      </p>
+    </div>
+  );
+})
                     ) : (
                       <p className="text-sm text-white/60">No comparison available yet.</p>
                     )}
@@ -1076,13 +1173,7 @@ useEffect(() => {
   setIsStarting(true);
   setStartError(null);
 
-  console.log("START PAYLOAD", {
-    matchId: id,
-    teamAName: latestMeta.teamA.name,
-    teamBName: latestMeta.teamB.name,
-    tossWinner: winner.name,
-    tossDecision: decision,
-  });
+  
 
   const response = await fetch("/api/start-simulation", {
     method: "POST",
@@ -1235,7 +1326,7 @@ useEffect(() => {
           : "border-white/10 bg-white/[0.04] text-gray-300 hover:bg-white/[0.08]"
       )}
     >
-      {option.label}ss
+      {option.label}
     </button>
   ))}
 </div>
@@ -1267,10 +1358,21 @@ export default function MatchDetailPage({
     if (Array.isArray(slug)) return slug[0];
     return undefined;
   }, [resolvedParams.slug]);
-  console.log("🆔 UI MATCH ID:", matchId);
 
   const [match, setMatch] = useState<Match | undefined>();
   const [engineState, setEngineState] = useState<MatchState | undefined>();
+  const [insights, setInsights] = useState<BroadcastInsight[]>([]);
+
+  type WinPoint = { over: number; value: number };
+type MomentumPoint = { over: number; score: number };
+
+const [analytics, setAnalytics] = useState<{
+  winProbability: WinPoint[];
+  momentum: MomentumPoint[];
+}>({
+  winProbability: [],
+  momentum: [],
+});
 
   useEffect(() => {
     initTacticalOverlayBridge();
@@ -1280,93 +1382,110 @@ export default function MatchDetailPage({
   
 
   useEffect(() => {
-    if (!matchId) return;
-    const id = matchId;
-
-    async function loadMatch() {
-  try {
-    console.log("📥 FRONTEND LOAD:", id);
-
-    const res = await fetch(`/api/match/${id}`);
-    if (!res.ok) {
-  const text = await res.text();
-  console.error("❌ API ERROR:", text);
-  return;
-}
-    const data = await res.json();
-
-    if (data?.success && data?.match) {
-      // ✅ Hydrate engine from Redis state
-      hydrateMatchState(id, data.match);
-
-      requestAnimationFrame(() => {
-        setEngineState(getMatchState(id));
-      });
-
-    } else {
-      console.error("❌ Match not found in Redis for:", id);
-      setEngineState(undefined);
-      return;
-    }
-
-    // ✅ Minimal match object (UI only)
-    setMatch({
-      id: id,
-      slug: id,
-      team1: "Team A",
-      team2: "Team B",
-      currentOver: 0,
-      currentBall: 0,
-      status: "Live",
-    });
-
-  } catch (err) {
-    console.error("LOAD MATCH ERROR:", err);
-  }
-}
-
-    loadMatch();
-  }, [matchId]);
-
-  useEffect(() => {
   if (!matchId) return;
 
-  const eventSource = new EventSource(`/api/realtime/${matchId}`);
+  const id = matchId;
+  let cancelled = false;
 
-  console.log("📡 SSE connected for:", matchId);
-
-  eventSource.onmessage = (event) => {
+  async function loadMatch() {
     try {
-      const data = JSON.parse(event.data);
+    
 
-      if (data?.state) {
-        hydrateMatchState(matchId, data.state);
+      const res = await fetch(`/api/match/${id}`, {
+        cache: "no-store",
+      });
 
-        requestAnimationFrame(() => {
-          setEngineState(getMatchState(matchId));
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("MATCH API ERROR", text);
+        if (!cancelled) {
+          setEngineState(undefined);
+        }
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!data?.success || !data?.match) {
+        console.error("Match not found in Redis for", id);
+        if (!cancelled) {
+          setEngineState(undefined);
+        }
+        return;
+      }
+
+      hydrateMatchState(id, data.match);
+
+      if (!cancelled) {
+        setEngineState(getMatchState(id));
+        setMatch({
+          id,
+          slug: id,
+          team1: data.match.teamA?.name ?? "Team A",
+          team2: data.match.teamB?.name ?? "Team B",
+          currentOver: 0,
+          currentBall: 0,
+          status: data.match.matchEnded ? "Completed" : "Live",
         });
       }
     } catch (err) {
-      console.error("❌ SSE parse error", err);
+      console.error("LOAD MATCH ERROR", err);
+      if (!cancelled) {
+        setEngineState(undefined);
+      }
     }
-  };
+  }
 
-  eventSource.onerror = (err) => {
-    console.error("❌ SSE error", err);
-    eventSource.close();
-  };
+  loadMatch();
 
   return () => {
-    console.log("❌ SSE disconnected for:", matchId);
-    eventSource.close();
+    cancelled = true;
+  };
+}, [matchId]);
+  
+
+useEffect(() => {
+  if (!matchId) return;
+
+  connectRealtime(matchId);
+
+  return () => {
+    disconnectRealtime(matchId);
   };
 }, [matchId]);
 
- useEffect(() => {
-  if (!matchId) return;
+useEffect(() => {
+  const handler = (e: Event) => {
+    const customEvent = e as CustomEvent<{
+  type: string;
+  commentary?: string[];
+  insights?: BroadcastInsight[];
+  analytics?: {
+    winProbability: WinPoint[];
+    momentum: MomentumPoint[];
+  };
+}>;
+    const data = customEvent.detail;
 
-  connectRealtime(matchId);   // ✅ ALWAYS SAME ID
-}, [matchId]);
+    console.log("🔥 FULL EVENT DATA:", JSON.stringify(data, null, 2));
+
+    if (data.type === "BALL_EVENT") {
+  if (data.insights) {
+    setInsights(data.insights);
+  }
+
+  if (data.analytics) {
+    setAnalytics(data.analytics);
+  }
+}
+  };
+
+  window.addEventListener("CRIC_UPDATE", handler);
+
+  return () => {
+    window.removeEventListener("CRIC_UPDATE", handler);
+  };
+}, []);
 
   useEffect(() => {
     if (!matchId || !match?.externalMatchId) return;
@@ -1389,7 +1508,6 @@ export default function MatchDetailPage({
 
   const unsubscribe = subscribeMatch(id, () => {
     const state = getMatchState(id);
-    console.log("UI UPDATE", state?.innings?.[0]?.runs);
     setEngineState(state ? structuredClone(state) : state);
   });
 
@@ -1407,12 +1525,11 @@ export default function MatchDetailPage({
   }, [currentEngineState]);
 
   // 🔥 DEBUG + SAFE EXTRACTION (PASTE HERE)
-console.log("🔥 FULL INNINGS:", currentInnings);
+
 
 const runs = Number(currentInnings?.runs ?? 0);
 const wickets = Number(currentInnings?.wickets ?? 0);
 
-console.log("🔥 FINAL RUNS:", runs);
 const displayOver = formatOverDisplay(currentInnings?.overs);
 
   const inningsIndex = currentEngineState?.currentInningsIndex ?? 0;
@@ -1555,15 +1672,28 @@ if (innings2 && !currentEngineState.matchEnded) {
 
 
 const providerValue = useMemo(() => {
+  if (!matchId || !currentEngineState) return null;
+
   return {
-    matchId: matchId!,
-    state: currentEngineState!,
+    matchId,
+    state: currentEngineState,
   };
 }, [matchId, currentEngineState]);
 
+ if (!providerValue) {
   return (
+    <PageMotion>
+      <div className="bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,#020617_0%,#071120_35%,#0b1220_65%,#020617_100%)]">
+        <div className="p-10 text-center text-white">
+          Loading match engine...
+        </div>
+      </div>
+    </PageMotion>
+  );
+}
 
-    <MatchProvider value={providerValue}>
+return (
+  <MatchProvider value={providerValue}>
   <PageMotion>
      <div className="bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,#020617_0%,#071120_35%,#0b1220_65%,#020617_100%)]">      
 
@@ -1759,6 +1889,8 @@ const providerValue = useMemo(() => {
               {match ? (
   <TabsArea
   match={match}
+  analytics={analytics}
+  insights={insights}
 />
 ) : null}
 

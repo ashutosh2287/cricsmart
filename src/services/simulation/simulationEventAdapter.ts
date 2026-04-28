@@ -7,93 +7,137 @@ type StrictBallEvent = BallEvent & {
 };
 
 function assertRequiredFields(event: StrictBallEvent): void {
-  if (!event.battingTeam || !event.bowlingTeam) {
-    throw new Error("❌ Missing team info in event");
+  const battingTeam = event.battingTeam?.trim() ?? "";
+  const bowlingTeam = event.bowlingTeam?.trim() ?? "";
+  const batsman = event.batsman?.trim() ?? "";
+  const nonStriker = event.nonStriker?.trim() ?? "";
+  const bowler = event.bowler?.trim() ?? "";
+
+  if (!battingTeam || !bowlingTeam) {
+    throw new Error("❌ Missing team info in simulationEventAdapter");
   }
 
-  if (!event.batsman || !event.nonStriker || !event.bowler) {
-    throw new Error("❌ Missing player info in event");
+  if (battingTeam === bowlingTeam) {
+    throw new Error(
+      `❌ Invalid simulation teams in adapter: battingTeam and bowlingTeam are the same (${battingTeam})`
+    );
+  }
+
+  if (!bowler) {
+    throw new Error("❌ Missing bowler info in simulationEventAdapter");
+  }
+
+  // Batter names are optional adapter hints.
+  // If provided, they must be complete and valid.
+  if ((batsman && !nonStriker) || (!batsman && nonStriker)) {
+    throw new Error("❌ Incomplete batter info in simulationEventAdapter");
+  }
+
+  if (batsman && nonStriker && batsman === nonStriker) {
+    throw new Error(
+      `❌ Invalid batting pair in adapter: striker and non-striker are the same player (${batsman})`
+    );
   }
 }
 
-function assertNever(x: never): never {
+function assertNever(_: never): never {
   throw new Error("❌ Unhandled event variant");
 }
 
 export function toEngineEvent(event: StrictBallEvent): EngineBallEvent {
   assertRequiredFields(event);
 
-  const id = event.id;
+  const id = String(event.id ?? "").trim();
+  if (!id) {
+    throw new Error("❌ Missing event id");
+  }
+
+  const batsman = event.batsman?.trim() ?? "";
+  const nonStriker = event.nonStriker?.trim() ?? "";
+  const bowler = event.bowler.trim();
+  const battingTeam = event.battingTeam.trim();
+  const bowlingTeam = event.bowlingTeam.trim();
 
   const base = {
-    id,
-    batsman: event.batsman,
-    nonStriker: event.nonStriker,
-    bowler: event.bowler,
-    battingTeam: event.battingTeam,
-    bowlingTeam: event.bowlingTeam
-  };
+  id,
+  batsman,
+  nonStriker,
+  bowler,
+  battingTeam,
+  bowlingTeam,
+};
 
   console.log("ADAPTER EVENT CHECK", {
-  type: event.type,
-  batsman: event.batsman,
-  nonStriker: event.nonStriker,
-  bowler: event.bowler,
-  battingTeam: event.battingTeam,
-  bowlingTeam: event.bowlingTeam
-});
+    id,
+    type: event.type,
+    hasBattingPair: !!(batsman && nonStriker),
+    batsman,
+    nonStriker,
+    bowler,
+    battingTeam,
+    bowlingTeam,
+  });
 
   switch (event.type) {
-    case "RUN":
+    case "RUN": {
+      if (typeof event.runs !== "number") {
+        throw new Error("❌ RUN event missing numeric runs");
+      }
+
       return {
         type: "RUN",
         runs: event.runs,
-        ...base
+        ...base,
       };
+    }
 
     case "FOUR":
       return {
         type: "FOUR",
-        ...base
+        ...base,
       };
 
     case "SIX":
       return {
         type: "SIX",
-        ...base
+        ...base,
       };
 
     case "WICKET":
       return {
         type: "WICKET",
-        ...base
+        ...base,
       };
 
     case "WD":
       return {
         type: "WD",
-        ...base
+        ...base,
       };
 
     case "NB":
       return {
         type: "NB",
-        ...base
+        ...base,
       };
 
-    case "BYE":
+    case "BYE": {
+      const runs = typeof event.extraRuns === "number" ? event.extraRuns : 0;
       return {
         type: "BYE",
-        runs: event.extraRuns,
-        ...base
+        runs,
+        ...base,
       };
+    }
 
-    case "LB":
+    case "LB": {
+      const runs = typeof event.extraRuns === "number" ? event.extraRuns : 0;
       return {
         type: "LB",
-        runs: event.extraRuns,
-        ...base
+        runs,
+        ...base,
       };
+    }
 
     default:
       return assertNever(event);

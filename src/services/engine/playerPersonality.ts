@@ -28,15 +28,26 @@ export function getPlayerProfile(
   if (!playerName) {
     return { aggression: 0.5, anchor: 0.5, finisher: 0.5 };
   }
+  const innings =
+  state.innings?.[state.currentInningsIndex];
 
-  const allPlayers = [
-    ...(state.teamA?.squad ?? []),
-    ...(state.teamB?.squad ?? []),
-  ];
+const records = innings?.battingRecords ?? [];
 
-  const player = allPlayers.find((p) => p.name === playerName);
+// find player directly from engine state
+const player = records.find((p) => p.name === playerName);
 
-  return getRoleBasedProfile(player?.role);
+// 🔥 role comes from squad, not battingRecords
+const team =
+  state.teamA.name === innings?.battingTeam
+    ? state.teamA
+    : state.teamB;
+
+const squadPlayer = team.squad.find(
+  (p) => p.name === playerName
+);
+
+return getRoleBasedProfile(squadPlayer?.role);
+  
 }
 export function adjustByBattingOrder(
   profile: PlayerProfile,

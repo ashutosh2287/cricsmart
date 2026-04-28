@@ -1,10 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { subscribeMatch, getEventStream } from "@/services/matchEngine";
-import { getWinProbabilityTimeline } from "@/services/analytics/winProbabilityTimelineEngine";
-import { getHighlights } from "@/services/highlights/highlightStore";
-
 import {
   LineChart,
   Line,
@@ -18,18 +13,17 @@ import {
   ReferenceArea
 } from "recharts";
 
-type Props = {
-  matchId: string;
-  team1?: string;
-  team2?: string;
-};
-
 type ChartPoint = {
   over: number;
   batting: number;
   bowling: number;
   marker?: "WICKET" | "SIX" | "FOUR" | "SWING" | "TURNING_POINT";
-  ballIndex: number;
+};
+
+type Props = {
+  data: ChartPoint[];
+  team1?: string;
+  team2?: string;
 };
 
 type DotProps = {
@@ -39,79 +33,12 @@ type DotProps = {
 };
 
 export default function WinProbabilityChart({
-  matchId,
+  data,
   team1,
   team2
 }: Props) {
 
-  const [data, setData] = useState<ChartPoint[]>([]);
-
-  useEffect(() => {
-
-    function update() {
-
-      const timeline = getWinProbabilityTimeline(matchId);
-      const events = getEventStream(matchId);
-      const highlights = getHighlights(matchId);
-
-      if (!timeline?.timeline?.length) {
-        setData([]);
-        return;
-      }
-
-      const chartData: ChartPoint[] = [];
-
-      timeline.timeline.forEach((p, index) => {
-
-        const point: ChartPoint = {
-          over: p.over,
-          batting: p.batting,
-          bowling: p.bowling,
-          ballIndex: index
-        };
-
-        const event = events[index];
-
-        // 🎯 Basic event markers
-        if (event) {
-          if (event.type === "WICKET") point.marker = "WICKET";
-          if (event.type === "SIX") point.marker = "SIX";
-          if (event.type === "FOUR") point.marker = "FOUR";
-        }
-
-        // ⚡ Swing detection
-        const prev = chartData[index - 1];
-        if (!point.marker && prev) {
-          const swing = Math.abs(point.batting - prev.batting);
-          if (swing >= 15) {
-            point.marker = "SWING";
-          }
-        }
-
-        // 🔥 TURNING POINT SYNC
-        const turningPoint = highlights.find(
-          (h) =>
-            h.type === "TURNING_POINT" &&
-            h.event &&
-            Math.abs(h.event.over - p.over) < 0.2
-        );
-
-        if (turningPoint) {
-          point.marker = "TURNING_POINT";
-        }
-
-        chartData.push(point);
-      });
-
-      setData(chartData);
-    }
-
-    update();
-
-    const unsubscribe = subscribeMatch(matchId, update);
-    return () => unsubscribe();
-
-  }, [matchId]);
+  if (!data.length) return null;
 
   return (
     <div className="bg-zinc-900 p-4 rounded-xl shadow-lg">
@@ -123,19 +50,17 @@ export default function WinProbabilityChart({
           Win Probability
         </h3>
 
-        {data.length > 0 && (
-          <div className="text-xs flex gap-3">
+        <div className="text-xs flex gap-3">
 
-            <span className="text-green-400 font-semibold">
-              {team1 ?? "BAT"} {data[data.length - 1].batting.toFixed(1)}%
-            </span>
+          <span className="text-green-400 font-semibold">
+            {team1 ?? "BAT"} {data[data.length - 1].batting.toFixed(1)}%
+          </span>
 
-            <span className="text-red-400 font-semibold">
-              {team2 ?? "BOWL"} {data[data.length - 1].bowling.toFixed(1)}%
-            </span>
+          <span className="text-red-400 font-semibold">
+            {team2 ?? "BOWL"} {data[data.length - 1].bowling.toFixed(1)}%
+          </span>
 
-          </div>
-        )}
+        </div>
 
       </div>
 
@@ -143,7 +68,7 @@ export default function WinProbabilityChart({
 
         <LineChart data={data}>
 
-          {/* 🎨 GRADIENTS */}
+          {/* GRADIENTS */}
           <defs>
             <linearGradient id="battingFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#22c55e" stopOpacity={0.4}/>
@@ -156,26 +81,21 @@ export default function WinProbabilityChart({
             </linearGradient>
           </defs>
 
-          {/* 🟦 PHASE ZONES */}
+          {/* PHASE ZONES */}
           <ReferenceArea x1={0} x2={6} fill="#1e40af" fillOpacity={0.08} />
           <ReferenceArea x1={6} x2={15} fill="#065f46" fillOpacity={0.08} />
           <ReferenceArea x1={15} x2={20} fill="#7f1d1d" fillOpacity={0.08} />
 
-          {/* GRID */}
           <CartesianGrid stroke="#333" strokeDasharray="3 3" />
 
-          {/* AREA */}
           <Area type="monotone" dataKey="batting" fill="url(#battingFill)" stroke="none" />
           <Area type="monotone" dataKey="bowling" fill="url(#bowlingFill)" stroke="none" />
 
-          {/* AXIS */}
           <XAxis dataKey="over" stroke="#aaa" />
           <YAxis domain={[0, 100]} stroke="#aaa" tickFormatter={(v) => `${v}%`} />
 
-          {/* MID LINE */}
           <ReferenceLine y={50} stroke="#666" strokeDasharray="4 4" />
 
-          {/* TOOLTIP */}
           <Tooltip formatter={(v) => `${Number(v).toFixed(1)}%`} />
 
           {/* MAIN LINE */}
@@ -185,33 +105,23 @@ export default function WinProbabilityChart({
             stroke="#22c55e"
             strokeWidth={3}
             dot={({ cx, cy, payload }: DotProps) => {
-
               if (!payload?.marker || cx === undefined || cy === undefined) return null;
 
               let color = "#facc15";
               let label = "";
 
               if (payload.marker === "TURNING_POINT") {
-                color = "#facc15";
                 label = "TP";
-              }
-
-              if (payload.marker === "WICKET") {
+              } else if (payload.marker === "WICKET") {
                 color = "#ef4444";
                 label = "W";
-              }
-
-              if (payload.marker === "SIX") {
+              } else if (payload.marker === "SIX") {
                 color = "#22c55e";
                 label = "6";
-              }
-
-              if (payload.marker === "FOUR") {
+              } else if (payload.marker === "FOUR") {
                 color = "#60a5fa";
                 label = "4";
-              }
-
-              if (payload.marker === "SWING") {
+              } else if (payload.marker === "SWING") {
                 label = "⚡";
               }
 
@@ -226,7 +136,6 @@ export default function WinProbabilityChart({
             }}
           />
 
-          {/* BOWLING LINE */}
           <Line
             type="monotone"
             dataKey="bowling"

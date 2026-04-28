@@ -1,17 +1,21 @@
 import { BallEvent } from "@/types/ballEvent";
 import {
-  dispatchBallEvent,
   resetMatchState,
   getMatchState,
+  MatchState,
+  reduceStateOnly,
 } from "../matchEngine";
 import { clearTimeline } from "../broadcastTimeline";
-import { toEngineEvent } from "@/services/simulation/simulationEventAdapter";
 import { getNearestSnapshot } from "./snapshotStore";
 
-// 🔥 Active replay timers
-const activeReplays: Record<string, NodeJS.Timeout> = {};
+/*
+================================================
+RUNTIME STATE
+================================================
+*/
 
-// 🔥 Replay runtime state
+const activeRAF: Record<string, number> = {};
+
 const replayState: Record<
   string,
   {
@@ -22,125 +26,175 @@ const replayState: Record<
 > = {};
 
 let replaySpeed = 800;
+let replayDirection: 1 | -1 = 1;
 
-// 🧠 Helper → safely get teams from engine
-function getCurrentTeams(matchId: string) {
-  const matchState = getMatchState(matchId);
+/*
+================================================
+EVENT SUBSCRIPTION (🔥 NO POLLING)
+================================================
+*/
 
-  const innings =
-    matchState?.innings?.[matchState.currentInningsIndex];
+const listeners = new Set<() => void>();
 
-  return {
-    battingTeam: innings?.battingTeam ?? "Unknown",
-    bowlingTeam: innings?.bowlingTeam ?? "Unknown",
-  };
+function emitReplayUpdate() {
+  listeners.forEach((l) => l());
 }
 
-// 🚀 START REPLAY
+export function subscribeReplay(cb: () => void) {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+
+/*
+================================================
+REBUILD STATE
+================================================
+*/
+
+async function rebuildFromIndex(
+  matchId: string,
+  events: BallEvent[],
+  targetIndex: number,
+  previousState?: MatchState,
+  previousIndex?: number
+): Promise<MatchState | null> {
+  let state: MatchState | null = null;
+  let startIndex = 0;
+
+  if (
+    previousState &&
+    previousIndex !== undefined &&
+    previousIndex < targetIndex
+  ) {
+    state = structuredClone(previousState);
+    startIndex = previousIndex + 1;
+  } else {
+    const snapshot = getNearestSnapshot(matchId, targetIndex);
+    const baseState = snapshot?.state ?? getMatchState(matchId);
+
+    state = baseState ? structuredClone(baseState) : null;
+    startIndex = snapshot?.index ?? 0;
+  }
+
+  if (!state) return null;
+
+  for (let i = startIndex; i <= targetIndex && i < events.length; i++) {
+    const event = events[i];
+    if (!event) continue;
+
+    state = reduceStateOnly(state, event);
+  }
+
+  return state;
+}
+
+/*
+================================================
+START REPLAY (🔥 RAF BASED)
+================================================
+*/
+
 export function startReplay(matchId: string, events: BallEvent[]) {
-  if (activeReplays[matchId]) {
-    stopReplay(matchId);
+  if (activeRAF[matchId]) {
+    cancelAnimationFrame(activeRAF[matchId]);
   }
 
   resetMatchState(matchId);
   clearTimeline(matchId);
 
-  let index = 0;
-
-  replayState[matchId] = {
-    index: 0,
+  const meta = (replayState[matchId] = {
+    index: replayDirection === 1 ? 0 : events.length - 1,
     isPlaying: true,
     isReplayMode: true,
-  };
+  });
 
-  activeReplays[matchId] = setInterval(() => {
-    if (index >= events.length) {
-      stopReplay(matchId);
-      return;
+  let lastState: MatchState | null = null;
+  let lastIndex = -1;
+
+  let lastTime = performance.now();
+
+  async function loop(now: number) {
+    if (!meta.isPlaying) return;
+
+    if (now - lastTime >= replaySpeed) {
+      const index = meta.index;
+
+      if (index < 0 || index >= events.length) {
+        stopReplay(matchId);
+        return;
+      }
+
+      const newState = await rebuildFromIndex(
+        matchId,
+        events,
+        index,
+        lastState ?? undefined,
+        lastIndex
+      );
+
+      if (newState) {
+        const matchState = getMatchState(matchId);
+        if (matchState) {
+          Object.assign(matchState, newState);
+        }
+
+        lastState = newState;
+        lastIndex = index;
+      }
+
+      meta.index += replayDirection;
+
+      emitReplayUpdate();
+
+      lastTime = now;
     }
 
-    const event = events[index];
+    activeRAF[matchId] = requestAnimationFrame(loop);
+  }
 
-    const { battingTeam, bowlingTeam } = getCurrentTeams(matchId);
-
-    const engineEvent = toEngineEvent({
-      ...event,
-      batsman: event.batsman ?? "Unknown",
-      nonStriker: event.nonStriker ?? "Unknown",
-      bowler: event.bowler ?? "Unknown",
-      battingTeam,
-      bowlingTeam,
-    });
-
-    dispatchBallEvent(matchId, engineEvent);
-
-    replayState[matchId].index = index;
-
-    index++;
-  }, replaySpeed);
+  activeRAF[matchId] = requestAnimationFrame(loop);
 }
 
-// 🛑 STOP REPLAY
-export function stopReplay(matchId: string) {
-  const replay = activeReplays[matchId];
+/*
+================================================
+STOP
+================================================
+*/
 
-  if (replay) {
-    clearInterval(replay);
-    delete activeReplays[matchId];
+export function stopReplay(matchId: string) {
+  if (activeRAF[matchId]) {
+    cancelAnimationFrame(activeRAF[matchId]);
+    delete activeRAF[matchId];
   }
 
   if (replayState[matchId]) {
     replayState[matchId].isPlaying = false;
     replayState[matchId].isReplayMode = false;
   }
+
+  emitReplayUpdate();
 }
 
-// ⚡ SET SPEED
-export function setReplaySpeed(speed: number) {
-  replaySpeed = speed;
-}
+/*
+================================================
+SEEK (INSTANT)
+================================================
+*/
 
-// 🎯 SNAPSHOT SEEK (INSTANT JUMP)
-export function replayTillIndex(
+export async function replayTillIndex(
   matchId: string,
   events: BallEvent[],
   targetIndex: number
 ) {
   stopReplay(matchId);
 
-  resetMatchState(matchId);
-  clearTimeline(matchId);
+  const newState = await rebuildFromIndex(matchId, events, targetIndex);
 
-  // 🔥 STEP 1: restore snapshot
-  const snapshot = getNearestSnapshot(matchId, targetIndex);
+  if (!newState) return;
 
-  let startIndex = 0;
-
-  if (snapshot) {
-    const matchState = getMatchState(matchId);
-
-    if (matchState) {
-      Object.assign(matchState, snapshot.state);
-      startIndex = snapshot.index;
-    }
-  }
-
-  // 🔥 STEP 2: replay remaining events
-  for (let i = startIndex; i <= targetIndex; i++) {
-    const event = events[i];
-
-    const { battingTeam, bowlingTeam } = getCurrentTeams(matchId);
-
-    const engineEvent = toEngineEvent({
-      ...event,
-      batsman: event.batsman ?? "Unknown",
-      nonStriker: event.nonStriker ?? "Unknown",
-      bowler: event.bowler ?? "Unknown",
-      battingTeam,
-      bowlingTeam,
-    });
-
-    dispatchBallEvent(matchId, engineEvent);
+  const matchState = getMatchState(matchId);
+  if (matchState) {
+    Object.assign(matchState, newState);
   }
 
   replayState[matchId] = {
@@ -148,9 +202,30 @@ export function replayTillIndex(
     isPlaying: false,
     isReplayMode: true,
   };
+
+  emitReplayUpdate();
 }
 
-// 📊 GET REPLAY STATE
+/*
+================================================
+CONTROLS
+================================================
+*/
+
+export function setReplaySpeed(speed: number) {
+  replaySpeed = speed;
+}
+
+export function setReplayDirection(direction: 1 | -1) {
+  replayDirection = direction;
+}
+
+/*
+================================================
+STATE GETTER
+================================================
+*/
+
 export function getReplayState(matchId: string) {
   return (
     replayState[matchId] || {

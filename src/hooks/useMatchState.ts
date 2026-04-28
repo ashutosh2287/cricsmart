@@ -10,6 +10,6 @@ export function useMatchState(matchId: string) {
   return useSyncExternalStore(
     (callback) => subscribeMatch(matchId, callback),
     () => getMatchSnapshot(matchId),
-    () => getMatchSnapshot(matchId)
+    () => getMatchSnapshot(matchId) // SSR fallback
   );
 }

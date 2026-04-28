@@ -10,6 +10,7 @@ import MatchNarrativePanel from "@/components/analytics/MatchNarrativePanel";
 import LiveScoreCard from "@/components/LiveScoreCard";
 import TeamList from "@/components/teams/TeamList";
 
+
 export default function AnalyticsPage() {
 
   const matchId = "ind-vs-aus";
@@ -33,11 +34,11 @@ export default function AnalyticsPage() {
         <div className="grid lg:grid-cols-2 gap-8">
 
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-lg hover:border-blue-500 transition">
-            <WinProbabilityChart matchId={matchId} />
+            <WinProbabilityChart data={[]} />
           </div>
 
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-lg hover:border-blue-500 transition">
-            <MomentumHeatmap matchId={matchId} />
+            <WinProbabilityChart data={[]} />
           </div>
 
         </div>

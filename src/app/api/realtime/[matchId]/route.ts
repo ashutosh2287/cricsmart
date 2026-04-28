@@ -1,20 +1,14 @@
 import { NextRequest } from "next/server";
-import {
-  addClient,
-  removeClient,
-} from "@/services/realtime/realtimeController";
-import { startSimulation } from "@/services/simulation/matchSimulator";
-import { initMatch } from "@/services/matchEngine";
+import { addClient, removeClient } from "@/services/realtime/realtimeController";
+import { getMatchState, initMatch } from "@/services/matchEngine";
+
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-// 🔥 GLOBAL FLAG (prevents multiple simulations)
-const globalStore = globalThis as {
-  __SIM_STARTED__?: Record<string, boolean>;
+type RealtimeClient = {
+  id: string;
+  send: (data: string) => void;
 };
-
-if (!globalStore.__SIM_STARTED__) {
-  globalStore.__SIM_STARTED__ = {};
-}
 
 export async function GET(
   req: NextRequest,
@@ -22,60 +16,104 @@ export async function GET(
 ) {
   const { matchId } = await context.params;
 
-  console.log("🔥 SSE connected:", matchId);
+  initMatch(matchId);
 
-  const stream = new ReadableStream({
+  const encoder = new TextEncoder();
+  let closed = false;
+  let keepAlive: ReturnType<typeof setInterval> | null = null;
+  let client: RealtimeClient | null = null;
+
+  const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const encoder = new TextEncoder();
+      const cleanup = () => {
+        if (closed) return;
+        closed = true;
 
-      const client = {
+        if (keepAlive) {
+          clearInterval(keepAlive);
+          keepAlive = null;
+        }
+
+        if (client) {
+          removeClient(matchId, client);
+        }
+
+        try {
+          controller.close();
+        } catch {
+          // ignore already closed
+        }
+
+        console.log("❌ SSE disconnected:", matchId, client?.id);
+      };
+
+      const safeEnqueue = (payload: string) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(payload));
+        } catch (error) {
+          console.error("❌ SSE enqueue failed", { matchId, error });
+          cleanup();
+        }
+      };
+
+      client = {
         id: crypto.randomUUID(),
         send: (data: string) => {
-          controller.enqueue(encoder.encode(data));
+          safeEnqueue(data);
         },
       };
 
-      // ✅ Add client
       addClient(matchId, client);
-      console.log(`✅ Client registered for match ${matchId}`);
+      console.log("✅ SSE connected:", matchId, client.id);
 
-      // ✅ Initial handshake
-      controller.enqueue(
-        encoder.encode(
-          `data: ${JSON.stringify({
-            type: "CONNECTED",
-            matchId,
-          })}\n\n`
-        )
-      );
+      safeEnqueue(`retry: 2000\n\n`);
+      safeEnqueue(
+  `event: CONNECTED\ndata: ${JSON.stringify({
+    type: "CONNECTED",
+    matchId,
+  })}\n\n`
+);
 
-      // 💡 Keep connection alive
-      const keepAlive = setInterval(() => {
-        controller.enqueue(encoder.encode(`:\n\n`));
+      const initialState = getMatchState(matchId);
+      if (initialState) {
+        safeEnqueue(
+  `event: INITIAL_STATE\ndata: ${JSON.stringify({
+    type: "INITIAL_STATE",
+    matchId,
+    data: initialState,
+  })}\n\n`
+);
+      }
+
+      keepAlive = setInterval(() => {
+        safeEnqueue(`: keepalive\n\n`);
       }, 15000);
 
-      // ❌ Handle disconnect
-      req.signal.addEventListener("abort", () => {
-        console.log("❌ SSE disconnected:", matchId);
+      req.signal.addEventListener("abort", cleanup, { once: true });
+    },
 
+    cancel() {
+      if (keepAlive) {
         clearInterval(keepAlive);
+        keepAlive = null;
+      }
+
+      if (client) {
         removeClient(matchId, client);
-        controller.close();
-      });
+      }
+
+      closed = true;
+      console.log("ℹ️ SSE stream cancelled:", matchId);
     },
   });
 
-  // =====================================================
-  // 🚀 START SIMULATION (OUTSIDE stream → FINAL FIX)
-  // =====================================================
-
-  
-
   return new Response(stream, {
     headers: {
-      "Content-Type": "text/event-stream",
+      "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
     },
   });
 }

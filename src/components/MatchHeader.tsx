@@ -200,9 +200,9 @@ export default function MatchHeader({
             <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
               Score
             </p>
-            <div className="text-white mt-1">
-  <AnimatedScore value={`${runs}/${wickets}`} />
-</div>
+            <span className="mt-1 text-sm font-semibold text-white">
+  <AnimatedScore value="2/0" />
+</span>
           </div>
 
         </div>

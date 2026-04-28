@@ -1,42 +1,13 @@
-import { emit } from "./realtimeEvents";
 import { Match } from "../types/match";
 
-let interval: NodeJS.Timeout;
-
-export function connectRealtime(initialMatches: Match[]) {
-
-  // Fake websocket connection simulation
-
-  interval = setInterval(() => {
-
-    const updatedMatches = initialMatches.map((match) => {
-
-      if (match.status === "Live" && match.score && match.overs) {
-
-        const runs = parseInt(match.score.split("/")[0]) + Math.floor(Math.random() * 3);
-        const wickets = match.score.split("/")[1];
-
-        const newOvers = (parseFloat(match.overs) + 0.1).toFixed(1);
-
-        return {
-          ...match,
-          score: `${runs}/${wickets}`,
-          overs: newOvers,
-          runRate: Number((Math.random() * 10).toFixed(2))
-        };
-
-      }
-
-      return match;
-
-    });
-
-    emit(updatedMatches);
-
-  }, 3000);
-
+export function connectRealtime(_initialMatches: Match[]) {
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(
+      "[realtimeClient] Disabled fake realtime client. Use SSE connectRealtime instead."
+    );
+  }
 }
 
 export function disconnectRealtime() {
-  clearInterval(interval);
+  // no-op
 }

@@ -1,69 +1,116 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { getEventStream } from "@/services/matchEngine";
-import { seekReplay } from "@/services/replay/seekReplay";
+import { useEffect, useState } from "react";
+
+import {
+  initReplay,
+  seekReplayUI,
+  getReplayEvents,
+} from "@/services/replay/replayController";
+
+import { getReplayState } from "@/services/replay/replayEngine";
+import { extractHighlights } from "@/services/replay/highlightEngine";
 
 type Props = {
   matchId: string;
 };
 
 export default function MatchTimelineSlider({ matchId }: Props) {
+  const [position, setPosition] = useState(0);
+  const [maxIndex, setMaxIndex] = useState(0);
 
-  const events = useMemo(() => {
-    return getEventStream(matchId) ?? [];
+  const [highlights, setHighlights] = useState<{
+    wickets: number[];
+    sixes: number[];
+    fours: number[];
+  }>({
+    wickets: [],
+    sixes: [],
+    fours: [],
+  });
+
+  /*
+  ========================================
+  INIT REPLAY + LOAD EVENTS
+  ========================================
+  */
+  useEffect(() => {
+    async function load() {
+      await initReplay(matchId);
+
+      const events = getReplayEvents(matchId);
+
+      if (!events || events.length === 0) return;
+
+      // set max index properly (NO HARDCODE)
+      setMaxIndex(events.length - 1);
+
+      // extract highlights
+      const extracted = extractHighlights(events);
+
+      setHighlights({
+        wickets: extracted
+          .filter((h) => h.type === "WICKET")
+          .map((h) => h.index),
+
+        sixes: extracted
+          .filter((h) => h.type === "SIX")
+          .map((h) => h.index),
+
+        fours: extracted
+          .filter((h) => h.type === "FOUR")
+          .map((h) => h.index),
+      });
+
+      // sync initial position
+      const state = getReplayState(matchId);
+      if (state) setPosition(state.index);
+    }
+
+    load();
   }, [matchId]);
 
-  const maxIndex = events.length > 0 ? events.length - 1 : 0;
-
-  const [position, setPosition] = useState(maxIndex);
-
   /*
   ========================================
-  Sync slider with latest ball
+  SYNC WITH REPLAY ENGINE
   ========================================
   */
-
   useEffect(() => {
-    setPosition(maxIndex);
-  }, [maxIndex]);
+    const interval = setInterval(() => {
+      const state = getReplayState(matchId);
+      if (!state) return;
+
+      setPosition(state.index);
+    }, 120);
+
+    return () => clearInterval(interval);
+  }, [matchId]);
 
   /*
   ========================================
-  Handle slider drag
+  HANDLE SLIDER
   ========================================
   */
-
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-
     const index = Number(e.target.value);
-
     setPosition(index);
-
-    seekReplay(matchId, index);
-
+    seekReplayUI(matchId, index);
   }
 
   /*
   ========================================
-  Support graph click → timeline seek
+  EXTERNAL SEEK (GRAPHS ETC)
   ========================================
   */
-
   useEffect(() => {
-
     function handleExternalSeek(e: Event) {
-
       const custom = e as CustomEvent<{ ballIndex: number }>;
-
       const index = custom.detail?.ballIndex;
 
       if (typeof index !== "number") return;
 
       setPosition(index);
-
-      seekReplay(matchId, index);
-
+      seekReplayUI(matchId, index);
     }
 
     window.addEventListener("timeline-seek", handleExternalSeek);
@@ -71,23 +118,28 @@ export default function MatchTimelineSlider({ matchId }: Props) {
     return () => {
       window.removeEventListener("timeline-seek", handleExternalSeek);
     };
-
   }, [matchId]);
 
+  /*
+  ========================================
+  UI
+  ========================================
+  */
   if (maxIndex <= 0) return null;
 
   return (
+    <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white p-5 rounded-2xl shadow-xl border border-white/10">
 
-    <div className="bg-gray-900 text-white p-4 rounded-xl">
-
-      <h3 className="font-bold mb-2">
-        Match Timeline
+      <h3 className="font-semibold mb-3 text-lg tracking-wide">
+        📊 Match Timeline
       </h3>
 
+      {/* LABEL */}
       <label htmlFor="timeline-slider" className="sr-only">
         Match timeline slider
       </label>
 
+      {/* SLIDER */}
       <input
         id="timeline-slider"
         type="range"
@@ -95,16 +147,61 @@ export default function MatchTimelineSlider({ matchId }: Props) {
         max={maxIndex}
         value={position}
         onChange={handleChange}
-        className="w-full"
+        className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-green-500"
       />
 
-      <div className="text-xs mt-2 flex justify-between">
+      {/* MARKERS */}
+      <div className="relative w-full mt-2 h-2">
+
+        {/* WICKETS */}
+        {highlights.wickets.map((i) => (
+          <div
+            key={"w" + i}
+            className="absolute top-0 w-1 h-2 bg-red-500"
+            style={{
+              left: `${(i / maxIndex) * 100}%`,
+            }}
+            title={`Wicket at ball ${i + 1}`}
+          />
+        ))}
+
+        {/* SIXES */}
+        {highlights.sixes.map((i) => (
+          <div
+            key={"s" + i}
+            className="absolute top-0 w-1 h-2 bg-purple-400"
+            style={{
+              left: `${(i / maxIndex) * 100}%`,
+            }}
+            title={`Six at ball ${i + 1}`}
+          />
+        ))}
+
+        {/* FOURS */}
+        {highlights.fours.map((i) => (
+          <div
+            key={"f" + i}
+            className="absolute top-0 w-1 h-2 bg-blue-400"
+            style={{
+              left: `${(i / maxIndex) * 100}%`,
+            }}
+            title={`Four at ball ${i + 1}`}
+          />
+        ))}
+
+      </div>
+
+      {/* FOOTER */}
+      <div className="flex justify-between text-xs mt-2 opacity-70">
         <span>Ball 1</span>
         <span>Ball {maxIndex + 1}</span>
       </div>
 
+      {/* CURRENT POSITION */}
+      <div className="text-center text-sm mt-3 opacity-80">
+        Ball #{position + 1}
+      </div>
+
     </div>
-
   );
-
 }

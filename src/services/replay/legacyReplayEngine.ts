@@ -13,7 +13,7 @@ stopReplay()
 
 Other files must only use this API.
 */
-import { MatchState } from "./matchEngine";
+import { MatchState } from "../matchEngine";
 import { BallEvent } from "@/types/ballEvent";
 
 /*

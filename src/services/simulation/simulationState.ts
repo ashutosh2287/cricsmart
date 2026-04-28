@@ -24,8 +24,10 @@ export type Player = {
    🔁 LEGACY SUPPORT (IMPORTANT)
 ===================================================== */
 
-// Allow both string and Player (for gradual migration)
+// Transitional support remains for order collections only.
+// Active on-field identities must always be normalized player names.
 export type PlayerRef = string | Player;
+export type PlayerName = string;
 
 /* =====================================================
    🏏 SIMULATION STATE
@@ -38,10 +40,10 @@ export type SimulationState = {
   totalRuns: number;
   wickets: number;
 
-  // 🔥 NOW SUPPORTS OBJECTS
-  striker: PlayerRef;
-  nonStriker: PlayerRef;
-  bowler: PlayerRef;
+    // Active on-field identities must always be normalized names.
+  striker: PlayerName;
+  nonStriker: PlayerName;
+  bowler: PlayerName;
 
   battingOrder: PlayerRef[];
   nextBatsmanIndex: number;

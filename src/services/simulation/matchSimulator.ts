@@ -11,20 +11,20 @@ import { getBowlingOrder } from "../teams/bowlingOrder";
 import { getMatchResult } from "../match/resultEngine";
 import { getPlayingXI } from "../teams/playingXI";
 import { getPlayerName } from "@/utils/playerUtils";
-import { broadcast } from "@/services/realtime/realtimeController";
-import { emitEvent } from "@/services/realtime/eventBus";
 import { saveSimulation } from "@/services/storage/simulationStorage";
 import { loadSimulation } from "@/services/storage/simulationStorage";
 import { getReplayState } from "@/services/replay/replayEngine";
-import { saveSnapshot } from "@/services/replay/snapshotStore";
-import { clearSnapshots } from "@/services/replay/snapshotStore";
-
+import { generateBroadcastInsights } from "../broadcast/broadcastInsightEngine";
+import { setAnalytics } from "../analytics/liveAnalyticsStore";
+import { getWinProbabilityTimeline } from "../analytics/winProbabilityTimelineEngine";
+import { getMomentumTimeline } from "../analytics/momentumTimelineEngine";
 type RuntimeSimulationControl = {
   timeoutRef: NodeJS.Timeout | null;
   isRunning: boolean;
   isPaused: boolean;
-  speed: number; // ms per ball
+  speed: number;
   runBallRef: (() => void) | null;
+  isTicking: boolean;
 };
 
 const simulationRegistry = new Map<string, RuntimeSimulationControl>();
@@ -33,7 +33,7 @@ function emitSimulationState(
   matchId: string,
   control: RuntimeSimulationControl
 ) {
-  emitEvent({
+  const event: SimulationEvent = {
     type: "SIMULATION_STATE_UPDATE",
     matchId,
     data: {
@@ -41,19 +41,23 @@ function emitSimulationState(
       isPaused: control.isPaused,
       speed: control.speed,
     },
-  });
-}
+  };
+
+  console.log("📡 SIMULATION STATE", event);
+} 
+
 function getSimulationControl(matchId: string): RuntimeSimulationControl {
   const existing = simulationRegistry.get(matchId);
   if (existing) return existing;
 
   const created: RuntimeSimulationControl = {
-    timeoutRef: null,
-    isRunning: false,
-    isPaused: false,
-    speed: 1500,
-    runBallRef: null,
-  };
+  timeoutRef: null,
+  isRunning: false,
+  isPaused: false,
+  speed: 1500,
+  runBallRef: null,
+  isTicking: false,
+};
 
   simulationRegistry.set(matchId, created);
   return created;
@@ -80,18 +84,6 @@ export function getSimulationRuntime(matchId?: string) {
 
 export type SimulationEvent =
   | {
-      type: "BALL_EVENT";
-      matchId: string;
-      data: {
-        engineEvent: ReturnType<typeof toEngineEvent>;
-        simulationState: SimulationState;
-        teams: {
-          teamA: Team;
-          teamB: Team;
-        };
-      };
-    }
-  | {
       type: "MATCH_ENDED";
       matchId: string;
       data: {
@@ -100,7 +92,7 @@ export type SimulationEvent =
       };
     }
   | {
-      type: "SIMULATION_STATE_UPDATE"; // 🔥 NEW
+      type: "SIMULATION_STATE_UPDATE";
       matchId: string;
       data: {
         isRunning: boolean;
@@ -235,21 +227,19 @@ function initializeFirstInnings(state: SimulationState) {
   state.battingOrder = getBattingOrder(battingXI);
   state.bowlingOrder = getBowlingOrder(bowlingXI);
 
-  state.striker = state.battingOrder[0];
-  state.nonStriker = state.battingOrder[1];
+    state.striker = getPlayerName(state.battingOrder[0]);
+  state.nonStriker = getPlayerName(state.battingOrder[1]);
   state.nextBatsmanIndex = 2;
 
   state.currentBowlerIndex = 0;
-  state.bowler = state.bowlingOrder[0];
+  state.bowler = getPlayerName(state.bowlingOrder[0]);
 
   state.bowlingPlan = createBowlingPlan(
     state.bowlingOrder.map(getPlayerName)
   );
 
-  state.over = 0;
+    state.over = 0;
   state.ball = 0;
-  state.totalRuns = 0;
-  state.wickets = 0;
   state.currentInningsIndex = 0;
   state.matchEnded = false;
   state.winner = null;
@@ -274,21 +264,19 @@ function startSecondInnings(state: SimulationState) {
   state.battingOrder = getBattingOrder(battingXI);
   state.bowlingOrder = getBowlingOrder(bowlingXI);
 
-  state.striker = state.battingOrder[0];
-  state.nonStriker = state.battingOrder[1];
+  state.striker = getPlayerName(state.battingOrder[0]);
+  state.nonStriker = getPlayerName(state.battingOrder[1]);
   state.nextBatsmanIndex = 2;
 
   state.currentBowlerIndex = 0;
-  state.bowler = state.bowlingOrder[0];
+  state.bowler = getPlayerName(state.bowlingOrder[0]);
 
   state.bowlingPlan = createBowlingPlan(
     state.bowlingOrder.map(getPlayerName)
   );
 
-  state.over = 0;
+    state.over = 0;
   state.ball = 0;
-  state.totalRuns = 0;
-  state.wickets = 0;
   state.currentInningsIndex = 1;
 
   assertStateTeamsAndPlayers(state);
@@ -305,43 +293,49 @@ function syncSimFromEngine(state: SimulationState, matchId: string) {
   state.currentInningsIndex = inningsIndex;
   state.over = innings.over;
   state.ball = innings.ball;
-}
 
-function updateState(state: SimulationState, event: BallEvent) {
-  const runs = event.runs ?? 0;
-  state.totalRuns += runs;
+  const strikerName = innings.striker?.trim() ?? "";
+  const nonStrikerName = innings.nonStriker?.trim() ?? "";
 
-  if (!event.wicket && runs % 2 === 1) {
-    const temp = state.striker;
-    state.striker = state.nonStriker;
-    state.nonStriker = temp;
-  }
-
-  if (event.wicket) {
-    state.wickets++;
-    handleWicket(state);
-  }
-}
-
-function handleWicket(state: SimulationState) {
-  if (state.nextBatsmanIndex >= state.battingOrder.length) {
-    console.log("💀 All out");
+  if (innings.completed || innings.wickets >= 10) {
     return;
   }
 
-  const next = state.battingOrder[state.nextBatsmanIndex];
-  if (!next) {
-    console.log("💀 All out");
+  if (!strikerName || !nonStrikerName) {
+    console.warn(
+      `⚠️ Engine sync skipped due to incomplete batting pair (${strikerName}, ${nonStrikerName})`
+    );
     return;
   }
 
-  state.striker = next;
-  state.nextBatsmanIndex++;
+  if (strikerName === nonStrikerName) {
+    throw new Error(
+      `❌ Invalid engine sync: striker and non-striker are the same player (${strikerName})`
+    );
+  }
+
+  const strikerExists = state.battingOrder.some(
+    (p) => getPlayerName(p) === strikerName
+  );
+  const nonStrikerExists = state.battingOrder.some(
+    (p) => getPlayerName(p) === nonStrikerName
+  );
+
+  if (!strikerExists) {
+    throw new Error(`❌ Engine striker not found in batting order: ${strikerName}`);
+  }
+
+  if (!nonStrikerExists) {
+    throw new Error(`❌ Engine non-striker not found in batting order: ${nonStrikerName}`);
+  }
+
+  state.striker = strikerName;
+  state.nonStriker = nonStrikerName;
 }
 
 type MatchStateType = NonNullable<ReturnType<typeof getMatchState>>;
 
-function finishMatch(state: SimulationState, matchState: MatchStateType, matchId: string) {
+function finishMatch(state: SimulationState, matchState: MatchStateType) {
   if (state.matchEnded) return;
 
   state.matchEnded = true;
@@ -354,21 +348,12 @@ function finishMatch(state: SimulationState, matchState: MatchStateType, matchId
   const teamB = state.teamB.name;
   const scoreA = first.runs;
   const scoreB = second.runs;
-  const wicketsLeft = 10 - state.wickets;
+  const wicketsLeft = Math.max(0, 10 - second.wickets);
 
   const result = getMatchResult(teamA, teamB, scoreA, scoreB, wicketsLeft);
 
   state.winner = result.winner;
   state.winBy = result.winBy;
-
-  broadcast(matchId, {
-    type: "MATCH_ENDED",
-    matchId,
-    data: {
-      winner: state.winner ?? undefined,
-      winBy: state.winBy ?? undefined,
-    },
-  });
 }
 
 export async function startSimulation(
@@ -436,10 +421,11 @@ if (control.timeoutRef) {
 }
 
 control.isRunning = true;
-emitSimulationState(matchId, control);
 control.isPaused = false;
 control.speed = speed;
 control.runBallRef = null;
+control.isTicking = false;
+emitSimulationState(matchId, control);
 
   matchState.teamA = state.teamA;
   matchState.teamB = state.teamB;
@@ -447,274 +433,317 @@ control.runBallRef = null;
   matchState.decision = state.decision;
 
   initializeFirstInnings(state);
+  syncSimFromEngine(state, matchId);
 
-  const runBall = () => {
+      const runBall = () => {
+        control.runBallRef = runBall;
+    if (control.isTicking) return;
+    control.isTicking = true;
 
-    
-  control.runBallRef = runBall;
-const replay = getReplayState(matchId);
+    try {
+      const replay = getReplayState(matchId);
+      if (replay?.isReplayMode) {
+        return;
+      }
 
-if (replay?.isReplayMode) {
-  return;
-}
-  console.log("🏏 RUNNING BALL LOOP", matchId);
+      console.log("🏏 RUNNING BALL LOOP", matchId);
 
-  if (!control.isRunning) return;
+      if (!control.isRunning) return;
 
-  if (control.timeoutRef) {
-    clearTimeout(control.timeoutRef);
-    control.timeoutRef = null;
-  }
+      if (control.timeoutRef) {
+        clearTimeout(control.timeoutRef);
+        control.timeoutRef = null;
+      }
 
-  if (control.isPaused) {
-  return; // ⛔ stop loop here (no polling)
-}
-    const engineState = getMatchState(matchId);
-    if (!engineState) {
-      stopSimulation(matchId);
-      return;
-    }
+      if (control.isPaused) {
+        return;
+      }
 
-    if (engineState.currentInningsIndex >= 2) {
-      stopSimulation(matchId);
-      return;
-    }
-
-    const engineInningsIndex = engineState.currentInningsIndex;
-    const engineInnings = engineState.innings[engineInningsIndex];
-    if (!engineInnings) {
-      stopSimulation(matchId);
-      return;
-    }
-
-    if (engineInnings.completed) {
-  if (engineInningsIndex === 0) {
-    state.target = engineState.innings[0]?.runs + 1;
-
-    if (state.currentInningsIndex !== 1) {
-      startSecondInnings(state);
-    }
-
-    if (control.timeoutRef) {
-      clearTimeout(control.timeoutRef);
-      control.timeoutRef = null;
-    }
-
-    control.timeoutRef = setTimeout(runBall, control.speed);
-    return;
-  }
-
-      if (engineInningsIndex === 1) {
-        finishMatch(state, engineState, matchId);
+      const engineState = getMatchState(matchId);
+      if (!engineState) {
         stopSimulation(matchId);
         return;
       }
-    }
 
-    syncSimFromEngine(state, matchId);
-
-    const latestEngineState = getMatchState(matchId);
-    const latestEngineInnings =
-      latestEngineState?.innings[latestEngineState.currentInningsIndex];
-
-    if (
-      latestEngineState &&
-      latestEngineInnings &&
-      latestEngineState.currentInningsIndex === 1 &&
-      latestEngineInnings.battingTeam &&
-      latestEngineInnings.bowlingTeam &&
-      (
-        state.battingTeam.name !== latestEngineInnings.battingTeam ||
-        state.bowlingTeam.name !== latestEngineInnings.bowlingTeam
-      )
-    ) {
-      startSecondInnings(state);
-    }
-
-    const over = Math.floor(engineInnings.over);
-    if (state.bowlingPlan && state.bowlingPlan[over]) {
-      const bowlerName = state.bowlingPlan[over];
-      const bowlerObj = state.bowlingOrder.find(
-        (b) => getPlayerName(b) === bowlerName
-      );
-      if (bowlerObj) {
-        state.bowler = bowlerObj;
+      if (engineState.currentInningsIndex >= 2) {
+        stopSimulation(matchId);
+        return;
       }
-    }
 
-    if (
-      state.currentInningsIndex === 1 &&
-      engineInnings.over === 0 &&
-      engineInnings.ball === 0
-    ) {
-      state.striker = state.battingOrder[0];
-      state.nonStriker = state.battingOrder[1];
-      state.nextBatsmanIndex = 2;
-    }
+      const engineInningsIndex = engineState.currentInningsIndex;
+      const engineInnings = engineState.innings[engineInningsIndex];
+      if (!engineInnings) {
+        stopSimulation(matchId);
+        return;
+      }
 
-    assertStateTeamsAndPlayers(state);
-    assertEngineSync(state, matchId);
+      if (engineInnings.completed) {
+        if (engineInningsIndex === 0) {
+          state.target = (engineState.innings[0]?.runs ?? 0) + 1;
 
-    const syncedState: SimulationState = {
-      ...state,
-      battingOrder: [...state.battingOrder],
-      bowlingOrder: [...state.bowlingOrder],
-      striker: state.striker,
-      nonStriker: state.nonStriker,
-      bowler: state.bowler,
-      battingTeam: state.battingTeam,
-      bowlingTeam: state.bowlingTeam,
-      over: engineInnings.over,
-      ball: engineInnings.ball,
-      phase:
-        over < 6 ? "POWERPLAY" :
-        over < 15 ? "MIDDLE" : "DEATH"
-    };
+          const latest = getMatchState(matchId);
+          if (latest?.currentInningsIndex === 1 && state.currentInningsIndex !== 1) {
+            startSecondInnings(state);
+            syncSimFromEngine(state, matchId);
+          }
 
-    const event: BallEvent = generateBallEvent(syncedState);
+          control.timeoutRef = setTimeout(runBall, control.speed);
+          return;
+        }
+
+        if (engineInningsIndex === 1) {
+          finishMatch(state, engineState);
+          stopSimulation(matchId);
+          return;
+        }
+      }
+
+      syncSimFromEngine(state, matchId);
+
+      const latestEngineState = getMatchState(matchId);
+      const latestEngineInnings =
+        latestEngineState?.innings[latestEngineState.currentInningsIndex];
+
+      if (
+        latestEngineState &&
+        latestEngineInnings &&
+        latestEngineState.currentInningsIndex === 1 &&
+        latestEngineInnings.battingTeam &&
+        latestEngineInnings.bowlingTeam &&
+        (
+          state.battingTeam.name !== latestEngineInnings.battingTeam ||
+          state.bowlingTeam.name !== latestEngineInnings.bowlingTeam
+        )
+      ) {
+        startSecondInnings(state);
+      }
+
+      const over = Math.floor(engineInnings.over);
+            if (state.bowlingPlan && state.bowlingPlan[over]) {
+        const bowlerName = state.bowlingPlan[over];
+        const bowlerExists = state.bowlingOrder.some(
+          (b) => getPlayerName(b) === bowlerName
+        );
+
+        if (bowlerExists) {
+          state.bowler = bowlerName;
+        }
+      }
+
+      assertStateTeamsAndPlayers(state);
+      assertEngineSync(state, matchId);
+
+      const syncedState: SimulationState = {
+        ...state,
+        battingOrder: [...state.battingOrder],
+        bowlingOrder: [...state.bowlingOrder],
+        striker: state.striker,
+        nonStriker: state.nonStriker,
+        bowler: state.bowler,
+        battingTeam: state.battingTeam,
+        bowlingTeam: state.bowlingTeam,
+        over: engineInnings.over,
+        ball: engineInnings.ball,
+        phase:
+          over < 6 ? "POWERPLAY" :
+          over < 15 ? "MIDDLE" : "DEATH"
+      };
+
+const event: BallEvent = generateBallEvent(syncedState);
+
+const currentBowlerName = getPlayerName(syncedState.bowler);
+if (!currentBowlerName) {
+  throw new Error("❌ Missing bowler identity in simulation state");
+}
+
 if (!event) {
-  if (control.timeoutRef) {
-    clearTimeout(control.timeoutRef);
-    control.timeoutRef = null;
-  }
-
   control.timeoutRef = setTimeout(runBall, control.speed);
   return;
 }
 
-    const engineEvent = toEngineEvent({
-      ...event,
-      batsman: getPlayerName(state.striker),
-      nonStriker: getPlayerName(state.nonStriker),
-      bowler: getPlayerName(state.bowler),
-      battingTeam: state.battingTeam.name,
-      bowlingTeam: state.bowlingTeam.name
-    });
+const engineStateBeforeDispatch = getMatchState(matchId);
+const engineInningsBeforeDispatch =
+  engineStateBeforeDispatch?.innings[engineStateBeforeDispatch.currentInningsIndex];
 
-    console.group(`🏏 BALL ${engineInningsIndex}:${engineInnings.over}.${engineInnings.ball}`);
-    console.log("SIM STATE", {
-      innings: state.currentInningsIndex,
-      battingTeam: state.battingTeam.name,
-      bowlingTeam: state.bowlingTeam.name,
-      striker: getPlayerName(state.striker),
-      nonStriker: getPlayerName(state.nonStriker),
-      bowler: getPlayerName(state.bowler)
-    });
-    console.log("ENGINE EVENT", engineEvent);
+if (!engineStateBeforeDispatch || !engineInningsBeforeDispatch) {
+  throw new Error("❌ Missing engine state before dispatch");
+}
 
-    dispatchBallEvent(matchId, engineEvent);
+const engineStriker = engineInningsBeforeDispatch.striker?.trim();
+const engineNonStriker = engineInningsBeforeDispatch.nonStriker?.trim();
 
-    console.log("🚀 EMITTING EVENT", {
-      matchId,
-      type: "BALL_EVENT",
-      over: engineInnings.over,
-      ball: engineInnings.ball
-    });
+if (!engineStriker || !engineNonStriker) {
+  throw new Error("❌ Engine batting pair missing before dispatch");
+}
 
-    if (!matchId) {
-      console.error("❌ Missing matchId in broadcast");
-    } else {
-      broadcast(matchId, {
-        type: "BALL_EVENT",
-        matchId,
-        data: {
-          engineEvent,
-          simulationState: syncedState,
-          teams: {
-            teamA: state.teamA,
-            teamB: state.teamB
-          }
-        }
+const engineEvent = toEngineEvent({
+  ...event,
+  batsman: engineStriker,
+  nonStriker: engineNonStriker,
+  bowler: currentBowlerName,
+  battingTeam: engineInningsBeforeDispatch.battingTeam ?? state.battingTeam.name,
+  bowlingTeam: engineInningsBeforeDispatch.bowlingTeam ?? state.bowlingTeam.name,
+});
+
+const result = dispatchBallEvent(matchId, engineEvent);
+
+if (!result.ok) {
+  throw new Error(`❌ Engine rejected ball event: ${result.reason}`);
+}
+
+syncSimFromEngine(state, matchId);
+
+      console.group(`🏏 BALL ${engineInningsIndex}:${engineInnings.over}.${engineInnings.ball}`);
+      console.log("SIM STATE", {
+        innings: state.currentInningsIndex,
+        battingTeam: state.battingTeam.name,
+        bowlingTeam: state.bowlingTeam.name,
+        striker: getPlayerName(state.striker),
+        nonStriker: getPlayerName(state.nonStriker),
+        bowler: getPlayerName(state.bowler)
       });
-    }
+      console.log("ENGINE EVENT", engineEvent);
 
-    const latestAfterDispatch = getMatchState(matchId);
-    if (!latestAfterDispatch) {
+      
+
+     // 🔥 GET RAW DATA FROM ENGINES
+
+
+// 🔥 STORE
+
+
+    
+
+      const updatedEngine = getMatchState(matchId);
+      const updatedInnings =
+        updatedEngine?.innings[updatedEngine.currentInningsIndex];
+
+      console.log("✅ ENGINE COMMITTED EVENT", {
+        matchId,
+        over: updatedInnings?.over,
+        ball: updatedInnings?.ball,
+      });
+
+      const latestAfterDispatch = getMatchState(matchId);
+      if (!latestAfterDispatch) {
+        console.groupEnd();
+        stopSimulation(matchId);
+        return;
+      }
+
+      const commentary = generateAdvancedCommentary(event, {
+  ...latestAfterDispatch,
+  ...syncedState
+});
+
+// 🔥 1. CALCULATE ANALYTICS FIRST
+const winTimeline = getWinProbabilityTimeline(matchId);
+const momentumTimeline = getMomentumTimeline(matchId);
+
+// 🔥 TRANSFORM
+const winProbability = (winTimeline?.timeline ?? []).map(
+  (p: { over: number; batting: number }) => ({
+    over: p.over,
+    value: p.batting,
+  })
+);
+
+const momentum = (momentumTimeline ?? []).map(
+  (p: { ballIndex: number; momentum: number }) => ({
+    over: Math.floor(p.ballIndex / 6),
+    score: p.momentum,
+  })
+);
+
+// 🔥 2. STORE EVERYTHING FIRST
+addCommentary(matchId, commentary);
+generateBroadcastInsights(matchId);
+
+setAnalytics(matchId, {
+  winProbability,
+  momentum,
+});
+
+
+
+
+
+
+
+
+      const latestMatchState = getMatchState(matchId);
+      if (latestMatchState) {
+        saveSimulation(matchId, latestMatchState, {
+          isRunning: control.isRunning,
+          isPaused: control.isPaused,
+          speed: control.speed,
+        }).catch(console.error);
+      }
+
+      const latestInnings =
+        latestAfterDispatch.innings[latestAfterDispatch.currentInningsIndex];
+
+      if (latestInnings) {
+        state.over = latestInnings.over;
+        state.ball = latestInnings.ball;
+      }
+
+      console.log("ENGINE AFTER", {
+        currentInningsIndex: latestAfterDispatch.currentInningsIndex,
+        innings0: latestAfterDispatch.innings[0]
+          ? {
+              battingTeam: latestAfterDispatch.innings[0].battingTeam,
+              bowlingTeam: latestAfterDispatch.innings[0].bowlingTeam,
+              runs: latestAfterDispatch.innings[0].runs,
+              wickets: latestAfterDispatch.innings[0].wickets
+            }
+          : null,
+        innings1: latestAfterDispatch.innings[1]
+          ? {
+              battingTeam: latestAfterDispatch.innings[1].battingTeam,
+              bowlingTeam: latestAfterDispatch.innings[1].bowlingTeam,
+              runs: latestAfterDispatch.innings[1].runs,
+              wickets: latestAfterDispatch.innings[1].wickets
+            }
+          : null
+      });
       console.groupEnd();
+
+      const latestCommittedInnings =
+        latestAfterDispatch.innings[latestAfterDispatch.currentInningsIndex];
+
+      if (
+        latestAfterDispatch.currentInningsIndex === 1 &&
+        latestCommittedInnings?.completed
+      ) {
+        finishMatch(state, latestAfterDispatch);
+        stopSimulation(matchId);
+        return;
+      }
+
+      const jitter = control.speed * 0.1;
+      const delay = control.speed + (Math.random() * jitter - jitter / 2);
+
+      control.timeoutRef = setTimeout(runBall, delay);
+    } catch (error) {
+      console.error("❌ matchSimulator runBall failed", error);
       stopSimulation(matchId);
       return;
+    } finally {
+      control.isTicking = false;
     }
-
-    const commentary = generateAdvancedCommentary(event, {
-      ...latestAfterDispatch,
-      ...syncedState
-    });
-
-    addCommentary(matchId, commentary);
-
-    updateState(state, {
-      ...event,
-      batsman: getPlayerName(syncedState.striker),
-      nonStriker: getPlayerName(syncedState.nonStriker),
-      bowler: getPlayerName(state.bowler)
-    });
-    const matchState = getMatchState(matchId);
-
-if (matchState) {
-  saveSimulation(matchId, matchState, {
-    isRunning: control.isRunning,
-    isPaused: control.isPaused,
-    speed: control.speed,
-  }).catch(console.error);
-}
-saveSnapshot(matchId, engineInnings.over * 6 + engineInnings.ball, state);
-
-clearSnapshots(matchId);
-
-    const latestInnings =
-      latestAfterDispatch.innings[latestAfterDispatch.currentInningsIndex];
-
-    if (latestInnings) {
-      state.over = latestInnings.over;
-      state.ball = latestInnings.ball;
-    }
-
-    console.log("ENGINE AFTER", {
-      currentInningsIndex: latestAfterDispatch.currentInningsIndex,
-      innings0: latestAfterDispatch.innings[0]
-        ? {
-            battingTeam: latestAfterDispatch.innings[0].battingTeam,
-            bowlingTeam: latestAfterDispatch.innings[0].bowlingTeam,
-            runs: latestAfterDispatch.innings[0].runs,
-            wickets: latestAfterDispatch.innings[0].wickets
-          }
-        : null,
-      innings1: latestAfterDispatch.innings[1]
-        ? {
-            battingTeam: latestAfterDispatch.innings[1].battingTeam,
-            bowlingTeam: latestAfterDispatch.innings[1].bowlingTeam,
-            runs: latestAfterDispatch.innings[1].runs,
-            wickets: latestAfterDispatch.innings[1].wickets
-          }
-        : null
-    });
-    console.groupEnd();
-
-    if (state.target && state.totalRuns >= state.target) {
-      finishMatch(state, latestAfterDispatch, matchId);
-      stopSimulation(matchId);
-      return;
-    }
-
-    const jitter = control.speed * 0.1;
-    const delay = control.speed + (Math.random() * jitter - jitter / 2);
-
-if (control.timeoutRef) {
-  clearTimeout(control.timeoutRef);
-  control.timeoutRef = null;
-}
-
-control.timeoutRef = setTimeout(runBall, delay);
   };
 
   control.runBallRef = runBall;
-runBall();
 
-  return {
-    started: true,
-    alreadyRunning: false,
-    reason: null,
-  };
+// 🔥 START SIMULATION
+control.timeoutRef = setTimeout(runBall, control.speed);
+
+return {
+  started: true,
+  alreadyRunning: false,
+  reason: null,
+};
 }
 
 export function stopSimulation(matchId?: string) {
@@ -727,12 +756,12 @@ export function stopSimulation(matchId?: string) {
       control.isRunning = false;
       control.isPaused = false;
       control.runBallRef = null;
+      control.isTicking = false;
+      emitSimulationState(id, control);
       simulationRegistry.delete(id);
     }
     return;
   }
-
-  
 
   const control = simulationRegistry.get(matchId);
   if (!control) return;
@@ -746,6 +775,7 @@ export function stopSimulation(matchId?: string) {
   emitSimulationState(matchId, control);
   control.isPaused = false;
   control.runBallRef = null;
+  control.isTicking = false;
   simulationRegistry.delete(matchId);
 }
 
@@ -762,39 +792,41 @@ export function resumeSimulation(matchId?: string) {
 
   const control = simulationRegistry.get(matchId);
   if (!control || !control.isRunning) return;
-
   if (!control.isPaused) return;
 
   control.isPaused = false;
   emitSimulationState(matchId, control);
 
-  // 🔥 Restart loop immediately
-  if (control.runBallRef) {
-    control.runBallRef();
+  if (control.timeoutRef) {
+    clearTimeout(control.timeoutRef);
+    control.timeoutRef = null;
+  }
+
+  if (control.runBallRef && !control.isTicking) {
+    control.timeoutRef = setTimeout(control.runBallRef, 0);
   }
 }
 
 export function setSimulationSpeed(speed: number, matchId?: string) {
   console.log("⚡ Speed updated:", speed, "match:", matchId ?? "all");
 
-  const apply = (control: RuntimeSimulationControl) => {
+  const apply = (id: string, control: RuntimeSimulationControl) => {
     control.speed = speed;
-    emitSimulationState(matchId!, control);
+    emitSimulationState(id, control);
 
-    // 🔥 Restart timer safely
     if (control.timeoutRef) {
       clearTimeout(control.timeoutRef);
       control.timeoutRef = null;
     }
 
-    if (!control.isPaused && control.runBallRef) {
+    if (control.isRunning && !control.isPaused && control.runBallRef && !control.isTicking) {
       control.timeoutRef = setTimeout(control.runBallRef, control.speed);
     }
   };
 
   if (!matchId) {
-    for (const control of simulationRegistry.values()) {
-      apply(control);
+    for (const [id, control] of simulationRegistry.entries()) {
+      apply(id, control);
     }
     return;
   }
@@ -802,5 +834,5 @@ export function setSimulationSpeed(speed: number, matchId?: string) {
   const control = simulationRegistry.get(matchId);
   if (!control) return;
 
-  apply(control);
+  apply(matchId, control);
 }

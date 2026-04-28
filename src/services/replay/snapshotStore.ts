@@ -1,18 +1,18 @@
-import { SimulationState } from "@/services/simulation/simulationState";
+import { MatchState } from "@/services/matchEngine";
 
 type Snapshot = {
   index: number;
-  state: SimulationState;
+  state: MatchState;
 };
 
 const snapshotDB: Record<string, Snapshot[]> = {};
 
-const SNAPSHOT_INTERVAL = 6; // every over (6 balls)
+const SNAPSHOT_INTERVAL = 6; // every over
 
 export function saveSnapshot(
   matchId: string,
   index: number,
-  state: SimulationState
+  state: MatchState
 ) {
   if (index % SNAPSHOT_INTERVAL !== 0) return;
 
@@ -22,7 +22,7 @@ export function saveSnapshot(
 
   snapshotDB[matchId].push({
     index,
-    state: structuredClone(state), // 🔥 deep copy
+    state: structuredClone(state), // deep copy
   });
 }
 

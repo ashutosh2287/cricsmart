@@ -1,47 +1,59 @@
 import type { MatchState } from "@/services/matchEngine";
 
-// 🔥 In-memory store
 const matchStateMap = new Map<string, MatchState>();
-
-// 🔥 listeners per match
 const listenersMap = new Map<string, Set<() => void>>();
 
-// =============================
-// ✅ GET SNAPSHOT
-// =============================
 export function getMatchSnapshot(matchId: string): MatchState | null {
   return matchStateMap.get(matchId) ?? null;
 }
 
-// =============================
-// ✅ SET STATE (IMPORTANT)
-// =============================
 export function setMatchState(matchId: string, state: MatchState) {
-  // ⚠️ MUST create new reference
-  matchStateMap.set(matchId, { ...state });
+  matchStateMap.set(matchId, state);
 
-  // 🔥 notify all listeners
+  const currentInnings = state.innings[state.currentInningsIndex];
+
+console.log("🔥 STATE UPDATED", {
+  matchId,
+  innings0Runs: state.innings[0]?.runs ?? 0,
+  innings1Runs: state.innings[1]?.runs ?? 0,
+  currentInningsIndex: state.currentInningsIndex,
+  striker: currentInnings?.striker ?? "",
+  nonStriker: currentInnings?.nonStriker ?? "",
+  battingRecordsCount: currentInnings?.battingRecords?.length ?? 0,
+  battingRecords: currentInnings?.battingRecords?.map((b) => ({
+    name: b?.name,
+    runs: b?.runs,
+    balls: b?.balls,
+    isOut: b?.isOut,
+  })) ?? [],
+});
+
   const listeners = listenersMap.get(matchId);
-  if (listeners) {
-    listeners.forEach((listener) => listener());
-  }
+  if (!listeners || listeners.size === 0) return;
+
+  [...listeners].forEach((listener) => {
+    listener();
+  });
 }
 
-// =============================
-// ✅ SUBSCRIBE (React will use this)
-// =============================
-export function subscribeMatch(
-  matchId: string,
-  callback: () => void
-) {
-  if (!listenersMap.has(matchId)) {
-    listenersMap.set(matchId, new Set());
+export function subscribeMatch(matchId: string, callback: () => void) {
+  let listeners = listenersMap.get(matchId);
+
+  if (!listeners) {
+    listeners = new Set();
+    listenersMap.set(matchId, listeners);
   }
 
-  const listeners = listenersMap.get(matchId)!;
   listeners.add(callback);
 
   return () => {
-    listeners.delete(callback);
+    const currentListeners = listenersMap.get(matchId);
+    if (!currentListeners) return;
+
+    currentListeners.delete(callback);
+
+    if (currentListeners.size === 0) {
+      listenersMap.delete(matchId);
+    }
   };
 }

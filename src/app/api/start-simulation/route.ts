@@ -10,6 +10,7 @@ import { teams } from "@/data/teams";
 import {
   getMatchState,
   hydrateMatchState,
+  MatchState,
 } from "@/services/matchEngine";
 
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
@@ -38,7 +39,9 @@ export async function POST(req: Request) {
     const tossWinner = body?.tossWinner?.trim();
     const tossDecision = body?.tossDecision;
 
+    // ==============================
     // ✅ VALIDATION
+    // ==============================
     if (!matchId) {
       return Response.json(
         { success: false, error: "matchId is required" },
@@ -60,7 +63,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ LOCK CHECK (avoid duplicate starts)
+    // ==============================
+    // 🔒 LOCK CHECK
+    // ==============================
     if (startLocks.has(matchId) || isSimulationRunning(matchId)) {
       return Response.json(
         { success: true, alreadyRunning: true, matchId },
@@ -71,7 +76,9 @@ export async function POST(req: Request) {
     startLocks.add(matchId);
     lockedMatchId = matchId;
 
-    // ✅ GET TEAMS
+    // ==============================
+    // 🏏 GET TEAMS
+    // ==============================
     const teamA = teams.find((t) => t.name === teamAName);
     const teamB = teams.find((t) => t.name === teamBName);
 
@@ -82,7 +89,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ NORMALIZE TOSS
+    // ==============================
+    // 🎯 NORMALIZE TOSS
+    // ==============================
     const normalizedTossWinner =
       tossWinner === teamA.name
         ? teamA.name
@@ -97,10 +106,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // ====================================================
-    // 🔥 LOAD STATE FROM ENGINE OR REDIS (CRITICAL FIX)
-    // ====================================================
-
+    // ==============================
+    // 🔥 LOAD STATE (ENGINE / REDIS)
+    // ==============================
     let existingState = getMatchState(matchId);
 
     if (!existingState) {
@@ -114,9 +122,7 @@ export async function POST(req: Request) {
         );
       }
 
-      // ✅ Hydrate engine from Redis
       hydrateMatchState(matchId, stored.state);
-
       existingState = getMatchState(matchId);
     }
 
@@ -127,16 +133,37 @@ export async function POST(req: Request) {
       );
     }
 
-    // ====================================================
-    // ✅ UPDATE MATCH STATE (TEAMS + TOSS)
-    // ====================================================
-
+    // ==============================
+    // 🧠 UPDATE TEAMS
+    // ==============================
     existingState.teamA = teamA;
     existingState.teamB = teamB;
+
+    // ==============================
+    // 🔥 FIX: NORMALIZE OLD "Team A/B"
+    // ==============================
+    existingState.innings.forEach((inning) => {
+      if (inning.battingTeam === "Team A") {
+        inning.battingTeam = teamA.name;
+      }
+      if (inning.battingTeam === "Team B") {
+        inning.battingTeam = teamB.name;
+      }
+
+      if (inning.bowlingTeam === "Team A") {
+        inning.bowlingTeam = teamA.name;
+      }
+      if (inning.bowlingTeam === "Team B") {
+        inning.bowlingTeam = teamB.name;
+      }
+    });
+
     existingState.tossWinner = normalizedTossWinner;
     existingState.decision = tossDecision;
 
-    // ✅ SET FIRST INNINGS
+    // ==============================
+    // 🏏 DECIDE FIRST INNINGS
+    // ==============================
     const battingTeam =
       tossDecision === "BAT"
         ? normalizedTossWinner
@@ -147,20 +174,30 @@ export async function POST(req: Request) {
     const bowlingTeam =
       battingTeam === teamA.name ? teamB.name : teamA.name;
 
-    existingState.innings[0].battingTeam = battingTeam;
-    existingState.innings[0].bowlingTeam = bowlingTeam;
+    // ==============================
+    // 🔥 SAFE INNINGS UPDATE (NO ARRAY RESET)
+    // ==============================
+    if (existingState.innings?.length > 0) {
+      existingState.innings[0].battingTeam = battingTeam;
+      existingState.innings[0].bowlingTeam = bowlingTeam;
+    }
 
-    // ====================================================
+    // ==============================
     // 🎮 SIMULATION STATE
-    // ====================================================
-
+    // ==============================
     const initialState: SimulationState = {
       teamA,
       teamB,
       tossWinner: normalizedTossWinner,
       decision: tossDecision,
-      battingTeam: teamA,
-      bowlingTeam: teamB,
+
+      // 🔥 FIXED (NO HARDCODE)
+      battingTeam:
+        battingTeam === teamA.name ? teamA : teamB,
+
+      bowlingTeam:
+        bowlingTeam === teamA.name ? teamA : teamB,
+
       battingOrder: [],
       bowlingOrder: [],
       striker: null as never,
@@ -181,10 +218,9 @@ export async function POST(req: Request) {
       winBy: null,
     };
 
-    // ====================================================
+    // ==============================
     // 🚀 START SIMULATION
-    // ====================================================
-
+    // ==============================
     const result = await startSimulation(initialState, matchId, 1500);
 
     if (!result.started && !result.alreadyRunning) {

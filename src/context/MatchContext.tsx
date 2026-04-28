@@ -8,7 +8,6 @@ import React, {
 } from "react";
 
 import type { MatchState } from "@/services/matchEngine";
-
 import {
   getMatchSnapshot,
   subscribeMatch,
@@ -30,17 +29,19 @@ type MatchProviderProps = {
 };
 
 const emptySubscribe = () => () => {};
-const getEmptySnapshot = () => undefined;
 
 export function MatchProvider({ children, value }: MatchProviderProps) {
   const { matchId, state: fallbackState } = value;
 
-const state = useSyncExternalStore(
+  const getSnapshot = () => {
+    if (!matchId) return fallbackState;
+    return getMatchSnapshot(matchId) ?? fallbackState;
+  };
+
+  const state = useSyncExternalStore(
     matchId ? (listener) => subscribeMatch(matchId, listener) : emptySubscribe,
-    matchId
-      ? () => getMatchSnapshot(matchId) ?? fallbackState
-      : getEmptySnapshot,
-    () => fallbackState
+    getSnapshot,
+    getSnapshot
   );
 
   const contextValue = useMemo<MatchContextType>(

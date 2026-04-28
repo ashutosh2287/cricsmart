@@ -15,7 +15,7 @@ NEVER:
 ================================================
 */
 import { BallEvent } from "@/types/ballEvent";
-import { dispatchReplayEvent } from "./replayEngine";
+import { dispatchReplayEvent } from "../services/replay/legacyReplayEngine";
 import { waitForAnimationComplete } from "./animationBus";
 
 let queue: BallEvent[] = [];

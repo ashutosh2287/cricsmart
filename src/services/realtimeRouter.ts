@@ -1,43 +1,73 @@
-import { enqueueBallEvent } from "@/services/eventQueue";
+import { setMatchState } from "@/persistence/eventStore/eventStore";
+import type { MatchState } from "@/services/matchEngine";
+import type { BallEvent } from "@/types/ballEvent";
 
-export type RealtimeBallEvent =
-  | { type: "RUN"; matchId: string; runs: number }
-  | { type: "FOUR"; matchId: string }
-  | { type: "SIX"; matchId: string }
-  | { type: "WICKET"; matchId: string }
-  | { type: "WD"; matchId: string }
-  | { type: "NB"; matchId: string };
+type RealtimePayload = {
+  type: string;
+  matchId: string;
+  data?: {
+  innings?: MatchState["innings"][number];
+  state?: MatchState;
 
-export function routeRealtimeEvent(data: RealtimeBallEvent) {
+  // 🔥 NEW (THIS FIXES ERROR)
+  committedState?: MatchState;
+  event?: BallEvent;
+};
+};
 
-  switch (data.type) {
+export function routeRealtimeEvent(payload: RealtimePayload) {
+  const { type, matchId, data } = payload;
 
-    case "RUN":
-      enqueueBallEvent(data.matchId, {
-        type: "RUN",
-        runs: data.runs
-      });
+  console.log("📥 ROUTER:", type);
+
+  if (!matchId) return;
+
+  switch (type) {
+    /*
+    ========================================
+    INITIAL STATE
+    ========================================
+    */
+    case "INITIAL_STATE":
+      if (data?.state) {
+        console.log("🟢 INIT STATE");
+        setMatchState(matchId, data.state);
+      }
       break;
 
-    case "FOUR":
-      enqueueBallEvent(data.matchId, { type: "FOUR" });
-      break;
+    /*
+    ========================================
+    BALL EVENT
+    ========================================
+    */
+    case "BALL_EVENT": {
+  console.log("📥 BALL_EVENT RECEIVED:", data);
 
-    case "SIX":
-      enqueueBallEvent(data.matchId, { type: "SIX" });
-      break;
+  const committedState = data?.committedState;
 
-    case "WICKET":
-      enqueueBallEvent(data.matchId, { type: "WICKET" });
-      break;
-
-    case "WD":
-      enqueueBallEvent(data.matchId, { type: "WD" });
-      break;
-
-    case "NB":
-      enqueueBallEvent(data.matchId, { type: "NB" });
-      break;
+  if (!committedState) {
+    console.warn("⚠️ BALL_EVENT missing committed state", data);
+    return;
   }
 
+  console.log("🔥 APPLYING FULL STATE UPDATE", {
+    runs:
+      committedState.innings?.[
+        committedState.currentInningsIndex
+      ]?.runs,
+  });
+
+  setMatchState(matchId, committedState);
+  break;
+}
+
+    /*
+    ========================================
+    MATCH ENDED
+    ========================================
+    */
+    case "MATCH_ENDED":
+      console.log("🏁 MATCH ENDED");
+      break;
+  }
 }

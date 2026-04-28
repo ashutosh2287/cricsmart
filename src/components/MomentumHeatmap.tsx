@@ -1,12 +1,17 @@
 "use client";
 
-import { getMomentumTimeline } from "@/services/analytics/momentumTimelineEngine";
+type MomentumPoint = {
+  over: number;
+  score: number;
+};
 
-export default function MomentumHeatmap({ matchId }: { matchId: string }) {
+type Props = {
+  data: MomentumPoint[];
+};
 
-  const timeline = getMomentumTimeline(matchId);
+export default function MomentumHeatmap({ data }: Props) {
 
-  if (!timeline.length) return null;
+  if (!data.length) return null;
 
   function getColor(value: number) {
     if (value > 3) return "bg-green-500";
@@ -17,22 +22,21 @@ export default function MomentumHeatmap({ matchId }: { matchId: string }) {
   }
 
   return (
-    <div className="bg-gray-900 text-white p-4 rounded-xl w-full max-w-full overflow-hidden">
+    <div className="bg-gray-900 text-white p-4 rounded-xl w-full overflow-hidden">
 
       <h3 className="font-bold mb-3">
         Momentum Map
       </h3>
 
-      {/* 👇 IMPORTANT FIX */}
-      <div className="flex gap-1 overflow-x-auto max-w-full">
+      <div className="flex gap-1 overflow-x-auto">
 
         <div className="flex gap-[2px] min-w-max">
 
-          {timeline.map((p, index) => (
+          {data.map((p, index) => (
             <div
-              key={`${p.ballIndex}-${index}`}
-              className={`w-2 h-10 flex-shrink-0 ${getColor(p.momentum)}`}
-              title={`Ball ${p.ballIndex + 1}`}
+              key={index}
+              className={`w-2 h-10 ${getColor(p.score)}`}
+              title={`Over ${p.over}`}
             />
           ))}
 

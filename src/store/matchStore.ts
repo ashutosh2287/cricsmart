@@ -5,23 +5,15 @@ import {
   nextMatchState,
 } from "@/services/matchStateMachine";
 
-// ✅ Match Metadata (Persistent)
-
-
-
 type Listener = () => void;
 
-type BallEventLike = {
-  over?: number;
-  ballInOver?: number;
-};
-
-type MatchWithRuntimeState = Match & {
+export type MatchWithRuntimeState = Match & {
   currentOver?: number;
   currentBall?: number;
   currentRuns?: number;
   currentWickets?: number;
 };
+
 type MatchMeta = {
   matchId: string;
   teamA: { id: string; name: string };
@@ -30,10 +22,13 @@ type MatchMeta = {
 
 const matchMetaStore: Record<string, MatchMeta> = {};
 
+let matches: MatchWithRuntimeState[] = [];
+let matchState: MatchState = "PRE_MATCH";
+let listeners: Listener[] = [];
+
 export const setMatchMeta = (meta: MatchMeta) => {
   matchMetaStore[meta.matchId] = meta;
 
-  // ✅ ALSO UPDATE MATCH LIST
   matches = matches.map((m) =>
     m.id === meta.matchId
       ? {
@@ -52,53 +47,59 @@ export const getMatchMeta = (matchId?: string) => {
   return matchMetaStore[matchId] ?? null;
 };
 
-let matches: MatchWithRuntimeState[] = [];
-let matchState: MatchState = "PRE_MATCH";
-let listeners: Listener[] = [];
-
 export const selectMatches = (): MatchWithRuntimeState[] => matches;
 
 export const selectMatchState = (): MatchState => matchState;
 
-export const selectMatchById = (matchId: string): MatchWithRuntimeState | null =>
+export const selectMatchById = (
+  matchId: string
+): MatchWithRuntimeState | null =>
   matches.find((match) => match.id === matchId) ?? null;
 
 export const setMatches = (data: Match[]): void => {
   matches = data.map((match) => ({
     ...match,
-    
   }));
+  notify();
+};
+
+export const upsertMatch = (updatedMatch: MatchWithRuntimeState): void => {
+  const index = matches.findIndex((match) => match.id === updatedMatch.id);
+
+  if (index === -1) {
+    matches = [...matches, updatedMatch];
+  } else {
+    matches = matches.map((match, i) =>
+      i === index ? { ...match, ...updatedMatch } : match
+    );
+  }
+
+  notify();
+};
+
+export const patchMatchRuntime = (
+  matchId: string,
+  runtime: Partial<
+    Pick<
+      MatchWithRuntimeState,
+      "currentOver" | "currentBall" | "currentRuns" | "currentWickets"
+    >
+  >
+): void => {
+  matches = matches.map((match) =>
+    match.id === matchId
+      ? {
+          ...match,
+          ...runtime,
+        }
+      : match
+  );
+
   notify();
 };
 
 export const dispatchMatchEvent = (event: MatchEvent): void => {
   matchState = nextMatchState(matchState, event);
-  notify();
-};
-
-export const dispatchBallEvent = (
-  matchId: string,
-  ballEvent: BallEventLike & {
-    runs?: number;
-    isWicket?: boolean;
-  }
-): void => {
-  matches = matches.map((match) => {
-    if (match.id !== matchId) return match;
-
-    const newRuns = (match.currentRuns ?? 0) + (ballEvent.runs ?? 0);
-    const newWickets =
-      (match.currentWickets ?? 0) + (ballEvent.isWicket ? 1 : 0);
-
-    return {
-      ...match,
-      currentOver: ballEvent.over ?? match.currentOver,
-      currentBall: ballEvent.ballInOver ?? match.currentBall,
-      currentRuns: newRuns,
-      currentWickets: newWickets,
-    };
-  });
-
   notify();
 };
 
@@ -117,4 +118,3 @@ export const subscribeStore = (listener: Listener): (() => void) => {
 const notify = (): void => {
   listeners.forEach((listener) => listener());
 };
-

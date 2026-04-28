@@ -1,197 +1,135 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import MatchCard from "@/components/MatchCard";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-/*
-========================================
-TYPES
-========================================
-*/
+/* TYPES */
 
-type ApiMatch = {
-  matchId: string;
+type MatchStatus = "LIVE" | "UPCOMING" | "COMPLETED";
+type MatchType = "SIMULATION" | "LIVE";
+type TabType = "ALL" | MatchStatus;
+
+interface Match {
+  id: string;
   teamA: string;
   teamB: string;
-  status: "LIVE" | "UPCOMING" | "COMPLETED";
-};
+  status: MatchStatus;
+  type: MatchType;
+  score?: string;
+  over?: string;
+  startTime?: string;
+  result?: string;
+}
 
-type Match = {
-  matchId: string;
-  teamA: string;
-  teamB: string;
-  status: "Live" | "Upcoming" | "Completed";
-};
+/* PAGE */
 
-/*
-========================================
-STABLE PRIORITY (OUTSIDE COMPONENT)
-========================================
-*/
+export default function MatchesPage() {
+  const [activeTab, setActiveTab] = useState<TabType>("ALL");
 
-const priority: Record<"Live" | "Upcoming" | "Completed", number> = {
-  Live: 1,
-  Upcoming: 2,
-  Completed: 3,
-};
+  const [matches] = useState<Match[]>([
+    {
+      id: "1",
+      teamA: "India",
+      teamB: "Australia",
+      status: "LIVE",
+      type: "LIVE", // 🔥 REAL MATCH
+      score: "120/3",
+      over: "15.2",
+    },
+    {
+      id: "2",
+      teamA: "England",
+      teamB: "Pakistan",
+      status: "UPCOMING",
+      type: "SIMULATION", // 🔥 SIMULATED MATCH
+      startTime: "7:30 PM",
+    },
+    {
+      id: "3",
+      teamA: "South Africa",
+      teamB: "New Zealand",
+      status: "COMPLETED",
+      type: "SIMULATION",
+      result: "SA won by 5 wickets",
+    },
+  ]);
 
-export default function MatchPage() {
-  
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [filter, setFilter] = useState<
-    "All" | "Live" | "Upcoming" | "Completed"
-  >("All");
-
-  /*
-  ========================================
-  FETCH MATCHES (API → NORMALIZE → STATE)
-  ========================================
-  */
-
-  const fetchMatches = async () => {
-    try {
-      const res = await fetch("/api/matches");
-      const data: ApiMatch[] = await res.json();
-
-      const normalized: Match[] = data.map((m) => {
-        let status: Match["status"];
-
-        if (m.status === "LIVE") status = "Live";
-        else if (m.status === "COMPLETED") status = "Completed";
-        else status = "Upcoming";
-
-        return {
-          matchId: m.matchId,
-          teamA: m.teamA,
-          teamB: m.teamB,
-          status,
-        };
-      });
-
-      setMatches(normalized);
-    } catch (err) {
-      console.error("❌ Failed to fetch matches", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /*
-  ========================================
-  EFFECT (INITIAL + POLLING)
-  ========================================
-  */
-
-  useEffect(() => {
-    fetchMatches();
-
-    // simple polling (replace later with SSE)
-    const interval = setInterval(fetchMatches, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  /*
-  ========================================
-  SORTING
-  ========================================
-  */
-
-  const sortedMatches = useMemo(() => {
-    return [...matches].sort(
-      (a, b) => priority[a.status] - priority[b.status]
-    );
-  }, [matches]);
-
-  /*
-  ========================================
-  FILTERING
-  ========================================
-  */
+  const router = useRouter();
 
   const filteredMatches =
-    filter === "All"
-      ? sortedMatches
-      : sortedMatches.filter((m) => m.status === filter);
-
-  /*
-  ========================================
-  UI
-  ========================================
-  */
+    activeTab === "ALL"
+      ? matches
+      : matches.filter((m) => m.status === activeTab);
 
   return (
-    <motion.main
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="max-w-7xl mx-auto px-6 py-10 space-y-10 text-white"
-    >
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-wide">Matches</h1>
-      </div>
+    <div className="p-6 text-white">
+      <h1 className="text-2xl font-bold mb-6">Matches</h1>
 
-      {/* FILTER BAR */}
-      <div className="flex gap-3 bg-zinc-900 border border-zinc-800 p-1 rounded-full w-fit">
-        {(["All", "Live", "Upcoming", "Completed"] as const).map((tab) => {
-          const getActiveColor = () => {
-            if (tab === "Live") return "bg-red-500 text-white";
-            if (tab === "Upcoming") return "bg-blue-500 text-white";
-            if (tab === "Completed") return "bg-gray-600 text-white";
-            return "bg-white text-black";
-          };
-
-          return (
+      <div className="flex gap-3 mb-6">
+        {(["ALL", "LIVE", "UPCOMING", "COMPLETED"] as TabType[]).map(
+          (tab) => (
             <button
               key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300
-                ${
-                  filter === tab
-                    ? `${getActiveColor()} scale-105 shadow-lg`
-                    : "text-gray-400 hover:text-white"
-                }`}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 rounded-full ${
+                activeTab === tab
+                  ? "bg-purple-600"
+                  : "bg-gray-800"
+              }`}
             >
-              {tab}
+              {tab === "LIVE" ? "LIVE 🔴" : tab}
             </button>
-          );
-        })}
+          )
+        )}
       </div>
 
-      {/* MATCH LIST */}
-      <motion.div
-        initial="hidden"
-        animate="show"
-        variants={{
-          hidden: { opacity: 0 },
-          show: {
-            opacity: 1,
-            transition: { staggerChildren: 0.1 },
-          },
-        }}
-        className="space-y-6"
-      >
-        {loading ? (
-          <p className="text-gray-400">Loading matches...</p>
-        ) : filteredMatches.length === 0 ? (
-          <p className="text-gray-500">No matches found</p>
-        ) : (
-          filteredMatches.map((match) => (
-            <motion.div
-              key={match.matchId}
-              variants={{
-                hidden: { opacity: 0, y: 15 },
-                show: { opacity: 1, y: 0 },
-              }}
-            >
-              <MatchCard match={match} />
-            </motion.div>
-          ))
-        )}
-      </motion.div>
-    </motion.main>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredMatches.map((match) => (
+          <MatchCard
+            key={match.id}
+            match={match}
+            onClick={async () => {
+              await fetch("/api/match/init", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  matchId: match.id,
+                  teamA: match.teamA,
+                  teamB: match.teamB,
+                  type: match.type, // 🔥 IMPORTANT
+                }),
+              });
+
+              router.push(`/match/${match.id}`);
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* CARD */
+
+interface MatchCardProps {
+  match: Match;
+  onClick: () => void;
+}
+
+function MatchCard({ match, onClick }: MatchCardProps) {
+  return (
+    <div onClick={onClick} className="bg-gray-900 p-4 rounded-xl">
+      <h2>{match.teamA} vs {match.teamB}</h2>
+
+      {match.status === "LIVE" && (
+        <p>{match.score} ({match.over})</p>
+      )}
+
+      <button className="mt-3 bg-purple-600 px-3 py-1 rounded">
+        Open Match
+      </button>
+    </div>
   );
 }

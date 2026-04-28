@@ -470,9 +470,12 @@ function createBallEvent(
 const nonStriker = innings.nonStriker?.trim() ?? "";
 const bowler = innings.currentBowler?.trim() || event.bowler?.trim() || "";
 
-if (!striker || !nonStriker || !bowler) {
-  throw new Error("❌ Cannot create ball event without resolved engine players");
+if (!striker || !nonStriker) {
+  throw new Error("❌ Missing striker/non-striker before ball event");
 }
+
+// fallback bowler (TEMP SAFE)
+const finalBowler = bowler || "Unknown Bowler";
 
   const common = {
     id: event.id ?? uuidv4(),
@@ -483,7 +486,7 @@ if (!striker || !nonStriker || !bowler) {
     branchId: state.activeBranchId,
     batsman: striker,
     nonStriker,
-    bowler,
+    bowler: finalBowler,
     innings: inningsIndex,
   };
 
@@ -765,12 +768,16 @@ const engineNonStriker = innings.nonStriker?.trim() ?? "";
 
 // Bootstrap allowed only at innings start when engine has no active pair.
 if (!engineStriker && !engineNonStriker) {
-  if (!incomingBatsman || !incomingNonStriker) {
-    throw new Error("❌ Cannot bootstrap innings without incoming batting pair");
+  const team = getTeamByName(next, innings.battingTeam);
+  const squad = team?.squad ?? [];
+
+  if (squad.length < 2) {
+    throw new Error("❌ Cannot initialize batting pair: insufficient squad");
   }
 
-  innings.striker = incomingBatsman;
-  innings.nonStriker = incomingNonStriker;
+  innings.striker = squad[0].name;
+  innings.nonStriker = squad[1].name;
+  innings.nextBatsmanIndex = 2;
 } else {
   if (!engineStriker || !engineNonStriker) {
     throw new Error("❌ Engine batting state partially missing before ball");
@@ -798,6 +805,17 @@ if (!innings.bowlingStats[bowler]) {
 const currentOver = innings.over;
 if (!innings.overs[currentOver]) {
   innings.overs[currentOver] = [];
+}
+
+if (!innings.striker || !innings.nonStriker) {
+  const team = getTeamByName(next, innings.battingTeam);
+  const squad = team?.squad ?? [];
+
+  if (squad.length >= 2) {
+    innings.striker = squad[0].name;
+    innings.nonStriker = squad[1].name;
+    innings.nextBatsmanIndex = 2;
+  }
 }
 
 const ballEvent = createBallEvent(next, innings, inningsIndex, event);

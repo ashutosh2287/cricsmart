@@ -2,17 +2,13 @@ import {
   startSimulation,
   isSimulationRunning,
 } from "@/services/simulation/matchSimulator";
-
 import type { SimulationState } from "@/services/simulation/simulationState";
-
 import { teams } from "@/data/teams";
-
 import {
   getMatchState,
   hydrateMatchState,
   MatchState,
 } from "@/services/matchEngine";
-
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 
 export const runtime = "nodejs";

@@ -1,15 +1,29 @@
+"use client";
+
 import { useSyncExternalStore } from "react";
 import type { MatchState } from "./matchEngine";
 import {
   getMatchSnapshot,
   subscribeMatch as subscribeEventMatch,
 } from "@/persistence/eventStore/eventStore";
-import { getStoreMatches, subscribeStore } from "@/store/realtimeStore";
+import { getStoreMatches, subscribeStore } from "@/store/matchStore";
+
+/*
+====================================================
+BASE SNAPSHOT
+====================================================
+*/
 
 function getFallbackMatchState(matchId: string): MatchState | undefined {
   const snapshot = getMatchSnapshot(matchId);
   return snapshot ?? undefined;
 }
+
+/*
+====================================================
+GENERIC SELECTOR
+====================================================
+*/
 
 export function useMatchSelector<T>(
   matchId: string,
@@ -29,6 +43,12 @@ export function useMatchSelector<T>(
     }
   );
 }
+
+/*
+====================================================
+BASIC STATS
+====================================================
+*/
 
 export function useMatchRuns(matchId: string) {
   return useMatchSelector(matchId, (m) => {
@@ -71,6 +91,69 @@ export function useMatchRunRate(matchId: string) {
       : "0.00";
   });
 }
+
+/*
+====================================================
+🔥 NEW: BATSMEN
+====================================================
+*/
+
+export function useStriker(matchId: string) {
+  return useMatchSelector(matchId, (m) => {
+    const innings = m.innings[m.currentInningsIndex];
+    return innings?.striker ?? "";
+  });
+}
+
+export function useNonStriker(matchId: string) {
+  return useMatchSelector(matchId, (m) => {
+    const innings = m.innings[m.currentInningsIndex];
+    return innings?.nonStriker ?? "";
+  });
+}
+
+/*
+====================================================
+🔥 NEW: LAST BALL EVENT
+====================================================
+*/
+
+export function useLastEvent(matchId: string) {
+  return useMatchSelector(matchId, (m) => {
+    const innings = m.innings[m.currentInningsIndex];
+    if (!innings) return null;
+
+    const overs = innings.overs || {};
+    const overKeys = Object.keys(overs);
+
+    if (overKeys.length === 0) return null;
+
+    const lastOver = overs[Number(overKeys[overKeys.length - 1])];
+    if (!lastOver || lastOver.length === 0) return null;
+
+    return lastOver[lastOver.length - 1];
+  });
+}
+
+/*
+====================================================
+🔥 NEW: COMMENTARY
+====================================================
+*/
+
+export function useCommentary(matchId: string) {
+  return useMatchSelector(matchId, (m) => {
+    // commentary is injected into state via broadcast
+    // fallback safe
+    return m.commentary ?? [];
+  });
+}
+
+/*
+====================================================
+MATCH META (UNCHANGED)
+====================================================
+*/
 
 export function useMatchMeta(slug: string) {
   return useSyncExternalStore(

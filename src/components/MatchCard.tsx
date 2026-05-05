@@ -7,7 +7,11 @@ import {
   useMatchRuns,
   useMatchWickets,
   useMatchOversDisplay,
-  useMatchMeta
+  useMatchMeta,
+  useStriker,
+  useNonStriker,
+  useLastEvent,
+  useCommentary
 } from "@/services/matchSelectors";
 
 import {
@@ -30,15 +34,19 @@ type Props = {
 export default function MatchCard({ match: initialMatch }: Props) {
 
   const router = useRouter();
-
-  // ✅ get live match state
-  const match = useMatchMeta(initialMatch.matchId);
-
   const matchId = initialMatch.matchId;
 
+  // 🔥 LIVE STATE
+  const match = useMatchMeta(matchId);
   const runs = useMatchRuns(matchId);
   const wickets = useMatchWickets(matchId);
   const overs = useMatchOversDisplay(matchId);
+
+  // 🔥 NEW SELECTORS
+  const striker = useStriker(matchId);
+  const nonStriker = useNonStriker(matchId);
+  const lastEvent = useLastEvent(matchId);
+  const commentary = useCommentary(matchId) ?? [];
 
   /*
   ====================================================
@@ -55,6 +63,12 @@ export default function MatchCard({ match: initialMatch }: Props) {
     runRate =
       totalOvers > 0 ? (runs / totalOvers).toFixed(2) : "0.00";
   }
+
+  /*
+  ====================================================
+  ANIMATION STATE
+  ====================================================
+  */
 
   const cardRef = useRef<HTMLDivElement>(null);
   const scoreRef = useRef<HTMLSpanElement>(null);
@@ -102,17 +116,25 @@ export default function MatchCard({ match: initialMatch }: Props) {
 
   const status = statusConfig[match.status];
 
+  /*
+  ====================================================
+  UI
+  ====================================================
+  */
+
   return (
     <div
       ref={cardRef}
       onClick={() => router.push(`/match/${matchId}`)}
       className={`
         border p-5 rounded-xl shadow relative overflow-hidden
-        transition-all duration-200 cursor-pointer hover:scale-[1.02]
+        transition-all duration-200 cursor-pointer
+        hover:scale-[1.02] active:scale-[0.98]
         ${status.cinematic}
         ${energy ? "energy-sweep" : ""}
       `}
     >
+
       {/* HEADER */}
       <div className="flex justify-between items-center">
 
@@ -134,10 +156,23 @@ export default function MatchCard({ match: initialMatch }: Props) {
 
       </div>
 
+      {/* 🔥 MOMENTUM BAR */}
+      {match.status === "Live" && (
+        <div className="h-1 w-full bg-gray-800 mt-2 rounded overflow-hidden">
+          <div
+            className="h-full bg-green-500 transition-all duration-500"
+            style={{
+              width: `${Math.min((runs ?? 0) / 200 * 100, 100)}%`
+            }}
+          />
+        </div>
+      )}
+
       {/* LIVE */}
       {match.status === "Live" && runs !== undefined && wickets !== undefined && (
         <div className="mt-3 space-y-1">
 
+          {/* SCORE */}
           <div className="flex items-center gap-3">
             <span className="text-gray-400 text-sm">Score</span>
 
@@ -150,8 +185,35 @@ export default function MatchCard({ match: initialMatch }: Props) {
             )}
           </div>
 
+          {/* OVERS */}
           {overs && <p className="text-sm text-gray-400">Overs: {overs}</p>}
-          {runRate && <p className="text-sm text-gray-400">Run Rate: {runRate}</p>}
+
+          {/* RUN RATE */}
+          {runRate && (
+            <p className="text-sm text-gray-400">Run Rate: {runRate}</p>
+          )}
+
+          {/* 🔥 BATSMEN */}
+          <div className="text-sm text-gray-300 mt-2">
+            🏏 {striker} <span className="text-yellow-400">*</span>
+            <br />
+            🏃 {nonStriker}
+          </div>
+
+          {/* 🔥 LAST BALL */}
+          {lastEvent && (
+            <div className="text-xs text-gray-400 mt-2">
+              Last ball: {lastEvent.type} {lastEvent.runs ?? ""}
+            </div>
+          )}
+
+          {/* 🔥 COMMENTARY */}
+          {commentary.length > 0 && (
+  <div className="text-xs text-gray-400 mt-2 italic truncate">
+    {commentary[0]}
+  </div>
+)}
+
         </div>
       )}
 
@@ -164,6 +226,7 @@ export default function MatchCard({ match: initialMatch }: Props) {
       {match.status === "Completed" && (
         <p className="text-sm mt-3 text-gray-400">Match finished</p>
       )}
+
     </div>
   );
 }

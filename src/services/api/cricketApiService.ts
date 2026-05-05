@@ -11,6 +11,7 @@ export type ApiBallEvent = {
   type: string
   timestamp: number
   innings: number // 🔥 NEW (important)
+  dismissal?: string;
 }
 
 type ApiInnings = {

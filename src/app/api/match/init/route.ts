@@ -4,6 +4,12 @@ import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorag
 import { SimulationState } from "@/services/simulation/simulationState";
 import { startSimulation } from "@/services/simulation/matchSimulator";
 
+// 🔥 ADDED (Phase 1)
+import { startMatch } from "@/services/match/matchManager";
+import { startLiveMatchIngestor } from "@/services/ingestion/liveMatchIngestor";
+import { startWorker } from "@/services/queue/eventWorker";
+
+import { initPlayerRegistry } from "@/services/player/playerRegistry";
 /* ========================= */
 /* HELPER */
 /* ========================= */
@@ -34,7 +40,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const { matchId, teamA, teamB, type } = body;
+    const { matchId, teamA, teamB, type, externalMatchId } = body;
 
     if (!matchId || !teamA || !teamB) {
       return NextResponse.json(
@@ -44,6 +50,14 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("🚀 INIT MATCH:", matchId);
+
+    /* ========================= */
+    /* 🔥 MATCH LIFECYCLE START */
+    /* ========================= */
+
+    startMatch(matchId); // 🔥 ADDED
+
+    initPlayerRegistry(matchId); // 🔥 NEW
 
     /* ENGINE INIT */
     initMatch(matchId);
@@ -57,13 +71,30 @@ export async function POST(req: NextRequest) {
     /* SAVE TO REDIS */
     const storage = new RedisSimulationStorage();
 
+    // 🔥 IDPOTENCY CHECK (CRITICAL)
+// 🔥 IDEMPOTENCY CHECK (USING load)
+const existing = await storage.load(matchId);
+
+if (existing) {
+  console.log("⚠️ MATCH ALREADY INITIALIZED:", matchId);
+
+  return NextResponse.json({
+    success: true,
+    matchId,
+    alreadyInitialized: true,
+  });
+}
+
     await storage.save(matchId, state, {
       isRunning: false,
       isPaused: false,
       speed: 1500,
     });
 
-    /* 🔥 ONLY START SIMULATION IF NEEDED */
+    /* ========================= */
+    /* SIMULATION MODE */
+    /* ========================= */
+
     if (type === "SIMULATION") {
       const teamAObj = createTeam(teamA);
       const teamBObj = createTeam(teamB);
@@ -104,6 +135,26 @@ export async function POST(req: NextRequest) {
       };
 
       await startSimulation(simState, matchId, 300);
+    }
+
+    /* ========================= */
+    /* 🔥 LIVE MODE (NEW) */
+    /* ========================= */
+
+    if (type === "LIVE") {
+      if (!externalMatchId) {
+        return NextResponse.json(
+          { success: false, message: "Missing externalMatchId for live match" },
+          { status: 400 }
+        );
+      }
+
+      console.log("📡 Starting LIVE ingestion:", matchId);
+
+      startLiveMatchIngestor(matchId, externalMatchId); // 🔥 ADDED
+        // 🔥 START WORKER
+  startWorker(matchId);
+
     }
 
     return NextResponse.json({

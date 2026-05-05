@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
-import { addClient, removeClient } from "@/services/realtime/realtimeController";
 import { getMatchState, initMatch } from "@/services/matchEngine";
+import {
+  addClient,
+  removeClient,
+} from "@/services/realtime/realtimeController";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,9 +15,16 @@ type RealtimeClient = {
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ matchId: string }> }
+  context: { params: Promise<{ matchId: string }> } // ✅ FIXED
 ) {
-  const { matchId } = await context.params;
+  const { matchId } = await context.params; // ✅ FIXED
+
+  console.log("🧠 SSE ROUTE MATCH ID:", matchId);
+
+  if (!matchId) {
+    console.error("❌ matchId is undefined in SSE route");
+    return new Response("Invalid matchId", { status: 400 });
+  }
 
   initMatch(matchId);
 
@@ -40,9 +50,7 @@ export async function GET(
 
         try {
           controller.close();
-        } catch {
-          // ignore already closed
-        }
+        } catch {}
 
         console.log("❌ SSE disconnected:", matchId, client?.id);
       };
@@ -57,6 +65,7 @@ export async function GET(
         }
       };
 
+      // ✅ CREATE CLIENT
       client = {
         id: crypto.randomUUID(),
         send: (data: string) => {
@@ -64,33 +73,47 @@ export async function GET(
         },
       };
 
+      // ✅ ADD CLIENT
+      console.log("🧠 BEFORE ADD CLIENT:", matchId);
       addClient(matchId, client);
+      console.log("🧠 AFTER ADD CLIENT:", {
+        matchId,
+        totalClients: "check in controller log",
+      });
+
       console.log("✅ SSE connected:", matchId, client.id);
 
+      // ✅ INITIAL EVENTS
       safeEnqueue(`retry: 2000\n\n`);
+
       safeEnqueue(
-  `event: CONNECTED\ndata: ${JSON.stringify({
-    type: "CONNECTED",
-    matchId,
-  })}\n\n`
-);
+        `event: CONNECTED\ndata: ${JSON.stringify({
+          type: "CONNECTED",
+          matchId,
+        })}\n\n`
+      );
 
       const initialState = getMatchState(matchId);
       if (initialState) {
         safeEnqueue(
-  `event: INITIAL_STATE\ndata: ${JSON.stringify({
-    type: "INITIAL_STATE",
-    matchId,
-    data: initialState,
-  })}\n\n`
-);
+          `event: INITIAL_STATE\ndata: ${JSON.stringify({
+            type: "INITIAL_STATE",
+            matchId,
+            data: initialState,
+          })}\n\n`
+        );
       }
 
+      // ✅ KEEP ALIVE
       keepAlive = setInterval(() => {
         safeEnqueue(`: keepalive\n\n`);
       }, 15000);
 
-      req.signal.addEventListener("abort", cleanup, { once: true });
+      // ✅ FIXED ABORT HANDLER
+      req.signal.addEventListener("abort", () => {
+        console.log("⚠️ ABORT SIGNAL RECEIVED");
+        cleanup();
+      });
     },
 
     cancel() {

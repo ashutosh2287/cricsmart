@@ -18,6 +18,8 @@ import { generateBroadcastInsights } from "../broadcast/broadcastInsightEngine";
 import { setAnalytics } from "../analytics/liveAnalyticsStore";
 import { getWinProbabilityTimeline } from "../analytics/winProbabilityTimelineEngine";
 import { getMomentumTimeline } from "../analytics/momentumTimelineEngine";
+import { broadcast } from "@/services/realtime/realtimeController";
+
 type RuntimeSimulationControl = {
   timeoutRef: NodeJS.Timeout | null;
   isRunning: boolean;
@@ -44,7 +46,10 @@ function emitSimulationState(
   };
 
   console.log("📡 SIMULATION STATE", event);
-} 
+
+  // ✅ ADD THIS (CRITICAL)
+  broadcast(matchId, event);
+}
 
 function getSimulationControl(matchId: string): RuntimeSimulationControl {
   const existing = simulationRegistry.get(matchId);
@@ -433,6 +438,18 @@ emitSimulationState(matchId, control);
   matchState.decision = state.decision;
 
   initializeFirstInnings(state);
+
+  const engineStateAfterInit = getMatchState(matchId);
+
+if (engineStateAfterInit) {
+  const innings = engineStateAfterInit.innings[0];
+
+  if (innings && state.battingOrder?.length >= 2) {
+    innings.battingOrder = state.battingOrder.map(getPlayerName);
+    innings.nextBatsmanIndex = 2;
+  }
+}
+
   syncSimFromEngine(state, matchId);
 
       const runBall = () => {
@@ -573,16 +590,28 @@ const engineStriker = engineInningsBeforeDispatch.striker?.trim();
 const engineNonStriker = engineInningsBeforeDispatch.nonStriker?.trim();
 
 if (!engineStriker || !engineNonStriker) {
-  throw new Error("❌ Engine batting pair missing before dispatch");
+  console.warn("⚠️ Engine batting pair missing — allowing bootstrap");
+}
+
+const battingTeamName =
+  engineInningsBeforeDispatch.battingTeam?.trim() ||
+  state.battingTeam?.name?.trim();
+
+const bowlingTeamName =
+  engineInningsBeforeDispatch.bowlingTeam?.trim() ||
+  state.bowlingTeam?.name?.trim();
+
+if (!battingTeamName || !bowlingTeamName) {
+  console.warn("⚠️ Missing team names — using simulation state fallback");
 }
 
 const engineEvent = toEngineEvent({
   ...event,
-  batsman: engineStriker,
-  nonStriker: engineNonStriker,
+  batsman: engineStriker || getPlayerName(state.striker),
+  nonStriker: engineNonStriker || getPlayerName(state.nonStriker),
   bowler: currentBowlerName,
-  battingTeam: engineInningsBeforeDispatch.battingTeam ?? state.battingTeam.name,
-  bowlingTeam: engineInningsBeforeDispatch.bowlingTeam ?? state.bowlingTeam.name,
+  battingTeam: battingTeamName,
+  bowlingTeam: bowlingTeamName,
 });
 
 const result = dispatchBallEvent(matchId, engineEvent);
@@ -662,6 +691,18 @@ generateBroadcastInsights(matchId);
 setAnalytics(matchId, {
   winProbability,
   momentum,
+});
+
+// 🔥🔥🔥 BROADCAST BALL EVENT (CRITICAL FIX)
+broadcast(matchId, {
+  type: "BALL_EVENT",
+  matchId,
+  data: {
+    committedState: latestAfterDispatch,
+    engineEvent: {
+      id: engineEvent.id ?? crypto.randomUUID(),
+    },
+  },
 });
 
 

@@ -8,30 +8,26 @@ type Player = {
 const playerStore: Record<string, Player[]> = {};
 
 export function updatePlayerRegistry(matchId: string) {
-
   const events = getEventStream(matchId);
 
-  const players = new Map<string, Player>();
+  const seen = new Set<string>();
+  const orderedPlayers: Player[] = [];
 
-  events.forEach(e => {
+  const addPlayer = (name?: string) => {
+    const trimmed = name?.trim();
+    if (!trimmed) return;
 
-    if (e.batsman) {
-      players.set(e.batsman, { name: e.batsman });
+    if (!seen.has(trimmed)) {
+      seen.add(trimmed);
+      orderedPlayers.push({ name: trimmed });
     }
+  };
 
-    if (e.nonStriker) {
-      players.set(e.nonStriker, { name: e.nonStriker });
-    }
+  for (const e of events) {
+    // 🟢 Order matters → striker first, then non-striker
+    addPlayer(e.batsman);
+    addPlayer(e.nonStriker);
+  }
 
-    if (e.bowler) {
-      players.set(e.bowler, { name: e.bowler });
-    }
-
-  });
-
-  playerStore[matchId] = Array.from(players.values());
-}
-
-export function getPlayers(matchId: string) {
-  return playerStore[matchId] ?? [];
+  playerStore[matchId] = orderedPlayers;
 }

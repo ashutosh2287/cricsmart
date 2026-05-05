@@ -3,12 +3,11 @@ import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorag
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ matchId: string }> } // ✅ use matchId consistently
 ) {
   try {
-    const params = await context.params;
-
-    const matchId = params?.id;
+    // ✅ unwrap params (IMPORTANT FIX)
+    const { matchId } = await context.params;
 
     console.log("📌 API LOAD MATCH:", matchId);
 
@@ -33,7 +32,7 @@ export async function GET(
       );
     }
 
-    // ✅ SUCCESS RESPONSE (always JSON)
+    // ✅ SUCCESS RESPONSE
     return NextResponse.json({
       success: true,
       match: data.state,
@@ -47,7 +46,6 @@ export async function GET(
   } catch (error) {
     console.error("❌ API ERROR:", error);
 
-    // ✅ IMPORTANT: Always return JSON (prevents HTML error page)
     return NextResponse.json(
       {
         success: false,

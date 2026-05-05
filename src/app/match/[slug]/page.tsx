@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, use } from "react";
+import React, { useEffect, useMemo, useState, use, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AdminScoringPanel from "@/components/admin/AdminScoringPanel";
@@ -47,7 +47,6 @@ import {
   getExtras,
   getFallOfWickets,
 } from "@/services/analytics/scorecardEngine";
-import { startLiveMatchIngestor, stopLiveMatchIngestor } from "@/services/ingestion/liveMatchIngestor";
 import { getMatchBySlug } from "@/services/matchService";
 import { connectRealtime, disconnectRealtime } from "@/services/realtime/connectRealtime";
 import {
@@ -185,6 +184,7 @@ const currentInnings =
 
   const inningsIndex = state?.currentInningsIndex ?? 0;
   console.log("🔥 UI SCORE:", currentInnings?.runs);
+  console.log("🔥 UI OVERS:", currentInnings?.overs);
   const displayOver = formatOverDisplay(currentInnings?.overs);
 
   const overKeys = currentInnings?.overs
@@ -308,14 +308,18 @@ const searchParams = useSearchParams();
 
 const initialTab = "overview";
 
-const [activeTab, setActiveTab] = useState<MainTab>(initialTab);
+const [activeTab, setActiveTab] = useState<MainTab>("overview");
 
 useEffect(() => {
   const tab = searchParams.get("tab") as MainTab;
-  if (tab) {
+
+  if (!tab) return;
+
+  setTimeout(() => {
     setActiveTab(tab);
-  }
+  }, 0);
 }, [searchParams]);
+
   const [analysisFilter, setAnalysisFilter] = useState<AnalysisFilter>("ALL");
 
   const [tossData, setTossData] = useState<{
@@ -344,31 +348,28 @@ const effectiveIsRunning = isStarting || isRunning || hasLiveMatchState;
 const [selectedInnings, setSelectedInnings] = useState<number | null>(null);
 
 useEffect(() => {
-  if (hasLiveMatchState) {
+  if (!hasLiveMatchState) return;
+
+  setTimeout(() => {
     setIsRunning(true);
     setStartError(null);
-  }
-
-  if (currentEngineState?.matchEnded) {
-    setIsRunning(false);
-    setIsPaused(false);
-    setIsStarting(false);
-  }
-}, [hasLiveMatchState, currentEngineState?.matchEnded]);
+  }, 0);
+}, [hasLiveMatchState]);
 
 
 // 🔥 ADD THIS EXACTLY HERE
-
-
-
-
 useEffect(() => {
   const unsubscribe = subscribeStore(() => {
     forceMatchStoreUpdate((prev) => prev + 1);
-    setLocalMatchMeta(getMatchMeta(match.slug));
+
+    setTimeout(() => {
+      setLocalMatchMeta(getMatchMeta(match.slug));
+    }, 0);
   });
 
-  setLocalMatchMeta(getMatchMeta(match.slug));
+  setTimeout(() => {
+    setLocalMatchMeta(getMatchMeta(match.slug));
+  }, 0);
 
   return unsubscribe;
 }, [match.slug]);
@@ -1140,75 +1141,36 @@ const isNonStriker = player.isNonStriker;
   <button
     type="button"
     disabled={effectiveIsRunning}
+    
     onClick={async () => {
-      const id = match.slug;
+  const id = match.slug;
 
-      if (!id) {
-        setStartError("Missing match id.");
-        return;
-      }
-
-      if (!matchMeta) {
-        setStartError("Please select teams first.");
-        return;
-      }
-
-      if (!tossData) {
-        setStartError("Please complete toss first.");
-        return;
-      }
-
-      if (effectiveIsRunning) return;
-
-      const latestMeta = getMatchMeta(id);
-
-      if (!latestMeta?.teamA?.name || !latestMeta?.teamB?.name) {
-        setStartError("Please select teams first.");
-        return;
-      }
-
-      const { winner, decision } = tossData;
-
-     try {
-  setIsStarting(true);
-  setStartError(null);
-
-  
-
-  const response = await fetch("/api/start-simulation", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      matchId: id,
-      teamAName: latestMeta.teamA.name,
-      teamBName: latestMeta.teamB.name,
-      tossWinner: winner.name,
-      tossDecision: decision,
-    }),
-  });
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    throw new Error(data?.error ?? "Failed to start simulation.");
+  if (!id) {
+    setStartError("Missing match id.");
+    return;
   }
 
-  setIsRunning(true);
-  setIsPaused(false);
+  if (!matchMeta) {
+    setStartError("Please select teams first.");
+    return;
+  }
 
-} catch (error) {
-  console.error("Start simulation failed", error);
-  setIsRunning(false);
-  setIsPaused(false);
-  setStartError(
-    error instanceof Error ? error.message : "Failed to start simulation."
-  );
-} finally {
-  setIsStarting(false);
-}
-    }}
+  if (!tossData) {
+    setStartError("Please complete toss first.");
+    return;
+  }
+
+  if (effectiveIsRunning) return;
+
+  const latestMeta = getMatchMeta(id);
+
+  if (!latestMeta?.teamA?.name || !latestMeta?.teamB?.name) {
+    setStartError("Please select teams first.");
+    return;
+  }
+
+  connectRealtime(id);
+}}
     className={cls(
       "rounded-xl px-4 py-2.5 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60",
       effectiveIsRunning
@@ -1444,15 +1406,36 @@ const [analytics, setAnalytics] = useState<{
 }, [matchId]);
   
 
+
+
+
+
+
+
+const hasInitialized = useRef(false);
+
+
 useEffect(() => {
-  if (!matchId) return;
+  if (!matchId || hasInitialized.current) return;
 
-  connectRealtime(matchId);
+  hasInitialized.current = true;
 
-  return () => {
-    disconnectRealtime(matchId);
-  };
+  fetch("/api/match/init", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      matchId,
+      teamA: match?.team1 ?? "Team A",
+      teamB: match?.team2 ?? "Team B",
+      type: "LIVE",
+      externalMatchId: matchId,
+    }),
+  });
 }, [matchId]);
+
+
 
 useEffect(() => {
   const handler = (e: Event) => {
@@ -1487,14 +1470,7 @@ useEffect(() => {
   };
 }, []);
 
-  useEffect(() => {
-    if (!matchId || !match?.externalMatchId) return;
-
-    startLiveMatchIngestor(matchId, match.externalMatchId);
-    return () => {
-      stopLiveMatchIngestor(matchId);
-    };
-  }, [matchId, match]);
+  
 
   useEffect(() => {
     enableBroadcast();

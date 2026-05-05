@@ -1,8 +1,7 @@
 import { hydrateMatchState } from "@/services/matchEngine";
 import type { SimulationState } from "@/services/simulation/simulationState";
-import { getCommentary } from "../commentary/commentaryStore";
-import { getBroadcastInsights } from "../broadcast/broadcastInsightEngine";
-import { getAnalytics } from "../analytics/liveAnalyticsStore";
+import { patchMatchRuntime } from "@/store/matchStore";
+
 type TeamsPayload = {
   teamA: { name: string };
   teamB: { name: string };
@@ -16,7 +15,7 @@ type SimulationRuntimePayload = {
 
 type MatchStateLike = Parameters<typeof hydrateMatchState>[1];
 
-type RealtimeEvent =
+export type RealtimeEvent =
   | {
       type: "CONNECTED";
       matchId: string;
@@ -174,17 +173,25 @@ function shouldAcceptBallState(
   incoming: MatchStateLike,
   engineEventId?: string
 ) {
+  const lastAcceptedEventId = lastAcceptedEventIdByMatch.get(matchId);
+
+  // ✅ PRIMARY FILTER → eventId
   if (engineEventId) {
-    const lastAcceptedEventId = lastAcceptedEventIdByMatch.get(matchId);
     if (lastAcceptedEventId === engineEventId) {
+      console.log("⛔ Skipping duplicate eventId:", engineEventId);
       return false;
     }
+
+    // 🔥 If eventId is new → ALWAYS ACCEPT
+    return true;
   }
 
+  // ⚠️ FALLBACK → fingerprint (only if no eventId)
   const incomingFingerprint = getProgressFingerprint(incoming);
   const lastAcceptedFingerprint = lastAcceptedFingerprintByMatch.get(matchId);
 
   if (lastAcceptedFingerprint === incomingFingerprint) {
+    console.log("⛔ Skipping duplicate fingerprint");
     return false;
   }
 
@@ -199,11 +206,11 @@ export function routeRealtimeEvent(event: RealtimeEvent) {
 
   switch (event.type) {
     case "CONNECTED":
-      emitCricUpdate({
-        matchId: event.matchId,
-        type: "CONNECTED",
-      });
-      return;
+  emitCricUpdate({
+    matchId: event.matchId,
+    type: "CONNECTED",
+  });
+  return;
 
     case "INITIAL_STATE": {
       if (!event.data) {
@@ -229,47 +236,74 @@ export function routeRealtimeEvent(event: RealtimeEvent) {
     }
 
     case "BALL_EVENT": {
-      if (!event.data?.committedState) {
-  console.warn("⚠️ BALL_EVENT missing committed state", event);
-  return;
-}
+  if (!event.data?.committedState) {
+    console.warn("⚠️ BALL_EVENT missing committed state", event);
+    return;
+  }
 
-const state = event.data.committedState;
+  const state = event.data.committedState;
 
-const engineEventId = event.data.engineEvent?.id;
+  const engineEventId = event.data.engineEvent?.id;
 
-if (!shouldAcceptBallState(event.matchId, state, engineEventId)) {
-  return;
-}
+  if (!shouldAcceptBallState(event.matchId, state, engineEventId)) {
+    return;
+  }
 
-hydrateMatchState(event.matchId, state);
-updateWindowRuntime(event.data);
+  // ✅ 1. Update core match state
+  hydrateMatchState(event.matchId, state);
 
-if (engineEventId) {
-  lastAcceptedEventIdByMatch.set(event.matchId, engineEventId);
-}
+  // ✅ 2. 🔥 ADD THIS BLOCK (UI STORE SYNC)
+  const innings = state.innings[state.currentInningsIndex];
 
-lastAcceptedFingerprintByMatch.set(
-  event.matchId,
-  getProgressFingerprint(state)
-);
+// ✅ derive over + ball from overs object
+const overNumbers = innings?.overs
+  ? Object.keys(innings.overs)
+      .map(Number)
+      .filter((n) => Number.isFinite(n))
+      .sort((a, b) => a - b)
+  : [];
 
-     
+const currentOver = overNumbers.length
+  ? overNumbers[overNumbers.length - 1]
+  : 0;
 
-emitCricUpdate({
-  matchId: event.matchId,
-  type: "BALL_EVENT",
+const currentBall =
+  innings?.overs &&
+  Array.isArray(innings.overs[currentOver])
+    ? innings.overs[currentOver].length
+    : 0;
 
-  simulationState:
-    toSimulationRuntimePayload(event.data.simulationState) ?? null,
-
-  // ✅ USE SERVER DATA
-  commentary: event.data.commentary ?? [],
-  insights: event.data.insights ?? [],
-  analytics: event.data.analytics ?? null,
+patchMatchRuntime(event.matchId, {
+  currentRuns: innings?.runs ?? 0,
+  currentWickets: innings?.wickets ?? 0,
+  currentOver,
+  currentBall,
 });
-      return;
-    }
+
+  // ✅ 3. Continue existing logic
+  updateWindowRuntime(event.data);
+
+  if (engineEventId) {
+    lastAcceptedEventIdByMatch.set(event.matchId, engineEventId);
+  }
+
+  lastAcceptedFingerprintByMatch.set(
+    event.matchId,
+    getProgressFingerprint(state)
+  );
+
+  emitCricUpdate({
+    matchId: event.matchId,
+    type: "BALL_EVENT",
+    simulationState:
+      toSimulationRuntimePayload(event.data.simulationState) ?? null,
+    commentary: event.data.commentary ?? [],
+    insights: event.data.insights ?? [],
+    analytics: event.data.analytics ?? null,
+  });
+
+  return;
+}
 
     case "SIMULATION_STATE_UPDATE": {
       updateWindowRuntime({

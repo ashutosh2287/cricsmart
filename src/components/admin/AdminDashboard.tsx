@@ -9,6 +9,7 @@ import TossPanel from "@/components/match/TossPanel";
 import GlassPanel from "@/components/ui/GlassPanel";
 import { Team } from "@/data/teams";
 import { getMatchMeta, setMatchMeta } from "@/store/matchStore";
+import { connectRealtime } from "@/services/realtime/connectRealtime";
 
 export default function AdminDashboard({ matchId }: { matchId: string }) {
   
@@ -81,47 +82,23 @@ const [tossData, setTossData] = useState<TossData | null>(null);
 
         {/* START BUTTON */}
         <button
-  onClick={async () => {
-    if (!matchMeta || !tossData) {
-      alert("⚠️ Complete team selection and toss first");
-      return;
-    }
+  onClick={() => {
+  if (!matchMeta || !tossData) {
+    alert("⚠️ Complete team selection and toss first");
+    return;
+  }
 
-    setIsStarting(true);
-    setStartError(null);
+  console.log("🔥 ADMIN START CLICKED");
 
-    try {
-      const res = await fetch("/api/start-simulation", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          matchId,
-          teamAName: matchMeta.teamA.name,
-          teamBName: matchMeta.teamB.name,
-          tossWinner: tossData.winner.name,
-          tossDecision: tossData.decision,
-        }),
-      });
+  setIsStarting(true);
+  setStartError(null);
 
-      const data = await res.json();
+  // ✅ ONLY THIS
+  connectRealtime(matchId);
 
-      if (!res.ok) {
-  throw new Error(data?.error || "Failed to start simulation");
-}
-
-setIsRunning(true);
-
-// 🔥 AUTO REDIRECT
-router.push(`/match/${matchId}`);
-
-    } catch (err) {
-      console.error("❌ Start error:", err);
-    } finally {
-      setIsStarting(false);
-    }
-  }}
+  // OPTIONAL: redirect if you want
+  router.push(`/match/${matchId}`);
+}}
   disabled={!matchMeta || !tossData || isStarting}
   className="mt-4 bg-green-600 px-4 py-2 rounded-xl disabled:opacity-50"
 >

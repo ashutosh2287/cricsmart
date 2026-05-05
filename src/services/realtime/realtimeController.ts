@@ -1,6 +1,11 @@
 import { getCommentary } from "@/services/commentary/commentaryStore";
 import { getBroadcastInsights } from "@/services/broadcast/broadcastInsightEngine";
 import { getAnalytics } from "@/services/analytics/liveAnalyticsStore";
+import {
+  getClients,
+  addClientToStore,
+  removeClientFromStore,
+} from "./clientStore";
 
 type Client = {
   id: string;
@@ -13,113 +18,77 @@ type RealtimePayload = {
   data?: unknown;
 };
 
-type GlobalWithClients = typeof globalThis & {
-  __MATCH_CLIENTS__?: Map<string, Set<Client>>;
-};
-
-const globalStore = globalThis as GlobalWithClients;
-
-if (!globalStore.__MATCH_CLIENTS__) {
-  globalStore.__MATCH_CLIENTS__ = new Map<string, Set<Client>>();
-}
-
-const matchClients = globalStore.__MATCH_CLIENTS__;
-
-function getClients(matchId: string) {
-  let clients = matchClients.get(matchId);
-  if (!clients) {
-    clients = new Set<Client>();
-    matchClients.set(matchId, clients);
-  }
-  return clients;
-}
-
 export function addClient(matchId: string, client: Client) {
+  if (!matchId) {
+  console.error("❌ matchId is undefined in SSE route");
+  return;
+}
+
+addClientToStore(matchId, client);
   const clients = getClients(matchId);
-
-  for (const existing of clients) {
-    if (existing.id === client.id) {
-      clients.delete(existing);
-      break;
-    }
-  }
-
-  clients.add(client);
   console.log(`➕ Client added to match ${matchId} (total: ${clients.size})`);
 }
 
 export function removeClient(matchId: string, clientOrId: Client | string) {
-  const clients = matchClients.get(matchId);
-  if (!clients) return;
+  const clients = getClients(matchId);
 
   let target: Client | undefined;
 
-  if (typeof clientOrId === "string") {
-    for (const client of clients) {
-      if (client.id === clientOrId) {
-        target = client;
-        break;
-      }
-    }
-  } else {
-    if (clients.has(clientOrId)) {
-      target = clientOrId;
-    } else {
-      for (const client of clients) {
-        if (client.id === clientOrId.id) {
-          target = client;
-          break;
-        }
-      }
+  for (const client of clients) {
+    if (
+      (typeof clientOrId === "string" && client.id === clientOrId) ||
+      (typeof clientOrId !== "string" && client.id === clientOrId.id)
+    ) {
+      target = client;
+      break;
     }
   }
 
   if (!target) return;
 
-  clients.delete(target);
-  console.log(`➖ Client removed from match ${matchId} (remaining: ${clients.size})`);
+  removeClientFromStore(matchId, target);
 
-  if (clients.size === 0) {
-    matchClients.delete(matchId);
-  }
+  console.log(`➖ Client removed from match ${matchId}`);
 }
 
 export function broadcast(matchId: string, payload: RealtimePayload) {
-  const clients = matchClients.get(matchId);
+  const clients = getClients(matchId);
+
+  console.log("📡 CLIENT COUNT AT BROADCAST:", {
+    matchId,
+    size: clients.size,
+  });
+
   if (!clients || clients.size === 0) return;
 
-  // 🔥 ENRICH PAYLOAD FOR BALL_EVENT
-let enrichedPayload = payload;
+  let enrichedPayload: RealtimePayload = {
+  type: payload.type,
+  matchId: matchId,
+  data: payload.data,
+};
 
 if (payload.type === "BALL_EVENT" && payload.data) {
   enrichedPayload = {
-    ...payload,
+    type: payload.type,
+    matchId: matchId,
     data: {
       ...(payload.data as Record<string, unknown>),
-
-      // ✅ ADD THESE
       commentary: getCommentary(matchId),
       insights: getBroadcastInsights(matchId),
       analytics: getAnalytics(matchId),
     },
   };
 }
+  console.log("📦 FINAL PAYLOAD STRUCTURE:", enrichedPayload);
+  const data = `event: ${enrichedPayload.type}\ndata: ${JSON.stringify(enrichedPayload)}\n\n`;
 
-const data = `event: ${payload.type}\ndata: ${JSON.stringify(enrichedPayload)}\n\n`;
-  const deadClients: string[] = [];
-
-  console.log(`📡 Broadcasting to ${clients.size} clients → ${payload.type}`);
-
-  for (const client of Array.from(clients)) {
+  for (const client of Array.from(clients as Set<Client>)) {
     try {
+      console.log("📤 SENDING TO CLIENT:", client.id, payload.type);
       client.send(data);
     } catch (err) {
       console.error(`❌ Failed to send to client ${client.id}`, err);
-      deadClients.push(client.id);
+      removeClientFromStore(matchId, client);
     }
-  }
-
-  for (const clientId of deadClients) {
-    removeClient(matchId, clientId);
   }
 }

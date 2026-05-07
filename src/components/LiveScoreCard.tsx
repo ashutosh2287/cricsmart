@@ -3,7 +3,7 @@
 import {
   getMatchSnapshot,
   subscribeMatch,
-} from "@/persistence/eventStore/eventStore";
+} from "@/lib/eventStore";
 
 import { useEffect, useState } from "react";
 import type { MatchState } from "@/services/matchEngine";

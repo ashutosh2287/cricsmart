@@ -39,8 +39,8 @@ export function generateBallEvent(state: SimulationState): BallEvent {
       return {
         ...base,
         type: "RUN",
-        runs: outcome.runs ?? 1,
-        totalRuns: outcome.runs ?? 1,
+        runs: outcome.runs ?? 0,
+        totalRuns: outcome.runs ?? 0,
         wicket: false,
         extra: false,
         isLegalDelivery: true
@@ -77,8 +77,8 @@ export function generateBallEvent(state: SimulationState): BallEvent {
         wicket: true,
         extra: false,
         isLegalDelivery: true,
-                dismissedBatsman: striker,
-        dismissalKind: "UNKNOWN"
+        dismissedBatsman: striker,
+        dismissalKind: "BOWLED"
       };
 
     case "WD":

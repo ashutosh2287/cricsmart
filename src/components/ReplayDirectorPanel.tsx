@@ -1,6 +1,6 @@
 "use client";
 
-import { getReplayQueue } from "@/services/replay/replayDirectorEngine";
+import { getReplayQueue } from "@/services/replayDirectorEngine";
 
 export default function ReplayDirectorPanel({ matchId }: { matchId: string }) {
 

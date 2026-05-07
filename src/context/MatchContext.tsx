@@ -11,7 +11,7 @@ import type { MatchState } from "@/services/matchEngine";
 import {
   getMatchSnapshot,
   subscribeMatch,
-} from "@/persistence/eventStore/eventStore";
+} from "@/lib/eventStore";
 
 type MatchContextType = {
   matchId: string;
@@ -34,9 +34,9 @@ export function MatchProvider({ children, value }: MatchProviderProps) {
   const { matchId, state: fallbackState } = value;
 
   const getSnapshot = () => {
-    if (!matchId) return fallbackState;
-    return getMatchSnapshot(matchId) ?? fallbackState;
-  };
+  if (!matchId) return fallbackState;
+  return getMatchSnapshot(matchId) ?? fallbackState;
+};
 
   const state = useSyncExternalStore(
     matchId ? (listener) => subscribeMatch(matchId, listener) : emptySubscribe,

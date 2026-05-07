@@ -5,6 +5,19 @@ export type StoredEvent = BallEvent & {
   timestamp: number;
 };
 
+export interface EventStorage {
+  appendEvent(
+    matchId: string,
+    event: BallEvent
+  ): Promise<void>;
+
+  getMatchEvents(
+    matchId: string
+  ): Promise<StoredEvent[]>;
+
+  clearMatchEvents(matchId: string): Promise<void>;
+}
+
 /**
  * 🔥 APPEND EVENT
  */

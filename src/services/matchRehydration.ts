@@ -17,7 +17,7 @@ export async function rehydrateMatch(matchId: string): Promise<void> {
   const snapshot = await eventStore.loadLatestSnapshot(matchId);
 
   if (snapshot) {
-    hydrateMatchState(matchId, snapshot);
+    hydrateMatchState(matchId, snapshot.state);
   }
 
   const events: BallEvent[] = await eventStore.loadEvents(matchId);

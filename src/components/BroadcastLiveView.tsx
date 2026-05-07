@@ -18,7 +18,14 @@ export default function BroadcastLiveView({ match }: Props) {
     <div className="space-y-6 relative">
 
       {/* Match card */}
-      <MatchCard slug={match.slug} />
+       <MatchCard
+  match={{
+    matchId: match.slug,
+    teamA: match.team1,
+    teamB: match.team2,
+    status: match.status,
+  }}
+/>
 
       {/* Live commentary */}
       <LiveCommentaryFeed />

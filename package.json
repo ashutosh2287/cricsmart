@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tsx server/index.ts",
     "build": "next build",
-    "start": "NODE_ENV=production node server/index.js",
+    "start": "next start",
     "barrels": "barrelsby --directory src/services --delete",
     "lint": "eslint"
   },
@@ -27,6 +27,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "barrelsby": "^2.8.1",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",

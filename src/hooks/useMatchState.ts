@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import {
   subscribeMatch,
   getMatchSnapshot,
-} from "@/persistence/eventStore/eventStore";
+} from "@/lib/eventStore";
 
 export function useMatchState(matchId: string) {
   return useSyncExternalStore(

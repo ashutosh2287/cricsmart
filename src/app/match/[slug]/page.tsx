@@ -185,7 +185,10 @@ const currentInnings =
   const inningsIndex = state?.currentInningsIndex ?? 0;
   console.log("🔥 UI SCORE:", currentInnings?.runs);
   console.log("🔥 UI OVERS:", currentInnings?.overs);
-  const displayOver = formatOverDisplay(currentInnings?.overs);
+  const displayOver =
+  currentInnings
+    ? `${currentInnings.over}.${currentInnings.ball}`
+    : "0.0";
 
   const overKeys = currentInnings?.overs
   ? Object.keys(currentInnings.overs)
@@ -284,7 +287,7 @@ const lastOverBalls =
     </div>
   );
 }
-const TabsArea = React.memo(function TabsArea({
+function TabsArea({
   match,
   analytics,
   insights,
@@ -390,7 +393,10 @@ useEffect(() => {
       : currentEngineState?.currentInningsIndex ?? 0;
 
   const inningsData = currentEngineState?.innings?.[inningsIndex];
-  const displayOver = formatOverDisplay(inningsData?.overs);
+  const displayOver =
+  inningsData
+    ? `${inningsData.over}.${inningsData.ball}`
+    : "0.0";
 
   const batting = getBattingStats(match.slug, inningsIndex) as Record<string, PlayerStat>;
   const bowling = getBowlingStats(match.slug, inningsIndex) as Record<string, BowlerStat>;
@@ -1303,7 +1309,7 @@ const isNonStriker = player.isNonStriker;
       </div>
     </div>
   );
-});
+}
 
 export default function MatchDetailPage({
   params,
@@ -1490,15 +1496,15 @@ useEffect(() => {
   return unsubscribe;
 }, [matchId]);
 
-  const currentEngineState = useMemo(() => {
-    if (!matchId) return undefined;
-    return engineState ?? getMatchState(matchId);
-  }, [engineState, matchId]);
+  const currentEngineState =
+  matchId
+    ? engineState ?? getMatchState(matchId)
+    : undefined;
 
-  const currentInnings = useMemo(() => {
-    if (!currentEngineState) return undefined;
-    return currentEngineState.innings?.[currentEngineState.currentInningsIndex ?? 0];
-  }, [currentEngineState]);
+  const currentInnings =
+  currentEngineState?.innings?.[
+    currentEngineState.currentInningsIndex ?? 0
+  ];
 
   // 🔥 DEBUG + SAFE EXTRACTION (PASTE HERE)
 
@@ -1645,16 +1651,13 @@ if (innings2 && !currentEngineState.matchEnded) {
     );
   }
 }
-
-
-const providerValue = useMemo(() => {
-  if (!matchId || !currentEngineState) return null;
-
-  return {
-    matchId,
-    state: currentEngineState,
-  };
-}, [matchId, currentEngineState]);
+const providerValue =
+  matchId && currentEngineState
+    ? {
+        matchId,
+        state: currentEngineState,
+      }
+    : null;
 
  if (!providerValue) {
   return (

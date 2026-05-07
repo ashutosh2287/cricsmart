@@ -3,11 +3,9 @@ import { DomainCommand } from "./domainCommands";
 import { EngineBallEvent } from "./matchEngine";
 
 export function routeAdminCommand(command: DomainCommand) {
-
   let engineEvent: EngineBallEvent | null = null;
 
   switch (command.type) {
-
     // ========================
     // SCORING EVENTS
     // ========================
@@ -16,54 +14,78 @@ export function routeAdminCommand(command: DomainCommand) {
       engineEvent = {
         type: "RUN",
         runs: command.runs,
+
         batsman: command.batsman,
         nonStriker: command.nonStriker,
-        bowler: command.bowler
+        bowler: command.bowler,
+
+        battingTeam: command.battingTeam,
+        bowlingTeam: command.bowlingTeam,
       };
       break;
 
     case "SCORE_FOUR":
       engineEvent = {
         type: "FOUR",
+
         batsman: command.batsman,
         nonStriker: command.nonStriker,
-        bowler: command.bowler
+        bowler: command.bowler,
+
+        battingTeam: command.battingTeam,
+        bowlingTeam: command.bowlingTeam,
       };
       break;
 
     case "SCORE_SIX":
       engineEvent = {
         type: "SIX",
+
         batsman: command.batsman,
         nonStriker: command.nonStriker,
-        bowler: command.bowler
+        bowler: command.bowler,
+
+        battingTeam: command.battingTeam,
+        bowlingTeam: command.bowlingTeam,
       };
       break;
 
     case "SCORE_WICKET":
       engineEvent = {
         type: "WICKET",
+
         batsman: command.batsman,
         nonStriker: command.nonStriker,
-        bowler: command.bowler
+        bowler: command.bowler,
+
+        battingTeam: command.battingTeam,
+        bowlingTeam: command.bowlingTeam,
       };
       break;
 
     case "SCORE_WIDE":
       engineEvent = {
         type: "WD",
+
         batsman: command.batsman,
         nonStriker: command.nonStriker,
-        bowler: command.bowler
+        bowler: command.bowler,
+
+        battingTeam: command.battingTeam,
+        bowlingTeam: command.bowlingTeam,
       };
       break;
 
     case "SCORE_NOBALL":
       engineEvent = {
         type: "NB",
+
         batsman: command.batsman,
         nonStriker: command.nonStriker,
-        bowler: command.bowler
+        bowler: command.bowler,
+
+        battingTeam: command.battingTeam,
+        bowlingTeam: command.bowlingTeam,
       };
       break;
 
@@ -72,13 +94,15 @@ export function routeAdminCommand(command: DomainCommand) {
     // ========================
 
     case "UNDO_LAST_BALL":
-      engineEvent = { type: "CORRECTION_UNDO_LAST" };
+      engineEvent = {
+        type: "CORRECTION_UNDO_LAST",
+      };
       break;
 
     case "DELETE_BALL_EVENT":
       engineEvent = {
         type: "CORRECTION_DELETE",
-        targetEventId: command.eventId
+        targetEventId: command.eventId,
       };
       break;
 
@@ -86,7 +110,7 @@ export function routeAdminCommand(command: DomainCommand) {
       engineEvent = {
         type: "CORRECTION_REPLACE",
         targetEventId: command.eventId,
-        replacement: command.replacement
+        replacement: command.replacement,
       };
       break;
   }

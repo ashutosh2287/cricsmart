@@ -1,18 +1,17 @@
-import { setMatchState } from "@/persistence/eventStore/eventStore";
+import { setMatchState } from "@/lib/eventStore";
 import type { MatchState } from "@/services/matchEngine";
 import type { BallEvent } from "@/types/ballEvent";
 
 type RealtimePayload = {
   type: string;
   matchId: string;
-  data?: {
-  innings?: MatchState["innings"][number];
-  state?: MatchState;
-
-  // 🔥 NEW (THIS FIXES ERROR)
-  committedState?: MatchState;
-  event?: BallEvent;
-};
+  data?: MatchState | {
+    committedState?: MatchState;
+    event?: BallEvent;
+    commentary?: unknown[];
+    insights?: unknown[];
+    analytics?: unknown;
+  };
 };
 
 export function routeRealtimeEvent(payload: RealtimePayload) {
@@ -28,12 +27,18 @@ export function routeRealtimeEvent(payload: RealtimePayload) {
     INITIAL STATE
     ========================================
     */
-    case "INITIAL_STATE":
-      if (data?.state) {
-        console.log("🟢 INIT STATE");
-        setMatchState(matchId, data.state);
-      }
-      break;
+    case "INITIAL_STATE": {
+  console.log("🟢 INIT STATE");
+
+  if (!data) {
+    console.warn("⚠️ INITIAL_STATE missing data");
+    return;
+  }
+
+  // ✅ Here data IS MatchState
+  setMatchState(matchId, data as MatchState);
+  break;
+}
 
     /*
     ========================================
@@ -43,10 +48,16 @@ export function routeRealtimeEvent(payload: RealtimePayload) {
     case "BALL_EVENT": {
   console.log("📥 BALL_EVENT RECEIVED:", data);
 
-  const committedState = data?.committedState;
+  // ✅ TYPE GUARD (VERY IMPORTANT)
+  if (!data || !("committedState" in data)) {
+    console.warn("⚠️ BALL_EVENT missing committedState", data);
+    return;
+  }
+
+  const committedState = data.committedState;
 
   if (!committedState) {
-    console.warn("⚠️ BALL_EVENT missing committed state", data);
+    console.warn("⚠️ committedState is undefined", data);
     return;
   }
 

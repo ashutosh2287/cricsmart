@@ -1,5 +1,4 @@
 import { publishAnimation } from "@/services/animationBus";
-import { publishCommentary } from "@/services/commentaryBus";
 import { scheduleCinematic } from "@/services/cinematicScheduler";
 import { triggerStadiumMoment } from "@/services/stadiumMoment";
 import {
@@ -82,8 +81,6 @@ function handleBroadcastCommand(command: BroadcastCommand) {
 
       scheduleCinematic(() => {
 
-        publishCommentary(`🔥 ${command.overlay}`);
-
         // Only pass valid moment types if required
         triggerStadiumMoment("SIX"); 
 
@@ -93,7 +90,7 @@ function handleBroadcastCommand(command: BroadcastCommand) {
 
     case "ENTER_TENSION":
 
-      publishCommentary("🔥 Match tension rising!");
+      // publishCommentary("🔥 Match tension rising!");
 
       break;
   }

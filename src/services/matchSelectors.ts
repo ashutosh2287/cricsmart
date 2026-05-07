@@ -5,7 +5,7 @@ import type { MatchState } from "./matchEngine";
 import {
   getMatchSnapshot,
   subscribeMatch as subscribeEventMatch,
-} from "@/persistence/eventStore/eventStore";
+}  from "@/lib/eventStore";
 import { getStoreMatches, subscribeStore } from "@/store/matchStore";
 
 /*

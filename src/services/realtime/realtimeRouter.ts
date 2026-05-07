@@ -1,4 +1,4 @@
-import { hydrateMatchState } from "@/services/matchEngine";
+import { hydrateMatchState, setMatchState } from "@/services/matchEngine";
 import type { SimulationState } from "@/services/simulation/simulationState";
 import { patchMatchRuntime } from "@/store/matchStore";
 
@@ -251,6 +251,8 @@ export function routeRealtimeEvent(event: RealtimeEvent) {
 
   // ✅ 1. Update core match state
   hydrateMatchState(event.matchId, state);
+  // 🔥 ADD THIS LINE (CRITICAL FIX)
+setMatchState(event.matchId, state);
 
   // ✅ 2. 🔥 ADD THIS BLOCK (UI STORE SYNC)
   const innings = state.innings[state.currentInningsIndex];

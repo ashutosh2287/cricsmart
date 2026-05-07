@@ -53,15 +53,14 @@ export function getBallOutcome(state: SimulationState): Outcome {
   }
 
   const outcomes: Outcome[] = [
-  { type: "RUN", runs: 0, prob: 0.22 + dotPenalty },
-  { type: "RUN", runs: 1, prob: 0.28 },
-  { type: "RUN", runs: 2, prob: 0.1 },
-
-  { type: "FOUR", runs: 4, prob: 0.14 * boundaryBoost * pressure },
-  { type: "SIX", runs: 6, prob: 0.07 * boundaryBoost * pressure },
-
+  { type: "RUN", runs: 0, prob: 0.12 + dotPenalty * 0.08 },  
+  { type: "RUN", runs: 1, prob: 0.36 },
+  { type: "RUN", runs: 2, prob: 0.08 },
+   
+  { type: "FOUR", runs: 4, prob: 0.18 * boundaryBoost * pressure },
+  { type: "SIX", runs: 6, prob: 0.09 * boundaryBoost * pressure },
   // 🔥 WICKET FIXED
-  { type: "WICKET", runs: 0, prob: 0.25 * wicketChance + 0.02 },
+  { type: "WICKET", runs: 0, prob: 0.035 * wicketChance + 0.015 },
 
   // 🔥 EXTRAS
   { type: "WD", runs: 1, prob: 0.025 },

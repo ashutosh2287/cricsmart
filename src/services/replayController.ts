@@ -42,14 +42,24 @@ export function scrubToPosition(
   for (let i = 0; i <= clampedIndex; i++) {
     const event = events[i];
 
-    dispatchBallEvent(matchId, {
-      id: event.id,
-      type: event.type,
-      runs: event.runs,
-      batsman: event.batsman ?? "Unknown",
-      nonStriker: event.nonStriker ?? "Unknown",
-      bowler: event.bowler ?? "Unknown"
-    });
+    const replayEvent = {
+  ...event,
+
+  battingTeam:
+    typeof (event as unknown as { battingTeam?: string }).battingTeam === "string"
+      ? (event as unknown as { battingTeam: string }).battingTeam
+      : "Unknown",
+
+  bowlingTeam:
+    typeof (event as unknown as { bowlingTeam?: string }).bowlingTeam === "string"
+      ? (event as unknown as { bowlingTeam: string }).bowlingTeam
+      : "Unknown",
+};
+
+dispatchBallEvent(
+  matchId,
+  replayEvent as Parameters<typeof dispatchBallEvent>[1]
+);
   }
 
   /*

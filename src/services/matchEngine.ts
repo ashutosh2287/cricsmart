@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 import { generateAdvancedCommentary } from "./commentary/advancedCommentaryEngine";
 import { emitCommentary } from "@/services/commentary/commentaryBus";
 import { emitCommand } from "./commandBus";
-import { setMatchState as setUIState } from "@/persistence/eventStore/eventStore";
+import { setMatchState as setUIState } from "@/lib/eventStore";
 import { addCommentary } from "@/services/commentary/commentaryStore";
 import { setAnalytics } from "@/services/analytics/liveAnalyticsStore";
 import { getMomentumTimeline } from "@/services/analytics/momentumTimelineEngine";
@@ -872,6 +872,17 @@ if (!innings.overs[currentOver]) {
 
 const ballEvent = createBallEvent(next, innings, inningsIndex, event);
 
+console.log("🏏 BALL EVENT", {
+  type: ballEvent.type,
+  runs: ballEvent.totalRuns,
+  over: innings.over,
+  ball: innings.ball,
+  striker: innings.striker,
+  nonStriker: innings.nonStriker,
+  wickets: innings.wickets,
+  score: innings.runs,
+});
+
 innings.overs[currentOver].push(ballEvent);
 // ✅ UPDATE BALL COUNT
 if (ballEvent.isLegalDelivery) {
@@ -916,6 +927,14 @@ if (strikerRecord) {
 }
 
 innings.runs += ballEvent.totalRuns;
+console.log("📊 SCORE UPDATE", {
+  score: innings.runs,
+  wickets: innings.wickets,
+  over: innings.over,
+  ball: innings.ball,
+});
+
+
 // ❌ DO NOT update strike here (moved after wicket logic)
 
 // =======================
@@ -996,8 +1015,16 @@ if (!nextBatsman) {
 }
 
 // 🔥 DEFAULT: striker out → new batsman on strike
+// ✅ New batsman replaces dismissed striker
 innings.striker = nextBatsman;
 innings.nonStriker = survivingBatter;
+
+// ✅ If wicket fell on odd runs, rotate strike
+if ((ballEvent.totalRuns ?? 0) % 2 === 1) {
+  const temp = innings.striker;
+  innings.striker = innings.nonStriker;
+  innings.nonStriker = temp;
+}
 
 // 🔥 IF ODD RUNS → SWAP AFTER NEW BATSMAN
 
@@ -1019,11 +1046,6 @@ assertValidActiveBatters(
 // 🔥 FINAL SAFETY — NEVER ALLOW EMPTY PLAYERS
   if (innings.ball >= 6) {
   const completedOver = innings.over;
-
-  // ✅ swap strike at over end
-  const temp = innings.striker;
-  innings.striker = innings.nonStriker;
-  innings.nonStriker = temp;
 
   innings.ball = 0;
   innings.over += 1;
@@ -1502,20 +1524,33 @@ export function syncBattingOrder(
   matchId: string,
   players: string[]
 ) {
-  const state = matches.get(matchId); // 🔥 FIX
-  if (!state) return;
+  const state = matches.get(matchId);
+
+  if (!state) {
+    console.warn("⚠️ syncBattingOrder: match state missing");
+    return;
+  }
 
   const innings = state.innings[state.currentInningsIndex];
-  if (!innings) return;
 
-  if (innings.battingOrder && innings.battingOrder.length > 0) return;
+  if (!innings) {
+    console.warn("⚠️ syncBattingOrder: innings missing");
+    return;
+  }
 
-  innings.battingOrder = players;
+  // ✅ ALWAYS FORCE UPDATE
+  innings.battingOrder = [...players];
 
-  innings.striker = players[0] || "";
-  innings.nonStriker = players[1] || "";
+  // ✅ Bootstrap only if empty
+  if (!innings.striker && !innings.nonStriker) {
+    innings.striker = players[0] || "";
+    innings.nonStriker = players[1] || "";
+    innings.nextBatsmanIndex = 2;
+  }
 
-  innings.nextBatsmanIndex = 2;
-
-  console.log("🏏 Batting order synced:", players);
+  console.log("🏏 ENGINE BATTING ORDER SYNCED", {
+    players,
+    striker: innings.striker,
+    nonStriker: innings.nonStriker,
+  });
 }

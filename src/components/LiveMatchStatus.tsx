@@ -3,21 +3,17 @@
 import { useMatch } from "@/context/MatchContext";
 
 export default function LiveMatchStatus() {
-
   const { state } = useMatch();
 
   if (!state) return null;
 
   const innings = state.innings[state.currentInningsIndex];
-
   if (!innings) return null;
 
   return (
-
     <div className="bg-gradient-to-r from-blue-900/40 via-zinc-900 to-purple-900/40 border border-zinc-800 rounded-xl p-4 shadow-lg">
-
       <div className="flex flex-wrap gap-6 text-sm text-gray-300">
-
+        
         <div>
           <span className="text-gray-400">Score:</span>{" "}
           <span className="text-white font-semibold">
@@ -40,9 +36,6 @@ export default function LiveMatchStatus() {
         </div>
 
       </div>
-
     </div>
-
   );
-
 }

@@ -33,9 +33,7 @@ function cleanupSocket(options?: { preserveMatchId?: boolean }) {
     state.socket.close();
     state.socket = null;
   }
-
   clearReconnectTimer();
-
   if (!options?.preserveMatchId) {
     state.activeMatchId = null;
   }
@@ -50,12 +48,10 @@ function scheduleReconnect(matchId: string) {
 
   state.reconnectTimer = window.setTimeout(() => {
     state.reconnectTimer = null;
-
     if (state.manuallyClosed) return;
     if (state.subscribers <= 0) return;
     if (state.activeMatchId !== matchId) return;
     if (state.socket) return;
-
     openSocket(matchId);
   }, 1500);
 }
@@ -70,55 +66,44 @@ function openSocket(matchId: string) {
     window.location.origin
   );
 
-  // ✅ DEFINE HANDLER FIRST
+  // ─── Single clean handler ────────────────────────────────────────
+  // Server sends all events as NAMED SSE events:
+  //   event: BALL_EVENT\ndata: {...}\n\n
+  // Named addEventListener fires exactly once per event — no
+  // deduplication or message fallback needed.
   function handleEvent(event: MessageEvent) {
-    console.log("🧠 FULL SSE EVENT RECEIVED:", {
-      type: event.type,
-      raw: event.data,
-    });
-
     if (!event?.data) {
-      console.warn("⚠️ Empty SSE event received");
+      console.warn("⚠️ Empty SSE event");
       return;
     }
 
     try {
-      const payload = JSON.parse(event.data);
-
+      const payload = JSON.parse(event.data) as RealtimeEvent;
       console.log("📥 EVENT TYPE:", payload.type);
-
       routeRealtimeEvent(payload);
     } catch (error) {
-      console.error("❌ Failed to parse realtime event", error, event.data);
+      console.error("❌ Failed to parse SSE event", error, event.data);
     }
   }
 
-  // ✅ THEN CREATE SOCKET
   const es = new EventSource(url.toString());
 
-  // ✅ REGISTER EVENTS
+  // Register one listener per named event type
   es.addEventListener("CONNECTED", handleEvent);
   es.addEventListener("INITIAL_STATE", handleEvent);
   es.addEventListener("BALL_EVENT", handleEvent);
   es.addEventListener("MATCH_ENDED", handleEvent);
+  es.addEventListener("SIMULATION_STATE_UPDATE", handleEvent);
 
-  // ❌ Ignore control events
-  es.addEventListener(
-  "SIMULATION_STATE_UPDATE",
-  handleEvent
-);
-
-  // ✅ NOW assign state
   state.socket = es;
   state.activeMatchId = matchId;
   state.manuallyClosed = false;
 
-  // 🔥 START SIMULATION (unchanged)
+  // Start simulation after SSE opens
   setTimeout(() => {
     console.log("🚀 STARTING SIMULATION AFTER DELAY");
 
     const matchMeta = getMatchMeta(matchId);
-
     if (!matchMeta) {
       console.error("❌ Missing matchMeta");
       return;
@@ -126,9 +111,7 @@ function openSocket(matchId: string) {
 
     fetch("/api/start-simulation", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         matchId,
         teamAName: matchMeta.teamA.name,
@@ -138,21 +121,14 @@ function openSocket(matchId: string) {
       }),
     })
       .then((res) => res.json())
-      .then((data) => {
-        console.log("✅ Simulation started:", data);
-      })
-      .catch((err) => {
-        console.error("❌ Simulation start failed:", err);
-      });
+      .then((data) => console.log("✅ Simulation started:", data))
+      .catch((err) => console.error("❌ Simulation start failed:", err));
   }, 500);
 
-  // ✅ ERROR HANDLING (unchanged)
   es.onerror = () => {
     if (state.socket !== es) return;
     if (state.manuallyClosed) return;
-
     if (es.readyState === EventSource.CONNECTING) return;
-
     if (es.readyState === EventSource.CLOSED) {
       cleanupSocket({ preserveMatchId: true });
       console.log("🔄 Reconnecting SSE...", { matchId });
@@ -162,9 +138,8 @@ function openSocket(matchId: string) {
 }
 
 export function connectRealtime(matchId: string) {
-  // 🔥 ADD HERE (VERY FIRST LINES)
   if (!matchId) {
-    console.error("❌ FRONTEND matchId is undefined");
+    console.error("❌ connectRealtime: matchId undefined");
     return;
   }
 
@@ -180,7 +155,7 @@ export function connectRealtime(matchId: string) {
     (state.socket.readyState === EventSource.OPEN ||
       state.socket.readyState === EventSource.CONNECTING)
   ) {
-    return;
+    return; // Already connected
   }
 
   if (state.activeMatchId && state.activeMatchId !== matchId) {
@@ -193,15 +168,10 @@ export function connectRealtime(matchId: string) {
 }
 
 export function disconnectRealtime(matchId?: string) {
-  if (matchId && state.activeMatchId && state.activeMatchId !== matchId) {
-    return;
-  }
+  if (matchId && state.activeMatchId && state.activeMatchId !== matchId) return;
 
   state.subscribers = Math.max(0, state.subscribers - 1);
-
-  if (state.subscribers > 0) {
-    return;
-  }
+  if (state.subscribers > 0) return;
 
   state.manuallyClosed = true;
   cleanupSocket();

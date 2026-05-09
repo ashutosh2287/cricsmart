@@ -1,28 +1,13 @@
 "use client";
 
-import {
-  getMatchSnapshot,
-  subscribeMatch,
-} from "@/lib/eventStore";
+import { useMatchState } from "@/hooks/useMatchState";
 
-import { useEffect, useState } from "react";
-import type { MatchState } from "@/services/matchEngine";
-
-export default function LiveScoreCard({ matchId }: { matchId: string }) {
-  const [state, setState] = useState<MatchState | null>(
-    getMatchSnapshot(matchId)
-  );
-
-  useEffect(() => {
-    const unsub = subscribeMatch(matchId, () => {
-      const next = getMatchSnapshot(matchId);
-      if (next) {
-        setState({ ...next });
-      }
-    });
-
-    return unsub;
-  }, [matchId]);
+export default function LiveScoreCard({
+  matchId,
+}: {
+  matchId: string;
+}) {
+  const state = useMatchState(matchId);
 
   if (!state) return null;
 

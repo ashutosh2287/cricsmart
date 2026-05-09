@@ -1,6 +1,10 @@
-import { hydrateMatchState, setMatchState } from "@/services/matchEngine";
 import type { SimulationState } from "@/services/simulation/simulationState";
 import { patchMatchRuntime } from "@/store/matchStore";
+import { hydrateMatchState }
+from "@/services/matchEngine";
+
+import { setMatchState }
+from "@/lib/eventStore";
 
 type TeamsPayload = {
   teamA: { name: string };
@@ -213,27 +217,31 @@ export function routeRealtimeEvent(event: RealtimeEvent) {
   return;
 
     case "INITIAL_STATE": {
-      if (!event.data) {
-        console.warn("⚠️ INITIAL_STATE missing data", event);
-        return;
-      }
+  if (!event.data) {
+    console.warn("⚠️ INITIAL_STATE missing data", event);
+    return;
+  }
 
-      if (!shouldAcceptInitialState(event.matchId, event.data)) {
-        return;
-      }
+  if (!shouldAcceptInitialState(event.matchId, event.data)) {
+    return;
+  }
 
-      hydrateMatchState(event.matchId, event.data);
-      lastAcceptedFingerprintByMatch.set(
-        event.matchId,
-        getProgressFingerprint(event.data)
-      );
+  hydrateMatchState(event.matchId, event.data);
 
-      emitCricUpdate({
-        matchId: event.matchId,
-        type: "INITIAL_STATE",
-      });
-      return;
-    }
+  // ✅ ADD THIS — push into eventStore so MatchProvider sees initial state
+  setMatchState(event.matchId, event.data as import("@/services/matchEngine").MatchState);
+
+  lastAcceptedFingerprintByMatch.set(
+    event.matchId,
+    getProgressFingerprint(event.data)
+  );
+
+  emitCricUpdate({
+    matchId: event.matchId,
+    type: "INITIAL_STATE",
+  });
+  return;
+}
 
     case "BALL_EVENT": {
   if (!event.data?.committedState) {
@@ -249,10 +257,8 @@ export function routeRealtimeEvent(event: RealtimeEvent) {
     return;
   }
 
-  // ✅ 1. Update core match state
-  hydrateMatchState(event.matchId, state);
-  // 🔥 ADD THIS LINE (CRITICAL FIX)
-setMatchState(event.matchId, state);
+ // ✅ ONLY update immutable realtime store
+setMatchState(event.matchId, structuredClone(state));
 
   // ✅ 2. 🔥 ADD THIS BLOCK (UI STORE SYNC)
   const innings = state.innings[state.currentInningsIndex];

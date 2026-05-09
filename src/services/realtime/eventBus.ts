@@ -1,15 +1,19 @@
 import type { MatchState } from "@/services/matchEngine";
 
+// ✅ Use the SAME client registry that the SSE route writes to
+// (SSE route → realtimeController → clientStore → getClients)
+import { getClients } from "@/services/realtime/clientStore";
+
 type RealtimeEvent =
-   | {
-    type: "SIMULATION_STATE_UPDATE";
-    matchId: string;
-    data: {
-      isRunning: boolean;
-      isPaused: boolean;
-      speed: number;
-    };
-  }
+  | {
+      type: "SIMULATION_STATE_UPDATE";
+      matchId: string;
+      data: {
+        isRunning: boolean;
+        isPaused: boolean;
+        speed: number;
+      };
+    }
   | {
       type: "INITIAL_STATE";
       matchId: string;
@@ -20,9 +24,7 @@ type RealtimeEvent =
       matchId: string;
       data: {
         committedState: MatchState;
-        engineEvent?: {
-          id: string;
-        };
+        engineEvent?: { id: string };
         commentary?: string[];
         insights?: unknown[];
         analytics?: unknown;
@@ -41,54 +43,29 @@ type RealtimeEvent =
         winBy: string | null;
       };
     };
-    
+
 type Client = {
   id: string;
   send: (data: string) => void;
 };
 
-
-const globalAny = globalThis as unknown as {
-  __clientsMap?: Map<string, Set<Client>>;
-};
-
-if (!globalAny.__clientsMap) {
-  globalAny.__clientsMap = new Map();
-}
-
-const clientsMap = globalAny.__clientsMap;
-
-// ✅ ADD CLIENT
-export function addClient(matchId: string, client: Client) {
-  if (!clientsMap.has(matchId)) {
-    clientsMap.set(matchId, new Set());
-  }
-  clientsMap.get(matchId)!.add(client);
-}
-
-// ✅ REMOVE CLIENT
-export function removeClient(matchId: string, client: Client) {
-  const set = clientsMap.get(matchId);
-  if (!set) return;
-
-  set.delete(client);
-
-  if (set.size === 0) {
-    clientsMap.delete(matchId);
-  }
-}
-
-// 🔥 MAIN FUNCTION — SEND DATA TO FRONTEND
+// ─────────────────────────────────────────────
+// broadcast — sends SSE event to all connected clients for a match
+// ─────────────────────────────────────────────
 export function broadcast(matchId: string, event: RealtimeEvent) {
-  const clients = clientsMap.get(matchId);
+  // ✅ Read from the shared clientStore (same map the SSE route writes to)
+  const clients = getClients(matchId);
 
   if (!clients || clients.size === 0) {
+    console.warn(`⚠️ broadcast(${event.type}): no clients for match ${matchId}`);
     return;
   }
 
   let payload: string;
 
   try {
+    // ✅ Correct SSE frame: "event: TYPE\ndata: JSON\n\n"
+    // ❌ Do NOT append ":keepalive\n\n" — it corrupts the frame boundary
     payload = `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
   } catch (err) {
     console.error("❌ Failed to serialize event", err);
@@ -96,18 +73,22 @@ export function broadcast(matchId: string, event: RealtimeEvent) {
   }
 
   let activeClients = 0;
+  const deadClients: Client[] = [];
 
   clients.forEach((client) => {
     try {
-      client.send(payload + ":keepalive\n\n");
-      console.log(`📡 Broadcasting to client ${client.id}: ${event.type}`);
+      client.send(payload);
       activeClients++;
     } catch (err) {
-      console.error("❌ Removing dead client", err);
-      clients.delete(client); // 🔥 IMPORTANT FIX
+      console.error("❌ Dead client detected, queuing removal", client.id, err);
+      deadClients.push(client as Client);
     }
   });
 
-  // 🔍 DEBUG (VERY IMPORTANT FOR YOU)
-  console.log(`📡 Broadcast → ${event.type} | Clients: ${activeClients}`);
+  // Remove dead clients after iteration (safe)
+  for (const dead of deadClients) {
+    clients.delete(dead as never);
+  }
+
+  console.log(`📡 broadcast → ${event.type} | sent to ${activeClients} client(s) | match: ${matchId}`);
 }

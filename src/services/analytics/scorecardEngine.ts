@@ -1,4 +1,4 @@
-import { getMatchState } from "../matchEngine";
+import { getMatchState } from "@/lib/eventStore";
 import { BallEvent, isWicketEvent } from "@/types/ballEvent";
 
 type WicketEvent = {

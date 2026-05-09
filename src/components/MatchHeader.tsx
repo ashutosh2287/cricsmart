@@ -47,11 +47,12 @@ export default function MatchHeader({
 }: Props) {
 
   // ✅ GET FROM STORE
-  const matchMeta = getMatchMeta();
+  console.log("🏏 MATCH HEADER RENDER");
+  const matchMeta = null;
 
   // ✅ FINAL TEAM RESOLUTION
-  const finalTeam1 = matchMeta?.teamA.name ?? team1 ?? "Team A";
-  const finalTeam2 = matchMeta?.teamB.name ?? team2 ?? "Team B";
+  const finalTeam1 = team1 ?? "Team A";
+  const finalTeam2 = team2 ?? "Team B";
 
   const scoreKey = `${runs}-${wickets}`;
 
@@ -201,7 +202,7 @@ export default function MatchHeader({
               Score
             </p>
             <span className="mt-1 text-sm font-semibold text-white">
-  <AnimatedScore value="2/0" />
+  <AnimatedScore value={`${runs}/${wickets}`} />
 </span>
           </div>
 

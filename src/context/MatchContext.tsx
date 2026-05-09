@@ -15,31 +15,34 @@ import {
 
 type MatchContextType = {
   matchId: string;
-  state?: MatchState;
+  state?: MatchState | null;
 };
 
 const MatchContext = createContext<MatchContextType | null>(null);
 
 type MatchProviderProps = {
   children: React.ReactNode;
-  value: {
-    matchId: string;
-    state?: MatchState;
-  };
+  matchId: string;
 };
 
 const emptySubscribe = () => () => {};
 
-export function MatchProvider({ children, value }: MatchProviderProps) {
-  const { matchId, state: fallbackState } = value;
+export function MatchProvider({
+  children,
+  matchId,
+}: MatchProviderProps) {
 
   const getSnapshot = () => {
-  if (!matchId) return fallbackState;
-  return getMatchSnapshot(matchId) ?? fallbackState;
-};
+    if (!matchId) return undefined;
+
+    return getMatchSnapshot(matchId);
+  };
 
   const state = useSyncExternalStore(
-    matchId ? (listener) => subscribeMatch(matchId, listener) : emptySubscribe,
+    matchId
+      ? (listener) => subscribeMatch(matchId, listener)
+      : emptySubscribe,
+
     getSnapshot,
     getSnapshot
   );
@@ -51,6 +54,17 @@ export function MatchProvider({ children, value }: MatchProviderProps) {
     }),
     [matchId, state]
   );
+
+  console.log("🟢 MATCH PROVIDER UPDATE", {
+  runs: state?.innings?.[
+    state?.currentInningsIndex ?? 0
+  ]?.runs,
+
+  wickets: state?.innings?.[
+    state?.currentInningsIndex ?? 0
+  ]?.wickets,
+
+});
 
   return (
     <MatchContext.Provider value={contextValue}>

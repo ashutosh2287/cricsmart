@@ -3,13 +3,17 @@
 import { useSyncExternalStore } from "react";
 import {
   subscribeMatch,
-  getMatchSnapshot,
+  getMatchState,
 } from "@/lib/eventStore";
 
 export function useMatchState(matchId: string) {
   return useSyncExternalStore(
     (callback) => subscribeMatch(matchId, callback),
-    () => getMatchSnapshot(matchId),
-    () => getMatchSnapshot(matchId) // SSR fallback
+
+    // ✅ LIVE REALTIME STATE
+    () => getMatchState(matchId),
+
+    // ✅ SSR FALLBACK
+    () => getMatchState(matchId)
   );
 }

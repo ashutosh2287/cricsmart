@@ -17,7 +17,7 @@ import { generateBroadcastInsights } from "../broadcast/broadcastInsightEngine";
 import { setAnalytics } from "../analytics/liveAnalyticsStore";
 import { getWinProbabilityTimeline } from "../analytics/winProbabilityTimelineEngine";
 import { getMomentumTimeline } from "../analytics/momentumTimelineEngine";
-import { broadcast } from "@/services/realtime/realtimeController";
+import { broadcast } from "@/services/realtime/eventBus";
 import {
   dispatchBallEvent,
   getMatchState,

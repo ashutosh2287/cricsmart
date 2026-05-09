@@ -66,8 +66,9 @@ function MomentumChart({ matchId }: Props) {
     const events = getEventStream(matchId);
     return events
       .filter((e) => e.type === "WICKET" || e.runs >= 4)
-      .map((e, index) => ({
-        over: index,
+      .map((e) => ({
+        id: e.id,
+        over: e.over,
         momentum: e.runs >= 4 ? Math.max(1, e.runs) : -1,
         isWicket: e.type === "WICKET",
       }))
@@ -123,7 +124,7 @@ function MomentumChart({ matchId }: Props) {
           <ReferenceArea y1={-10} y2={-2} fill="rgba(239,68,68,0.08)" />
           {markers.map((m, idx) => (
             <ReferenceDot
-              key={`${m.over}-${idx}`}
+              key={m.id ?? `${m.over}-${idx}`}
               x={m.over}
               y={m.momentum}
               r={4}

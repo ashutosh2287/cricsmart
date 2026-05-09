@@ -18,7 +18,21 @@ const state: RealtimeConnectionState = {
   reconnectTimer: null,
 };
 const startedSimulationByMatch = new Set<string>();
-const processedKeysByMatch = new Map<string, string>();
+const processedKeysByMatch = new Map<string, Set<string>>();
+
+function hasProcessedEvent(matchId: string, key: string) {
+  const processed = processedKeysByMatch.get(matchId);
+  return processed?.has(key) ?? false;
+}
+
+function markProcessedEvent(matchId: string, key: string) {
+  let processed = processedKeysByMatch.get(matchId);
+  if (!processed) {
+    processed = new Set<string>();
+    processedKeysByMatch.set(matchId, processed);
+  }
+  processed.add(key);
+}
 
 function clearReconnectTimer() {
   if (state.reconnectTimer !== null && typeof window !== "undefined") {
@@ -78,12 +92,26 @@ function openSocket(matchId: string) {
 
     try {
       const payload = JSON.parse(event.data) as RealtimeEvent;
+      const payloadMatchId = payload.matchId || matchId;
+      const committedState =
+        payload.type === "BALL_EVENT" ? payload.data?.committedState : undefined;
+      const inningsIndex = committedState?.currentInningsIndex ?? 0;
+      const innings = committedState?.innings?.[inningsIndex];
       const processedKey =
         payload.type === "BALL_EVENT"
-          ? `${payload.type}:${payload.matchId}:${payload.data?.engineEvent?.id ?? "no-id"}`
-          : `${payload.type}:${payload.matchId}`;
-      if (processedKeysByMatch.get(matchId) === processedKey) return;
-      processedKeysByMatch.set(matchId, processedKey);
+          ? `${payload.type}:${payloadMatchId}:${
+              payload.data?.engineEvent?.id ??
+              [
+                inningsIndex,
+                innings?.runs ?? 0,
+                innings?.wickets ?? 0,
+                innings?.over ?? 0,
+                innings?.ball ?? 0,
+              ].join("|")
+            }`
+          : `${payload.type}:${payloadMatchId}`;
+      if (hasProcessedEvent(payloadMatchId, processedKey)) return;
+      markProcessedEvent(payloadMatchId, processedKey);
       routeRealtimeEvent(payload);
     } catch (error) {
       console.error("❌ Failed to parse SSE event", error, event.data);
@@ -111,6 +139,10 @@ function openSocket(matchId: string) {
       const res = await fetch(`/api/match/${encodeURIComponent(matchId)}`, {
         cache: "no-store",
       });
+      if (!res.ok) {
+        console.error("❌ Snapshot recovery request failed", res.status);
+        return;
+      }
       const snapshot = await res.json();
       if (snapshot?.success && snapshot?.match) {
         routeRealtimeEvent({
@@ -118,15 +150,18 @@ function openSocket(matchId: string) {
           matchId,
           data: snapshot.match,
         });
+      } else {
+        console.error("❌ Snapshot recovery payload invalid");
+        return;
       }
     } catch (error) {
       console.error("❌ Snapshot recovery failed", error);
+      return;
     }
 
-    if (startedSimulationByMatch.has(matchId)) return;
     const matchMeta = getMatchMeta(matchId);
     if (!matchMeta) return;
-
+    if (startedSimulationByMatch.has(matchId)) return;
     startedSimulationByMatch.add(matchId);
     fetch("/api/start-simulation", {
       method: "POST",

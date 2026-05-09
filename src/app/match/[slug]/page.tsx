@@ -324,7 +324,7 @@ function TabsArea({
   } | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [isStarting] = useState(false);
+  const isStarting = false;
   const [startError, setStartError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1500);
   const [runtimeMonitor, setRuntimeMonitor] = useState(() =>
@@ -1235,7 +1235,11 @@ function TabsArea({
                           });
                           setIsPaused(!isPaused);
                           setStartError(null);
-                        } catch {
+                        } catch (error) {
+                          console.error(
+                            "Failed to update simulation state",
+                            error
+                          );
                           setStartError("Failed to update simulation state.");
                         }
                       }}
@@ -1748,10 +1752,14 @@ export default function MatchDetailPage({
 
     loadMatch();
     return () => { cancelled = true; };
-  }, [matchId, match?.team1, match?.team2]);
+  }, [matchId]);
 
   // Match init API (one-shot)
   const hasInitialized = useRef(false);
+  const [initTeams] = useState(() => ({
+      teamA: match?.team1 ?? "Team A",
+      teamB: match?.team2 ?? "Team B",
+    }));
   useEffect(() => {
     if (!matchId || hasInitialized.current) return;
     hasInitialized.current = true;
@@ -1761,13 +1769,13 @@ export default function MatchDetailPage({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         matchId,
-        teamA: match?.team1 ?? "Team A",
-        teamB: match?.team2 ?? "Team B",
+        teamA: initTeams.teamA,
+        teamB: initTeams.teamB,
         type: "LIVE",
         externalMatchId: matchId,
       }),
     });
-  }, [matchId, match?.team1, match?.team2]);
+  }, [initTeams, matchId]);
 
   // Analytics / insights from window events
   useEffect(() => {

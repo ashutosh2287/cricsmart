@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useEffect, useRef, useState } from "react";
 import { subscribeCommentary, Commentary } from "@/services/commentary/commentaryBus";
 
 function LiveCommentaryFeed() {
@@ -25,8 +25,6 @@ function LiveCommentaryFeed() {
 
   }, []);
 
-  const visibleComments = useMemo(() => comments, [comments]);
-
   return (
     <div className="space-y-2 border p-4 rounded-lg h-[250px] overflow-y-auto">
 
@@ -34,13 +32,13 @@ function LiveCommentaryFeed() {
         Live Commentary
       </h3>
 
-      {visibleComments.length === 0 && (
+      {comments.length === 0 && (
         <p className="text-gray-500 text-sm">
           Waiting for commentary...
         </p>
       )}
 
-      {visibleComments.map((c, i) => (
+      {comments.map((c, i) => (
         <p key={i} className="text-sm text-white border-b border-gray-800 pb-1">
           {c.text}
         </p>

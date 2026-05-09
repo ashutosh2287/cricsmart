@@ -14,7 +14,7 @@ type Shot = {
   runs: number;
 };
 
-function hashSeed(input: string): number {
+function stringToSeed(input: string): number {
   let hash = 0;
   for (let i = 0; i < input.length; i += 1) {
     hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
@@ -22,16 +22,21 @@ function hashSeed(input: string): number {
   return hash;
 }
 
-function seededRandom(seed: number): number {
-  const x = Math.sin(seed) * 10000;
-  return x - Math.floor(x);
+function createMulberry32(seed: number) {
+  let t = seed >>> 0;
+  return () => {
+    t = (t + 0x6d2b79f5) >>> 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 function getShotAngle(event: BallEvent): number {
   const key = `${event.id}|${event.batsman}|${event.over}|${event.runs}`;
-  const seed = hashSeed(key);
-  const rand = seededRandom(seed);
-  const spread = seededRandom(seed + 1);
+  const rng = createMulberry32(stringToSeed(key));
+  const rand = rng();
+  const spread = rng();
 
   if (event.runs >= 4) {
     if (rand < 0.3) return 300 + spread * 40;
@@ -40,7 +45,7 @@ function getShotAngle(event: BallEvent): number {
   }
 
   if (event.runs === 1 || event.runs === 2 || event.runs === 3) {
-    return seededRandom(seed + 2) * 360;
+    return rng() * 360;
   }
 
   return 140 + spread * 60;
@@ -56,6 +61,7 @@ function getPlayerBias(player: string): number {
 
 export default function WagonWheel({ matchId }: Props) {
   const { state } = useMatch();
+  const matchSeed = useMemo(() => stringToSeed(matchId), [matchId]);
 
   const events = useMemo(
     () =>
@@ -73,10 +79,10 @@ export default function WagonWheel({ matchId }: Props) {
         .filter((e) => e.isLegalDelivery && !e.extra)
         .map((e) => ({
           id: e.id,
-          angle: (getShotAngle(e) + getPlayerBias(e.batsman) + hashSeed(matchId)) % 360,
+          angle: (getShotAngle(e) + getPlayerBias(e.batsman) + matchSeed) % 360,
           runs: e.runs,
         })),
-    [events, matchId]
+    [events, matchSeed]
   );
 
   const size = 200;

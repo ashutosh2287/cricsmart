@@ -1,5 +1,6 @@
 "use client";
 
+import React, { memo, useMemo, useState } from "react";
 import { getEventStream } from "@/services/matchEngine";
 
 type Props = {
@@ -42,16 +43,21 @@ function getPlayerBias(player: string): number {
   return hash % 360;
 }
 
-export default function WagonWheel({ matchId }: Props) {
-
+function WagonWheel({ matchId }: Props) {
+  const [runsFilter, setRunsFilter] = useState<"ALL" | "BOUNDARIES">("ALL");
   const events = getEventStream(matchId);
 
-  const shots: Shot[] = events
-    .filter(e => e.isLegalDelivery && !e.extra)
-    .map(e => ({
-      angle: (getShotAngle(e.runs) + getPlayerBias(e.batsman)) % 360,
-      runs: e.runs
-    }));
+  const shots: Shot[] = useMemo(
+    () =>
+      events
+        .filter((e) => e.isLegalDelivery && !e.extra)
+        .filter((e) => (runsFilter === "BOUNDARIES" ? e.runs >= 4 : true))
+        .map((e) => ({
+          angle: (getShotAngle(e.runs) + getPlayerBias(e.batsman)) % 360,
+          runs: e.runs,
+        })),
+    [events, runsFilter]
+  );
 
   const size = 200;
   const center = size / 2;
@@ -63,7 +69,22 @@ export default function WagonWheel({ matchId }: Props) {
       <h3 className="text-lg font-semibold mb-3 text-white">
         Wagon Wheel
       </h3>
-      
+      <div className="mb-3 flex gap-2 text-xs">
+        <button
+          type="button"
+          onClick={() => setRunsFilter("ALL")}
+          className={runsFilter === "ALL" ? "text-sky-300" : "text-white/60"}
+        >
+          All
+        </button>
+        <button
+          type="button"
+          onClick={() => setRunsFilter("BOUNDARIES")}
+          className={runsFilter === "BOUNDARIES" ? "text-sky-300" : "text-white/60"}
+        >
+          Boundaries
+        </button>
+      </div>
 
       <svg width={size} height={size} className="mx-auto">
 
@@ -99,10 +120,8 @@ export default function WagonWheel({ matchId }: Props) {
               y2={y}
               stroke={color}
               strokeWidth={
-  shot.runs === 6 ? 4 :
-  shot.runs === 4 ? 3 :
-  1
-}
+                shot.runs === 6 ? 4 : shot.runs === 4 ? 3 : 1
+              }
               opacity={shot.runs === 0 ? 0.3 : 0.9}
             />
           );
@@ -116,3 +135,5 @@ export default function WagonWheel({ matchId }: Props) {
     </div>
   );
 }
+
+export default memo(WagonWheel);

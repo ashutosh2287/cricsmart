@@ -20,11 +20,7 @@ export default function AdminDashboard({ matchId }: { matchId: string }) {
 const router = useRouter();
 const [tossData, setTossData] = useState<TossData | null>(null);
   const [matchMeta, setLocalMatchMeta] = useState(() => getMatchMeta(matchId));
-  const [isRunning, setIsRunning] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
-  const [startError, setStartError] = useState<string | null>(null);
-  const [speed, setSpeed] = useState(1500);
 
   return (
     <div className="space-y-6">
@@ -88,10 +84,7 @@ const [tossData, setTossData] = useState<TossData | null>(null);
     return;
   }
 
-  console.log("🔥 ADMIN START CLICKED");
-
   setIsStarting(true);
-  setStartError(null);
 
   // ✅ ONLY THIS
   connectRealtime(matchId);

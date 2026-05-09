@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { memo, useEffect, useMemo, useState } from "react";
 import { getMatchInsights } from "@/services/analytics/matchInsightsEngine";
 import { getAIInsights } from "@/services/analytics/aiInsightEngine";
 import MomentumChart from "./MomentumChart";
@@ -17,8 +17,7 @@ type AIInsight = {
   text: string;
 };
 
-export default function MatchInsightsPanel({ matchId }: Props) {
-
+function MatchInsightsPanel({ matchId }: Props) {
   const [insights, setInsights] = useState<MatchInsight[]>([]);
   const [aiInsights, setAIInsights] = useState<AIInsight[]>();
 
@@ -34,6 +33,9 @@ export default function MatchInsightsPanel({ matchId }: Props) {
 
   }, [matchId]);
 
+  const recentAiInsights = useMemo(() => aiInsights?.slice(-3) ?? [], [aiInsights]);
+  const recentInsights = useMemo(() => insights.slice(-5), [insights]);
+
   return (
 
     <div className="space-y-6">
@@ -42,7 +44,7 @@ export default function MatchInsightsPanel({ matchId }: Props) {
       <MomentumChart matchId={matchId} />
 
       {/* 🤖 AI INSIGHTS (PREMIUM CARD) */}
-      {(aiInsights?.length ?? 0) > 0 && (
+      {recentAiInsights.length > 0 && (
 
         <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/10 
                         border border-purple-600 rounded-xl p-4 shadow-lg">
@@ -53,7 +55,7 @@ export default function MatchInsightsPanel({ matchId }: Props) {
 
           <div className="space-y-2">
 
-            {aiInsights?.slice(-3).map((insight, i) => (
+            {recentAiInsights.map((insight, i) => (
 
               <div
                 key={i}
@@ -86,7 +88,7 @@ export default function MatchInsightsPanel({ matchId }: Props) {
 
         <div className="space-y-2">
 
-          {insights.slice(-5).map((i, index) => (
+          {recentInsights.map((i, index) => (
 
             <div
               key={index}
@@ -106,3 +108,5 @@ export default function MatchInsightsPanel({ matchId }: Props) {
 
   );
 }
+
+export default memo(MatchInsightsPanel);

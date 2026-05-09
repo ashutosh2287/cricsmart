@@ -17,6 +17,8 @@ const state: RealtimeConnectionState = {
   subscribers: 0,
   reconnectTimer: null,
 };
+const startedSimulationByMatch = new Set<string>();
+const processedKeysByMatch = new Map<string, string>();
 
 function clearReconnectTimer() {
   if (state.reconnectTimer !== null && typeof window !== "undefined") {
@@ -72,14 +74,16 @@ function openSocket(matchId: string) {
   // Named addEventListener fires exactly once per event — no
   // deduplication or message fallback needed.
   function handleEvent(event: MessageEvent) {
-    if (!event?.data) {
-      console.warn("⚠️ Empty SSE event");
-      return;
-    }
+    if (!event?.data) return;
 
     try {
       const payload = JSON.parse(event.data) as RealtimeEvent;
-      console.log("📥 EVENT TYPE:", payload.type);
+      const processedKey =
+        payload.type === "BALL_EVENT"
+          ? `${payload.type}:${payload.matchId}:${payload.data?.engineEvent?.id ?? "no-id"}`
+          : `${payload.type}:${payload.matchId}`;
+      if (processedKeysByMatch.get(matchId) === processedKey) return;
+      processedKeysByMatch.set(matchId, processedKey);
       routeRealtimeEvent(payload);
     } catch (error) {
       console.error("❌ Failed to parse SSE event", error, event.data);
@@ -99,16 +103,31 @@ function openSocket(matchId: string) {
   state.activeMatchId = matchId;
   state.manuallyClosed = false;
 
-  // Start simulation after SSE opens
-  setTimeout(() => {
-    console.log("🚀 STARTING SIMULATION AFTER DELAY");
-
-    const matchMeta = getMatchMeta(matchId);
-    if (!matchMeta) {
-      console.error("❌ Missing matchMeta");
-      return;
+  es.onopen = async () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("SSE_CONNECTED", { detail: { matchId } }));
+    }
+    try {
+      const res = await fetch(`/api/match/${encodeURIComponent(matchId)}`, {
+        cache: "no-store",
+      });
+      const snapshot = await res.json();
+      if (snapshot?.success && snapshot?.match) {
+        routeRealtimeEvent({
+          type: "INITIAL_STATE",
+          matchId,
+          data: snapshot.match,
+        });
+      }
+    } catch (error) {
+      console.error("❌ Snapshot recovery failed", error);
     }
 
+    if (startedSimulationByMatch.has(matchId)) return;
+    const matchMeta = getMatchMeta(matchId);
+    if (!matchMeta) return;
+
+    startedSimulationByMatch.add(matchId);
     fetch("/api/start-simulation", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -119,11 +138,8 @@ function openSocket(matchId: string) {
         tossWinner: matchMeta.teamA.name,
         tossDecision: "BAT",
       }),
-    })
-      .then((res) => res.json())
-      .then((data) => console.log("✅ Simulation started:", data))
-      .catch((err) => console.error("❌ Simulation start failed:", err));
-  }, 500);
+    }).catch((err) => console.error("❌ Simulation start failed:", err));
+  };
 
   es.onerror = () => {
     if (state.socket !== es) return;
@@ -131,7 +147,6 @@ function openSocket(matchId: string) {
     if (es.readyState === EventSource.CONNECTING) return;
     if (es.readyState === EventSource.CLOSED) {
       cleanupSocket({ preserveMatchId: true });
-      console.log("🔄 Reconnecting SSE...", { matchId });
       scheduleReconnect(matchId);
     }
   };
@@ -142,8 +157,6 @@ export function connectRealtime(matchId: string) {
     console.error("❌ connectRealtime: matchId undefined");
     return;
   }
-
-  console.log("🧠 FRONTEND CONNECTING TO:", matchId);
 
   if (typeof window === "undefined") return;
 
@@ -174,6 +187,9 @@ export function disconnectRealtime(matchId?: string) {
   if (state.subscribers > 0) return;
 
   state.manuallyClosed = true;
+  if (state.activeMatchId) {
+    processedKeysByMatch.delete(state.activeMatchId);
+  }
   cleanupSocket();
 }
 

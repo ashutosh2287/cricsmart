@@ -1,7 +1,6 @@
 
 "use client";
 
-import { getMatchMeta } from "@/store/matchStore";
 import AnimatedScore from "./ui/AnimatedScore";
 
 type Batsman = {
@@ -45,10 +44,6 @@ export default function MatchHeader({
   bowler,
   lastOverBalls = [],
 }: Props) {
-
-  // ✅ GET FROM STORE
-  console.log("🏏 MATCH HEADER RENDER");
-  const matchMeta = null;
 
   // ✅ FINAL TEAM RESOLUTION
   const finalTeam1 = team1 ?? "Team A";

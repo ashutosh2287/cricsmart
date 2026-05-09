@@ -1,37 +1,41 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function useAnimatedNumber(target: number, duration = 400) {
-
   const [value, setValue] = useState(target);
+  const valueRef = useRef(target);
 
   useEffect(() => {
-
+    let frameId: number | null = null;
+    let cancelled = false;
     let start: number | null = null;
-    const initial = value;
+    const initial = valueRef.current;
     const diff = target - initial;
 
     if (diff === 0) return;
 
     function animate(timestamp: number) {
-
+      if (cancelled) return;
       if (!start) start = timestamp;
 
       const progress = Math.min((timestamp - start) / duration, 1);
-
       const nextValue = Math.round(initial + diff * progress);
-
+      valueRef.current = nextValue;
       setValue(nextValue);
 
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        frameId = requestAnimationFrame(animate);
       }
-
     }
 
-    requestAnimationFrame(animate);
+    frameId = requestAnimationFrame(animate);
 
-  }, [target]);
+    return () => {
+      cancelled = true;
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+      }
+    };
+  }, [target, duration]);
 
   return value;
-
 }

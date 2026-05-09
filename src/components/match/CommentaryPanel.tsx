@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import { translateCommentary } from "@/services/commentary/commentaryTranslator";
 
 type Commentary = string;
@@ -16,7 +16,7 @@ type Props = {
   insights?: BroadcastInsight[];
 };
 
-export default function CommentaryPanel({ matchId, insights }: Props) {
+function CommentaryPanel({ matchId, insights }: Props) {
   const [messages, setMessages] = useState<Commentary[]>([]);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [lang, setLang] = useState<"EN" | "HI">("EN");
@@ -65,20 +65,18 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
   GROUP BY OVER
   =============================
   */
-  const grouped = messages.reduce(
-    (
-      acc: Record<number, { text: string; index: number }[]>,
-      msg,
-      index
-    ) => {
-      const over = Math.floor(index / 6);
-
-      if (!acc[over]) acc[over] = [];
-      acc[over].push({ text: msg, index });
-
-      return acc;
-    },
-    {}
+  const grouped = useMemo(
+    () =>
+      messages.reduce(
+        (acc: Record<number, { text: string; index: number }[]>, msg, index) => {
+          const over = Math.floor(index / 6);
+          if (!acc[over]) acc[over] = [];
+          acc[over].push({ text: msg, index });
+          return acc;
+        },
+        {}
+      ),
+    [messages]
   );
 
   return (
@@ -172,3 +170,5 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
     </div>
   );
 }
+
+export default memo(CommentaryPanel);

@@ -5,20 +5,7 @@ const listenersMap = new Map<string, Set<() => void>>();
 const snapshotCache = new Map<string, MatchState>();
 
 export function getMatchSnapshot(matchId: string): MatchState | null {
-  const snapshot = snapshotCache.get(matchId) ?? null;
-
-  console.log("📡 SNAPSHOT READ", {
-    matchId,
-    runs: snapshot?.innings?.[snapshot.currentInningsIndex]?.runs ?? 0,
-    wickets:
-      snapshot?.innings?.[snapshot.currentInningsIndex]?.wickets ?? 0,
-    over:
-      snapshot?.innings?.[snapshot.currentInningsIndex]?.over ?? 0,
-    ball:
-      snapshot?.innings?.[snapshot.currentInningsIndex]?.ball ?? 0,
-  });
-
-  return snapshot;
+  return snapshotCache.get(matchId) ?? null;
 }
 
 export function getMatchState(matchId: string): MatchState | null {
@@ -32,24 +19,6 @@ export function setMatchState(matchId: string, state: MatchState) {
 
   matchStateMap.set(matchId, newState);
   snapshotCache.set(matchId, newState);
-
-  const currentInnings =
-    newState.innings[newState.currentInningsIndex];
-
-  console.log("🔥 STATE UPDATED", {
-    matchId,
-    innings0Runs: newState.innings[0]?.runs ?? 0,
-    innings1Runs: newState.innings[1]?.runs ?? 0,
-    currentInningsIndex: newState.currentInningsIndex,
-
-    striker: currentInnings?.striker ?? "",
-    nonStriker: currentInnings?.nonStriker ?? "",
-
-    runs: currentInnings?.runs ?? 0,
-    wickets: currentInnings?.wickets ?? 0,
-    over: currentInnings?.over ?? 0,
-    ball: currentInnings?.ball ?? 0,
-  });
 
   const listeners = listenersMap.get(matchId);
 

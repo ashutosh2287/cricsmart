@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { memo, useEffect, useMemo, useState } from "react";
 import { subscribeMatch } from "@/services/matchEngine";
 import { computeCurrentPartnership } from "@/services/analytics/partnershipEngine";
 
@@ -8,8 +8,7 @@ type Props = {
   matchId: string;
 };
 
-export default function PartnershipPanel({ matchId }: Props) {
-
+function PartnershipPanel({ matchId }: Props) {
   const [runs, setRuns] = useState(0);
   const [balls, setBalls] = useState(0);
   const [rr, setRR] = useState(0);
@@ -42,6 +41,30 @@ export default function PartnershipPanel({ matchId }: Props) {
 
   }, [matchId]);
 
+  const threatBadgeClass = useMemo(
+    () =>
+      threat === "LOW"
+        ? "bg-gray-700 text-gray-300"
+        : threat === "BUILDING"
+        ? "bg-blue-500/20 text-blue-400"
+        : threat === "DANGEROUS"
+        ? "bg-orange-500/20 text-orange-400"
+        : "bg-red-500/20 text-red-400",
+    [threat]
+  );
+
+  const threatBarClass = useMemo(
+    () =>
+      threat === "LOW"
+        ? "bg-gray-500 w-[20%]"
+        : threat === "BUILDING"
+        ? "bg-blue-500 w-[50%]"
+        : threat === "DANGEROUS"
+        ? "bg-orange-500 w-[75%]"
+        : "bg-red-500 w-full",
+    [threat]
+  );
+
   return (
 
   <div className="bg-gradient-to-br from-[#020617] to-[#0f172a] text-white p-5 rounded-xl border border-gray-800 shadow-lg">
@@ -64,15 +87,7 @@ export default function PartnershipPanel({ matchId }: Props) {
 
       {/* 🔥 THREAT BADGE */}
       <div
-        className={`text-xs px-2 py-1 rounded-full font-semibold ${
-          threat === "LOW"
-            ? "bg-gray-700 text-gray-300"
-            : threat === "BUILDING"
-            ? "bg-blue-500/20 text-blue-400"
-            : threat === "DANGEROUS"
-            ? "bg-orange-500/20 text-orange-400"
-            : "bg-red-500/20 text-red-400"
-        }`}
+        className={`text-xs px-2 py-1 rounded-full font-semibold ${threatBadgeClass}`}
       >
         {threat === "LOW" && "⚪ LOW"}
         {threat === "BUILDING" && "⚠️ BUILDING"}
@@ -113,15 +128,7 @@ export default function PartnershipPanel({ matchId }: Props) {
     {/* 🔥 VISUAL BAR (BONUS FEEL) */}
     <div className="mt-4 h-2 w-full bg-gray-800 rounded-full overflow-hidden">
       <div
-        className={`h-full transition-all duration-500 ${
-          threat === "LOW"
-            ? "bg-gray-500 w-[20%]"
-            : threat === "BUILDING"
-            ? "bg-blue-500 w-[50%]"
-            : threat === "DANGEROUS"
-            ? "bg-orange-500 w-[75%]"
-            : "bg-red-500 w-full"
-        }`}
+        className={`h-full transition-all duration-500 ${threatBarClass}`}
       />
     </div>
 
@@ -130,3 +137,5 @@ export default function PartnershipPanel({ matchId }: Props) {
 );
 
 }
+
+export default memo(PartnershipPanel);

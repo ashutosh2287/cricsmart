@@ -32,7 +32,6 @@ import { motion } from "framer-motion";
 // ✅ Only keep what's needed from matchEngine
 import {
   hydrateMatchState,
-  MatchState,
 } from "@/services/matchEngine";
 
 // ✅ Import setMatchState so hydration feeds into eventStore (MatchProvider's source)
@@ -46,17 +45,13 @@ import {
   getExtras,
   getFallOfWickets,
 } from "@/services/analytics/scorecardEngine";
-import { getMatchBySlug } from "@/services/matchService";
-import { connectRealtime } from "@/services/realtime/connectRealtime";
 import {
-  getBattingOrder,
-  getBowlingOrder,
-} from "@/services/simulation/lineup";
+  connectRealtime,
+  getRealtimeConnectionState,
+} from "@/services/realtime/connectRealtime";
 import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
 import WagonWheel from "@/components/analytics/WagonWheel";
 import { setMatchMeta } from "@/store/matchStore";
-import { v4 as uuidv4 } from "uuid";
-import { useRouter } from "next/navigation";
 import AnimatedScore from "@/components/ui/AnimatedScore";
 
 // ─────────────────────────────────────────────
@@ -71,14 +66,6 @@ type MainTab =
   | "timeline"
   | "scorecard"
   | "admin";
-
-type PlayerStat = {
-  runs: number;
-  balls: number;
-  fours: number;
-  sixes: number;
-  out: boolean;
-};
 
 type BowlerStat = {
   overs?: number;
@@ -187,9 +174,6 @@ function StickyInsightsRail({ match }: { match: Match }) {
   const { state } = useMatch();
 
   const currentInnings = state?.innings?.[state.currentInningsIndex];
-
-  console.log("🔥 UI SCORE:", currentInnings?.runs);
-  console.log("🔥 UI OVERS:", currentInnings?.overs);
 
   const displayOver = currentInnings
     ? `${currentInnings.over}.${currentInnings.ball}`
@@ -323,7 +307,6 @@ function TabsArea({
   const [matchMeta, setLocalMatchMeta] = useState(() =>
     getMatchMeta(match.slug)
   );
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<MainTab>("overview");
@@ -341,9 +324,12 @@ function TabsArea({
   } | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [isStarting, setIsStarting] = useState(false);
+  const [isStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1500);
+  const [runtimeMonitor, setRuntimeMonitor] = useState(() =>
+    getRealtimeConnectionState()
+  );
 
   const hasLiveMatchState =
     !!currentEngineState &&
@@ -374,6 +360,13 @@ function TabsArea({
     return unsubscribe;
   }, [match.slug]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRuntimeMonitor(getRealtimeConnectionState());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   if (!match) {
     return (
       <div className="space-y-4">
@@ -394,10 +387,6 @@ function TabsArea({
     ? `${inningsData.over}.${inningsData.ball}`
     : "0.0";
 
-  const batting = getBattingStats(match.slug, inningsIndex) as Record<
-    string,
-    PlayerStat
-  >;
   const bowling = getBowlingStats(match.slug, inningsIndex) as Record<
     string,
     BowlerStat
@@ -492,6 +481,12 @@ function TabsArea({
       ? [{ players: `${strikerName} & ${nonStrikerName}`, runs: 0 }]
       : [];
 
+  const mappedWinProbability = analytics.winProbability.map((p) => ({
+    over: p.over,
+    batting: p.value,
+    bowling: 100 - p.value,
+  }));
+
   const tabs: MainTab[] = [
     "overview",
     "live",
@@ -581,13 +576,9 @@ function TabsArea({
 
                 <GlassPanel>
                   <SectionHeader eyebrow="Prediction" title="Win Probability" />
-                  <WinProbabilityChart
-                    data={analytics.winProbability.map((p) => ({
-                      over: p.over,
-                      batting: p.value,
-                      bowling: 100 - p.value,
-                    }))}
-                  />
+                   <WinProbabilityChart
+                      data={mappedWinProbability}
+                    />
                 </GlassPanel>
 
                 <div className="grid gap-6 lg:grid-cols-2">
@@ -727,11 +718,7 @@ function TabsArea({
                   <GlassPanel>
                     <SectionHeader eyebrow="Model" title="Win Probability" />
                     <WinProbabilityChart
-                      data={analytics.winProbability.map((p) => ({
-                        over: p.over,
-                        batting: p.value,
-                        bowling: 100 - p.value,
-                      }))}
+                      data={mappedWinProbability}
                     />
                   </GlassPanel>
                   <GlassPanel>
@@ -767,11 +754,7 @@ function TabsArea({
                     title="Run Pressure & Projection"
                   />
                   <WinProbabilityChart
-                    data={analytics.winProbability.map((p) => ({
-                      over: p.over,
-                      batting: p.value,
-                      bowling: 100 - p.value,
-                    }))}
+                    data={mappedWinProbability}
                   />
                 </GlassPanel>
                 <GlassPanel>
@@ -822,11 +805,7 @@ function TabsArea({
                     title="Win Pressure Curve"
                   />
                   <WinProbabilityChart
-                    data={analytics.winProbability.map((p) => ({
-                      over: p.over,
-                      batting: p.value,
-                      bowling: 100 - p.value,
-                    }))}
+                    data={mappedWinProbability}
                   />
                 </GlassPanel>
                 <GlassPanel>
@@ -1256,7 +1235,7 @@ function TabsArea({
                           });
                           setIsPaused(!isPaused);
                           setStartError(null);
-                        } catch (error) {
+                        } catch {
                           setStartError("Failed to update simulation state.");
                         }
                       }}
@@ -1292,9 +1271,12 @@ function TabsArea({
 
                 <div className="flex flex-wrap gap-2">
                   {[
+                    { label: "0.25x", value: 6000 },
+                    { label: "0.5x", value: 3000 },
                     { label: "1x", value: 1500 },
                     { label: "2x", value: 700 },
                     { label: "5x", value: 300 },
+                    { label: "Ultra", value: 120 },
                   ].map((option) => (
                     <button
                       key={option.label}
@@ -1323,6 +1305,29 @@ function TabsArea({
                       {option.label}
                     </button>
                   ))}
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <StatPill
+                    label="SSE status"
+                    value={runtimeMonitor.isConnected ? "Connected" : "Disconnected"}
+                    tone={runtimeMonitor.isConnected ? "green" : "red"}
+                  />
+                  <StatPill
+                    label="Match channel"
+                    value={runtimeMonitor.matchId ?? "—"}
+                    tone="blue"
+                  />
+                  <StatPill
+                    label="Subscribers"
+                    value={runtimeMonitor.subscribers}
+                    tone="amber"
+                  />
+                  <StatPill
+                    label="Ready state"
+                    value={runtimeMonitor.readyState ?? "—"}
+                    tone="neutral"
+                  />
                 </div>
               </div>
             </GlassPanel>
@@ -1743,7 +1748,7 @@ export default function MatchDetailPage({
 
     loadMatch();
     return () => { cancelled = true; };
-  }, [matchId]);
+  }, [matchId, match?.team1, match?.team2]);
 
   // Match init API (one-shot)
   const hasInitialized = useRef(false);
@@ -1762,7 +1767,7 @@ export default function MatchDetailPage({
         externalMatchId: matchId,
       }),
     });
-  }, [matchId]);
+  }, [matchId, match?.team1, match?.team2]);
 
   // Analytics / insights from window events
   useEffect(() => {

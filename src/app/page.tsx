@@ -53,32 +53,6 @@ export default function HomePage() {
   ========================================
   */
 
-  const fetchMatches = async () => {
-    try {
-      const res = await fetch("/api/matches");
-      const data: ApiMatch[] = await res.json();
-
-      const normalized: Match[] = data.map((m) => {
-        let status: Match["status"];
-
-        if (m.status === "LIVE") status = "Live";
-        else if (m.status === "COMPLETED") status = "Completed";
-        else status = "Upcoming";
-
-        return {
-          matchId: m.matchId,
-          teamA: m.teamA,
-          teamB: m.teamB,
-          status,
-        };
-      });
-
-      setMatches(normalized);
-    } catch (err) {
-      console.error("❌ Failed to fetch matches", err);
-    }
-  };
-
   useEffect(() => {
   let mounted = true;
 
@@ -122,8 +96,6 @@ export default function HomePage() {
 const router = useRouter();
 
 const handleCreateMatch = async () => {
-  console.log("🔥 BUTTON CLICKED");
-
   try {
     const res = await fetch("/api/create-match", {
       method: "POST",
@@ -137,8 +109,6 @@ const handleCreateMatch = async () => {
     });
 
     const data = await res.json();
-
-    console.log("API RESPONSE:", data);
 
     if (!data?.matchId) {
       throw new Error("Match creation failed");

@@ -18,43 +18,11 @@ export default function MatchControlPanel({ matchId }: Props) {
   // 🔥 HANDLE SSE CONNECT EVENT (FINAL FIX)
   useEffect(() => {
   function handleConnected(e: Event) {
-    console.log("🧠 SSE_CONNECTED EVENT CAUGHT");
-
     const customEvent = e as CustomEvent<{ matchId: string }>;
 
     if (!customEvent?.detail?.matchId) return;
     if (customEvent.detail.matchId !== matchId) return;
-
-    const matchMeta = getMatchMeta(matchId);
-    if (!matchMeta) return;
-
-    console.log("🔥 SSE CONNECTED → Starting simulation");
-    console.log("🧠 MATCH META:", matchMeta);
-
-    fetch("/api/start-simulation", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        matchId,
-        teamAName: matchMeta.teamA.name,
-        teamBName: matchMeta.teamB.name,
-        tossWinner: matchMeta.teamA.name,
-        tossDecision: "BAT",
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("[MatchControlPanel] Simulation started", data);
-      })
-      .catch((err) => {
-        console.error("❌ Simulation start failed:", err);
-        setError("Failed to start simulation");
-      })
-      .finally(() => {
-        setIsStarting(false);
-      });
+    setIsStarting(false);
   }
 
   // ✅ THIS WAS MISSING
@@ -86,11 +54,6 @@ export default function MatchControlPanel({ matchId }: Props) {
       setIsStarting(true);
       setError(null);
 
-      console.log("[MatchControlPanel] Start Match clicked", {
-        matchId,
-        matchMeta,
-      });
-
       // ✅ ONLY THIS — NO FETCH HERE
       connectRealtime(matchId);
     } catch (err) {
@@ -112,7 +75,6 @@ export default function MatchControlPanel({ matchId }: Props) {
       const events = await loadHistoricalMatch(matchId);
 
       if (!events.length) {
-        console.warn("No historical events found for replay");
         setError("No historical events found for replay.");
         return;
       }

@@ -1,5 +1,6 @@
 "use client";
 
+import React, { memo } from "react";
 import {
   LineChart,
   Line,
@@ -32,13 +33,13 @@ type DotProps = {
   payload?: ChartPoint;
 };
 
-export default function WinProbabilityChart({
+function WinProbabilityChart({
   data,
   team1,
   team2
 }: Props) {
-
   if (!data.length) return null;
+  const lastPoint = data[data.length - 1];
 
   return (
     <div className="bg-zinc-900 p-4 rounded-xl shadow-lg">
@@ -53,11 +54,11 @@ export default function WinProbabilityChart({
         <div className="text-xs flex gap-3">
 
           <span className="text-green-400 font-semibold">
-            {team1 ?? "BAT"} {data[data.length - 1].batting.toFixed(1)}%
+            {team1 ?? "BAT"} {lastPoint.batting.toFixed(1)}%
           </span>
 
           <span className="text-red-400 font-semibold">
-            {team2 ?? "BOWL"} {data[data.length - 1].bowling.toFixed(1)}%
+            {team2 ?? "BOWL"} {lastPoint.bowling.toFixed(1)}%
           </span>
 
         </div>
@@ -151,3 +152,5 @@ export default function WinProbabilityChart({
     </div>
   );
 }
+
+export default memo(WinProbabilityChart);

@@ -7,30 +7,24 @@ type Props = {
 };
 
 export default function AnimatedDigit({ value }: Props) {
-
   const [display, setDisplay] = useState(value);
 
   useEffect(() => {
-
-    if (display === value) return;
-
-    let current = display;
-
     const interval = setInterval(() => {
-
-      if (current === value) {
-        clearInterval(interval);
-        return;
-      }
-
-      current += current < value ? 1 : -1;
-
-      setDisplay(current);
-
+      let done = false;
+      setDisplay((prev) => {
+        if (prev === value) {
+          done = true;
+          return prev;
+        }
+        const next = prev < value ? prev + 1 : prev - 1;
+        if (next === value) done = true;
+        return next;
+      });
+      if (done) clearInterval(interval);
     }, 30); // speed of flip
 
     return () => clearInterval(interval);
-
   }, [value]);
 
   return (

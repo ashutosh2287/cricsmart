@@ -291,6 +291,19 @@ function startSecondInnings(state: SimulationState) {
   assertStateTeamsAndPlayers(state);
 }
 
+function prepareSecondInnings(state: SimulationState, matchId: string) {
+  startSecondInnings(state);
+
+  if (state.battingOrder?.length >= 2) {
+    syncBattingOrder(
+      matchId,
+      state.battingOrder.map(getPlayerName)
+    );
+  }
+
+  syncSimFromEngine(state, matchId);
+}
+
 function syncSimFromEngine(state: SimulationState, matchId: string) {
   const engine = getMatchState(matchId);
   if (!engine) return;
@@ -508,8 +521,7 @@ if (state.battingOrder?.length >= 2) {
 
           const latest = getMatchState(matchId);
           if (latest?.currentInningsIndex === 1 && state.currentInningsIndex !== 1) {
-            startSecondInnings(state);
-            syncSimFromEngine(state, matchId);
+            prepareSecondInnings(state, matchId);
           }
 
           control.timeoutRef = setTimeout(runBall, control.speed);
@@ -554,7 +566,7 @@ if (latestEngineSnapshot) {
           state.bowlingTeam.name !== latestEngineInnings.bowlingTeam
         )
       ) {
-        startSecondInnings(state);
+        prepareSecondInnings(state, matchId);
       }
 
       const over = Math.floor(state.over);

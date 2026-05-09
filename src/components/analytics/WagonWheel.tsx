@@ -1,37 +1,49 @@
 "use client";
 
-import { getEventStream } from "@/services/matchEngine";
+import { useMemo } from "react";
+import { useMatch } from "@/context/MatchContext";
+import { BallEvent } from "@/types/ballEvent";
 
 type Props = {
   matchId: string;
 };
 
 type Shot = {
+  id: string;
   angle: number;
   runs: number;
 };
 
-function getShotAngle(runs: number): number {
+function hashSeed(input: string): number {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
 
-  // 🔥 Weighted realistic distribution
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
 
-  const rand = Math.random();
+function getShotAngle(event: BallEvent): number {
+  const key = `${event.id}|${event.batsman}|${event.over}|${event.runs}`;
+  const seed = hashSeed(key);
+  const rand = seededRandom(seed);
+  const spread = seededRandom(seed + 1);
 
-  // Boundaries → aggressive zones
-  if (runs >= 4) {
-
-    if (rand < 0.3) return 300 + Math.random() * 40; // cover
-    if (rand < 0.6) return 200 + Math.random() * 40; // midwicket
-    return 260 + Math.random() * 30; // straight
+  if (event.runs >= 4) {
+    if (rand < 0.3) return 300 + spread * 40;
+    if (rand < 0.6) return 200 + spread * 40;
+    return 260 + spread * 30;
   }
 
-  // singles → gaps
-  if (runs === 1 || runs === 2) {
-    return Math.random() * 360;
+  if (event.runs === 1 || event.runs === 2 || event.runs === 3) {
+    return seededRandom(seed + 2) * 360;
   }
 
-  // dots → defensive
-  return 140 + Math.random() * 60; // behind square
+  return 140 + spread * 60;
 }
 function getPlayerBias(player: string): number {
 
@@ -43,15 +55,29 @@ function getPlayerBias(player: string): number {
 }
 
 export default function WagonWheel({ matchId }: Props) {
+  const { state } = useMatch();
 
-  const events = getEventStream(matchId);
+  const events = useMemo(
+    () =>
+      (state?.innings ?? [])
+        .flatMap((innings) =>
+          Object.values(innings.overs ?? {}).flatMap((overBalls) => overBalls ?? [])
+        )
+        .filter((event) => event?.valid),
+    [state]
+  );
 
-  const shots: Shot[] = events
-    .filter(e => e.isLegalDelivery && !e.extra)
-    .map(e => ({
-      angle: (getShotAngle(e.runs) + getPlayerBias(e.batsman)) % 360,
-      runs: e.runs
-    }));
+  const shots: Shot[] = useMemo(
+    () =>
+      events
+        .filter((e) => e.isLegalDelivery && !e.extra)
+        .map((e) => ({
+          id: e.id,
+          angle: (getShotAngle(e) + getPlayerBias(e.batsman) + hashSeed(matchId)) % 360,
+          runs: e.runs,
+        })),
+    [events, matchId]
+  );
 
   const size = 200;
   const center = size / 2;
@@ -77,7 +103,7 @@ export default function WagonWheel({ matchId }: Props) {
         />
 
         {/* Shots */}
-        {shots.map((shot, i) => {
+        {shots.map((shot) => {
 
           const rad = (shot.angle * Math.PI) / 180;
 
@@ -92,7 +118,7 @@ export default function WagonWheel({ matchId }: Props) {
 
           return (
             <line
-              key={i}
+              key={shot.id}
               x1={center}
               y1={center}
               x2={x}

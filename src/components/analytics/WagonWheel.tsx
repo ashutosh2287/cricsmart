@@ -61,7 +61,7 @@ function getPlayerBias(player: string): number {
 
 export default function WagonWheel({ matchId }: Props) {
   const { state } = useMatch();
-  const matchSeed = useMemo(() => stringToSeed(matchId), [matchId]);
+  const matchSeedOffset = stringToSeed(matchId) % 360;
 
   const events = useMemo(
     () =>
@@ -79,10 +79,10 @@ export default function WagonWheel({ matchId }: Props) {
         .filter((e) => e.isLegalDelivery && !e.extra)
         .map((e) => ({
           id: e.id,
-          angle: (getShotAngle(e) + getPlayerBias(e.batsman) + matchSeed) % 360,
+          angle: (getShotAngle(e) + getPlayerBias(e.batsman) + matchSeedOffset) % 360,
           runs: e.runs,
         })),
-    [events, matchSeed]
+    [events, matchSeedOffset]
   );
 
   const size = 200;

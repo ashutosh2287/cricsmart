@@ -392,8 +392,6 @@ function TabsArea({
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1500);
-  const getActiveInningsIndex = (fallbackIndex: number) =>
-    selectedInnings ?? fallbackIndex;
 
   const effectiveIsRunning = isStarting || isRunning || hasLiveMatchState;
   const winProbabilityData = useMemo(
@@ -425,7 +423,8 @@ function TabsArea({
     );
   }
 
-  const inningsIndex = getActiveInningsIndex(currentInningsIndex);
+  const activeInningsIndex = selectedInnings ?? currentInningsIndex;
+  const inningsIndex = activeInningsIndex;
   const inningsData = inningsList?.[inningsIndex];
   const inningsCount = inningsList?.length ?? 0;
 
@@ -1376,6 +1375,10 @@ function MatchInnerPage({
     (state) => state.innings?.[state.currentInningsIndex],
     shallowEqual
   );
+  const hasInnings = useMatchSelector(
+    match.slug,
+    (state) => (state.innings?.length ?? 0) > 0
+  );
   const innings1 = useMatchSelector(
     match.slug,
     (state) => state.innings?.[0],
@@ -1396,10 +1399,18 @@ function MatchInnerPage({
     shallowEqual
   );
 
-  if (!currentInnings) {
+  if (!hasInnings) {
     return (
       <div className="p-10 text-center text-white">
         Loading match engine...
+      </div>
+    );
+  }
+
+  if (!currentInnings) {
+    return (
+      <div className="p-10 text-center text-white">
+        No innings data available.
       </div>
     );
   }

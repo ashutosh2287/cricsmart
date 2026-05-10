@@ -20,8 +20,12 @@ type AIInsight = {
 
 function MatchInsightsPanel({ matchId }: Props) {
 
-  const [insights, setInsights] = useState<MatchInsight[]>([]);
-  const [aiInsights, setAIInsights] = useState<AIInsight[]>();
+  const [insights, setInsights] = useState<MatchInsight[]>(() =>
+    getMatchInsights(matchId)
+  );
+  const [aiInsights, setAIInsights] = useState<AIInsight[]>(
+    () => getAIInsights(matchId) ?? []
+  );
 
   // 🔥 LIVE UPDATE (IMPORTANT)
   const refreshInsights = useCallback(() => {
@@ -30,7 +34,6 @@ function MatchInsightsPanel({ matchId }: Props) {
   }, [matchId]);
 
   useEffect(() => {
-    refreshInsights();
     const interval = setInterval(() => {
       refreshInsights();
     }, 1000); // update every second

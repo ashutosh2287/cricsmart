@@ -12,6 +12,7 @@ type TimelineEvent = {
 const timelineStore: Record<string, TimelineEvent[]> = {};
 
 export function appendEventTimeline(matchId: string, event: TimelineEvent) {
+  // In-memory timeline is a replay foundation; persistence can be layered later.
   if (!timelineStore[matchId]) {
     timelineStore[matchId] = [];
   }

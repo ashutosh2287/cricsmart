@@ -29,6 +29,10 @@ function calculateCurrentPartnershipRuns(overs: MatchState["innings"][number]["o
   return runsSinceLastWicket;
 }
 
+/**
+ * Stable hash used to keep rivalry narrative triggers deterministic
+ * for a batsman-bowler pair across renders and sessions.
+ */
 function stablePairHash(pair: string): number {
   let hash = 5381;
   for (let i = 0; i < pair.length; i += 1) {
@@ -93,14 +97,14 @@ export function generateAdvancedCommentary(
 
   const tone = playerTone(batsman);
 
-  if (partnershipRuns >= 50 && !event.wicket && (runs === 1 || runs === 2)) {
+  if (partnershipRuns >= 50 && !event.wicket) {
     return pick([
       `Partnership alert: ${batsman} and ${event.nonStriker || "the non-striker"} are stitching together a critical stand.`,
       `Fifty plus partnership now — this pair is quietly changing the game.`,
     ]);
   }
 
-  if (rivalryHash === 0 && (runs === 0 || event.wicket)) {
+  if (rivalryHash <= 1 && (runs === 0 || event.wicket)) {
     return pick([
       `${bowler} is right on top of ${batsman} in this duel.`,
       `That battle between ${bowler} and ${batsman} is getting more intense ball by ball.`,

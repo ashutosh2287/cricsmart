@@ -75,7 +75,7 @@ export function generateAdvancedCommentary(
   const ballsBowled = (innings.over ?? 0) * 6 + (innings.ball ?? 0);
   const ballsRemaining = Math.max(0, 120 - ballsBowled);
   const partnershipRuns = calculateCurrentPartnershipRuns(innings.overs ?? {});
-  const rivalryHash =
+  const rivalryModulo =
     stablePairHash(`${batsman}${RIVALRY_PAIR_DELIMITER}${bowler}`) %
     RIVALRY_FREQUENCY;
 
@@ -108,14 +108,14 @@ export function generateAdvancedCommentary(
     ]);
   }
 
-  if (rivalryHash <= RIVALRY_TRIGGER_MAX_HASH && (runs === 0 || event.wicket)) {
+  if (rivalryModulo <= RIVALRY_TRIGGER_MAX_HASH && (runs === 0 || event.wicket)) {
     return pick([
       `${bowler} is right on top of ${batsman} in this duel.`,
       `That battle between ${bowler} and ${batsman} is getting more intense ball by ball.`,
     ]);
   }
 
-  const previousScore = Math.max(0, score - Math.max(0, runs));
+  const previousScore = Math.max(0, score - runs);
   const reachedMilestone =
     !event.wicket &&
     runs > 0 &&

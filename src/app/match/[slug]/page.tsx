@@ -131,6 +131,18 @@ function formatOverDisplay(overs?: Record<string, unknown>) {
   return Number(`${lastOverNumber}.${balls}`);
 }
 
+function useMatchOutcome(matchId: string) {
+  return useMatchSelector(
+    matchId,
+    (state) => ({
+      matchEnded: !!state.matchEnded,
+      winner: state.winner,
+      winBy: state.winBy,
+    }),
+    shallowEqual
+  );
+}
+
 // ─────────────────────────────────────────────
 // UI atoms
 // ─────────────────────────────────────────────
@@ -333,8 +345,6 @@ function TabsArea({
   insights: BroadcastInsight[];
 }) {
   const isAdmin = true;
-  const [activeTab, setActiveTab] = useState<MainTab>("overview");
-  const [selectedInnings, setSelectedInnings] = useState<number | null>(null);
   const matchMeta = useMatchMeta(match.slug);
   const hasLiveMatchState = useMatchSelector(
     match.slug,
@@ -354,26 +364,7 @@ function TabsArea({
     match.slug,
     (state) => state.innings?.length ?? 0
   );
-  const inningsData = useMatchSelector(
-    match.slug,
-    (state) => {
-      const index =
-        selectedInnings !== null
-          ? selectedInnings
-          : state.currentInningsIndex ?? 0;
-      return state.innings?.[index];
-    },
-    shallowEqual
-  );
-  const matchOutcome = useMatchSelector(
-    match.slug,
-    (state) => ({
-      matchEnded: !!state.matchEnded,
-      winner: state.winner,
-      winBy: state.winBy,
-    }),
-    shallowEqual
-  );
+  const matchOutcome = useMatchOutcome(match.slug);
   const liveQuickView = useMatchSelector(
     match.slug,
     (state) => {
@@ -392,13 +383,9 @@ function TabsArea({
   );
   const searchParams = useSearchParams();
 
-  useEffect(() => {
-    const tab = searchParams.get("tab") as MainTab;
-    if (!tab) return;
-    setTimeout(() => setActiveTab(tab), 0);
-  }, [searchParams]);
-
   const [analysisFilter, setAnalysisFilter] = useState<AnalysisFilter>("ALL");
+  const [activeTab, setActiveTab] = useState<MainTab>("overview");
+  const [selectedInnings, setSelectedInnings] = useState<number | null>(null);
   const [tossData, setTossData] = useState<{
     winner: Team;
     decision: "BAT" | "BOWL";
@@ -408,12 +395,28 @@ function TabsArea({
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1500);
+  const resolveInningsIndex = (fallbackIndex: number) =>
+    selectedInnings ?? fallbackIndex;
+  const inningsData = useMatchSelector(
+    match.slug,
+    (state) => {
+      const index = resolveInningsIndex(state.currentInningsIndex ?? 0);
+      return state.innings?.[index];
+    },
+    shallowEqual
+  );
 
   const effectiveIsRunning = isStarting || isRunning || hasLiveMatchState;
   const winProbabilityData = useMemo(
     () => calculateWinProbability(analytics.winProbability),
     [analytics.winProbability]
   );
+
+  useEffect(() => {
+    const tab = searchParams.get("tab") as MainTab;
+    if (!tab) return;
+    setTimeout(() => setActiveTab(tab), 0);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!hasLiveMatchState) return;
@@ -433,7 +436,7 @@ function TabsArea({
     );
   }
 
-  const inningsIndex = selectedInnings !== null ? selectedInnings : currentInningsIndex;
+  const inningsIndex = resolveInningsIndex(currentInningsIndex);
 
   const displayOver = inningsData
     ? `${inningsData.over}.${inningsData.ball}`
@@ -1392,15 +1395,7 @@ function MatchInnerPage({
     (state) => state.innings?.[1],
     shallowEqual
   );
-  const matchOutcome = useMatchSelector(
-    match.slug,
-    (state) => ({
-      matchEnded: !!state.matchEnded,
-      winner: state.winner,
-      winBy: state.winBy,
-    }),
-    shallowEqual
-  );
+  const matchOutcome = useMatchOutcome(match.slug);
   const stateTeams = useMatchSelector(
     match.slug,
     (state) => ({
@@ -1424,7 +1419,7 @@ function MatchInnerPage({
   const wickets = Number(currentInnings?.wickets ?? 0);
   const displayOver = formatOverDisplay(currentInnings?.overs);
 
-  const inningsIndex = currentInningsIndex ?? 0;
+  const inningsIndex = currentInningsIndex;
 
   const battingStats = getBattingStats(match.slug, inningsIndex) as Record<
     string,

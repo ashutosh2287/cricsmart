@@ -33,7 +33,7 @@ function calculateCurrentPartnershipRuns(overs: MatchState["innings"][number]["o
 
 /**
  * Generates a deterministic unsigned hash for a rivalry pair key
- * (for example: `${batsman}|${bowler}`) so rivalry triggers are stable.
+ * built as `${batsman}${RIVALRY_PAIR_DELIMITER}${bowler}` so triggers stay stable.
  */
 function stablePairHash(pair: string): number {
   let hash = 5381;
@@ -103,7 +103,7 @@ export function generateAdvancedCommentary(
 
   if (partnershipRuns >= 50 && !event.wicket) {
     return pick([
-      `Partnership alert: ${batsman} and ${event.nonStriker || "the non-striker"} are stitching together a critical stand.`,
+      `Partnership alert: ${batsman} and ${event.nonStriker || "their partner"} are stitching together a critical stand.`,
       `Fifty plus partnership now — this pair is quietly changing the game.`,
     ]);
   }

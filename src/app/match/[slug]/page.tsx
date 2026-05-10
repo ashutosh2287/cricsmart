@@ -423,8 +423,7 @@ function TabsArea({
     );
   }
 
-  const activeInningsIndex = selectedInnings ?? currentInningsIndex;
-  const inningsIndex = activeInningsIndex;
+  const inningsIndex = selectedInnings ?? currentInningsIndex;
   const inningsData = inningsList?.[inningsIndex];
   const inningsCount = inningsList?.length ?? 0;
 
@@ -1379,6 +1378,10 @@ function MatchInnerPage({
     match.slug,
     (state) => (state.innings?.length ?? 0) > 0
   );
+  const inningsTotal = useMatchSelector(
+    match.slug,
+    (state) => state.innings?.length ?? 0
+  );
   const innings1 = useMatchSelector(
     match.slug,
     (state) => state.innings?.[0],
@@ -1407,6 +1410,14 @@ function MatchInnerPage({
     );
   }
 
+  if (currentInningsIndex < 0 || currentInningsIndex >= inningsTotal) {
+    return (
+      <div className="p-10 text-center text-white">
+        No innings data available.
+      </div>
+    );
+  }
+
   if (!currentInnings) {
     return (
       <div className="p-10 text-center text-white">
@@ -1421,13 +1432,11 @@ function MatchInnerPage({
   const wickets = Number(currentInnings?.wickets ?? 0);
   const displayOver = formatOverDisplay(currentInnings?.overs);
 
-  const inningsIndex = currentInningsIndex;
-
-  const battingStats = getBattingStats(match.slug, inningsIndex) as Record<
+  const battingStats = getBattingStats(match.slug, currentInningsIndex) as Record<
     string,
     { runs?: number; balls?: number }
   >;
-  const bowlingStats = getBowlingStats(match.slug, inningsIndex) as Record<
+  const bowlingStats = getBowlingStats(match.slug, currentInningsIndex) as Record<
     string,
     { overs?: number; runs?: number; wickets?: number }
   >;

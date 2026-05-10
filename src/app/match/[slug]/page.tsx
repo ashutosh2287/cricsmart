@@ -1739,19 +1739,20 @@ export default function MatchDetailPage({
   useEffect(() => {
     if (!matchId || hasInitialized.current) return;
     hasInitialized.current = true;
+    const matchMeta = getMatchMeta(matchId);
 
     fetch("/api/match/init", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         matchId,
-        teamA: match?.team1 ?? "Team A",
-        teamB: match?.team2 ?? "Team B",
+        teamA: matchMeta?.teamA?.name ?? "Team A",
+        teamB: matchMeta?.teamB?.name ?? "Team B",
         type: "LIVE",
         externalMatchId: matchId,
       }),
     });
-  }, [matchId, match?.team1, match?.team2]);
+  }, [matchId]);
 
   // Analytics / insights from window events
   useEffect(() => {

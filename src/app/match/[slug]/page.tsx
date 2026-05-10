@@ -1711,8 +1711,22 @@ export default function MatchDetailPage({
         setMatchState(id, data.match);
 
         if (!cancelled) {
-          const team1Name = data.match.teamA?.name ?? data.match.team1 ?? "Team A";
-          const team2Name = data.match.teamB?.name ?? data.match.team2 ?? "Team B";
+          const resolveTeamName = (
+            primaryName: string | undefined,
+            fallbackName: string | undefined,
+            defaultName: string
+          ) => primaryName ?? fallbackName ?? defaultName;
+
+          const team1Name = resolveTeamName(
+            data.match.teamA?.name,
+            data.match.team1,
+            "Team A"
+          );
+          const team2Name = resolveTeamName(
+            data.match.teamB?.name,
+            data.match.team2,
+            "Team B"
+          );
 
           setMatch({
             id,
@@ -1738,15 +1752,15 @@ export default function MatchDetailPage({
   useEffect(() => {
     if (!matchId || hasInitialized.current) return;
     hasInitialized.current = true;
-    const matchMeta = getMatchMeta(matchId);
+    const initialMatchMeta = getMatchMeta(matchId);
 
     fetch("/api/match/init", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         matchId,
-        teamA: matchMeta?.teamA?.name ?? "Team A",
-        teamB: matchMeta?.teamB?.name ?? "Team B",
+        teamA: initialMatchMeta?.teamA?.name ?? "Team A",
+        teamB: initialMatchMeta?.teamB?.name ?? "Team B",
         type: "LIVE",
         externalMatchId: matchId,
       }),

@@ -21,6 +21,7 @@ import { getCommentary } from "@/services/commentary/commentaryStore";
 import { clearPlayerRegistry } from "./player/playerRegistry";
 import { updatePlayerRegistry } from "./playerRegistryEngine";
 import { broadcast } from "@/services/realtime/eventBus";
+import { appendEventTimeline, resetEventTimeline } from "@/services/replay/eventTimeline";
 
 
 
@@ -1229,9 +1230,21 @@ if (!updatedState) {
 // 📊 FINAL DATA SNAPSHOT
 const analytics = getAnalytics(matchId);
 const commentaryList = getCommentary(matchId);
+const sequence = eventStreams[matchId]?.length ?? 0;
+const eventMeta = {
+  eventId: ballEvent.id,
+  sequence,
+  timestamp: ballEvent.timestamp,
+  matchId,
+  innings: state.currentInningsIndex,
+  over: currentInningsState.over,
+  ball: currentInningsState.ball,
+  eventType: ballEvent.type,
+} as const;
+
+appendEventTimeline(matchId, eventMeta);
 
 // 📡 BROADCAST BALL EVENT
-const sequence = eventStreams[matchId]?.length ?? 0;
 broadcast(matchId, {
   type: "BALL_EVENT",
   matchId,
@@ -1240,15 +1253,7 @@ broadcast(matchId, {
     engineEvent: {
       id: ballEvent.id,
     },
-    eventMeta: {
-      eventId: ballEvent.id,
-      sequence,
-      timestamp: ballEvent.timestamp,
-      matchId,
-      innings: state.currentInningsIndex,
-      over: currentInningsState.over,
-      ball: currentInningsState.ball,
-    },
+    eventMeta,
     commentary: commentaryList ?? [],
     insights: insights ?? [],
     analytics: analytics ?? null,
@@ -1495,6 +1500,7 @@ export function resetMatchState(matchId: string) {
   delete matchListeners[matchId];
   delete snapshotMap[matchId];
   delete temporalIndex[matchId];
+  resetEventTimeline(matchId);
 
   // 🔥 CLEAR PLAYER REGISTRY (VERY IMPORTANT)
   clearPlayerRegistry(matchId);

@@ -1,14 +1,17 @@
 "use client";
 
-import { useMatch } from "@/context/MatchContext";
+import { useMatchSelector, useScore } from "@/services/matchSelectors";
 
-export default function LiveMatchStatus() {
-  const { state } = useMatch();
+type Props = {
+  matchId: string;
+};
 
-  if (!state) return null;
-
-  const innings = state.innings[state.currentInningsIndex];
-  if (!innings) return null;
+export default function LiveMatchStatus({ matchId }: Props) {
+  const score = useScore(matchId);
+  const inningsIndex = useMatchSelector(
+    matchId,
+    (state) => state.currentInningsIndex
+  );
 
   return (
     <div className="bg-gradient-to-r from-blue-900/40 via-zinc-900 to-purple-900/40 border border-zinc-800 rounded-xl p-4 shadow-lg">
@@ -17,21 +20,21 @@ export default function LiveMatchStatus() {
         <div>
           <span className="text-gray-400">Score:</span>{" "}
           <span className="text-white font-semibold">
-            {innings.runs}/{innings.wickets}
+            {score.runs}/{score.wickets}
           </span>
         </div>
 
         <div>
           <span className="text-gray-400">Overs:</span>{" "}
           <span className="text-white font-semibold">
-            {innings.over}.{innings.ball}
+            {score.overs}
           </span>
         </div>
 
         <div>
           <span className="text-gray-400">Innings:</span>{" "}
           <span className="text-white font-semibold">
-            {state.currentInningsIndex + 1}
+            {(inningsIndex ?? 0) + 1}
           </span>
         </div>
 

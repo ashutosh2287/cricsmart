@@ -25,6 +25,13 @@ import TossPanel from "@/components/match/TossPanel";
 import WinProbabilityChart from "@/components/analytics/WinProbabilityChart";
 import { getMatchMeta, subscribeStore } from "@/store/matchStore";
 import { MatchProvider, useMatch } from "@/context/MatchContext";
+import {
+  shallowEqual,
+  useCurrentBatters,
+  useCurrentInningsOvers,
+  useMatchSelector,
+  useScore,
+} from "@/services/matchSelectors";
 import { Team } from "@/data/teams";
 import { Match } from "@/types/match";
 import { motion } from "framer-motion";
@@ -185,19 +192,27 @@ function SectionHeader({
 // ─────────────────────────────────────────────
 
 function StickyInsightsRail({ match }: { match: Match }) {
-  const { state } = useMatch();
+  const score = useScore(match.slug);
+  const batters = useCurrentBatters(match.slug);
+  const currentInningsIndex = useMatchSelector(
+    match.slug,
+    (state) => state.currentInningsIndex
+  );
+  const teams = useMatchSelector(
+    match.slug,
+    (state) => {
+      const innings = state.innings[state.currentInningsIndex];
+      return {
+        battingTeam: innings?.battingTeam ?? "TBD",
+        bowlingTeam: innings?.bowlingTeam ?? "TBD",
+      };
+    },
+    shallowEqual
+  );
+  const overs = useCurrentInningsOvers(match.slug);
 
-  const currentInnings = state?.innings?.[state.currentInningsIndex];
-
-  console.log("🔥 UI SCORE:", currentInnings?.runs);
-  console.log("🔥 UI OVERS:", currentInnings?.overs);
-
-  const displayOver = currentInnings
-    ? `${currentInnings.over}.${currentInnings.ball}`
-    : "0.0";
-
-  const overKeys = currentInnings?.overs
-    ? Object.keys(currentInnings.overs)
+  const overKeys = overs
+    ? Object.keys(overs)
         .map(Number)
         .filter((n) => Number.isFinite(n))
         .sort((a, b) => a - b)
@@ -207,8 +222,8 @@ function StickyInsightsRail({ match }: { match: Match }) {
 
   const lastOverBalls =
     lastOverKey !== undefined &&
-    Array.isArray(currentInnings?.overs?.[lastOverKey])
-      ? currentInnings.overs[lastOverKey].slice(0, 6)
+    Array.isArray(overs?.[lastOverKey])
+      ? overs[lastOverKey].slice(0, 6)
       : [];
 
   return (
@@ -218,37 +233,37 @@ function StickyInsightsRail({ match }: { match: Match }) {
         <div className="grid grid-cols-1 gap-3">
           <StatPill
             label="Current innings"
-            value={`Innings ${(state?.currentInningsIndex ?? 0) + 1}`}
+            value={`Innings ${(currentInningsIndex ?? 0) + 1}`}
             tone="blue"
           />
           <StatPill
             label="Batting team"
-            value={currentInnings?.battingTeam ?? "TBD"}
+            value={teams?.battingTeam ?? "TBD"}
             tone="green"
           />
           <StatPill
             label="Bowling team"
-            value={currentInnings?.bowlingTeam ?? "TBD"}
+            value={teams?.bowlingTeam ?? "TBD"}
             tone="amber"
           />
           <StatPill
             label="Score"
             value={
               <AnimatedScore
-                value={`${currentInnings?.runs ?? 0}/${currentInnings?.wickets ?? 0}`}
+                value={`${score.runs}/${score.wickets}`}
               />
             }
             tone="neutral"
           />
-          <StatPill label="Over" value={displayOver} tone="neutral" />
+          <StatPill label="Over" value={score.overs} tone="neutral" />
           <StatPill
             label="Striker"
-            value={currentInnings?.striker ?? "—"}
+            value={batters?.striker || "—"}
             tone="green"
           />
           <StatPill
             label="Non-striker"
-            value={currentInnings?.nonStriker ?? "—"}
+            value={batters?.nonStriker || "—"}
             tone="blue"
           />
           <StatPill label="Bowler" value={"—"} tone="amber" />
@@ -285,7 +300,7 @@ function StickyInsightsRail({ match }: { match: Match }) {
       <GlassPanel>
         <SectionHeader eyebrow="Quick access" title="Control Deck" />
         <div className="space-y-3">
-          <LiveMatchStatus />
+          <LiveMatchStatus matchId={match.slug} />
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
             <p className="text-sm font-medium text-white">Fixture</p>
             <p className="mt-1 text-sm text-white/70">
@@ -558,7 +573,7 @@ function TabsArea({
               <SectionHeader
                 eyebrow="Match center"
                 title="Overview"
-                action={<LiveMatchStatus />}
+                action={<LiveMatchStatus matchId={match.slug} />}
               />
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {summaryCards.map((item) => (
@@ -1598,7 +1613,7 @@ function MatchInnerPage({
                         Status
                       </p>
                       <div className="mt-2">
-                        <LiveMatchStatus />
+                        <LiveMatchStatus matchId={match.slug} />
                       </div>
                     </div>
                   </div>

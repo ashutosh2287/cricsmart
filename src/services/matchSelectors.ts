@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
+import { useSyncExternalStoreWithSelector } from "use-sync-external-store/shim/with-selector";
 import type { MatchState } from "./matchEngine";
 import {
   getMatchSnapshot,
@@ -25,22 +26,48 @@ GENERIC SELECTOR
 ====================================================
 */
 
+export type EqualityFn<T> = (prev: T, next: T) => boolean;
+
+export function shallowEqual<T>(prev: T, next: T): boolean {
+  if (Object.is(prev, next)) return true;
+
+  if (
+    typeof prev !== "object" ||
+    prev === null ||
+    typeof next !== "object" ||
+    next === null
+  ) {
+    return false;
+  }
+
+  const prevObj = prev as Record<string, unknown>;
+  const nextObj = next as Record<string, unknown>;
+
+  const prevKeys = Object.keys(prevObj);
+  const nextKeys = Object.keys(nextObj);
+  if (prevKeys.length !== nextKeys.length) return false;
+
+  for (const key of prevKeys) {
+    if (!Object.prototype.hasOwnProperty.call(nextObj, key)) return false;
+    if (!Object.is(prevObj[key], nextObj[key])) return false;
+  }
+
+  return true;
+}
+
 export function useMatchSelector<T>(
   matchId: string,
-  selector: (match: MatchState) => T
+  selector: (match: MatchState) => T,
+  equalityFn?: EqualityFn<T | undefined>
 ) {
-  return useSyncExternalStore(
+  return useSyncExternalStoreWithSelector(
     matchId
       ? (listener) => subscribeEventMatch(matchId, listener)
       : () => () => {},
-    () => {
-      const match = getFallbackMatchState(matchId);
-      return match ? selector(match) : undefined;
-    },
-    () => {
-      const match = getFallbackMatchState(matchId);
-      return match ? selector(match) : undefined;
-    }
+    () => getFallbackMatchState(matchId),
+    () => getFallbackMatchState(matchId),
+    (match) => (match ? selector(match) : undefined),
+    equalityFn ?? Object.is
   );
 }
 
@@ -146,7 +173,7 @@ export function useCommentary(matchId: string) {
     // commentary is injected into state via broadcast
     // fallback safe
     return m.commentary ?? [];
-  });
+  }, shallowEqual);
 }
 
 export function useScore(matchId: string) {
@@ -172,7 +199,51 @@ export function useCurrentInningsOvers(matchId: string) {
   return useMatchSelector(matchId, (m) => {
     const innings = m.innings[m.currentInningsIndex];
     return innings?.overs ?? {};
-  });
+  }, shallowEqual);
+}
+
+export function useCurrentBatters(matchId: string) {
+  return useMatchSelector(
+    matchId,
+    (m) => {
+      const innings = m.innings[m.currentInningsIndex];
+      return {
+        striker: innings?.striker ?? "",
+        nonStriker: innings?.nonStriker ?? "",
+      };
+    },
+    shallowEqual
+  );
+}
+
+export function useMomentum(matchId: string) {
+  return useMatchSelector(
+    matchId,
+    (m) => {
+      const innings = m.innings[m.currentInningsIndex];
+      const over = innings?.over ?? 0;
+      const ball = innings?.ball ?? 0;
+      const runs = innings?.runs ?? 0;
+      const wickets = innings?.wickets ?? 0;
+      return { over, ball, runs, wickets };
+    },
+    shallowEqual
+  );
+}
+
+export function useWinProbability(matchId: string) {
+  return useMatchSelector(
+    matchId,
+    (m) => {
+      const innings = m.innings[m.currentInningsIndex];
+      const over = innings?.over ?? 0;
+      const ball = innings?.ball ?? 0;
+      const wickets = innings?.wickets ?? 0;
+      const inningsIndex = m.currentInningsIndex;
+      return { inningsIndex, over, ball, wickets };
+    },
+    shallowEqual
+  );
 }
 
 /*

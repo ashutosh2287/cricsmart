@@ -3,3 +3,7 @@ export { computeProjectedScore } from "./projectedScoreEngine";
 export { computeRequiredRunRate } from "./requiredRunRateEngine";
 export { detectTurningPoints } from "./turningPointEngine";
 export { computeCurrentPartnership } from "./partnershipEngine";
+export { calculateBattingIntent } from "./calculateBattingIntent";
+export { calculateControlPercentage } from "./calculateControlPercentage";
+export { calculateBowlingPressure } from "./calculateBowlingPressure";
+export { calculateProjectedScore } from "./calculateProjectedScore";

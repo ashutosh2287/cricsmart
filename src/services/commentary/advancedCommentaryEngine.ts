@@ -19,9 +19,34 @@ export function generateAdvancedCommentary(
 
   const over = innings.over ?? 0;
   const wickets = innings.wickets ?? 0;
+  const score = innings.runs ?? 0;
 
   const isDeath = over >= 15;
-  const isCollapse = wickets >= 7;
+  const isCollapse = wickets >= 6;
+  const isSecondInnings = inningsIndex === 1;
+
+  const chaseTarget =
+    isSecondInnings && state.innings[0]
+      ? (state.innings[0].runs ?? 0) + 1
+      : 0;
+  const chaseRunsNeeded = Math.max(0, chaseTarget - score);
+  const ballsBowled = (innings.over ?? 0) * 6 + (innings.ball ?? 0);
+  const ballsRemaining = Math.max(0, 120 - ballsBowled);
+  const partnershipRuns = Array.isArray(innings.battingRecords)
+    ? innings.battingRecords.reduce((total, batter) => {
+        if (
+          batter.name === innings.striker ||
+          batter.name === innings.nonStriker
+        ) {
+          return total + (batter.runs ?? 0);
+        }
+        return total;
+      }, 0)
+    : 0;
+  const rivalryHash =
+    `${batsman}|${bowler}`
+      .split("")
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0) % 5;
 
   /* =============================
      🎲 RANDOM PICK
@@ -44,6 +69,41 @@ export function generateAdvancedCommentary(
   }
 
   const tone = playerTone(batsman);
+
+  if (partnershipRuns >= 50 && !event.wicket && (runs === 1 || runs === 2)) {
+    return pick([
+      `Partnership alert: ${batsman} and ${event.nonStriker || "the non-striker"} are stitching together a critical stand.`,
+      `Fifty plus partnership now — this pair is quietly changing the game.`,
+    ]);
+  }
+
+  if (rivalryHash === 0 && (runs === 0 || event.wicket)) {
+    return pick([
+      `${bowler} is right on top of ${batsman} in this duel.`,
+      `That battle between ${bowler} and ${batsman} is getting more intense ball by ball.`,
+    ]);
+  }
+
+  if (score > 0 && score % 50 === 0 && !event.wicket) {
+    return pick([
+      `Milestone reached — ${innings.battingTeam || "the batting side"} bring up ${score}.`,
+      `${score} on the board now. That is a significant checkpoint in this innings.`,
+    ]);
+  }
+
+  if (isSecondInnings && chaseRunsNeeded > 0 && ballsRemaining <= 18) {
+    return pick([
+      `Chase pressure rising: ${chaseRunsNeeded} needed from ${ballsRemaining} balls.`,
+      `${chaseRunsNeeded} required off ${ballsRemaining} — this chase is going down to the wire.`,
+    ]);
+  }
+
+  if (isDeath && !event.wicket && runs === 0) {
+    return pick([
+      `Death over tension sky-high — every dot is gold for the bowling side.`,
+      `Dot in the death overs. That swings the pressure dramatically.`,
+    ]);
+  }
 
   /* =============================
      🔴 WICKET

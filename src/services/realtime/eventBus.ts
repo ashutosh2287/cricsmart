@@ -33,6 +33,7 @@ type RealtimeEvent =
           innings: number;
           over: number;
           ball: number;
+          eventType: string;
         };
         commentary?: string[];
         insights?: unknown[];

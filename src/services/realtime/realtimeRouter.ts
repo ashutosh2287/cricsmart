@@ -47,6 +47,7 @@ export type RealtimeEvent =
     innings: number;
     over: number;
     ball: number;
+    eventType: string;
   } | null;
 
   // ✅ ADD THESE

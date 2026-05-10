@@ -26,7 +26,6 @@ function LiveScoreCard({
 const MemoizedLiveScoreCard = memo(LiveScoreCard);
 
 MemoizedLiveScoreCard.displayName = "LiveScoreCard";
-// @ts-expect-error whyDidYouRender debug flag
-MemoizedLiveScoreCard.whyDidYouRender = true;
+(MemoizedLiveScoreCard as { whyDidYouRender?: boolean }).whyDidYouRender = true;
 
 export default MemoizedLiveScoreCard;

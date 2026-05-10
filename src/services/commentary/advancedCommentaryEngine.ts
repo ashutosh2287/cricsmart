@@ -1,6 +1,10 @@
 import { BallEvent } from "../../types/ballEvent";
 import { MatchState } from "../matchEngine";
 
+const COLLAPSE_WICKET_THRESHOLD = 6;
+const RIVALRY_FREQUENCY = 5;
+const CHASE_PRESSURE_BALLS_THRESHOLD = 18;
+
 export function generateAdvancedCommentary(
   event: BallEvent,
   state: MatchState | null | undefined
@@ -22,7 +26,7 @@ export function generateAdvancedCommentary(
   const score = innings.runs ?? 0;
 
   const isDeath = over >= 15;
-  const isCollapse = wickets >= 6;
+  const isCollapse = wickets >= COLLAPSE_WICKET_THRESHOLD;
   const isSecondInnings = inningsIndex === 1;
 
   const chaseTarget =
@@ -46,7 +50,7 @@ export function generateAdvancedCommentary(
   const rivalryHash =
     `${batsman}|${bowler}`
       .split("")
-      .reduce((acc, char) => acc + char.charCodeAt(0), 0) % 5;
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0) % RIVALRY_FREQUENCY;
 
   /* =============================
      🎲 RANDOM PICK
@@ -91,7 +95,11 @@ export function generateAdvancedCommentary(
     ]);
   }
 
-  if (isSecondInnings && chaseRunsNeeded > 0 && ballsRemaining <= 18) {
+  if (
+    isSecondInnings &&
+    chaseRunsNeeded > 0 &&
+    ballsRemaining <= CHASE_PRESSURE_BALLS_THRESHOLD
+  ) {
     return pick([
       `Chase pressure rising: ${chaseRunsNeeded} needed from ${ballsRemaining} balls.`,
       `${chaseRunsNeeded} required off ${ballsRemaining} — this chase is going down to the wire.`,

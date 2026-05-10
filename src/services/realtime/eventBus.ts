@@ -25,6 +25,15 @@ type RealtimeEvent =
       data: {
         committedState: MatchState;
         engineEvent?: { id: string };
+        eventMeta?: {
+          eventId: string;
+          sequence: number;
+          timestamp: number;
+          matchId: string;
+          innings: number;
+          over: number;
+          ball: number;
+        };
         commentary?: string[];
         insights?: unknown[];
         analytics?: unknown;
@@ -57,7 +66,7 @@ export function broadcast(matchId: string, event: RealtimeEvent) {
   const clients = getClients(matchId);
 
   if (!clients || clients.size === 0) {
-    console.warn(`⚠️ broadcast(${event.type}): no clients for match ${matchId}`);
+    console.warn(`SSE ERROR: broadcast(${event.type}) has no clients for match ${matchId}`);
     return;
   }
 
@@ -68,7 +77,7 @@ export function broadcast(matchId: string, event: RealtimeEvent) {
     // ❌ Do NOT append ":keepalive\n\n" — it corrupts the frame boundary
     payload = `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
   } catch (err) {
-    console.error("❌ Failed to serialize event", err);
+    console.error("SSE ERROR: failed to serialize event", err);
     return;
   }
 
@@ -80,7 +89,7 @@ export function broadcast(matchId: string, event: RealtimeEvent) {
       client.send(payload);
       activeClients++;
     } catch (err) {
-      console.error("❌ Dead client detected, queuing removal", client.id, err);
+      console.error("SSE ERROR: dead client detected, queuing removal", client.id, err);
       deadClients.push(client as Client);
     }
   });
@@ -90,5 +99,9 @@ export function broadcast(matchId: string, event: RealtimeEvent) {
     clients.delete(dead as never);
   }
 
-  console.log(`📡 broadcast → ${event.type} | sent to ${activeClients} client(s) | match: ${matchId}`);
+  if (event.type === "CONNECTED" || event.type === "MATCH_ENDED") {
+    console.log(
+      `MATCH LIFECYCLE: ${event.type} sent to ${activeClients} client(s) for ${matchId}`
+    );
+  }
 }

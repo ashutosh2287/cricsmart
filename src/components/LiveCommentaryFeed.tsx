@@ -1,37 +1,33 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { memo, useCallback, useEffect, useState, useRef } from "react";
 import { subscribeCommentary, Commentary } from "@/services/commentary/commentaryBus";
 
-export default function LiveCommentaryFeed() {
+function LiveCommentaryFeed() {
 
   const [comments, setComments] = useState<Commentary[]>([]);
   const mounted = useRef(false);
+  const handleCommentary = useCallback((c: Commentary) => {
+    if (!mounted.current) return;
+
+    setComments((prev) => {
+      const updated = [c, ...prev];
+      return updated.slice(0, 15);
+    });
+  }, []);
 
   useEffect(() => {
 
     mounted.current = true;
 
-    const unsub = subscribeCommentary((c) => {
-
-      console.log("📥 RECEIVED:", c); // DEBUG
-
-      if (!mounted.current) return;
-
-      setComments(prev => {
-        const updated = [c, ...prev];
-
-        return updated.slice(0, 15);
-      });
-
-    });
+    const unsub = subscribeCommentary(handleCommentary);
 
     return () => {
       mounted.current = false;
       unsub();
     };
 
-  }, []);
+  }, [handleCommentary]);
 
   return (
     <div className="space-y-2 border p-4 rounded-lg h-[250px] overflow-y-auto">
@@ -55,3 +51,11 @@ export default function LiveCommentaryFeed() {
     </div>
   );
 }
+
+const MemoizedLiveCommentaryFeed = memo(LiveCommentaryFeed);
+
+MemoizedLiveCommentaryFeed.displayName = "LiveCommentaryFeed";
+// @ts-expect-error whyDidYouRender debug flag
+MemoizedLiveCommentaryFeed.whyDidYouRender = true;
+
+export default MemoizedLiveCommentaryFeed;

@@ -54,6 +54,7 @@ import {
 } from "@/services/simulation/lineup";
 import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
 import WagonWheel from "@/components/analytics/WagonWheel";
+import { calculateWinProbability } from "@/services/analytics/calculateWinProbability";
 import { setMatchMeta } from "@/store/matchStore";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
@@ -356,6 +357,10 @@ function TabsArea({
 
   const effectiveIsRunning = isStarting || isRunning || hasLiveMatchState;
   const [selectedInnings, setSelectedInnings] = useState<number | null>(null);
+  const winProbabilityData = useMemo(
+    () => calculateWinProbability(analytics.winProbability),
+    [analytics.winProbability]
+  );
 
   useEffect(() => {
     if (!hasLiveMatchState) return;
@@ -582,11 +587,7 @@ function TabsArea({
                 <GlassPanel>
                   <SectionHeader eyebrow="Prediction" title="Win Probability" />
                   <WinProbabilityChart
-                    data={analytics.winProbability.map((p) => ({
-                      over: p.over,
-                      batting: p.value,
-                      bowling: 100 - p.value,
-                    }))}
+                    data={winProbabilityData}
                   />
                 </GlassPanel>
 
@@ -726,13 +727,7 @@ function TabsArea({
                 <div className="space-y-6">
                   <GlassPanel>
                     <SectionHeader eyebrow="Model" title="Win Probability" />
-                    <WinProbabilityChart
-                      data={analytics.winProbability.map((p) => ({
-                        over: p.over,
-                        batting: p.value,
-                        bowling: 100 - p.value,
-                      }))}
-                    />
+                    <WinProbabilityChart data={winProbabilityData} />
                   </GlassPanel>
                   <GlassPanel>
                     <SectionHeader
@@ -766,13 +761,7 @@ function TabsArea({
                     eyebrow="Batting"
                     title="Run Pressure & Projection"
                   />
-                  <WinProbabilityChart
-                    data={analytics.winProbability.map((p) => ({
-                      over: p.over,
-                      batting: p.value,
-                      bowling: 100 - p.value,
-                    }))}
-                  />
+                  <WinProbabilityChart data={winProbabilityData} />
                 </GlassPanel>
                 <GlassPanel>
                   <SectionHeader
@@ -821,13 +810,7 @@ function TabsArea({
                     eyebrow="Pressure"
                     title="Win Pressure Curve"
                   />
-                  <WinProbabilityChart
-                    data={analytics.winProbability.map((p) => ({
-                      over: p.over,
-                      batting: p.value,
-                      bowling: 100 - p.value,
-                    }))}
-                  />
+                  <WinProbabilityChart data={winProbabilityData} />
                 </GlassPanel>
                 <GlassPanel>
                   <SectionHeader

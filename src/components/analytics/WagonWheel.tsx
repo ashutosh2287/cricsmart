@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
-import { useMatch } from "@/context/MatchContext";
+import { memo, useCallback, useMemo } from "react";
 import { BallEvent } from "@/types/ballEvent";
+import { useCurrentInningsOvers } from "@/services/matchSelectors";
+import AnalyticsErrorBoundary from "./AnalyticsErrorBoundary";
 
 type Props = {
   matchId: string;
@@ -59,18 +60,15 @@ function getPlayerBias(player: string): number {
   return hash % 360;
 }
 
-export default function WagonWheel({ matchId }: Props) {
-  const { state } = useMatch();
+function WagonWheel({ matchId }: Props) {
+  const overs = useCurrentInningsOvers(matchId);
   const matchSeedOffset = stringToSeed(matchId) % 360;
 
   const events = useMemo(
     () =>
-      (state?.innings ?? [])
-        .flatMap((innings) =>
-          Object.values(innings.overs ?? {}).flatMap((overBalls) => overBalls ?? [])
-        )
+      Object.values(overs ?? {}).flatMap((overBalls) => overBalls ?? [])
         .filter((event) => event?.valid),
-    [state]
+    [overs]
   );
 
   const shots: Shot[] = useMemo(
@@ -85,12 +83,15 @@ export default function WagonWheel({ matchId }: Props) {
     [events, matchSeedOffset]
   );
 
+  const handleHover = useCallback(() => {}, []);
+
   const size = 200;
   const center = size / 2;
   const radius = 80;
 
   return (
-    <div className="bg-zinc-900 p-4 rounded-xl shadow-lg">
+    <AnalyticsErrorBoundary fallbackTitle="Wagon wheel is temporarily unavailable.">
+      <div className="bg-zinc-900 p-4 rounded-xl shadow-lg">
 
       <h3 className="text-lg font-semibold mb-3 text-white">
         Wagon Wheel
@@ -129,6 +130,7 @@ export default function WagonWheel({ matchId }: Props) {
               y1={center}
               x2={x}
               y2={y}
+              onMouseEnter={handleHover}
               stroke={color}
               strokeWidth={
   shot.runs === 6 ? 4 :
@@ -145,6 +147,15 @@ export default function WagonWheel({ matchId }: Props) {
 
       </svg>
 
-    </div>
+      </div>
+    </AnalyticsErrorBoundary>
   );
 }
+
+const MemoizedWagonWheel = memo(WagonWheel);
+
+MemoizedWagonWheel.displayName = "WagonWheel";
+// @ts-expect-error whyDidYouRender debug flag
+MemoizedWagonWheel.whyDidYouRender = true;
+
+export default MemoizedWagonWheel;

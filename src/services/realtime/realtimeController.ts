@@ -20,13 +20,13 @@ type RealtimePayload = {
 
 export function addClient(matchId: string, client: Client) {
   if (!matchId) {
-  console.error("❌ matchId is undefined in SSE route");
-  return;
-}
+    console.error("SSE ERROR: matchId is undefined in SSE route");
+    return;
+  }
 
-addClientToStore(matchId, client);
+  addClientToStore(matchId, client);
   const clients = getClients(matchId);
-  console.log(`➕ Client added to match ${matchId} (total: ${clients.size})`);
+  console.log(`MATCH LIFECYCLE: client added for ${matchId} (total: ${clients.size})`);
 }
 
 export function removeClient(matchId: string, clientOrId: Client | string) {
@@ -48,16 +48,11 @@ export function removeClient(matchId: string, clientOrId: Client | string) {
 
   removeClientFromStore(matchId, target);
 
-  console.log(`➖ Client removed from match ${matchId}`);
+  console.log(`MATCH LIFECYCLE: client removed for ${matchId}`);
 }
 
 export function broadcast(matchId: string, payload: RealtimePayload) {
   const clients = getClients(matchId);
-
-  console.log("📡 CLIENT COUNT AT BROADCAST:", {
-    matchId,
-    size: clients.size,
-  });
 
   if (!clients || clients.size === 0) return;
 
@@ -79,15 +74,13 @@ if (payload.type === "BALL_EVENT" && payload.data) {
     },
   };
 }
-  console.log("📦 FINAL PAYLOAD STRUCTURE:", enrichedPayload);
   const data = `event: ${enrichedPayload.type}\ndata: ${JSON.stringify(enrichedPayload)}\n\n`;
 
   for (const client of Array.from(clients as Set<Client>)) {
     try {
-      console.log("📤 SENDING TO CLIENT:", client.id, payload.type);
       client.send(data);
     } catch (err) {
-      console.error(`❌ Failed to send to client ${client.id}`, err);
+      console.error(`SSE ERROR: failed to send to client ${client.id}`, err);
       removeClientFromStore(matchId, client);
     }
   }

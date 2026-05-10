@@ -55,17 +55,6 @@ export function MatchProvider({
     [matchId, state]
   );
 
-  console.log("🟢 MATCH PROVIDER UPDATE", {
-  runs: state?.innings?.[
-    state?.currentInningsIndex ?? 0
-  ]?.runs,
-
-  wickets: state?.innings?.[
-    state?.currentInningsIndex ?? 0
-  ]?.wickets,
-
-});
-
   return (
     <MatchContext.Provider value={contextValue}>
       {children}

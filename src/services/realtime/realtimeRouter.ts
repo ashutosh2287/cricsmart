@@ -39,6 +39,15 @@ export type RealtimeEvent =
   engineEvent?: {
     id?: string;
   } | null;
+  eventMeta?: {
+    eventId: string;
+    sequence: number;
+    timestamp: number;
+    matchId: string;
+    innings: number;
+    over: number;
+    ball: number;
+  } | null;
 
   // ✅ ADD THESE
   commentary?: unknown[];
@@ -182,7 +191,6 @@ function shouldAcceptBallState(
   // ✅ PRIMARY FILTER → eventId
   if (engineEventId) {
     if (lastAcceptedEventId === engineEventId) {
-      console.log("⛔ Skipping duplicate eventId:", engineEventId);
       return false;
     }
 
@@ -195,7 +203,6 @@ function shouldAcceptBallState(
   const lastAcceptedFingerprint = lastAcceptedFingerprintByMatch.get(matchId);
 
   if (lastAcceptedFingerprint === incomingFingerprint) {
-    console.log("⛔ Skipping duplicate fingerprint");
     return false;
   }
 
@@ -251,7 +258,8 @@ export function routeRealtimeEvent(event: RealtimeEvent) {
 
   const state = event.data.committedState;
 
-  const engineEventId = event.data.engineEvent?.id;
+  const engineEventId =
+    event.data.eventMeta?.eventId ?? event.data.engineEvent?.id;
 
   if (!shouldAcceptBallState(event.matchId, state, engineEventId)) {
     return;
@@ -303,6 +311,7 @@ patchMatchRuntime(event.matchId, {
   emitCricUpdate({
     matchId: event.matchId,
     type: "BALL_EVENT",
+    eventMeta: event.data.eventMeta ?? null,
     simulationState:
       toSimulationRuntimePayload(event.data.simulationState) ?? null,
     commentary: event.data.commentary ?? [],

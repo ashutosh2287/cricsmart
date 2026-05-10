@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import type { MatchState } from "./matchEngine";
 import {
   getMatchSnapshot,
@@ -146,6 +146,32 @@ export function useCommentary(matchId: string) {
     // commentary is injected into state via broadcast
     // fallback safe
     return m.commentary ?? [];
+  });
+}
+
+export function useScore(matchId: string) {
+  const runs = useMatchRuns(matchId);
+  const wickets = useMatchWickets(matchId);
+  const overs = useMatchOversDisplay(matchId);
+
+  return useMemo(
+    () => ({
+      runs: runs ?? 0,
+      wickets: wickets ?? 0,
+      overs: overs ?? "0.0",
+    }),
+    [overs, runs, wickets]
+  );
+}
+
+export function useCurrentInnings(matchId: string) {
+  return useMatchSelector(matchId, (m) => m.innings[m.currentInningsIndex]);
+}
+
+export function useCurrentInningsOvers(matchId: string) {
+  return useMatchSelector(matchId, (m) => {
+    const innings = m.innings[m.currentInningsIndex];
+    return innings?.overs ?? {};
   });
 }
 

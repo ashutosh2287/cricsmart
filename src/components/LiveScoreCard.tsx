@@ -1,27 +1,32 @@
 "use client";
 
-import { useMatchState } from "@/hooks/useMatchState";
+import { memo } from "react";
+import { useScore } from "@/services/matchSelectors";
 
-export default function LiveScoreCard({
+function LiveScoreCard({
   matchId,
 }: {
   matchId: string;
 }) {
-  const state = useMatchState(matchId);
-
-  if (!state) return null;
-
-  const innings = state.innings[state.currentInningsIndex];
+  const score = useScore(matchId);
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
       <div className="text-xl font-bold">
-        {innings.runs}/{innings.wickets}
+        {score.runs}/{score.wickets}
       </div>
 
       <div className="text-sm text-gray-400">
-        Overs: {innings.over}.{innings.ball}
+        Overs: {score.overs}
       </div>
     </div>
   );
 }
+
+const MemoizedLiveScoreCard = memo(LiveScoreCard);
+
+MemoizedLiveScoreCard.displayName = "LiveScoreCard";
+// @ts-expect-error whyDidYouRender debug flag
+MemoizedLiveScoreCard.whyDidYouRender = true;
+
+export default MemoizedLiveScoreCard;

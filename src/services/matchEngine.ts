@@ -1230,9 +1230,8 @@ if (!updatedState) {
 const analytics = getAnalytics(matchId);
 const commentaryList = getCommentary(matchId);
 
-console.log("🔥 ABOUT TO BROADCAST BALL_EVENT");
-
 // 📡 BROADCAST BALL EVENT
+const sequence = eventStreams[matchId]?.length ?? 0;
 broadcast(matchId, {
   type: "BALL_EVENT",
   matchId,
@@ -1240,6 +1239,15 @@ broadcast(matchId, {
     committedState: updatedState,
     engineEvent: {
       id: ballEvent.id,
+    },
+    eventMeta: {
+      eventId: ballEvent.id,
+      sequence,
+      timestamp: ballEvent.timestamp,
+      matchId,
+      innings: state.currentInningsIndex,
+      over: currentInningsState.over,
+      ball: currentInningsState.ball,
     },
     commentary: commentaryList ?? [],
     insights: insights ?? [],

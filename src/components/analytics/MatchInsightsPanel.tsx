@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { getMatchInsights } from "@/services/analytics/matchInsightsEngine";
 import { getAIInsights } from "@/services/analytics/aiInsightEngine";
 import MomentumChart from "./MomentumChart";
+import AnalyticsErrorBoundary from "./AnalyticsErrorBoundary";
 
 type Props = {
   matchId: string;
@@ -17,26 +18,30 @@ type AIInsight = {
   text: string;
 };
 
-export default function MatchInsightsPanel({ matchId }: Props) {
+function MatchInsightsPanel({ matchId }: Props) {
 
   const [insights, setInsights] = useState<MatchInsight[]>([]);
   const [aiInsights, setAIInsights] = useState<AIInsight[]>();
 
   // 🔥 LIVE UPDATE (IMPORTANT)
-  useEffect(() => {
+  const refreshInsights = useCallback(() => {
+    setInsights(getMatchInsights(matchId));
+    setAIInsights(getAIInsights(matchId) ?? []);
+  }, [matchId]);
 
+  useEffect(() => {
+    refreshInsights();
     const interval = setInterval(() => {
-      setInsights(getMatchInsights(matchId));
-      setAIInsights(getAIInsights(matchId) ?? []);
+      refreshInsights();
     }, 1000); // update every second
 
     return () => clearInterval(interval);
 
-  }, [matchId]);
+  }, [refreshInsights]);
 
   return (
-
-    <div className="space-y-6">
+    <AnalyticsErrorBoundary fallbackTitle="Insights panel is temporarily unavailable.">
+      <div className="space-y-6">
 
       {/* 📊 MOMENTUM + WIN PROB */}
       <MomentumChart matchId={matchId} />
@@ -102,7 +107,16 @@ export default function MatchInsightsPanel({ matchId }: Props) {
 
       </div>
 
-    </div>
+      </div>
+    </AnalyticsErrorBoundary>
 
   );
 }
+
+const MemoizedMatchInsightsPanel = memo(MatchInsightsPanel);
+
+MemoizedMatchInsightsPanel.displayName = "MatchInsightsPanel";
+// @ts-expect-error whyDidYouRender debug flag
+MemoizedMatchInsightsPanel.whyDidYouRender = true;
+
+export default MemoizedMatchInsightsPanel;

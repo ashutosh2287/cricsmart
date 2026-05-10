@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -10,8 +10,9 @@ import {
   CartesianGrid,
   Tooltip,
   ReferenceArea,
-  ReferenceDot
 } from "recharts";
+import { calculateMomentum, ChartMomentumPoint } from "@/services/analytics/calculateMomentum";
+import AnalyticsErrorBoundary from "./AnalyticsErrorBoundary";
 
 type MomentumPoint = {
   over: number;
@@ -22,12 +23,7 @@ type Props = {
   matchId: string;
 };
 
-type ChartMomentumPoint = {
-  over: number;
-  momentum: number;
-};
-
-export default function MomentumChart({ matchId }: Props) {
+function MomentumChart({ matchId }: Props) {
 
   const [data, setData] = useState<ChartMomentumPoint[]>([]);
 
@@ -36,34 +32,38 @@ export default function MomentumChart({ matchId }: Props) {
   REALTIME SSE LISTENER (FIXED)
   =============================
   */
-  useEffect(() => {
-    function handleUpdate(e: Event) {
+  const handleUpdate = useCallback((e: Event) => {
       const event = e as CustomEvent;
       const payload = event.detail;
 
       if (!payload || payload.matchId !== matchId) return;
       if (payload.type !== "BALL_EVENT") return;
 
-      const momentum = payload.analytics?.momentum;
-
-      if (!momentum || !Array.isArray(momentum)) return;
-      const chartData = (momentum as MomentumPoint[]).map((m, index) => ({
-        over: index,
-        momentum: m.score,
-      }));
-
+      const momentum = payload.analytics?.momentum as MomentumPoint[] | undefined;
+      const chartData = calculateMomentum(momentum);
       setData(chartData);
-    }
+  }, [matchId]);
+
+  useEffect(() => {
 
     window.addEventListener("CRIC_UPDATE", handleUpdate);
 
     return () => {
       window.removeEventListener("CRIC_UPDATE", handleUpdate);
     };
-  }, [matchId]);
+  }, [handleUpdate]);
+
+  const lineColor = useMemo(() => {
+    if (!data.length) return "#3b82f6";
+    const lastPoint = data[data.length - 1];
+    if (lastPoint.momentum > 2) return "#22c55e";
+    if (lastPoint.momentum < -2) return "#ef4444";
+    return "#eab308";
+  }, [data]);
 
   return (
-    <div className="bg-zinc-900 p-4 rounded-xl shadow-lg">
+    <AnalyticsErrorBoundary fallbackTitle="Momentum chart is temporarily unavailable.">
+      <div className="bg-zinc-900 p-4 rounded-xl shadow-lg">
 
       <h3 className="text-lg font-semibold mb-3 text-white">
         Momentum
@@ -90,21 +90,13 @@ export default function MomentumChart({ matchId }: Props) {
             cursor={{ stroke: "#444", strokeWidth: 1 }}
           />
 
-          <Line
-            type="monotone"
-            dataKey="momentum"
-            stroke={
-              data.length
-                ? data[data.length - 1].momentum > 2
-                  ? "#22c55e"
-                  : data[data.length - 1].momentum < -2
-                  ? "#ef4444"
-                  : "#eab308"
-                : "#3b82f6"
-            }
-            strokeWidth={2}
-            dot={false}
-          />
+            <Line
+              type="monotone"
+              dataKey="momentum"
+              stroke={lineColor}
+              strokeWidth={2}
+              dot={false}
+            />
 
           <ReferenceArea y1={2} y2={10} fill="rgba(34,197,94,0.08)" />
           <ReferenceArea y1={-2} y2={2} fill="rgba(234,179,8,0.05)" />
@@ -112,6 +104,15 @@ export default function MomentumChart({ matchId }: Props) {
 
         </LineChart>
       </ResponsiveContainer>
-    </div>
+      </div>
+    </AnalyticsErrorBoundary>
   );
 }
+
+const MemoizedMomentumChart = memo(MomentumChart);
+
+MemoizedMomentumChart.displayName = "MomentumChart";
+// @ts-expect-error whyDidYouRender debug flag
+MemoizedMomentumChart.whyDidYouRender = true;
+
+export default MemoizedMomentumChart;

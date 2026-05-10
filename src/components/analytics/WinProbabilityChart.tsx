@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useCallback, useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -12,6 +13,7 @@ import {
   ReferenceLine,
   ReferenceArea
 } from "recharts";
+import AnalyticsErrorBoundary from "./AnalyticsErrorBoundary";
 
 type ChartPoint = {
   over: number;
@@ -32,16 +34,52 @@ type DotProps = {
   payload?: ChartPoint;
 };
 
-export default function WinProbabilityChart({
+function WinProbabilityChart({
   data,
   team1,
   team2
 }: Props) {
+  const lastPoint = useMemo(
+    () => (data.length ? data[data.length - 1] : null),
+    [data]
+  );
 
-  if (!data.length) return null;
+  const renderMarkerDot = useCallback(({ cx, cy, payload }: DotProps) => {
+    if (!payload?.marker || cx === undefined || cy === undefined) return null;
+
+    let color = "#facc15";
+    let label = "";
+
+    if (payload.marker === "TURNING_POINT") {
+      label = "TP";
+    } else if (payload.marker === "WICKET") {
+      color = "#ef4444";
+      label = "W";
+    } else if (payload.marker === "SIX") {
+      color = "#22c55e";
+      label = "6";
+    } else if (payload.marker === "FOUR") {
+      color = "#60a5fa";
+      label = "4";
+    } else if (payload.marker === "SWING") {
+      label = "⚡";
+    }
+
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={6} fill={color} stroke="#fff" />
+        <text x={cx} y={cy - 10} textAnchor="middle" fontSize="10" fill="#fff">
+          {label}
+        </text>
+      </g>
+    );
+  }, []);
+
+  if (!lastPoint) return null;
 
   return (
-    <div className="bg-zinc-900 p-4 rounded-xl shadow-lg">
+    <AnalyticsErrorBoundary fallbackTitle="Win probability chart is temporarily unavailable.">
+      <div className="bg-zinc-900 p-4 rounded-xl shadow-lg">
 
       {/* HEADER */}
       <div className="flex justify-between items-center mb-3">
@@ -53,11 +91,11 @@ export default function WinProbabilityChart({
         <div className="text-xs flex gap-3">
 
           <span className="text-green-400 font-semibold">
-            {team1 ?? "BAT"} {data[data.length - 1].batting.toFixed(1)}%
+            {team1 ?? "BAT"} {lastPoint.batting.toFixed(1)}%
           </span>
 
           <span className="text-red-400 font-semibold">
-            {team2 ?? "BOWL"} {data[data.length - 1].bowling.toFixed(1)}%
+            {team2 ?? "BOWL"} {lastPoint.bowling.toFixed(1)}%
           </span>
 
         </div>
@@ -104,36 +142,7 @@ export default function WinProbabilityChart({
             dataKey="batting"
             stroke="#22c55e"
             strokeWidth={3}
-            dot={({ cx, cy, payload }: DotProps) => {
-              if (!payload?.marker || cx === undefined || cy === undefined) return null;
-
-              let color = "#facc15";
-              let label = "";
-
-              if (payload.marker === "TURNING_POINT") {
-                label = "TP";
-              } else if (payload.marker === "WICKET") {
-                color = "#ef4444";
-                label = "W";
-              } else if (payload.marker === "SIX") {
-                color = "#22c55e";
-                label = "6";
-              } else if (payload.marker === "FOUR") {
-                color = "#60a5fa";
-                label = "4";
-              } else if (payload.marker === "SWING") {
-                label = "⚡";
-              }
-
-              return (
-                <g>
-                  <circle cx={cx} cy={cy} r={6} fill={color} stroke="#fff" />
-                  <text x={cx} y={cy - 10} textAnchor="middle" fontSize="10" fill="#fff">
-                    {label}
-                  </text>
-                </g>
-              );
-            }}
+            dot={renderMarkerDot}
           />
 
           <Line
@@ -148,6 +157,15 @@ export default function WinProbabilityChart({
 
       </ResponsiveContainer>
 
-    </div>
+      </div>
+    </AnalyticsErrorBoundary>
   );
 }
+
+const MemoizedWinProbabilityChart = memo(WinProbabilityChart);
+
+MemoizedWinProbabilityChart.displayName = "WinProbabilityChart";
+// @ts-expect-error whyDidYouRender debug flag
+MemoizedWinProbabilityChart.whyDidYouRender = true;
+
+export default MemoizedWinProbabilityChart;

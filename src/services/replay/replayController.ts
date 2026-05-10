@@ -97,3 +97,55 @@ export async function seekReplayUI(
 
   await replayTillIndex(matchId, cached.events, index); // ✅ FIXED
 }
+
+/*
+========================================
+WICKET REPLAY
+========================================
+*/
+
+/** Seek to the next wicket event after the given index. */
+export async function seekNextWicket(matchId: string, afterIndex: number) {
+  const cached = cache[matchId];
+  if (!cached) return;
+
+  const next = cached.highlights.wickets.find((i) => i > afterIndex);
+  if (next !== undefined) {
+    await replayTillIndex(matchId, cached.events, next);
+  }
+}
+
+/** Seek to the previous wicket event before the given index. */
+export async function seekPrevWicket(matchId: string, beforeIndex: number) {
+  const cached = cache[matchId];
+  if (!cached) return;
+
+  const prev = [...cached.highlights.wickets]
+    .reverse()
+    .find((i) => i < beforeIndex);
+  if (prev !== undefined) {
+    await replayTillIndex(matchId, cached.events, prev);
+  }
+}
+
+/** Seek to the next six-run event after the given index. */
+export async function seekNextSix(matchId: string, afterIndex: number) {
+  const cached = cache[matchId];
+  if (!cached) return;
+
+  const next = cached.highlights.sixes.find((i) => i > afterIndex);
+  if (next !== undefined) {
+    await replayTillIndex(matchId, cached.events, next);
+  }
+}
+
+/** Seek to the beginning of an over (0-indexed over number). */
+export async function seekToOver(matchId: string, overNumber: number) {
+  const cached = cache[matchId];
+  if (!cached) return;
+
+  // Each over has up to 6 legal deliveries; find the first ball of the over
+  const targetIndex = overNumber * 6;
+  const clampedIndex = Math.min(targetIndex, cached.events.length - 1);
+  await replayTillIndex(matchId, cached.events, clampedIndex);
+}

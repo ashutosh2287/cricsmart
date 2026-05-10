@@ -152,7 +152,5 @@ function WagonWheel({ matchId }: Props) {
 const MemoizedWagonWheel = memo(WagonWheel);
 
 MemoizedWagonWheel.displayName = "WagonWheel";
-// @ts-expect-error whyDidYouRender debug flag
-MemoizedWagonWheel.whyDidYouRender = true;
 
 export default MemoizedWagonWheel;

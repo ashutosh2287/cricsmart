@@ -112,7 +112,5 @@ function MomentumChart({ matchId }: Props) {
 const MemoizedMomentumChart = memo(MomentumChart);
 
 MemoizedMomentumChart.displayName = "MomentumChart";
-// @ts-expect-error whyDidYouRender debug flag
-MemoizedMomentumChart.whyDidYouRender = true;
 
 export default MemoizedMomentumChart;

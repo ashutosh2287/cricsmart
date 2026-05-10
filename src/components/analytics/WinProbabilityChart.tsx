@@ -165,7 +165,5 @@ function WinProbabilityChart({
 const MemoizedWinProbabilityChart = memo(WinProbabilityChart);
 
 MemoizedWinProbabilityChart.displayName = "WinProbabilityChart";
-// @ts-expect-error whyDidYouRender debug flag
-MemoizedWinProbabilityChart.whyDidYouRender = true;
 
 export default MemoizedWinProbabilityChart;

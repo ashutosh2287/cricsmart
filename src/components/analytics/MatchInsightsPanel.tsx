@@ -119,7 +119,5 @@ function MatchInsightsPanel({ matchId }: Props) {
 const MemoizedMatchInsightsPanel = memo(MatchInsightsPanel);
 
 MemoizedMatchInsightsPanel.displayName = "MatchInsightsPanel";
-// @ts-expect-error whyDidYouRender debug flag
-MemoizedMatchInsightsPanel.whyDidYouRender = true;
 
 export default MemoizedMatchInsightsPanel;

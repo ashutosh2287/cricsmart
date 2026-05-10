@@ -55,7 +55,5 @@ function LiveCommentaryFeed() {
 const MemoizedLiveCommentaryFeed = memo(LiveCommentaryFeed);
 
 MemoizedLiveCommentaryFeed.displayName = "LiveCommentaryFeed";
-// @ts-expect-error whyDidYouRender debug flag
-MemoizedLiveCommentaryFeed.whyDidYouRender = true;
 
 export default MemoizedLiveCommentaryFeed;

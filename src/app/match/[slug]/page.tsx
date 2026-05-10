@@ -360,10 +360,7 @@ function TabsArea({
     match.slug,
     (state) => state.currentInningsIndex ?? 0
   );
-  const inningsCount = useMatchSelector(
-    match.slug,
-    (state) => state.innings?.length ?? 0
-  );
+  const inningsList = useMatchSelector(match.slug, (state) => state.innings ?? []);
   const matchOutcome = useMatchOutcome(match.slug);
   const liveQuickView = useMatchSelector(
     match.slug,
@@ -395,16 +392,8 @@ function TabsArea({
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1500);
-  const resolveInningsIndex = (fallbackIndex: number) =>
+  const getActiveInningsIndex = (fallbackIndex: number) =>
     selectedInnings ?? fallbackIndex;
-  const inningsData = useMatchSelector(
-    match.slug,
-    (state) => {
-      const index = resolveInningsIndex(state.currentInningsIndex ?? 0);
-      return state.innings?.[index];
-    },
-    shallowEqual
-  );
 
   const effectiveIsRunning = isStarting || isRunning || hasLiveMatchState;
   const winProbabilityData = useMemo(
@@ -436,7 +425,9 @@ function TabsArea({
     );
   }
 
-  const inningsIndex = resolveInningsIndex(currentInningsIndex);
+  const inningsIndex = getActiveInningsIndex(currentInningsIndex);
+  const inningsData = inningsList?.[inningsIndex];
+  const inningsCount = inningsList?.length ?? 0;
 
   const displayOver = inningsData
     ? `${inningsData.over}.${inningsData.ball}`

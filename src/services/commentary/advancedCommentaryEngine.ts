@@ -5,6 +5,7 @@ const COLLAPSE_WICKET_THRESHOLD = 6;
 const RIVALRY_FREQUENCY = 5;
 const RIVALRY_TRIGGER_MAX_HASH = 1;
 const CHASE_PRESSURE_BALLS_THRESHOLD = 18;
+const RIVALRY_PAIR_DELIMITER = "|";
 
 function flattenInningsEvents(overs: MatchState["innings"][number]["overs"]) {
   return Object.keys(overs)
@@ -31,8 +32,8 @@ function calculateCurrentPartnershipRuns(overs: MatchState["innings"][number]["o
 }
 
 /**
- * Stable hash used to keep rivalry narrative triggers deterministic
- * for a batsman-bowler pair across renders and sessions.
+ * Generates a deterministic unsigned hash for a rivalry pair key
+ * (for example: `${batsman}|${bowler}`) so rivalry triggers are stable.
  */
 function stablePairHash(pair: string): number {
   let hash = 5381;
@@ -74,7 +75,9 @@ export function generateAdvancedCommentary(
   const ballsBowled = (innings.over ?? 0) * 6 + (innings.ball ?? 0);
   const ballsRemaining = Math.max(0, 120 - ballsBowled);
   const partnershipRuns = calculateCurrentPartnershipRuns(innings.overs ?? {});
-  const rivalryHash = stablePairHash(`${batsman}|${bowler}`) % RIVALRY_FREQUENCY;
+  const rivalryHash =
+    stablePairHash(`${batsman}${RIVALRY_PAIR_DELIMITER}${bowler}`) %
+    RIVALRY_FREQUENCY;
 
   /* =============================
      🎲 RANDOM PICK

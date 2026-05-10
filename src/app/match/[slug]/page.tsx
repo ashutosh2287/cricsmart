@@ -39,7 +39,7 @@ import { motion } from "framer-motion";
 // ✅ Only keep what's needed from matchEngine
 import {
   hydrateMatchState,
-  MatchState,
+  type MatchState,
 } from "@/services/matchEngine";
 
 // ✅ Import setMatchState so hydration feeds into eventStore (MatchProvider's source)
@@ -53,18 +53,11 @@ import {
   getExtras,
   getFallOfWickets,
 } from "@/services/analytics/scorecardEngine";
-import { getMatchBySlug } from "@/services/matchService";
 import { connectRealtime } from "@/services/realtime/connectRealtime";
-import {
-  getBattingOrder,
-  getBowlingOrder,
-} from "@/services/simulation/lineup";
 import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
 import WagonWheel from "@/components/analytics/WagonWheel";
 import { calculateWinProbability } from "@/services/analytics/calculateWinProbability";
 import { setMatchMeta } from "@/store/matchStore";
-import { v4 as uuidv4 } from "uuid";
-import { useRouter } from "next/navigation";
 import AnimatedScore from "@/components/ui/AnimatedScore";
 
 // ─────────────────────────────────────────────
@@ -79,14 +72,6 @@ type MainTab =
   | "timeline"
   | "scorecard"
   | "admin";
-
-type PlayerStat = {
-  runs: number;
-  balls: number;
-  fours: number;
-  sixes: number;
-  out: boolean;
-};
 
 type BowlerStat = {
   overs?: number;
@@ -339,7 +324,6 @@ function TabsArea({
   const [matchMeta, setLocalMatchMeta] = useState(() =>
     getMatchMeta(match.slug)
   );
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<MainTab>("overview");
@@ -357,7 +341,7 @@ function TabsArea({
   } | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [isStarting, setIsStarting] = useState(false);
+  const [isStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1500);
 
@@ -414,10 +398,6 @@ function TabsArea({
     ? `${inningsData.over}.${inningsData.ball}`
     : "0.0";
 
-  const batting = getBattingStats(match.slug, inningsIndex) as Record<
-    string,
-    PlayerStat
-  >;
   const bowling = getBowlingStats(match.slug, inningsIndex) as Record<
     string,
     BowlerStat
@@ -1254,9 +1234,9 @@ function TabsArea({
                           });
                           setIsPaused(!isPaused);
                           setStartError(null);
-                        } catch (error) {
-                          setStartError("Failed to update simulation state.");
-                        }
+                         } catch {
+                           setStartError("Failed to update simulation state.");
+                         }
                       }}
                       className="rounded-xl bg-amber-500 px-4 py-2.5 font-medium text-slate-950 transition hover:bg-amber-400"
                     >
@@ -1423,24 +1403,26 @@ function MatchInnerPage({
       .filter((n) => Number.isFinite(n))
       .sort((a, b) => a - b);
     const lastKey = overKeys[overKeys.length - 1];
-    const rawBalls = Array.isArray(currentInnings.overs[lastKey])
-      ? currentInnings.overs[lastKey]
-      : [];
-    lastOverBalls = rawBalls.slice(0, 6).map(
-      (b: {
-        runs?: number;
-        outcome?: string;
-        extraType?: string;
-        label?: string;
-      }) => {
-        if (b.outcome === "WICKET") return "W";
-        if (b.extraType === "WD") return "Wd";
-        if (b.extraType === "NB") return "Nb";
-        if (b.runs === 6) return "6";
-        if (b.runs === 4) return "4";
-        return String(b.runs ?? b.label ?? 0);
-      }
-    );
+    if (lastKey !== undefined) {
+      const rawBalls = Array.isArray(currentInnings.overs[lastKey])
+        ? currentInnings.overs[lastKey]
+        : [];
+      lastOverBalls = rawBalls.slice(0, 6).map(
+        (b: {
+          runs?: number;
+          outcome?: string;
+          extraType?: string;
+          label?: string;
+        }) => {
+          if (b.outcome === "WICKET") return "W";
+          if (b.extraType === "WD") return "Wd";
+          if (b.extraType === "NB") return "Nb";
+          if (b.runs === 6) return "6";
+          if (b.runs === 4) return "4";
+          return String(b.runs ?? b.label ?? 0);
+        }
+      );
+    }
   }
 
   const innings1 = currentEngineState.innings?.[0];
@@ -1710,7 +1692,13 @@ export default function MatchDetailPage({
           return;
         }
 
-        const data = await res.json();
+        const data: {
+          success?: boolean;
+          match?: MatchState & {
+            team1?: string;
+            team2?: string;
+          };
+        } = await res.json();
 
         if (!data?.success || !data?.match) {
           console.error("Match not found in Redis for", id);
@@ -1724,11 +1712,14 @@ export default function MatchDetailPage({
         setMatchState(id, data.match);
 
         if (!cancelled) {
+          const team1Name = data.match.teamA?.name ?? data.match.team1 ?? "Team A";
+          const team2Name = data.match.teamB?.name ?? data.match.team2 ?? "Team B";
+
           setMatch({
             id,
             slug: id,
-            team1: data.match.teamA?.name ?? "Team A",
-            team2: data.match.teamB?.name ?? "Team B",
+            team1: team1Name,
+            team2: team2Name,
             currentOver: 0,
             currentBall: 0,
             status: data.match.matchEnded ? "Completed" : "Live",
@@ -1760,7 +1751,7 @@ export default function MatchDetailPage({
         externalMatchId: matchId,
       }),
     });
-  }, [matchId]);
+  }, [matchId, match?.team1, match?.team2]);
 
   // Analytics / insights from window events
   useEffect(() => {

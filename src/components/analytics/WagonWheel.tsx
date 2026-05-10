@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useMemo } from "react";
+import { memo, useMemo } from "react";
 import { BallEvent } from "@/types/ballEvent";
 import { useCurrentInningsOvers } from "@/services/matchSelectors";
 import AnalyticsErrorBoundary from "./AnalyticsErrorBoundary";
@@ -83,8 +83,6 @@ function WagonWheel({ matchId }: Props) {
     [events, matchSeedOffset]
   );
 
-  const handleHover = useCallback(() => {}, []);
-
   const size = 200;
   const center = size / 2;
   const radius = 80;
@@ -130,7 +128,6 @@ function WagonWheel({ matchId }: Props) {
               y1={center}
               x2={x}
               y2={y}
-              onMouseEnter={handleHover}
               stroke={color}
               strokeWidth={
   shot.runs === 6 ? 4 :

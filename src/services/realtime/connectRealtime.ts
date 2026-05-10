@@ -4,6 +4,12 @@ import { getMatchMeta } from "@/store/matchStore";
 import { hydrateMatchState } from "@/services/matchEngine";
 import { setMatchState } from "@/lib/eventStore";
 
+const MAX_BACKOFF_MS = 10000;
+const BASE_BACKOFF_MS = 500;
+const MAX_BACKOFF_EXPONENT = 5;
+const BACKOFF_JITTER_MS = 250;
+const SIMULATION_START_DELAY_MS = 500;
+
 export type RealtimeConnectionState = {
   socket: EventSource | null;
   activeMatchId: string | null;
@@ -52,8 +58,11 @@ function scheduleReconnect(matchId: string) {
 
   const attempt = state.reconnectAttempts + 1;
   state.reconnectAttempts = attempt;
-  const baseDelay = Math.min(10000, 500 * 2 ** Math.min(attempt, 5));
-  const jitter = Math.floor(Math.random() * 250);
+  const baseDelay = Math.min(
+    MAX_BACKOFF_MS,
+    BASE_BACKOFF_MS * 2 ** Math.min(attempt, MAX_BACKOFF_EXPONENT)
+  );
+  const jitter = Math.floor(Math.random() * BACKOFF_JITTER_MS);
   const delay = baseDelay + jitter;
 
   state.reconnectTimer = window.setTimeout(() => {
@@ -154,7 +163,7 @@ function openSocket(matchId: string) {
         console.log(`MATCH LIFECYCLE: simulation started for ${matchId}`);
       })
       .catch((err) => console.error("ENGINE ERROR: simulation start failed", err));
-    }, 500);
+    }, SIMULATION_START_DELAY_MS);
   }
 
   es.onerror = () => {

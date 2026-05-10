@@ -24,5 +24,5 @@ export function getEventTimeline(matchId: string): TimelineEvent[] {
 }
 
 export function resetEventTimeline(matchId: string) {
-  timelineStore[matchId] = [];
+  delete timelineStore[matchId];
 }

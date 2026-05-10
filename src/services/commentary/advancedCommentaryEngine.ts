@@ -5,6 +5,38 @@ const COLLAPSE_WICKET_THRESHOLD = 6;
 const RIVALRY_FREQUENCY = 5;
 const CHASE_PRESSURE_BALLS_THRESHOLD = 18;
 
+function flattenInningsEvents(overs: MatchState["innings"][number]["overs"]) {
+  return Object.keys(overs)
+    .map(Number)
+    .filter((overNumber) => Number.isFinite(overNumber))
+    .sort((a, b) => a - b)
+    .flatMap((overNumber) => overs[overNumber] ?? []);
+}
+
+function calculateCurrentPartnershipRuns(overs: MatchState["innings"][number]["overs"]) {
+  const events = flattenInningsEvents(overs);
+  let runsSinceLastWicket = 0;
+
+  for (const ball of events) {
+    if (!ball?.valid) continue;
+    if (ball.wicket) {
+      runsSinceLastWicket = 0;
+      continue;
+    }
+    runsSinceLastWicket += ball.runs ?? 0;
+  }
+
+  return runsSinceLastWicket;
+}
+
+function stablePairHash(pair: string): number {
+  let hash = 5381;
+  for (let i = 0; i < pair.length; i += 1) {
+    hash = (hash * 33) ^ pair.charCodeAt(i);
+  }
+  return Math.abs(hash >>> 0);
+}
+
 export function generateAdvancedCommentary(
   event: BallEvent,
   state: MatchState | null | undefined
@@ -36,21 +68,8 @@ export function generateAdvancedCommentary(
   const chaseRunsNeeded = Math.max(0, chaseTarget - score);
   const ballsBowled = (innings.over ?? 0) * 6 + (innings.ball ?? 0);
   const ballsRemaining = Math.max(0, 120 - ballsBowled);
-  const partnershipRuns = Array.isArray(innings.battingRecords)
-    ? innings.battingRecords.reduce((total, batter) => {
-        if (
-          batter.name === innings.striker ||
-          batter.name === innings.nonStriker
-        ) {
-          return total + (batter.runs ?? 0);
-        }
-        return total;
-      }, 0)
-    : 0;
-  const rivalryHash =
-    `${batsman}|${bowler}`
-      .split("")
-      .reduce((acc, char) => acc + char.charCodeAt(0), 0) % RIVALRY_FREQUENCY;
+  const partnershipRuns = calculateCurrentPartnershipRuns(innings.overs ?? {});
+  const rivalryHash = stablePairHash(`${batsman}|${bowler}`) % RIVALRY_FREQUENCY;
 
   /* =============================
      🎲 RANDOM PICK

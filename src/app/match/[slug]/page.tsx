@@ -23,12 +23,13 @@ import ReplaySlider from "@/components/match/ReplaySlider";
 import TeamSelector from "@/components/teams/TeamSelector";
 import TossPanel from "@/components/match/TossPanel";
 import WinProbabilityChart from "@/components/analytics/WinProbabilityChart";
-import { getMatchMeta, subscribeStore } from "@/store/matchStore";
-import { MatchProvider, useMatch } from "@/context/MatchContext";
+import { getMatchMeta } from "@/store/matchStore";
+import { MatchProvider } from "@/context/MatchContext";
 import {
   shallowEqual,
   useCurrentBatters,
   useCurrentInningsOvers,
+  useMatchMeta,
   useMatchSelector,
   useScore,
 } from "@/services/matchSelectors";
@@ -39,7 +40,6 @@ import { motion } from "framer-motion";
 // ✅ Only keep what's needed from matchEngine
 import {
   hydrateMatchState,
-  MatchState,
 } from "@/services/matchEngine";
 
 // ✅ Import setMatchState so hydration feeds into eventStore (MatchProvider's source)
@@ -64,7 +64,6 @@ import WagonWheel from "@/components/analytics/WagonWheel";
 import { calculateWinProbability } from "@/services/analytics/calculateWinProbability";
 import { setMatchMeta } from "@/store/matchStore";
 import { v4 as uuidv4 } from "uuid";
-import { useRouter } from "next/navigation";
 import AnimatedScore from "@/components/ui/AnimatedScore";
 
 // ─────────────────────────────────────────────
@@ -188,7 +187,7 @@ function SectionHeader({
 }
 
 // ─────────────────────────────────────────────
-// StickyInsightsRail — uses useMatch() ✅
+// StickyInsightsRail — selector-driven
 // ─────────────────────────────────────────────
 
 function StickyInsightsRail({ match }: { match: Match }) {
@@ -318,7 +317,7 @@ function StickyInsightsRail({ match }: { match: Match }) {
 }
 
 // ─────────────────────────────────────────────
-// TabsArea — uses useMatch() ✅
+// TabsArea — selector-driven
 // ─────────────────────────────────────────────
 
 function TabsArea({
@@ -334,15 +333,64 @@ function TabsArea({
   insights: BroadcastInsight[];
 }) {
   const isAdmin = true;
-  const { state: currentEngineState } = useMatch();
-  const [, forceMatchStoreUpdate] = useState(0);
-  const [matchMeta, setLocalMatchMeta] = useState(() =>
-    getMatchMeta(match.slug)
-  );
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
   const [activeTab, setActiveTab] = useState<MainTab>("overview");
+  const [selectedInnings, setSelectedInnings] = useState<number | null>(null);
+  const matchMeta = useMatchMeta(match.slug);
+  const hasLiveMatchState = useMatchSelector(
+    match.slug,
+    (state) =>
+      !!state.innings?.length &&
+      !state.matchEnded &&
+      ((state.innings[0]?.runs ?? 0) > 0 ||
+        (state.innings[0]?.wickets ?? 0) > 0 ||
+        Object.keys(state.innings[0]?.overs ?? {}).length > 0 ||
+        state.currentInningsIndex > 0)
+  );
+  const currentInningsIndex = useMatchSelector(
+    match.slug,
+    (state) => state.currentInningsIndex ?? 0
+  );
+  const inningsCount = useMatchSelector(
+    match.slug,
+    (state) => state.innings?.length ?? 0
+  );
+  const inningsData = useMatchSelector(
+    match.slug,
+    (state) => {
+      const index =
+        selectedInnings !== null
+          ? selectedInnings
+          : state.currentInningsIndex ?? 0;
+      return state.innings?.[index];
+    },
+    shallowEqual
+  );
+  const matchOutcome = useMatchSelector(
+    match.slug,
+    (state) => ({
+      matchEnded: !!state.matchEnded,
+      winner: state.winner,
+      winBy: state.winBy,
+    }),
+    shallowEqual
+  );
+  const liveQuickView = useMatchSelector(
+    match.slug,
+    (state) => {
+      const innings1 = state.innings?.[0];
+      const innings2 = state.innings?.[1];
+      return {
+        teamAName: state.teamA?.name ?? match.team1,
+        teamBName: state.teamB?.name ?? match.team2,
+        innings1Score: `${innings1?.runs ?? 0}/${innings1?.wickets ?? 0}`,
+        innings2Score: innings2
+          ? `${innings2.runs ?? 0}/${innings2.wickets ?? 0}`
+          : "Yet to bat",
+      };
+    },
+    shallowEqual
+  );
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const tab = searchParams.get("tab") as MainTab;
@@ -361,17 +409,7 @@ function TabsArea({
   const [startError, setStartError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1500);
 
-  const hasLiveMatchState =
-    !!currentEngineState &&
-    !!currentEngineState.innings?.length &&
-    !currentEngineState.matchEnded &&
-    ((currentEngineState.innings[0]?.runs ?? 0) > 0 ||
-      (currentEngineState.innings[0]?.wickets ?? 0) > 0 ||
-      Object.keys(currentEngineState.innings[0]?.overs ?? {}).length > 0 ||
-      currentEngineState.currentInningsIndex > 0);
-
   const effectiveIsRunning = isStarting || isRunning || hasLiveMatchState;
-  const [selectedInnings, setSelectedInnings] = useState<number | null>(null);
   const winProbabilityData = useMemo(
     () => calculateWinProbability(analytics.winProbability),
     [analytics.winProbability]
@@ -385,15 +423,6 @@ function TabsArea({
     }, 0);
   }, [hasLiveMatchState]);
 
-  useEffect(() => {
-    const unsubscribe = subscribeStore(() => {
-      forceMatchStoreUpdate((prev) => prev + 1);
-      setTimeout(() => setLocalMatchMeta(getMatchMeta(match.slug)), 0);
-    });
-    setTimeout(() => setLocalMatchMeta(getMatchMeta(match.slug)), 0);
-    return unsubscribe;
-  }, [match.slug]);
-
   if (!match) {
     return (
       <div className="space-y-4">
@@ -404,12 +433,8 @@ function TabsArea({
     );
   }
 
-  const inningsIndex =
-    selectedInnings !== null
-      ? selectedInnings
-      : currentEngineState?.currentInningsIndex ?? 0;
+  const inningsIndex = selectedInnings !== null ? selectedInnings : currentInningsIndex;
 
-  const inningsData = currentEngineState?.innings?.[inningsIndex];
   const displayOver = inningsData
     ? `${inningsData.over}.${inningsData.ball}`
     : "0.0";
@@ -656,20 +681,16 @@ function TabsArea({
                 <div className="grid gap-3">
                   <StatPill
                     label={
-                      currentEngineState?.teamA?.name ?? match.team1
+                      liveQuickView?.teamAName ?? match.team1
                     }
-                    value={`${currentEngineState?.innings?.[0]?.runs ?? 0}/${currentEngineState?.innings?.[0]?.wickets ?? 0}`}
+                    value={liveQuickView?.innings1Score ?? "0/0"}
                     tone="green"
                   />
                   <StatPill
                     label={
-                      currentEngineState?.teamB?.name ?? match.team2
+                      liveQuickView?.teamBName ?? match.team2
                     }
-                    value={
-                      currentEngineState?.innings?.[1]
-                        ? `${currentEngineState.innings[1].runs}/${currentEngineState.innings[1].wickets}`
-                        : "Yet to bat"
-                    }
+                    value={liveQuickView?.innings2Score ?? "Yet to bat"}
                     tone="blue"
                   />
                   <StatPill
@@ -863,13 +884,13 @@ function TabsArea({
         {/* ── Scorecard ── */}
         {activeTab === "scorecard" && (
           <div className="space-y-6">
-            {currentEngineState?.matchEnded && currentEngineState?.winner ? (
+            {matchOutcome?.matchEnded && matchOutcome?.winner ? (
               <div className="mt-3 border-t border-white/10 pt-3 text-center text-sm text-white">
-                {currentEngineState.winner} won{" "}
-                {typeof currentEngineState.winBy === "string"
-                  ? `by ${currentEngineState.winBy}`
-                  : typeof currentEngineState.winBy === "number"
-                  ? `by ${currentEngineState.winBy}`
+                {matchOutcome.winner} won{" "}
+                {typeof matchOutcome.winBy === "string"
+                  ? `by ${matchOutcome.winBy}`
+                  : typeof matchOutcome.winBy === "number"
+                  ? `by ${matchOutcome.winBy}`
                   : ""}
               </div>
             ) : null}
@@ -877,7 +898,7 @@ function TabsArea({
             <GlassPanel>
               <SectionHeader eyebrow="Innings" title="Scorecard" />
               <div className="mb-5 flex flex-wrap gap-2">
-                {(currentEngineState?.innings || []).map((_, i) => (
+                {Array.from({ length: inningsCount }).map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setSelectedInnings(i)}
@@ -1177,7 +1198,6 @@ function TabsArea({
                         teamB: { id: teamB.short, name: teamB.name },
                       };
                       setMatchMeta(nextMeta);
-                      setLocalMatchMeta(nextMeta);
                       setStartError(null);
                     }}
                   />
@@ -1338,7 +1358,7 @@ function TabsArea({
 
 // ─────────────────────────────────────────────
 // MatchInnerPage — MUST be rendered inside MatchProvider
-// Gets all reactive state via useMatch()
+// Selector-driven subscriptions
 // ─────────────────────────────────────────────
 
 function MatchInnerPage({
@@ -1353,10 +1373,44 @@ function MatchInnerPage({
   };
   insights: BroadcastInsight[];
 }) {
-  // ✅ Single reactive source — no local engineState
-  const { state: currentEngineState } = useMatch();
+  const currentInningsIndex = useMatchSelector(
+    match.slug,
+    (state) => state.currentInningsIndex ?? 0
+  );
+  const currentInnings = useMatchSelector(
+    match.slug,
+    (state) => state.innings?.[state.currentInningsIndex],
+    shallowEqual
+  );
+  const innings1 = useMatchSelector(
+    match.slug,
+    (state) => state.innings?.[0],
+    shallowEqual
+  );
+  const innings2 = useMatchSelector(
+    match.slug,
+    (state) => state.innings?.[1],
+    shallowEqual
+  );
+  const matchOutcome = useMatchSelector(
+    match.slug,
+    (state) => ({
+      matchEnded: !!state.matchEnded,
+      winner: state.winner,
+      winBy: state.winBy,
+    }),
+    shallowEqual
+  );
+  const stateTeams = useMatchSelector(
+    match.slug,
+    (state) => ({
+      teamAName: state.teamA?.name,
+      teamBName: state.teamB?.name,
+    }),
+    shallowEqual
+  );
 
-  if (!currentEngineState) {
+  if (!currentInnings) {
     return (
       <div className="p-10 text-center text-white">
         Loading match engine...
@@ -1364,18 +1418,13 @@ function MatchInnerPage({
     );
   }
 
-  // ── Derived state (all from reactive currentEngineState) ──
-
-  const currentInnings =
-    currentEngineState.innings?.[
-      currentEngineState.currentInningsIndex ?? 0
-    ];
+  // ── Derived state (all from selector subscriptions) ──
 
   const runs = Number(currentInnings?.runs ?? 0);
   const wickets = Number(currentInnings?.wickets ?? 0);
   const displayOver = formatOverDisplay(currentInnings?.overs);
 
-  const inningsIndex = currentEngineState.currentInningsIndex ?? 0;
+  const inningsIndex = currentInningsIndex ?? 0;
 
   const battingStats = getBattingStats(match.slug, inningsIndex) as Record<
     string,
@@ -1443,19 +1492,17 @@ function MatchInnerPage({
     );
   }
 
-  const innings1 = currentEngineState.innings?.[0];
-  const innings2 = currentEngineState.innings?.[1];
   const matchMeta = getMatchMeta(match.slug);
 
   const team1Name =
     matchMeta?.teamA?.name ??
-    currentEngineState?.teamA?.name ??
+    stateTeams?.teamAName ??
     match?.team1 ??
     "Team A";
 
   const team2Name =
     matchMeta?.teamB?.name ??
-    currentEngineState?.teamB?.name ??
+    stateTeams?.teamBName ??
     match?.team2 ??
     "Team B";
 
@@ -1486,7 +1533,7 @@ function MatchInnerPage({
   }
 
   let winProbability = 50;
-  if (innings2 && !currentEngineState.matchEnded && rrr > 0) {
+  if (innings2 && !matchOutcome?.matchEnded && rrr > 0) {
     winProbability = Math.max(0, Math.min(100, 100 - rrr * 5));
   }
 
@@ -1560,7 +1607,7 @@ function MatchInnerPage({
                     />
                     <StatPill
                       label="Current innings"
-                      value={`Innings ${(currentEngineState.currentInningsIndex ?? 0) + 1}`}
+                      value={`Innings ${(currentInningsIndex ?? 0) + 1}`}
                       tone="neutral"
                     />
                     <StatPill
@@ -1568,17 +1615,17 @@ function MatchInnerPage({
                       value={displayOver}
                       tone="amber"
                     />
-                    {innings2 && !currentEngineState.matchEnded && (
+                    {innings2 && !matchOutcome?.matchEnded && (
                       <StatPill label="Target" value={target} tone="neutral" />
                     )}
-                    {innings2 && !currentEngineState.matchEnded && (
+                    {innings2 && !matchOutcome?.matchEnded && (
                       <StatPill
                         label="Need"
                         value={`${runsNeeded} in ${ballsLeft}`}
                         tone="amber"
                       />
                     )}
-                    {innings2 && !currentEngineState.matchEnded && (
+                    {innings2 && !matchOutcome?.matchEnded && (
                       <StatPill
                         label="RRR"
                         value={rrr ? rrr.toFixed(2) : "0.00"}
@@ -1590,14 +1637,14 @@ function MatchInnerPage({
                       value={crr ? crr.toFixed(2) : "0.00"}
                       tone="blue"
                     />
-                    {innings2 && !currentEngineState.matchEnded && (
+                    {innings2 && !matchOutcome?.matchEnded && (
                       <StatPill
                         label="Win %"
                         value={`${winProbability.toFixed(0)}%`}
                         tone="green"
                       />
                     )}
-                    {innings2 && !currentEngineState.matchEnded && (
+                    {innings2 && !matchOutcome?.matchEnded && (
                       <StatPill
                         label="Pressure"
                         value={
@@ -1619,16 +1666,16 @@ function MatchInnerPage({
                   </div>
 
                   {/* Match result */}
-                  {currentEngineState.matchEnded &&
-                  currentEngineState.winner ? (
+                  {matchOutcome?.matchEnded &&
+                  matchOutcome?.winner ? (
                     <div className="mt-3 border-t border-white/10 pt-3 text-center text-sm text-white">
-                      {`${currentEngineState.winner} won by ${
-                        typeof currentEngineState.winBy === "string"
-                          ? currentEngineState.winBy
-                          : typeof currentEngineState.winBy === "number"
+                      {`${matchOutcome.winner} won by ${
+                        typeof matchOutcome.winBy === "string"
+                          ? matchOutcome.winBy
+                          : typeof matchOutcome.winBy === "number"
                           ? innings2 && (innings2.runs ?? 0) >= target
-                            ? `${currentEngineState.winBy} wickets`
-                            : `${currentEngineState.winBy} runs`
+                            ? `${matchOutcome.winBy} wickets`
+                            : `${matchOutcome.winBy} runs`
                           : "result unavailable"
                       }${
                         innings2 &&

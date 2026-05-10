@@ -26,7 +26,6 @@ function LiveScoreCard({
 const MemoizedLiveScoreCard = memo(LiveScoreCard);
 
 MemoizedLiveScoreCard.displayName = "LiveScoreCard";
-(MemoizedLiveScoreCard as typeof MemoizedLiveScoreCard & { whyDidYouRender?: boolean }).whyDidYouRender =
-  true;
+Reflect.set(MemoizedLiveScoreCard, "whyDidYouRender", true);
 
 export default MemoizedLiveScoreCard;

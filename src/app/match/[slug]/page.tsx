@@ -1413,7 +1413,7 @@ function MatchInnerPage({
   if (currentInningsIndex < 0 || currentInningsIndex >= inningsTotal) {
     return (
       <div className="p-10 text-center text-white">
-        No innings data available.
+        Invalid innings index.
       </div>
     );
   }
@@ -1421,7 +1421,7 @@ function MatchInnerPage({
   if (!currentInnings) {
     return (
       <div className="p-10 text-center text-white">
-        No innings data available.
+        Innings data not loaded yet.
       </div>
     );
   }

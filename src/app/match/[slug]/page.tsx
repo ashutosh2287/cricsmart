@@ -341,7 +341,6 @@ function TabsArea({
   } | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [isStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1500);
 
@@ -354,7 +353,7 @@ function TabsArea({
       Object.keys(currentEngineState.innings[0]?.overs ?? {}).length > 0 ||
       currentEngineState.currentInningsIndex > 0);
 
-  const effectiveIsRunning = isStarting || isRunning || hasLiveMatchState;
+  const effectiveIsRunning = isRunning || hasLiveMatchState;
   const [selectedInnings, setSelectedInnings] = useState<number | null>(null);
   const winProbabilityData = useMemo(
     () => calculateWinProbability(analytics.winProbability),
@@ -1205,11 +1204,7 @@ function TabsArea({
                         : "bg-emerald-600 hover:bg-emerald-500"
                     )}
                   >
-                    {isStarting
-                      ? "Starting..."
-                      : effectiveIsRunning
-                      ? "Running"
-                      : "▶ Start Simulation"}
+                    {effectiveIsRunning ? "Running" : "▶ Start Simulation"}
                   </button>
 
                   {startError ? (
@@ -1234,7 +1229,11 @@ function TabsArea({
                           });
                           setIsPaused(!isPaused);
                           setStartError(null);
-                         } catch {
+                         } catch (error) {
+                           console.error(
+                             "Failed to pause/resume simulation",
+                             error
+                           );
                            setStartError("Failed to update simulation state.");
                          }
                       }}

@@ -3,6 +3,7 @@ import { MatchState } from "../matchEngine";
 
 const COLLAPSE_WICKET_THRESHOLD = 6;
 const RIVALRY_FREQUENCY = 5;
+const RIVALRY_TRIGGER_MAX_HASH = 1;
 const CHASE_PRESSURE_BALLS_THRESHOLD = 18;
 
 function flattenInningsEvents(overs: MatchState["innings"][number]["overs"]) {
@@ -104,14 +105,20 @@ export function generateAdvancedCommentary(
     ]);
   }
 
-  if (rivalryHash <= 1 && (runs === 0 || event.wicket)) {
+  if (rivalryHash <= RIVALRY_TRIGGER_MAX_HASH && (runs === 0 || event.wicket)) {
     return pick([
       `${bowler} is right on top of ${batsman} in this duel.`,
       `That battle between ${bowler} and ${batsman} is getting more intense ball by ball.`,
     ]);
   }
 
-  if (score > 0 && score % 50 === 0 && !event.wicket) {
+  const previousScore = Math.max(0, score - Math.max(0, runs));
+  const reachedMilestone =
+    !event.wicket &&
+    runs > 0 &&
+    Math.floor(score / 50) > Math.floor(previousScore / 50);
+
+  if (reachedMilestone) {
     return pick([
       `Milestone reached — ${innings.battingTeam || "the batting side"} bring up ${score}.`,
       `${score} on the board now. That is a significant checkpoint in this innings.`,

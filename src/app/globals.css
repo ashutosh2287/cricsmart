@@ -26,38 +26,47 @@
   /* Typography tokens */
   --score-display-size: 72px;
   --score-display-weight: 800;
+  --score-display-line-height: 0.92;
   --score-display-tracking: -0.04em;
 
   --score-large-size: 48px;
   --score-large-weight: 700;
+  --score-large-line-height: 0.95;
   --score-large-tracking: -0.03em;
 
   --heading-1-size: 28px;
   --heading-1-weight: 700;
+  --heading-1-line-height: 1.1;
   --heading-1-tracking: -0.02em;
 
   --heading-2-size: 20px;
   --heading-2-weight: 600;
+  --heading-2-line-height: 1.2;
   --heading-2-tracking: -0.01em;
 
   --heading-3-size: 15px;
   --heading-3-weight: 600;
+  --heading-3-line-height: 1.25;
   --heading-3-tracking: 0;
 
   --body-size: 14px;
   --body-weight: 400;
+  --body-line-height: 1.5;
   --body-tracking: 0;
 
   --caption-size: 12px;
   --caption-weight: 400;
+  --caption-line-height: 1.35;
   --caption-tracking: 0.02em;
 
   --live-metric-size: 13px;
   --live-metric-weight: 600;
+  --live-metric-line-height: 1.2;
   --live-metric-tracking: 0.05em;
 
   --tabular-size: 13px;
   --tabular-weight: 500;
+  --tabular-line-height: 1.2;
 
   /* Spacing tokens */
   --space-1: 4px;
@@ -120,6 +129,7 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   font-size: var(--body-size);
   font-weight: var(--body-weight);
+  line-height: var(--body-line-height);
   letter-spacing: var(--body-tracking);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -164,12 +174,14 @@ select {
   color: var(--text-secondary);
   font-size: var(--caption-size);
   font-weight: var(--caption-weight);
+  line-height: var(--caption-line-height);
   letter-spacing: var(--caption-tracking);
 }
 
 .broadcast-live-metric {
   font-size: var(--live-metric-size);
   font-weight: var(--live-metric-weight);
+  line-height: var(--live-metric-line-height);
   letter-spacing: var(--live-metric-tracking);
   text-transform: uppercase;
 }
@@ -177,7 +189,7 @@ select {
 .broadcast-score-display {
   font-size: var(--score-display-size);
   font-weight: var(--score-display-weight);
-  line-height: 0.92;
+  line-height: var(--score-display-line-height);
   letter-spacing: var(--score-display-tracking);
   font-variant-numeric: tabular-nums;
 }
@@ -185,7 +197,7 @@ select {
 .broadcast-score-large {
   font-size: var(--score-large-size);
   font-weight: var(--score-large-weight);
-  line-height: 0.95;
+  line-height: var(--score-large-line-height);
   letter-spacing: var(--score-large-tracking);
   font-variant-numeric: tabular-nums;
 }
@@ -341,7 +353,11 @@ select {
 }
 
 .stadium-overlay.shock {
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.18), transparent);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--text-primary) 18%, transparent),
+    transparent
+  );
 }
 
 .stadium-overlay.tension {

@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   ReferenceArea
 } from "recharts";
+import { memo, useMemo } from "react";
 
 import { getPlayerForm } from "@/services/analytics/playerFormEngine";
 
@@ -16,9 +17,9 @@ type Props = {
   playerId: string;
 };
 
-export default function PlayerFormGraph({ playerId }: Props) {
+function PlayerFormGraph({ playerId }: Props) {
 
-  const form = getPlayerForm(playerId);
+  const form = useMemo(() => getPlayerForm(playerId), [playerId]);
 
   if (!form.length) {
     return (
@@ -74,3 +75,9 @@ export default function PlayerFormGraph({ playerId }: Props) {
     </div>
   );
 }
+
+const MemoizedPlayerFormGraph = memo(PlayerFormGraph);
+
+MemoizedPlayerFormGraph.displayName = "PlayerFormGraph";
+
+export default MemoizedPlayerFormGraph;

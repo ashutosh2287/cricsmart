@@ -94,3 +94,9 @@ function LeaderboardCards() {
   );
 
 }
+
+const MemoizedLeaderboardCards = memo(LeaderboardCards);
+
+MemoizedLeaderboardCards.displayName = "LeaderboardCards";
+
+export default MemoizedLeaderboardCards;

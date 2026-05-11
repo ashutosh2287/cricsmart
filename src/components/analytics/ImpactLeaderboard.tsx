@@ -1,20 +1,22 @@
 "use client";
 
-import { memo } from "react";
+
+import { memo, useMemo } from "react";
 import { getPlayerStats } from "@/services/analytics/playerStatsEngine";
 import { getPlayerImpact } from "@/services/analytics/playerImpactEngine";
 
 function ImpactLeaderboard({ matchId }: { matchId: string }) {
 
-  const stats = getPlayerStats(matchId);
-
-  const leaderboard = Object.keys(stats)
-    .map(player => ({
-      player,
-      impact: getPlayerImpact(matchId, player)
-    }))
-    .sort((a, b) => b.impact - a.impact)
-    .slice(0, 5);
+  const leaderboard = useMemo(() => {
+    const stats = getPlayerStats(matchId);
+    return Object.keys(stats)
+      .map(player => ({
+        player,
+        impact: getPlayerImpact(matchId, player)
+      }))
+      .sort((a, b) => b.impact - a.impact)
+      .slice(0, 5);
+  }, [matchId]);
 
   return (
 
@@ -49,5 +51,7 @@ function ImpactLeaderboard({ matchId }: { matchId: string }) {
   );
 }
 const MemoizedImpactLeaderboard = memo(ImpactLeaderboard);
+
 MemoizedImpactLeaderboard.displayName = "ImpactLeaderboard";
+
 export default MemoizedImpactLeaderboard;

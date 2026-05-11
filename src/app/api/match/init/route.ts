@@ -3,16 +3,11 @@ import { initMatch, getMatchState } from "@/services/matchEngine";
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 import { SimulationState } from "@/services/simulation/simulationState";
 import { startSimulation } from "@/services/simulation/matchSimulator";
-
-// 🔥 ADDED (Phase 1)
 import { startMatch } from "@/services/match/matchManager";
 import { startLiveMatchIngestor } from "@/services/ingestion/liveMatchIngestor";
 import { startWorker } from "@/services/queue/eventWorker";
-
 import { initPlayerRegistry } from "@/services/player/playerRegistry";
-/* ========================= */
-/* HELPER */
-/* ========================= */
+import { upsertMatchRegistry } from "@/services/match/matchRegistry";
 
 const createTeam = (name: string) => ({
   name,
@@ -32,23 +27,27 @@ const createTeam = (name: string) => ({
   ],
 });
 
-/* ========================= */
-/* API */
-/* ========================= */
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
     const {
-  matchId,
-  teamA,
-  teamB,
-  type,
-  externalMatchId,
-  tossWinner,
-  decision,
-} = body;
+      matchId,
+      teamA,
+      teamB,
+      type,
+      externalMatchId,
+      tossWinner,
+      decision,
+    } = body as {
+      matchId?: string;
+      teamA?: string;
+      teamB?: string;
+      type?: "SIMULATION" | "LIVE";
+      externalMatchId?: string;
+      tossWinner?: string;
+      decision?: "BAT" | "BOWL";
+    };
 
     if (!matchId || !teamA || !teamB) {
       return NextResponse.json(
@@ -57,110 +56,103 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("🚀 INIT MATCH:", matchId);
+    const matchType = type === "LIVE" ? "LIVE" : "SIMULATION";
 
-    /* ========================= */
-    /* 🔥 MATCH LIFECYCLE START */
-    /* ========================= */
-
-    startMatch(matchId); // 🔥 ADDED
-
-    initPlayerRegistry(matchId); // 🔥 NEW
-
-    /* ENGINE INIT */
+    startMatch(matchId);
+    initPlayerRegistry(matchId);
     initMatch(matchId);
 
     const state = getMatchState(matchId);
-
     if (!state) {
       throw new Error("Failed to initialize match state");
     }
 
-    /* SAVE TO REDIS */
     const storage = new RedisSimulationStorage();
+    const existing = await storage.load(matchId);
 
-    // 🔥 IDPOTENCY CHECK (CRITICAL)
-// 🔥 IDEMPOTENCY CHECK (USING load)
-const existing = await storage.load(matchId);
+    if (!existing) {
+      await storage.save(matchId, state, {
+        isRunning: false,
+        isPaused: false,
+        speed: 1500,
+      });
+    }
 
-if (existing) {
-  console.log("⚠️ MATCH ALREADY INITIALIZED:", matchId);
-
-  return NextResponse.json({
-    success: true,
-    matchId,
-    alreadyInitialized: true,
-  });
-}
-
-    await storage.save(matchId, state, {
-      isRunning: false,
-      isPaused: false,
-      speed: 1500,
+    await upsertMatchRegistry({
+      matchId,
+      teamA,
+      teamB,
+      type: matchType,
+      status: matchType === "LIVE" ? "LIVE" : "UPCOMING",
+      externalMatchId,
+      isLiveConnected: matchType === "LIVE",
+      heartbeatFresh: false,
+      reconnectHealth: matchType === "LIVE" ? "stale" : "disconnected",
     });
 
-    /* ========================= */
-    /* SIMULATION MODE */
-    /* ========================= */
-
-    if (type === "SIMULATION") {
+    if (matchType === "SIMULATION" && !existing) {
       const teamAObj = createTeam(teamA);
       const teamBObj = createTeam(teamB);
+
+      // Default to teamA batting when toss data is not provided by caller.
+      const resolvedTossWinner = tossWinner ?? teamA;
+      const resolvedDecision = decision ?? "BAT";
 
       const simState: SimulationState = {
         teamA: teamAObj,
         teamB: teamBObj,
-
-        tossWinner,
-decision,
-
-battingTeam:
-  decision === "BAT" ? (
-    tossWinner === teamA ? teamAObj : teamBObj
-  ) : (
-    tossWinner === teamA ? teamBObj : teamAObj
-  ),
-
-bowlingTeam:
-  decision === "BAT" ? (
-    tossWinner === teamA ? teamBObj : teamAObj
-  ) : (
-    tossWinner === teamA ? teamAObj : teamBObj
-  ),
-  
+        tossWinner: resolvedTossWinner,
+        decision: resolvedDecision,
+        battingTeam:
+          resolvedDecision === "BAT"
+            ? resolvedTossWinner === teamA
+              ? teamAObj
+              : teamBObj
+            : resolvedTossWinner === teamA
+              ? teamBObj
+              : teamAObj,
+        bowlingTeam:
+          resolvedDecision === "BAT"
+            ? resolvedTossWinner === teamA
+              ? teamBObj
+              : teamAObj
+            : resolvedTossWinner === teamA
+              ? teamAObj
+              : teamBObj,
         striker: "",
         nonStriker: "",
         bowler: "",
-
         battingOrder: [],
         bowlingOrder: [],
         bowlingPlan: [],
-
         nextBatsmanIndex: 2,
         currentBowlerIndex: 0,
-
         over: 0,
         ball: 0,
-
         totalRuns: 0,
         wickets: 0,
-
         currentInningsIndex: 0,
         phase: "POWERPLAY",
-
         matchEnded: false,
         winner: null,
         winBy: null,
       };
 
       await startSimulation(simState, matchId, 300);
+
+      await upsertMatchRegistry({
+        matchId,
+        teamA,
+        teamB,
+        type: "SIMULATION",
+        status: "LIVE",
+        isLiveConnected: true,
+        heartbeatFresh: true,
+        reconnectHealth: "healthy",
+      });
     }
 
-    /* ========================= */
-    /* 🔥 LIVE MODE (NEW) */
-    /* ========================= */
-
-    if (type === "LIVE") {
+    if (matchType === "LIVE") {
       if (!externalMatchId) {
         return NextResponse.json(
           { success: false, message: "Missing externalMatchId for live match" },
@@ -168,17 +160,14 @@ bowlingTeam:
         );
       }
 
-      console.log("📡 Starting LIVE ingestion:", matchId);
-
-      startLiveMatchIngestor(matchId, externalMatchId); // 🔥 ADDED
-        // 🔥 START WORKER
-  startWorker(matchId);
-
+      startWorker(matchId);
+      startLiveMatchIngestor(matchId, externalMatchId);
     }
 
     return NextResponse.json({
       success: true,
       matchId,
+      alreadyInitialized: Boolean(existing),
     });
   } catch (error) {
     console.error("❌ INIT ERROR:", error);

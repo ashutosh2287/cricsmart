@@ -2,16 +2,29 @@ import {
   getMatchState,
   dispatchBallEvent,
 } from "../matchEngine";
-import { fetchLiveMatchEvents, ApiBallEvent } from "../api/cricketApiService";
 import { adaptApiEventToEngineEvent } from "../adapters/cricketEventAdapter";
+import { getLiveProvider } from "@/services/providers/cricapiLiveProvider";
+import { touchMatchHeartbeat } from "@/services/match/matchRegistry";
+import type { ApiBallEvent } from "../api/cricketApiService";
 
-// 🔧 helper
 function buildPointer(e: ApiBallEvent) {
   return `${e.innings}-${e.over}-${e.ball}`;
 }
 
-// ✅ MAX DRIFT CONFIG
-const MAX_DRIFT = 12; // balls
+function pointerTuple(pointer: string): [number, number, number] {
+  const [innings, over, ball] = pointer.split("-").map(Number);
+  return [innings || 0, over || 0, ball || 0];
+}
+
+function comparePointer(a: string, b: string): number {
+  const [aInn, aOver, aBall] = pointerTuple(a);
+  const [bInn, bOver, bBall] = pointerTuple(b);
+  if (aInn !== bInn) return aInn - bInn;
+  if (aOver !== bOver) return aOver - bOver;
+  return aBall - bBall;
+}
+
+const MAX_DRIFT = 12;
 
 export async function smartReconcileMatch(
   matchId: string,
@@ -21,65 +34,37 @@ export async function smartReconcileMatch(
   const engineState = getMatchState(matchId);
   if (!engineState) return;
 
-  const apiEvents = await fetchLiveMatchEvents(externalMatchId);
+  const provider = getLiveProvider();
+  const apiEvents = await provider.fetchEvents(externalMatchId);
   if (!apiEvents.length) return;
 
-  // 🔥 LOCAL DEDUPE FOR REPLAY
   const replayed = new Set<string>();
-
-  // ============================
-  // STEP 1: FIND LAST POINTER
-  // ============================
   let startIndex = 0;
 
   if (lastPointer) {
-    const idx = apiEvents.findIndex((e) => {
-      const ptr = buildPointer(e);
-      return ptr === lastPointer;
-    });
-
-    // 🔥 fallback match
-    if (idx === -1 && lastPointer) {
-      const [, lastOver, lastBall] = lastPointer.split("-");
-
-      const fallbackIdx = apiEvents.findIndex(
-        (e) =>
-          String(e.over) === lastOver &&
-          String(e.ball) === lastBall
-      );
-
-      if (fallbackIdx !== -1) {
-        console.warn("⚠️ Pointer fallback match used");
-        startIndex = fallbackIdx + 1;
-      }
-    }
+    const idx = apiEvents.findIndex((e) => buildPointer(e) === lastPointer);
 
     if (idx !== -1) {
       startIndex = idx + 1;
+    } else {
+      startIndex = apiEvents.findIndex((e) => comparePointer(buildPointer(e), lastPointer) > 0);
+      if (startIndex < 0) {
+        startIndex = apiEvents.length;
+      }
     }
   }
 
-  // ============================
-  // STEP 2: DRIFT CHECK
-  // ============================
   const drift = apiEvents.length - startIndex;
 
   if (drift > MAX_DRIFT) {
-    console.warn("⚠️ Large drift → full replay");
-
     const { resetMatchState } = await import("../matchEngine");
     const { stopWorker, startWorker } = await import("../queue/eventWorker");
 
-    // 🔥 STOP WORKER
     stopWorker(matchId);
-
-    // 🔥 RESET ENGINE
     resetMatchState(matchId);
 
     for (const apiEvent of apiEvents) {
       const pointer = buildPointer(apiEvent);
-
-      // 🔁 dedupe replay
       if (replayed.has(pointer)) continue;
       replayed.add(pointer);
 
@@ -102,49 +87,44 @@ export async function smartReconcileMatch(
       dispatchBallEvent(matchId, engineEvent);
     }
 
-    // 🔥 RESTART WORKER
     startWorker(matchId);
+  } else if (startIndex < apiEvents.length) {
+    for (let i = startIndex; i < apiEvents.length; i++) {
+      const apiEvent = apiEvents[i];
+      const pointer = buildPointer(apiEvent);
 
-    return;
+      if (replayed.has(pointer)) continue;
+      replayed.add(pointer);
+
+      const state = getMatchState(matchId);
+      const innings = state?.innings[state.currentInningsIndex];
+
+      if (!innings?.striker || !innings?.nonStriker) continue;
+
+      const engineEvent = adaptApiEventToEngineEvent(
+        matchId,
+        apiEvent,
+        innings.striker,
+        innings.nonStriker,
+        innings.battingTeam || "",
+        innings.bowlingTeam || ""
+      );
+
+      if (!engineEvent) continue;
+
+      dispatchBallEvent(matchId, engineEvent);
+    }
   }
 
-  // ============================
-  // STEP 3: NO NEW EVENTS
-  // ============================
-  if (startIndex >= apiEvents.length) return;
+  const refreshed = getMatchState(matchId);
+  const current = refreshed?.innings[refreshed.currentInningsIndex];
 
-  console.log(
-    `🧠 Partial replay from index ${startIndex} / ${apiEvents.length}`
-  );
-
-  // ============================
-  // STEP 4: PARTIAL REPLAY
-  // ============================
-  for (let i = startIndex; i < apiEvents.length; i++) {
-    const apiEvent = apiEvents[i];
-
-    const pointer = buildPointer(apiEvent);
-
-    // 🔁 dedupe replay
-    if (replayed.has(pointer)) continue;
-    replayed.add(pointer);
-
-    const state = getMatchState(matchId);
-    const innings = state?.innings[state.currentInningsIndex];
-
-    if (!innings?.striker || !innings?.nonStriker) continue;
-
-    const engineEvent = adaptApiEventToEngineEvent(
-      matchId,
-      apiEvent,
-      innings.striker,
-      innings.nonStriker,
-      innings.battingTeam || "",
-      innings.bowlingTeam || ""
-    );
-
-    if (!engineEvent) continue;
-
-    dispatchBallEvent(matchId, engineEvent);
-  }
+  await touchMatchHeartbeat(matchId, {
+    currentRuns: current?.runs,
+    currentWickets: current?.wickets,
+    currentOver: current?.over,
+    currentBall: current?.ball,
+    score: current ? `${current.runs}/${current.wickets}` : undefined,
+    overDisplay: current ? `${current.over}.${current.ball}` : undefined,
+  });
 }

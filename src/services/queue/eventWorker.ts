@@ -1,75 +1,99 @@
-
-import { redis } from "./redisClient";
 import { dispatchBallEvent, getMatchState } from "../matchEngine";
 import { adaptApiEventToEngineEvent } from "../adapters/cricketEventAdapter";
 import { ApiBallEvent } from "../api/cricketApiService";
+import { redis } from "./redisClient";
+import { touchMatchHeartbeat } from "@/services/match/matchRegistry";
 
 const workers: Record<string, boolean> = {};
 const workerLocks = new Set<string>();
 
-// 🔥 WORKER SAFETY STATE
 const processedPointers: Record<string, string> = {};
 const processedKeys: Record<string, Set<string>> = {};
-const MAX_CACHE = 200;
+const MAX_CACHE = 300;
+const DEFAULT_MAX_EVENT_AGE_MS = 120000;
+
+function resolveMaxEventAgeMs() {
+  const parsed = Number(process.env.LIVE_EVENT_MAX_AGE_MS ?? DEFAULT_MAX_EVENT_AGE_MS);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_MAX_EVENT_AGE_MS;
+  }
+  return parsed;
+}
+
+const MAX_EVENT_AGE_MS = resolveMaxEventAgeMs();
+
+function buildEventKey(apiEvent: ApiBallEvent) {
+  return apiEvent.id || `${apiEvent.innings}-${apiEvent.over}-${apiEvent.ball}-${apiEvent.runs}-${apiEvent.type}-w${apiEvent.wicket ? 1 : 0}`;
+}
+
+function buildPointer(apiEvent: ApiBallEvent) {
+  return `${apiEvent.innings}-${apiEvent.over}-${apiEvent.ball}`;
+}
+
+function parsePointer(pointer: string): [number, number, number] {
+  const [innings, over, ball] = pointer.split("-").map(Number);
+  return [innings || 0, over || 0, ball || 0];
+}
+
+function isNewerPointer(pointer: string, previous?: string) {
+  if (!previous) return true;
+
+  const [aInnings, aOver, aBall] = parsePointer(pointer);
+  const [bInnings, bOver, bBall] = parsePointer(previous);
+
+  if (aInnings !== bInnings) return aInnings > bInnings;
+  if (aOver !== bOver) return aOver > bOver;
+  return aBall > bBall;
+}
+
+function isStaleEvent(apiEvent: ApiBallEvent) {
+  if (!apiEvent.timestamp || !Number.isFinite(apiEvent.timestamp)) return false;
+  return Date.now() - apiEvent.timestamp > MAX_EVENT_AGE_MS;
+}
 
 export function startWorker(matchId: string) {
   if (workerLocks.has(matchId)) {
-  console.log(`⚠️ Worker already running for ${matchId}`);
-  return;
-}
+    console.log(`⚠️ Worker already running for ${matchId}`);
+    return;
+  }
 
-workerLocks.add(matchId);
-
+  workerLocks.add(matchId);
   workers[matchId] = true;
   processedKeys[matchId] = new Set();
-  console.log(`🚀 Worker started for ${matchId}`);
+  processedPointers[matchId] = "";
 
   (async function loop() {
     while (workers[matchId]) {
       try {
-        // block until an event arrives
         const res = await redis.brpop(`match:${matchId}:events`, 5);
         if (!res) continue;
 
         const [, payload] = res;
-const apiEvent: ApiBallEvent = JSON.parse(payload);
+        const apiEvent: ApiBallEvent = JSON.parse(payload);
 
-// 🔥 BUILD UNIQUE KEY
-const eventKey = `${apiEvent.innings}-${apiEvent.over}-${apiEvent.ball}-${apiEvent.runs}-${apiEvent.type}`;
+        const eventKey = buildEventKey(apiEvent);
+        const pointer = buildPointer(apiEvent);
 
-// 🔥 POINTER FOR ORDER
-const pointer = `${apiEvent.innings}-${apiEvent.over}-${apiEvent.ball}`;
+        if (processedKeys[matchId].has(eventKey)) {
+          continue;
+        }
 
-// ✅ DEDUPE CHECK
-if (processedKeys[matchId].has(eventKey)) {
-  continue;
-}
+        if (!isNewerPointer(pointer, processedPointers[matchId])) {
+          continue;
+        }
 
-// ✅ ORDER PROTECTION
-const lastPointer = processedPointers[matchId];
+        if (isStaleEvent(apiEvent)) {
+          continue;
+        }
 
-if (lastPointer && pointer <= lastPointer) {
-  console.warn("⚠️ Out-of-order event skipped:", pointer);
-  continue;
-}
+        const state = getMatchState(matchId);
+        if (!state) continue;
 
-// ⬇️ EXISTING CODE CONTINUES
-const state = getMatchState(matchId);
-
-if (!state) {
-  console.warn("⚠️ No match state, skipping event");
-  continue;
-}
-
-const innings = state.innings[state.currentInningsIndex];
-
-if (!innings?.striker || !innings?.nonStriker) {
-  console.warn("⚠️ Missing batting pair, skipping event");
-  continue;
-}
+        const innings = state.innings[state.currentInningsIndex];
+        if (!innings?.striker || !innings?.nonStriker) continue;
 
         const engineEvent = adaptApiEventToEngineEvent(
-           matchId,
+          matchId,
           apiEvent,
           innings.striker,
           innings.nonStriker,
@@ -79,23 +103,47 @@ if (!innings?.striker || !innings?.nonStriker) {
 
         if (!engineEvent) continue;
 
-        dispatchBallEvent(matchId, engineEvent);
+        const dispatchResult = dispatchBallEvent(matchId, engineEvent);
+        if (!dispatchResult.ok) {
+          if (dispatchResult.reason !== "DUPLICATE_EVENT") {
+            console.warn("⚠️ Worker rejected event", {
+              matchId,
+              reason: dispatchResult.reason,
+              pointer,
+            });
+          }
+          continue;
+        }
 
-        // ✅ mark processed
-processedKeys[matchId].add(eventKey);
-processedPointers[matchId] = pointer;
+        processedKeys[matchId].add(eventKey);
+        processedPointers[matchId] = pointer;
 
-// 🧠 memory cleanup
-if (processedKeys[matchId].size > MAX_CACHE) {
-  const first = processedKeys[matchId].values().next().value;
-  if (first) processedKeys[matchId].delete(first);
-}
+        if (processedKeys[matchId].size > MAX_CACHE) {
+          const first = processedKeys[matchId].values().next().value;
+          if (first) processedKeys[matchId].delete(first);
+        }
+
+        const latest = getMatchState(matchId);
+        const latestInnings = latest?.innings[latest.currentInningsIndex];
+
+        await touchMatchHeartbeat(matchId, {
+          currentRuns: latestInnings?.runs,
+          currentWickets: latestInnings?.wickets,
+          currentOver: latestInnings?.over,
+          currentBall: latestInnings?.ball,
+          score:
+            latestInnings
+              ? `${latestInnings.runs}/${latestInnings.wickets}`
+              : undefined,
+          overDisplay:
+            latestInnings
+              ? `${latestInnings.over}.${latestInnings.ball}`
+              : undefined,
+        });
       } catch (err) {
         console.error("❌ Worker error:", err);
       }
     }
-
-    console.log(`🛑 Worker stopped for ${matchId}`);
   })();
 }
 

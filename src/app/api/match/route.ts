@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/services/storage/redisClient";
+import { upsertMatchRegistry } from "@/services/match/matchRegistry";
 
 const MATCH_LIST_KEY = "matches:list";
 
@@ -28,6 +29,17 @@ export async function POST(req: NextRequest) {
 
   await redis.hset(`match:${matchId}:meta`, match);
   await redis.sadd(MATCH_LIST_KEY, matchId);
+
+  await upsertMatchRegistry({
+    matchId,
+    teamA,
+    teamB,
+    status: "UPCOMING",
+    type: "SIMULATION",
+    isLiveConnected: false,
+    heartbeatFresh: false,
+    reconnectHealth: "disconnected",
+  });
 
   return NextResponse.json({ success: true, match });
 }

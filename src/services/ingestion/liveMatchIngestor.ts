@@ -1,257 +1,236 @@
-
-import { fetchLiveMatchEvents, ApiBallEvent } from "../api/cricketApiService";
-import { adaptApiEventToEngineEvent } from "../adapters/cricketEventAdapter";
-import { dispatchBallEvent, getMatchState } from "../matchEngine";
+import { ApiBallEvent } from "../api/cricketApiService";
 import { smartReconcileMatch } from "../reconciliation/smartReconciler";
 import { fetchWithRetry } from "../api/reliableFetch";
 import { pushEvents, flushEvents } from "./eventBuffer";
 import { isMatchActive } from "../match/matchManager";
 import { redis } from "../queue/redisClient";
 import { registerPlayer } from "../player/playerRegistry";
+import { getMatchState, syncBattingOrder } from "../matchEngine";
+import { getLiveProvider } from "@/services/providers/cricapiLiveProvider";
+import {
+  markMatchDisconnected,
+  touchMatchHeartbeat,
+} from "@/services/match/matchRegistry";
 
-const pollingIntervals: Record<string, NodeJS.Timeout> = {};
+const pollingIntervals: Record<string, ReturnType<typeof setInterval>> = {};
 const processedEvents: Record<string, Set<string>> = {};
 const abortControllers: Record<string, AbortController> = {};
 const lastProcessedPointer: Record<string, string> = {};
 
 const POLL_INTERVAL = 4000;
 const MAX_EVENT_CACHE = 300;
+const MAX_EVENT_BATCH = 50;
 
 function buildEventKey(apiEvent: ApiBallEvent) {
-  return `${apiEvent.innings}-${apiEvent.over}-${apiEvent.ball}-${apiEvent.runs}-${apiEvent.type}-${apiEvent.wicket}`;
+  if (apiEvent.id) return apiEvent.id;
+  return `${apiEvent.innings}-${apiEvent.over}-${apiEvent.ball}-${apiEvent.runs}-${apiEvent.type}-w${apiEvent.wicket ? 1 : 0}`;
 }
 
 function buildPointer(apiEvent: ApiBallEvent) {
   return `${apiEvent.innings}-${apiEvent.over}-${apiEvent.ball}`;
 }
 
-export function startLiveMatchIngestor(
-  matchId: string,
-  externalMatchId: string
-) {
+function pointerToTuple(pointer: string): [number, number, number] {
+  const [innings, over, ball] = pointer.split("-").map(Number);
+  return [innings || 0, over || 0, ball || 0];
+}
+
+function comparePointers(a: string, b: string): number {
+  const [aInn, aOver, aBall] = pointerToTuple(a);
+  const [bInn, bOver, bBall] = pointerToTuple(b);
+
+  if (aInn !== bInn) return aInn - bInn;
+  if (aOver !== bOver) return aOver - bOver;
+  return aBall - bBall;
+}
+
+function isValidIncomingEvent(event: ApiBallEvent): boolean {
+  if (!event) return false;
+  if (!Number.isFinite(event.innings) || event.innings < 0) return false;
+  if (!Number.isFinite(event.over) || event.over < 0) return false;
+  if (!Number.isFinite(event.ball) || event.ball < 0) return false;
+  if (!Number.isFinite(event.runs) || event.runs < 0) return false;
+  if (!event.type) return false;
+  return true;
+}
+
+export function startLiveMatchIngestor(matchId: string, externalMatchId: string) {
   if (pollingIntervals[matchId]) {
     console.warn(`⚠️ Ingestor already running for match: ${matchId}`);
     return;
   }
 
-  console.log(`🚀 Starting live ingestion for match: ${matchId}`);
+  const provider = getLiveProvider();
 
   processedEvents[matchId] = new Set();
-
   abortControllers[matchId]?.abort();
   abortControllers[matchId] = new AbortController();
 
   let pollCount = 0;
   let isReconciling = false;
   let isFetching = false;
-
-  // 🔥 BACKOFF SYSTEM
-let failureCount = 0;
-let backoffUntil = 0;
+  let failureCount = 0;
+  let backoffUntil = 0;
 
   pollingIntervals[matchId] = setInterval(async () => {
-  try {
-    // 🔥 BACKOFF PROTECTION
-if (Date.now() < backoffUntil) {
-  console.log("⏳ In backoff window, skipping fetch...");
-  return;
-}
-    pollCount++;
-    if (!isMatchActive(matchId)) {
-  console.log("🛑 Match not active, stopping ingestion");
-  stopLiveMatchIngestor(matchId);
-  return;
-}
+    try {
+      if (Date.now() < backoffUntil) return;
 
-    // 🔒 prevent overlapping fetch
-    if (isFetching) {
-  console.log("⏳ Previous fetch still running, skipping...");
-  return;
-}
+      pollCount += 1;
 
-// 🛑 Pause ingestion during reconciliation
-if (isReconciling) {
-  console.log("⏸ Skipping ingestion during reconciliation");
-  return;
-}
+      if (!isMatchActive(matchId)) {
+        stopLiveMatchIngestor(matchId);
+        await markMatchDisconnected(matchId);
+        return;
+      }
 
-isFetching = true;
+      if (isFetching || isReconciling) {
+        return;
+      }
 
-      let state = getMatchState(matchId);
+      isFetching = true;
+
+      const state = getMatchState(matchId);
       if (!state) return;
 
       const innings = state.innings[state.currentInningsIndex];
 
       if (innings?.completed) {
-        console.log("🛑 Match completed. Stopping ingestion.");
         stopLiveMatchIngestor(matchId);
+        await markMatchDisconnected(matchId);
         return;
       }
 
       let events: ApiBallEvent[] = [];
 
-try {
-  events = await fetchWithRetry(
-    (signal) => fetchLiveMatchEvents(externalMatchId, signal),
-    abortControllers[matchId].signal
-  );
+      try {
+        events = await fetchWithRetry(
+          (signal) => provider.fetchEvents(externalMatchId, signal),
+          abortControllers[matchId].signal
+        );
 
-  // ✅ SUCCESS → RESET FAILURE COUNT
-  failureCount = 0;
+        failureCount = 0;
+      } catch (err) {
+        failureCount += 1;
 
-} catch (err) {
-  failureCount++;
+        if (failureCount >= 3) {
+          const delay = Math.min(15000, failureCount * 3000);
+          backoffUntil = Date.now() + delay;
+        }
 
-  console.error(`❌ Fetch failed (${failureCount})`, err);
+        await markMatchDisconnected(matchId);
+        console.error(`❌ Live provider fetch failed (${failureCount})`, err);
+        return;
+      }
 
-  // 🔥 APPLY BACKOFF
-  if (failureCount >= 3) {
-    const delay = Math.min(15000, failureCount * 3000); // max 15s
-    backoffUntil = Date.now() + delay;
+      if (!Array.isArray(events) || events.length === 0) {
+        await touchMatchHeartbeat(matchId);
+        return;
+      }
 
-    console.warn(`⚠️ Applying backoff for ${delay}ms`);
-  }
+      if (processedEvents[matchId].size === 0) {
+        const playersSet = new Set<string>();
 
-  return;
-}
+        events.forEach((e) => {
+          if (e.batsman) playersSet.add(e.batsman);
+          if (e.bowler) playersSet.add(e.bowler);
+        });
 
-     if (!Array.isArray(events) || events.length === 0) {
-  return;
-}
+        const players = Array.from(playersSet);
 
-// 🔥 REGISTER PLAYERS (FROM EVENTS - FIRST TIME ONLY)
-if (events.length > 0 && processedEvents[matchId].size === 0) {
-  console.log("👥 Extracting players for full sync...");
+        players.forEach((name) => {
+          registerPlayer(matchId, name, name);
+        });
 
-  const playersSet = new Set<string>();
+        if (players.length >= 2) {
+          syncBattingOrder(matchId, players);
+        }
+      }
 
-  events.forEach((e) => {
-    if (e.batsman) playersSet.add(e.batsman);
-    if (e.bowler) playersSet.add(e.bowler);
-  });
+      pushEvents(matchId, events);
+      const bufferedEvents = flushEvents(matchId);
 
-  const players = Array.from(playersSet);
+      if (bufferedEvents.length > MAX_EVENT_BATCH) {
+        bufferedEvents.splice(MAX_EVENT_BATCH);
+      }
 
-  // 🔥 register players
-  players.forEach((p) => {
-    registerPlayer(matchId, p, p);
-  });
-
-  // 🔥 sync batting order
-  const { syncBattingOrder } = await import("../matchEngine");
-  syncBattingOrder(matchId, players);
-}
-
-// ✅ push into buffer
-pushEvents(matchId, events);
-
-// ✅ flush combined batch
-const bufferedEvents = flushEvents(matchId);
-
-// 🔥 SAFETY LIMIT
-if (bufferedEvents.length > 50) {
-  console.warn("⚠️ Too many buffered events, trimming...");
-  bufferedEvents.splice(50);
-}
-
-      // ✅ SORT EVENTS
       const sortedEvents = [...bufferedEvents].sort((a, b) => {
-  if (a.innings !== b.innings) return a.innings - b.innings;
-  if (a.over !== b.over) return a.over - b.over;
-  return a.ball - b.ball;
-});
+        if (a.innings !== b.innings) return a.innings - b.innings;
+        if (a.over !== b.over) return a.over - b.over;
+        return a.ball - b.ball;
+      });
+
+      let latestCommentary: string | undefined;
 
       for (const apiEvent of sortedEvents) {
-        const eventKey = buildEventKey(apiEvent);
+        if (!isValidIncomingEvent(apiEvent)) continue;
 
+        const eventKey = buildEventKey(apiEvent);
         if (processedEvents[matchId].has(eventKey)) continue;
 
-        // 🔁 ALWAYS GET LATEST STATE
-        state = getMatchState(matchId);
-        const currentInnings = state?.innings[state.currentInningsIndex];
+        const pointer = buildPointer(apiEvent);
+        const lastPointer = lastProcessedPointer[matchId];
 
-        if (!currentInnings) continue;
-
-        const striker = currentInnings.striker;
-        const nonStriker = currentInnings.nonStriker;
-
-        if (!striker || !nonStriker) {
-          console.warn("⚠️ Missing batting pair — skipping event");
+        if (lastPointer && comparePointers(pointer, lastPointer) <= 0) {
           continue;
         }
 
-        const battingTeam = currentInnings.battingTeam ?? "";
-        const bowlingTeam = currentInnings.bowlingTeam ?? "";
+        await redis.lpush(`match:${matchId}:events`, JSON.stringify(apiEvent));
 
-        const engineEvent = adaptApiEventToEngineEvent(
-          matchId,
-          apiEvent,
-          striker,
-          nonStriker,
-          battingTeam,
-          bowlingTeam
-        );
+        lastProcessedPointer[matchId] = pointer;
+        processedEvents[matchId].add(eventKey);
 
-        if (!engineEvent) continue;
+        if (typeof apiEvent.commentary === "string" && apiEvent.commentary.trim()) {
+          latestCommentary = apiEvent.commentary.trim();
+        }
 
-
-// 🚀 PUSH TO REDIS QUEUE (instead of direct dispatch)
-await redis.lpush(
-  `match:${matchId}:events`,
-  JSON.stringify(apiEvent)
-);
-
-// ✅ UPDATE POINTER (ONLY ONCE — USE HELPER)
-lastProcessedPointer[matchId] = buildPointer(apiEvent);
-
-// ✅ mark processed
-processedEvents[matchId].add(eventKey);
-
-// 🧠 Memory control
-if (processedEvents[matchId].size > MAX_EVENT_CACHE) {
-  const first = processedEvents[matchId].values().next().value;
-  if (first) processedEvents[matchId].delete(first);
-}
+        if (processedEvents[matchId].size > MAX_EVENT_CACHE) {
+          const first = processedEvents[matchId].values().next().value;
+          if (first) processedEvents[matchId].delete(first);
+        }
       }
 
-      // ===============================
-      // 🧠 SMART RECONCILIATION
-      // ===============================
-      try {
-        if (pollCount % 3 === 0 && !isReconciling) {
+      const latest = getMatchState(matchId);
+      const latestInnings = latest?.innings[latest.currentInningsIndex];
+
+      await touchMatchHeartbeat(matchId, {
+        currentRuns: latestInnings?.runs,
+        currentWickets: latestInnings?.wickets,
+        currentOver: latestInnings?.over,
+        currentBall: latestInnings?.ball,
+        score:
+          latestInnings
+            ? `${latestInnings.runs ?? 0}/${latestInnings.wickets ?? 0}`
+            : undefined,
+        overDisplay:
+          latestInnings
+            ? `${latestInnings.over ?? 0}.${latestInnings.ball ?? 0}`
+            : undefined,
+        commentaryPreview: latestCommentary,
+      });
+
+      if (pollCount % 3 === 0 && !isReconciling) {
+        try {
           isReconciling = true;
-
-          console.log("🧠 Running smart reconciliation...");
-
           await smartReconcileMatch(
             matchId,
             externalMatchId,
             lastProcessedPointer[matchId]
           );
-
+        } finally {
           isReconciling = false;
         }
-      } catch (err) {
-        console.error("❌ Reconciliation failed:", err);
-        isReconciling = false;
       }
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        if (err.name === "AbortError") return;
-        console.error("❌ Live ingestion error:", err.message);
-      } else {
-        console.error("❌ Unknown ingestion error:", err);
-      }
+      if (err instanceof Error && err.name === "AbortError") return;
+      console.error("❌ Live ingestion error:", err);
+    } finally {
+      isFetching = false;
     }
-    finally {
-  isFetching = false;
-}
   }, POLL_INTERVAL);
 }
 
 export function stopLiveMatchIngestor(matchId: string) {
-  console.log(`🛑 Stopping ingestion for match: ${matchId}`);
-
   if (pollingIntervals[matchId]) {
     clearInterval(pollingIntervals[matchId]);
     delete pollingIntervals[matchId];
@@ -261,5 +240,10 @@ export function stopLiveMatchIngestor(matchId: string) {
   delete abortControllers[matchId];
 
   delete processedEvents[matchId];
-  delete lastProcessedPointer[matchId]; // ✅ cleanup
+  delete lastProcessedPointer[matchId];
+
+  // Non-blocking on shutdown to avoid delaying interval teardown.
+  markMatchDisconnected(matchId).catch((error) => {
+    console.error("❌ Failed to mark match disconnected", error);
+  });
 }

@@ -1,6 +1,7 @@
 import { initMatch, getMatchState } from "@/services/matchEngine";
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 import { getRedis } from "@/services/storage/redisClient";
+import { upsertMatchRegistry } from "@/services/match/matchRegistry";
 
 export const runtime = "nodejs";
 
@@ -68,6 +69,17 @@ export async function POST(req: Request) {
       isRunning: false,
       isPaused: false,
       speed: 1,
+    });
+
+    await upsertMatchRegistry({
+      matchId,
+      teamA,
+      teamB,
+      status: "UPCOMING",
+      type: "SIMULATION",
+      isLiveConnected: false,
+      heartbeatFresh: false,
+      reconnectHealth: "disconnected",
     });
 
     // ====================================================

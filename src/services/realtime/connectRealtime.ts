@@ -184,11 +184,6 @@ export function connectRealtime(matchId: string, subscriberId: string) {
     console.error("SSE ERROR: connectRealtime called without matchId");
     return;
   }
-  if (!subscriberId?.trim()) {
-    console.error("SSE ERROR: connectRealtime called without subscriberId");
-    return;
-  }
-
   if (typeof window === "undefined") return;
 
   state.subscriberIds.add(subscriberId);

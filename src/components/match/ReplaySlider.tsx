@@ -34,7 +34,7 @@ export default function ReplaySlider({ matchId }: Props) {
           matchId,
           error
         );
-        setEventsLength(getReplayEvents(matchId).length);
+        setEventsLength(0);
       });
 
     const unsubscribeReplay = subscribeReplay(() => {

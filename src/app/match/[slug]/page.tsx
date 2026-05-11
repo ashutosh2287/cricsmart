@@ -545,27 +545,32 @@ function TabsArea({
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0">
         {/* ── Tab Bar ── */}
-        <div className="sticky top-24 z-20 mb-6 overflow-x-auto pb-1">
-          <div className="inline-flex min-w-full gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-2 backdrop-blur-xl">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab;
-              return (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={cls(
-                    "rounded-xl px-4 py-2.5 text-sm font-medium capitalize whitespace-nowrap transition-all",
-                    isActive
-                      ? "bg-white text-slate-950 shadow-md"
-                      : "text-gray-300 hover:bg-white/5 hover:text-white"
-                  )}
-                >
-                  {tab}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <div className="sticky top-24 z-20 mb-6 overflow-x-auto">
+  <div
+    className="inline-flex min-w-full"
+    style={{ borderBottom: "1px solid var(--border-subtle)" }}
+  >
+    {tabs.map((tab) => {
+      const isActive = activeTab === tab;
+      return (
+        <button
+          key={tab}
+          onClick={() => setActiveTab(tab)}
+          style={{
+            color: isActive ? "var(--text-primary)" : "var(--text-muted)",
+            borderBottom: isActive
+              ? "2px solid var(--accent-brand)"
+              : "2px solid transparent",
+            marginBottom: "-1px",
+          }}
+          className="px-4 py-3 text-sm font-medium capitalize whitespace-nowrap transition-colors hover:text-white"
+        >
+          {tab}
+        </button>
+      );
+    })}
+  </div>
+</div>
 
         {/* ── Overview ── */}
         {activeTab === "overview" && (
@@ -1532,17 +1537,26 @@ function MatchInnerPage({
 
                   {/* Match header (scoreboard) */}
                   <MatchHeader
-                    team1={team1Name}
-                    team2={team2Name}
-                    runs={runs}
-                    wickets={wickets}
-                    over={Math.floor(displayOver)}
-                    ball={Math.round((displayOver % 1) * 10)}
-                    striker={striker}
-                    nonStriker={nonStriker}
-                    bowler={bowler}
-                    lastOverBalls={lastOverBalls}
-                  />
+  team1={team1Name}
+  team2={team2Name}
+  runs={runs}
+  wickets={wickets}
+  over={Math.floor(displayOver)}
+  ball={Math.round((displayOver % 1) * 10)}
+  striker={striker}
+  nonStriker={nonStriker}
+  bowler={bowler}
+  lastOverBalls={lastOverBalls}
+  isLive={!currentEngineState.matchEnded}
+  matchEnded={currentEngineState.matchEnded}
+  winner={currentEngineState.winner}
+  winBy={currentEngineState.winBy}
+  target={innings2 ? target : undefined}
+  runsNeeded={innings2 && !currentEngineState.matchEnded ? runsNeeded : undefined}
+  ballsLeft={innings2 && !currentEngineState.matchEnded ? ballsLeft : undefined}
+  rrr={innings2 && !currentEngineState.matchEnded ? rrr : undefined}
+  crr={crr}
+/>
 
                   {/* Stats pills */}
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
@@ -1619,28 +1633,6 @@ function MatchInnerPage({
                       </div>
                     </div>
                   </div>
-
-                  {/* Match result */}
-                  {currentEngineState.matchEnded &&
-                  currentEngineState.winner ? (
-                    <div className="mt-3 border-t border-white/10 pt-3 text-center text-sm text-white">
-                      {`${currentEngineState.winner} won by ${
-                        typeof currentEngineState.winBy === "string"
-                          ? currentEngineState.winBy
-                          : typeof currentEngineState.winBy === "number"
-                          ? innings2 && (innings2.runs ?? 0) >= target
-                            ? `${currentEngineState.winBy} wickets`
-                            : `${currentEngineState.winBy} runs`
-                          : "result unavailable"
-                      }${
-                        innings2 &&
-                        (innings2.runs ?? 0) >= target &&
-                        ballsLeft > 0
-                          ? ` with ${ballsLeft} balls left`
-                          : ""
-                      }`}
-                    </div>
-                  ) : null}
                 </div>
               </GlassPanel>
             </div>

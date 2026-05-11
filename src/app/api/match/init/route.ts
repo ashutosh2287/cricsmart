@@ -40,7 +40,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const { matchId, teamA, teamB, type, externalMatchId } = body;
+    const {
+  matchId,
+  teamA,
+  teamB,
+  type,
+  externalMatchId,
+  tossWinner,
+  decision,
+} = body;
 
     if (!matchId || !teamA || !teamB) {
       return NextResponse.json(
@@ -103,12 +111,23 @@ if (existing) {
         teamA: teamAObj,
         teamB: teamBObj,
 
-        tossWinner: teamA,
-        decision: "BAT",
+        tossWinner,
+decision,
 
-        battingTeam: teamAObj,
-        bowlingTeam: teamBObj,
+battingTeam:
+  decision === "BAT" ? (
+    tossWinner === teamA ? teamAObj : teamBObj
+  ) : (
+    tossWinner === teamA ? teamBObj : teamAObj
+  ),
 
+bowlingTeam:
+  decision === "BAT" ? (
+    tossWinner === teamA ? teamBObj : teamAObj
+  ) : (
+    tossWinner === teamA ? teamAObj : teamBObj
+  ),
+  
         striker: "",
         nonStriker: "",
         bowler: "",

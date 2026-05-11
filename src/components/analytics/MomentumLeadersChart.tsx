@@ -9,13 +9,13 @@ import {
   ResponsiveContainer,
   Cell
 } from "recharts";
-import { memo, useMemo } from "react";
+import { memo } from "react";
 
 import { getGlobalAnalytics } from "@/services/analytics/globalAnalyticsEngine";
 
 function MomentumLeadersChart() {
 
-  const data = useMemo(() => getGlobalAnalytics().momentumLeaders, []);
+  const data = getGlobalAnalytics().momentumLeaders;
 
   if (!data.length) {
     return (

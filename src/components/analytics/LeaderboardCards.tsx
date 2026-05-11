@@ -1,14 +1,14 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo } from "react";
 import { getGlobalAnalytics } from "@/services/analytics/globalAnalyticsEngine";
 
 function LeaderboardCards() {
 
-  const data = useMemo(() => getGlobalAnalytics(), []);
+  const data = getGlobalAnalytics();
 
-  const topBatter = useMemo(() => data.topRunScorers[0], [data]);
-  const topImpact = useMemo(() => data.topImpactPlayers[0], [data]);
+  const topBatter = data.topRunScorers[0];
+  const topImpact = data.topImpactPlayers[0];
 
   return (
 

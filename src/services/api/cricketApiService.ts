@@ -30,17 +30,17 @@ type ApiInnings = {
 }
 
 const API_BASE = "https://api.cricapi.com/v1"
+const API_KEY = process.env.CRICKET_API_KEY
 
 const REQUEST_TIMEOUT = 8000
 
 function getApiKey() {
-  const apiKey = process.env.CRICKET_API_KEY
-  if (!apiKey) {
+  if (!API_KEY) {
     throw new NonRetryableFetchError(
       "Missing server-side CRICKET_API_KEY for live provider integration"
     )
   }
-  return apiKey
+  return API_KEY
 }
 
 function generateEventId(

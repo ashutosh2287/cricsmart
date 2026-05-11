@@ -20,6 +20,7 @@ npm run build
 ## Production environment variables
 
 - `REDIS_URL` – Redis connection string used by server routes/services.
+- `CRICKET_API_KEY` – Server-side API key used for live CricAPI scorecard ingestion.
 - `NEXT_PUBLIC_BASE_URL` – Public frontend URL for client calls.
 - `NEXT_PUBLIC_ERROR_ENDPOINT` – Optional monitoring endpoint for client crash reports.
 - `LOG_LEVEL` – Structured logger minimum level (`debug`, `info`, `warn`, `error`).

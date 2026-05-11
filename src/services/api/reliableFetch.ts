@@ -4,6 +4,13 @@ const MAX_RETRIES = 3;
 const BASE_DELAY = 500; // ms
 const REQUEST_TIMEOUT = 8000;
 
+export class NonRetryableFetchError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NonRetryableFetchError";
+  }
+}
+
 function sleep(ms: number) {
   return new Promise((res) => setTimeout(res, ms));
 }
@@ -34,6 +41,7 @@ export async function fetchWithRetry<T>(
       return await withTimeout(fn, REQUEST_TIMEOUT, signal);
     } catch (err: unknown) {
       if (signal?.aborted) throw err;
+      if (err instanceof NonRetryableFetchError) throw err;
 
       attempt++;
       if (attempt > MAX_RETRIES) {

@@ -1,4 +1,5 @@
 // src/services/api/cricketApiService.ts
+import { NonRetryableFetchError } from "./reliableFetch";
 
 export type ApiBallEvent = {
   id: string
@@ -29,9 +30,18 @@ type ApiInnings = {
 }
 
 const API_BASE = "https://api.cricapi.com/v1"
-const API_KEY = process.env.NEXT_PUBLIC_CRICKET_API_KEY
 
 const REQUEST_TIMEOUT = 8000
+
+function getApiKey() {
+  const apiKey = process.env.CRICKET_API_KEY
+  if (!apiKey) {
+    throw new NonRetryableFetchError(
+      "Missing server-side CRICKET_API_KEY for live provider integration"
+    )
+  }
+  return apiKey
+}
 
 function generateEventId(
   matchId: string,
@@ -66,8 +76,8 @@ export async function fetchLiveMatchEvents(
   matchId: string,
   signal?: AbortSignal
 ): Promise<ApiBallEvent[]> {
-
-  const url = `${API_BASE}/match_scorecard?apikey=${API_KEY}&id=${matchId}`
+  const apiKey = getApiKey()
+  const url = `${API_BASE}/match_scorecard?apikey=${encodeURIComponent(apiKey)}&id=${encodeURIComponent(matchId)}`
 
   let res: Response
 

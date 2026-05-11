@@ -167,6 +167,16 @@ bowlingTeam:
           { status: 400 }
         );
       }
+      if (!process.env.CRICKET_API_KEY) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Missing server-side CRICKET_API_KEY for live provider integration",
+          },
+          { status: 400 }
+        );
+      }
 
       console.log("📡 Starting LIVE ingestion:", matchId);
 

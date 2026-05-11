@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
   ReferenceArea
 } from "recharts";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 
 import { getPlayerForm } from "@/services/analytics/playerFormEngine";
 
@@ -19,7 +19,7 @@ type Props = {
 
 function PlayerFormGraph({ playerId }: Props) {
 
-  const form = getPlayerForm(playerId);
+  const form = useMemo(() => getPlayerForm(playerId), [playerId]);
 
   if (!form.length) {
     return (

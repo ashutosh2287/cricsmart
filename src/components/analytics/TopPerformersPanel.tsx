@@ -1,11 +1,11 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { computeTopPerformers } from "@/services/analytics/topPerformersEngine";
 
 function TopPerformersPanel({ matchId }: { matchId: string }) {
 
-  const performers = computeTopPerformers(matchId);
+  const performers = useMemo(() => computeTopPerformers(matchId), [matchId]);
 
   return (
 

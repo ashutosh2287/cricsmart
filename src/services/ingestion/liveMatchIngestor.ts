@@ -23,7 +23,7 @@ const MAX_EVENT_BATCH = 50;
 
 function buildEventKey(apiEvent: ApiBallEvent) {
   if (apiEvent.id) return apiEvent.id;
-  return `${apiEvent.innings}-${apiEvent.over}-${apiEvent.ball}-${apiEvent.runs}-${apiEvent.type}-${apiEvent.wicket}`;
+  return `${apiEvent.innings}-${apiEvent.over}-${apiEvent.ball}-${apiEvent.runs}-${apiEvent.type}-w${apiEvent.wicket ? 1 : 0}`;
 }
 
 function buildPointer(apiEvent: ApiBallEvent) {
@@ -48,7 +48,7 @@ function isValidIncomingEvent(event: ApiBallEvent): boolean {
   if (!event) return false;
   if (!Number.isFinite(event.innings) || event.innings < 0) return false;
   if (!Number.isFinite(event.over) || event.over < 0) return false;
-  if (!Number.isFinite(event.ball) || event.ball < 0 || event.ball > 9) return false;
+  if (!Number.isFinite(event.ball) || event.ball < 0 || event.ball > 6) return false;
   if (!Number.isFinite(event.runs) || event.runs < 0) return false;
   if (!event.type) return false;
   return true;

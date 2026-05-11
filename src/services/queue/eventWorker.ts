@@ -10,10 +10,11 @@ const workerLocks = new Set<string>();
 const processedPointers: Record<string, string> = {};
 const processedKeys: Record<string, Set<string>> = {};
 const MAX_CACHE = 300;
-const MAX_EVENT_AGE_MS = 10 * 60 * 1000;
+const DEFAULT_MAX_EVENT_AGE_MS = 120000;
+const MAX_EVENT_AGE_MS = Number(process.env.LIVE_EVENT_MAX_AGE_MS ?? DEFAULT_MAX_EVENT_AGE_MS);
 
 function buildEventKey(apiEvent: ApiBallEvent) {
-  return apiEvent.id || `${apiEvent.innings}-${apiEvent.over}-${apiEvent.ball}-${apiEvent.runs}-${apiEvent.type}-${apiEvent.wicket}`;
+  return apiEvent.id || `${apiEvent.innings}-${apiEvent.over}-${apiEvent.ball}-${apiEvent.runs}-${apiEvent.type}-w${apiEvent.wicket ? 1 : 0}`;
 }
 
 function buildPointer(apiEvent: ApiBallEvent) {

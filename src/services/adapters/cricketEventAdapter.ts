@@ -28,16 +28,15 @@ function normalizeType(apiEvent: ApiBallEvent):
 
 function normalizeDismissal(
   apiEvent: ApiBallEvent,
-  striker: string,
-  nonStriker: string
+  striker: string
 ): "BOWLED" | "CAUGHT" | "RUN_OUT_STRIKER" | "RUN_OUT_NON_STRIKER" {
   const text = String(apiEvent.dismissal ?? "").toLowerCase();
 
   if (text.includes("run")) {
-    if (apiEvent.batsman?.trim() === nonStriker.trim()) {
-      return "RUN_OUT_NON_STRIKER";
+    if (apiEvent.batsman?.trim() === striker.trim()) {
+      return "RUN_OUT_STRIKER";
     }
-    return "RUN_OUT_STRIKER";
+    return "RUN_OUT_NON_STRIKER";
   }
 
   if (text.includes("catch")) {
@@ -47,7 +46,7 @@ function normalizeDismissal(
   return "BOWLED";
 }
 
-function isFiniteNonNegative(value: number) {
+function isFiniteAndNonNegative(value: number) {
   return Number.isFinite(value) && value >= 0;
 }
 
@@ -62,10 +61,10 @@ export function adaptApiEventToEngineEvent(
   if (!apiEvent) return null;
 
   if (
-    !isFiniteNonNegative(apiEvent.innings) ||
-    !isFiniteNonNegative(apiEvent.over) ||
-    !isFiniteNonNegative(apiEvent.ball) ||
-    !isFiniteNonNegative(apiEvent.runs)
+    !isFiniteAndNonNegative(apiEvent.innings) ||
+    !isFiniteAndNonNegative(apiEvent.over) ||
+    !isFiniteAndNonNegative(apiEvent.ball) ||
+    !isFiniteAndNonNegative(apiEvent.runs)
   ) {
     return null;
   }
@@ -111,7 +110,7 @@ export function adaptApiEventToEngineEvent(
         ...common,
         type: "WICKET",
         runs: apiEvent.runs ?? 0,
-        dismissalKind: normalizeDismissal(apiEvent, striker, nonStriker),
+        dismissalKind: normalizeDismissal(apiEvent, striker),
       };
     case "WD":
       return {

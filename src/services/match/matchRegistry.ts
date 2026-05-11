@@ -65,7 +65,7 @@ function decodeRecord(raw: Record<string, string>, fallbackMatchId: string): Mat
     lastUpdateAt: toOptionalNumber(raw.lastUpdateAt) ?? Date.now(),
     lastHeartbeatAt: toOptionalNumber(raw.lastHeartbeatAt),
     heartbeatFresh: toBool(raw.heartbeatFresh),
-    reconnectHealth: (toOptionalString(raw.reconnectHealth) as MatchReconnectHealth | undefined) ?? undefined,
+    reconnectHealth: toOptionalString(raw.reconnectHealth) as MatchReconnectHealth | undefined,
     isLiveConnected: toBool(raw.isLiveConnected),
   };
 }

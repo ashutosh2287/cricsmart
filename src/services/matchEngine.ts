@@ -22,6 +22,7 @@ import { clearPlayerRegistry } from "./player/playerRegistry";
 import { updatePlayerRegistry } from "./playerRegistryEngine";
 import { broadcast } from "@/services/realtime/eventBus";
 import { appendEventTimeline, resetEventTimeline } from "@/services/replay/eventTimeline";
+import { appendCommentaryTimeline, resetCommentaryTimeline } from "@/services/commentary/commentaryTimelineStore";
 
 
 
@@ -1243,6 +1244,14 @@ const eventMeta = {
 } as const;
 
 appendEventTimeline(matchId, eventMeta);
+appendCommentaryTimeline({
+  matchId,
+  eventId: ballEvent.id,
+  sequence,
+  timestamp: ballEvent.timestamp,
+  text: commentaryText,
+  source: "ENGINE",
+});
 
 // 📡 BROADCAST BALL EVENT
 broadcast(matchId, {
@@ -1501,6 +1510,7 @@ export function resetMatchState(matchId: string) {
   delete snapshotMap[matchId];
   delete temporalIndex[matchId];
   resetEventTimeline(matchId);
+  resetCommentaryTimeline(matchId);
 
   // 🔥 CLEAR PLAYER REGISTRY (VERY IMPORTANT)
   clearPlayerRegistry(matchId);

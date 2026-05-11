@@ -3,6 +3,7 @@ import { stopMatch } from "@/services/match/matchManager";
 import { stopLiveMatchIngestor } from "@/services/ingestion/liveMatchIngestor";
 import { resetMatchState } from "@/services/matchEngine";
 import { stopWorker } from "@/services/queue/eventWorker";
+import { markMatchStopped } from "@/services/match/matchRegistry";
 
 /* ========================= */
 /* API: STOP MATCH */
@@ -41,6 +42,8 @@ export async function POST(req: NextRequest) {
     /* 🔥 STOP WORKER */
     /* ========================= */
     stopWorker(matchId);
+
+    await markMatchStopped(matchId);
 
     return NextResponse.json({
       success: true,

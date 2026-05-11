@@ -135,13 +135,6 @@ function openSocket(matchId: string) {
 
   es.onopen = () => {
     state.reconnectAttempts = 0;
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("SSE_CONNECTED", {
-          detail: { matchId },
-        })
-      );
-    }
     refreshLatestSnapshot(matchId).catch((error) => {
       console.error("SSE ERROR: failed to refresh latest snapshot", error);
     });

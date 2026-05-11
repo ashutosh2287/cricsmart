@@ -27,7 +27,7 @@ function derivePhase(
 export default function ConnectionStatus({ hideWhenConnected = true }: Props) {
   const initialState = getRealtimeConnectionState();
   const initialAttempts = initialState.reconnectAttempts;
-  const [phase, setPhase] = useState<ConnectionPhase>(() =>
+  const [phase, setPhase] = useState<ConnectionPhase>(
     derivePhase(initialState.isConnected, initialState.readyState, initialAttempts)
   );
   const [attempts, setAttempts] = useState(initialAttempts);

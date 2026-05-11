@@ -23,6 +23,14 @@ type StartSimulationBody = {
   tossDecision?: "BAT" | "BOWL";
 };
 
+// ==============================
+// 🔧 HELPER: Normalize team names (case-insensitive)
+// ==============================
+function normalizeTeamName(name: string | undefined): string | undefined {
+  if (!name) return undefined;
+  return name.toLowerCase().trim();
+}
+
 export async function POST(req: Request) {
   let lockedMatchId: string | undefined;
 
@@ -86,18 +94,29 @@ export async function POST(req: Request) {
     }
 
     // ==============================
-    // 🎯 NORMALIZE TOSS
+    // 🎯 NORMALIZE TOSS (FIX: CASE-INSENSITIVE)
     // ==============================
-    const normalizedTossWinner =
-      tossWinner === teamA.name
-        ? teamA.name
-        : tossWinner === teamB.name
-        ? teamB.name
-        : undefined;
+    const tossWinnerNormalized = normalizeTeamName(tossWinner);
+    const teamANameNormalized = normalizeTeamName(teamA.name);
+    const teamBNameNormalized = normalizeTeamName(teamB.name);
+
+    let normalizedTossWinner: string | undefined;
+
+    if (tossWinnerNormalized === teamANameNormalized) {
+      normalizedTossWinner = teamA.name; // Use original casing
+    } else if (tossWinnerNormalized === teamBNameNormalized) {
+      normalizedTossWinner = teamB.name; // Use original casing
+    }
 
     if (!normalizedTossWinner) {
+      console.error(
+        `❌ Toss winner mismatch. Received: "${tossWinner}", teamA: "${teamA.name}", teamB: "${teamB.name}"`
+      );
       return Response.json(
-        { success: false, error: `Invalid tossWinner: ${tossWinner}` },
+        {
+          success: false,
+          error: `Invalid tossWinner: ${tossWinner}. Expected "${teamA.name}" or "${teamB.name}"`,
+        },
         { status: 400 }
       );
     }
@@ -170,6 +189,13 @@ export async function POST(req: Request) {
     const bowlingTeam =
       battingTeam === teamA.name ? teamB.name : teamA.name;
 
+    console.log("🏏 TOSS RESULT", {
+      tossWinner: normalizedTossWinner,
+      decision: tossDecision,
+      battingTeam,
+      bowlingTeam,
+    });
+
     // ==============================
     // 🔥 SAFE INNINGS UPDATE (NO ARRAY RESET)
     // ==============================
@@ -188,11 +214,9 @@ export async function POST(req: Request) {
       decision: tossDecision,
 
       // 🔥 FIXED (NO HARDCODE)
-      battingTeam:
-        battingTeam === teamA.name ? teamA : teamB,
+      battingTeam: battingTeam === teamA.name ? teamA : teamB,
 
-      bowlingTeam:
-        bowlingTeam === teamA.name ? teamA : teamB,
+      bowlingTeam: bowlingTeam === teamA.name ? teamA : teamB,
 
       battingOrder: [],
       bowlingOrder: [],
@@ -231,7 +255,6 @@ export async function POST(req: Request) {
       alreadyRunning: result.alreadyRunning,
       matchId,
     });
-
   } catch (err) {
     console.error("❌ Failed to start simulation", err);
 

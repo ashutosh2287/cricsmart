@@ -15,6 +15,7 @@ export type RealtimeConnectionState = {
   activeMatchId: string | null;
   manuallyClosed: boolean;
   subscribers: number;
+  subscriberIds: Set<string>;
   reconnectTimer: number | null;
   reconnectAttempts: number;
 };
@@ -24,6 +25,7 @@ const state: RealtimeConnectionState = {
   activeMatchId: null,
   manuallyClosed: false,
   subscribers: 0,
+  subscriberIds: new Set(),
   reconnectTimer: null,
   reconnectAttempts: 0,
 };
@@ -184,13 +186,16 @@ function openSocket(matchId: string) {
   };
 }
 
-export function connectRealtime(matchId: string) {
+export function connectRealtime(matchId: string, subscriberId = "default") {
   if (!matchId) {
     console.error("SSE ERROR: connectRealtime called without matchId");
     return;
   }
 
   if (typeof window === "undefined") return;
+
+  state.subscriberIds.add(subscriberId);
+  state.subscribers = state.subscriberIds.size;
 
   const isAlreadyConnectedToMatch =
     state.socket &&
@@ -202,8 +207,6 @@ export function connectRealtime(matchId: string) {
     return;
   }
 
-  state.subscribers = Math.max(1, state.subscribers + 1);
-
   if (state.activeMatchId && state.activeMatchId !== matchId) {
     state.manuallyClosed = true;
     cleanupSocket();
@@ -213,10 +216,11 @@ export function connectRealtime(matchId: string) {
   openSocket(matchId);
 }
 
-export function disconnectRealtime(matchId?: string) {
+export function disconnectRealtime(matchId?: string, subscriberId = "default") {
   if (matchId && state.activeMatchId && state.activeMatchId !== matchId) return;
 
-  state.subscribers = Math.max(0, state.subscribers - 1);
+  state.subscriberIds.delete(subscriberId);
+  state.subscribers = state.subscriberIds.size;
   if (state.subscribers > 0) return;
 
   state.manuallyClosed = true;

@@ -49,7 +49,13 @@ export async function GET() {
             : record.overDisplay;
 
         const commentary = getCommentary(record.matchId);
-        const commentaryPreview = commentary.length > 0 ? commentary[commentary.length - 1] : record.commentaryPreview;
+        const latestEntry: unknown = commentary.length > 0 ? commentary[commentary.length - 1] : undefined;
+        const commentaryPreview =
+          typeof latestEntry === "string"
+            ? latestEntry
+            : typeof latestEntry === "object" && latestEntry !== null && "text" in latestEntry && typeof (latestEntry as { text?: unknown }).text === "string"
+              ? (latestEntry as { text: string }).text
+              : record.commentaryPreview;
 
         return withDerivedFreshness({
           ...record,

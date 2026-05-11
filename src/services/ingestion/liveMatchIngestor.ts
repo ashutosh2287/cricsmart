@@ -48,7 +48,7 @@ function isValidIncomingEvent(event: ApiBallEvent): boolean {
   if (!event) return false;
   if (!Number.isFinite(event.innings) || event.innings < 0) return false;
   if (!Number.isFinite(event.over) || event.over < 0) return false;
-  if (!Number.isFinite(event.ball) || event.ball < 0 || event.ball > 6) return false;
+  if (!Number.isFinite(event.ball) || event.ball < 0) return false;
   if (!Number.isFinite(event.runs) || event.runs < 0) return false;
   if (!event.type) return false;
   return true;
@@ -242,6 +242,7 @@ export function stopLiveMatchIngestor(matchId: string) {
   delete processedEvents[matchId];
   delete lastProcessedPointer[matchId];
 
+  // Non-blocking on shutdown to avoid delaying interval teardown.
   markMatchDisconnected(matchId).catch((error) => {
     console.error("❌ Failed to mark match disconnected", error);
   });

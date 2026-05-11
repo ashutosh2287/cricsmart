@@ -15,10 +15,10 @@ function normalizeType(apiEvent: ApiBallEvent):
 
   const raw = String(apiEvent.type ?? "RUN").toUpperCase();
 
-  if (raw === "WD" || raw === "WIDE") return "WD";
-  if (raw === "NB" || raw === "NOBALL" || raw === "NO_BALL") return "NB";
-  if (raw === "BYE" || raw === "BYES") return "BYE";
-  if (raw === "LB" || raw === "LEG_BYE" || raw === "LEGBYE") return "LB";
+  if (raw.includes("WD") || raw.includes("WIDE")) return "WD";
+  if (raw.includes("NB") || raw.includes("NOBALL") || raw.includes("NO_BALL")) return "NB";
+  if (raw.includes("BYE") && !raw.includes("LEG")) return "BYE";
+  if (raw.includes("LB") || raw.includes("LEG_BYE") || raw.includes("LEGBYE")) return "LB";
 
   if (apiEvent.runs === 4) return "FOUR";
   if (apiEvent.runs === 6) return "SIX";
@@ -33,7 +33,7 @@ function normalizeDismissal(
   const text = String(apiEvent.dismissal ?? "").toLowerCase();
 
   if (text.includes("run")) {
-    if (apiEvent.batsman?.trim() === striker.trim()) {
+    if (apiEvent.batsman?.trim().toLowerCase() === striker.trim().toLowerCase()) {
       return "RUN_OUT_STRIKER";
     }
     return "RUN_OUT_NON_STRIKER";

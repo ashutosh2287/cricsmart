@@ -36,10 +36,10 @@ const API_BASE = "https://api.cricapi.com/v1";
 const REQUEST_TIMEOUT = 8000;
 
 function getApiKey(): string {
-  const key = process.env.CRICKET_API_KEY ?? process.env.NEXT_PUBLIC_CRICKET_API_KEY;
+  const key = process.env.CRICKET_API_KEY;
 
   if (!key) {
-    throw new Error("Missing CRICKET_API_KEY for live provider integration");
+    throw new Error("Missing server-side CRICKET_API_KEY for live provider integration");
   }
 
   return key;

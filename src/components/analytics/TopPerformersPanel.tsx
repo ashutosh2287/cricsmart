@@ -1,8 +1,9 @@
 "use client";
 
+import { memo } from "react";
 import { computeTopPerformers } from "@/services/analytics/topPerformersEngine";
 
-export default function TopPerformersPanel({ matchId }: { matchId: string }) {
+function TopPerformersPanel({ matchId }: { matchId: string }) {
 
   const performers = computeTopPerformers(matchId);
 
@@ -34,3 +35,9 @@ export default function TopPerformersPanel({ matchId }: { matchId: string }) {
 
   );
 }
+
+const MemoizedTopPerformersPanel = memo(TopPerformersPanel);
+
+MemoizedTopPerformersPanel.displayName = "TopPerformersPanel";
+
+export default MemoizedTopPerformersPanel;

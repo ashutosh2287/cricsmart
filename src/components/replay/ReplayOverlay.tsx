@@ -7,6 +7,11 @@ import {
   playReplay,
   stopReplayUI,
   seekReplayUI,
+  seekNextWicket,
+  seekPrevWicket,
+  seekNextSix,
+  seekToOver,
+  getHighlights,
 } from "@/services/replay/replayController";
 import { getMatchState } from "@/services/matchEngine";
 import {
@@ -64,6 +69,8 @@ const [replayMeta, setReplayMeta] = useState(getReplayState(matchId));
     return temporalIndex[matchId]?.length ?? 0;
   }, [matchId]);
 
+  const highlights = useMemo(() => getHighlights(matchId), [matchId]);
+
   if (!matchState) return null;
 
 const innings =
@@ -99,6 +106,29 @@ if (!innings) return null;
   function handleSpeed(speed: number) {
     setReplaySpeed(800 / speed); // adjust interval logic
   }
+
+  async function handlePrevWicket() {
+    await seekPrevWicket(matchId, currentIndex);
+    setCurrentIndex((prev) => Math.max(0, prev - 1));
+  }
+
+  async function handleNextWicket() {
+    await seekNextWicket(matchId, currentIndex);
+    setCurrentIndex((prev) =>
+      Math.min(timelineLength - 1, prev + 1)
+    );
+  }
+
+  async function handleNextSix() {
+    await seekNextSix(matchId, currentIndex);
+  }
+
+  async function handleSeekOver(over: number) {
+    await seekToOver(matchId, over);
+    setCurrentIndex(over * 6);
+  }
+
+  const overCount = Math.ceil(timelineLength / 6);
 
   /*
   ====================================================
@@ -146,6 +176,24 @@ if (!innings) return null;
 
 </div>
 
+      {/* WICKET MARKERS */}
+      {highlights.wickets.length > 0 && (
+        <div className="mt-3 text-xs text-red-300 opacity-70">
+          Wickets at balls:{" "}
+          {highlights.wickets
+            .slice(0, 10)
+            .map((i) => (
+              <button
+                key={i}
+                onClick={() => handleScrub(i)}
+                className="underline mx-1 hover:text-red-200"
+              >
+                {i + 1}
+              </button>
+            ))}
+        </div>
+      )}
+
       {/* CONTROLS */}
       <div className="flex gap-4 mt-6 flex-wrap justify-center">
 
@@ -171,6 +219,27 @@ if (!innings) return null;
         </button>
 
         <button
+          onClick={handlePrevWicket}
+          className="bg-red-800 hover:bg-red-700 px-4 py-2 rounded"
+        >
+          🏏 Prev Wicket
+        </button>
+
+        <button
+          onClick={handleNextWicket}
+          className="bg-red-700 hover:bg-red-600 px-4 py-2 rounded"
+        >
+          🏏 Next Wicket
+        </button>
+
+        <button
+          onClick={handleNextSix}
+          className="bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded"
+        >
+          6️⃣ Next Six
+        </button>
+
+        <button
           onClick={() => handleSpeed(0.5)}
           className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded"
         >
@@ -186,6 +255,22 @@ if (!innings) return null;
 
       </div>
 
+      {/* OVER SEEK */}
+      {overCount > 1 && (
+        <div className="mt-4 flex flex-wrap gap-2 justify-center max-w-2xl">
+          <span className="text-xs text-gray-400 self-center">Jump to over:</span>
+          {Array.from({ length: overCount }, (_, i) => (
+            <button
+              key={i}
+              onClick={() => handleSeekOver(i)}
+              className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded"
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* EXIT */}
       <button
         onClick={onClose}
@@ -193,6 +278,11 @@ if (!innings) return null;
       >
         Exit Replay
       </button>
+
+      {/* PLAYBACK META */}
+      <div className="mt-4 text-xs text-gray-500">
+        {replayMeta.isPlaying ? "▶ Playing" : "⏸ Paused"} · Ball {currentIndex + 1} of {timelineLength}
+      </div>
 
     </div>
   );

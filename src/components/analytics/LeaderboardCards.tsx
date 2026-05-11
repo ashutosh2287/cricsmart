@@ -1,8 +1,9 @@
 "use client";
 
+import { memo } from "react";
 import { getGlobalAnalytics } from "@/services/analytics/globalAnalyticsEngine";
 
-export default function LeaderboardCards() {
+function LeaderboardCards() {
 
   const data = getGlobalAnalytics();
 
@@ -93,3 +94,9 @@ export default function LeaderboardCards() {
   );
 
 }
+
+const MemoizedLeaderboardCards = memo(LeaderboardCards);
+
+MemoizedLeaderboardCards.displayName = "LeaderboardCards";
+
+export default MemoizedLeaderboardCards;

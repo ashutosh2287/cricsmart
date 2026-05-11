@@ -9,10 +9,11 @@ import {
   ResponsiveContainer,
   Cell
 } from "recharts";
+import { memo } from "react";
 
 import { getGlobalAnalytics } from "@/services/analytics/globalAnalyticsEngine";
 
-export default function MomentumLeadersChart() {
+function MomentumLeadersChart() {
 
   const data = getGlobalAnalytics().momentumLeaders;
 
@@ -73,3 +74,9 @@ export default function MomentumLeadersChart() {
     </div>
   );
 }
+
+const MemoizedMomentumLeadersChart = memo(MomentumLeadersChart);
+
+MemoizedMomentumLeadersChart.displayName = "MomentumLeadersChart";
+
+export default MemoizedMomentumLeadersChart;

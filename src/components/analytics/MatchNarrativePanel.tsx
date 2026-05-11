@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { subscribeDirectorSignal } from "@/services/directorSignalBus";
 
 type Props = {
@@ -14,7 +14,7 @@ type Story = {
   color: string;
 };
 
-export default function MatchNarrativePanel({ matchId }: Props) {
+function MatchNarrativePanel({ matchId }: Props) {
   const [stories, setStories] = useState<Story[]>([]);
 
   useEffect(() => {
@@ -137,3 +137,9 @@ export default function MatchNarrativePanel({ matchId }: Props) {
     </div>
   );
 }
+
+const MemoizedMatchNarrativePanel = memo(MatchNarrativePanel);
+
+MemoizedMatchNarrativePanel.displayName = "MatchNarrativePanel";
+
+export default MemoizedMatchNarrativePanel;

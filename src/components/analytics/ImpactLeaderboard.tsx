@@ -1,9 +1,10 @@
 "use client";
 
+import { memo } from "react";
 import { getPlayerStats } from "@/services/analytics/playerStatsEngine";
 import { getPlayerImpact } from "@/services/analytics/playerImpactEngine";
 
-export default function ImpactLeaderboard({ matchId }: { matchId: string }) {
+function ImpactLeaderboard({ matchId }: { matchId: string }) {
 
   const stats = getPlayerStats(matchId);
 
@@ -47,3 +48,9 @@ export default function ImpactLeaderboard({ matchId }: { matchId: string }) {
 
   );
 }
+
+const MemoizedImpactLeaderboard = memo(ImpactLeaderboard);
+
+MemoizedImpactLeaderboard.displayName = "ImpactLeaderboard";
+
+export default MemoizedImpactLeaderboard;

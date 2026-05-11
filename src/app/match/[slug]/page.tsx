@@ -1199,9 +1199,15 @@ function TabsArea({
                     <TossPanel
                       teamA={{ name: matchMeta?.teamA.name } as Team}
                       teamB={{ name: matchMeta?.teamB.name } as Team}
-                      onConfirm={(winner, decision) =>
-                        setTossData({ winner, decision })
-                      }
+                      onConfirm={(winner, decision) => {
+                        setTossData({ winner, decision });
+                        const nextMeta = {
+                          ...matchMeta,
+                          toss: { winner: winner.name, decision },
+                        };
+                        setMatchMeta(nextMeta);
+                        setLocalMatchMeta(nextMeta);
+                      }}
                     />
                   </div>
                 )}

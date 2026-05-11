@@ -76,6 +76,12 @@ const [tossData, setTossData] = useState<TossData | null>(null);
             teamB={{ name: matchMeta.teamB.name } as Team}
             onConfirm={(winner, decision) => {
               setTossData({ winner, decision });
+              const nextMeta = {
+                ...matchMeta,
+                toss: { winner: winner.name, decision },
+              };
+              setMatchMeta(nextMeta);
+              setLocalMatchMeta(nextMeta);
             }}
           />
         )}

@@ -18,6 +18,10 @@ type MatchMeta = {
   matchId: string;
   teamA: { id: string; name: string };
   teamB: { id: string; name: string };
+  toss?: {
+    winner: string;
+    decision: "BAT" | "BOWL";
+  };
 };
 
 const matchMetaStore: Record<string, MatchMeta> = {};

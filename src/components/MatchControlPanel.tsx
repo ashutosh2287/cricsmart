@@ -27,6 +27,11 @@ export default function MatchControlPanel({ matchId }: Props) {
 
     const matchMeta = getMatchMeta(matchId);
     if (!matchMeta) return;
+    if (!matchMeta.toss?.winner || !matchMeta.toss?.decision) {
+      setError("Please complete toss first.");
+      setIsStarting(false);
+      return;
+    }
 
     console.log("🔥 SSE CONNECTED → Starting simulation");
     console.log("🧠 MATCH META:", matchMeta);
@@ -40,8 +45,8 @@ export default function MatchControlPanel({ matchId }: Props) {
         matchId,
         teamAName: matchMeta.teamA.name,
         teamBName: matchMeta.teamB.name,
-        tossWinner: matchMeta.teamA.name,
-        tossDecision: "BAT",
+        tossWinner: matchMeta.toss.winner,
+        tossDecision: matchMeta.toss.decision,
       }),
     })
       .then((res) => res.json())

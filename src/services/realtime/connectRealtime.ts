@@ -148,6 +148,10 @@ function openSocket(matchId: string) {
       console.error("ENGINE ERROR: missing match metadata");
       return;
     }
+    if (!matchMeta.toss?.winner || !matchMeta.toss?.decision) {
+      console.error("ENGINE ERROR: missing toss metadata");
+      return;
+    }
 
     fetch("/api/start-simulation", {
       method: "POST",
@@ -156,8 +160,8 @@ function openSocket(matchId: string) {
         matchId,
         teamAName: matchMeta.teamA.name,
         teamBName: matchMeta.teamB.name,
-        tossWinner: matchMeta.teamA.name,
-        tossDecision: "BAT",
+        tossWinner: matchMeta.toss.winner,
+        tossDecision: matchMeta.toss.decision,
       }),
     })
       .then((res) => res.json())

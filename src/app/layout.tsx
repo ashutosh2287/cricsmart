@@ -7,6 +7,7 @@ import StadiumOverlay from "@/components/StadiumOverlay";
 import BroadcastDirectorOverlay from "@/components/BroadcastDirectorOverlay";
 import EngineBootstrap from "@/components/EngineBootstrap";
 import PageTransition from "@/components/ui/PageTransition";
+import MonitoringBootstrap from "@/components/MonitoringBootstrap";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,6 +51,7 @@ export default function RootLayout({
            ENGINE
         ======================================== */}
         <EngineBootstrap />
+        <MonitoringBootstrap />
 
         {/* ========================================
            OVERLAYS

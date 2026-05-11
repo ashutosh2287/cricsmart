@@ -1,43 +1,54 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { getEventStream } from "@/services/matchEngine";
+import { useEffect, useState } from "react";
 import {
-  scrubToPosition,
-  getReplayPosition
-} from "@/services/replayController";
+  initReplay,
+  getReplayEvents,
+  seekReplayUI,
+} from "@/services/replay/replayController";
+import { getReplayState, subscribeReplay } from "@/services/replay/replayEngine";
 
 type Props = {
   matchId: string;
 };
 
 export default function ReplaySlider({ matchId }: Props) {
-
   const [position, setPosition] = useState(0);
+  const [eventsLength, setEventsLength] = useState(0);
 
-  // 🔥 Load total balls
-  const events = useMemo(() => {
-  return getEventStream(matchId);
-}, [matchId]);
-
-
-const eventsLength = events.length;
-  // 🔥 Sync position from store
   useEffect(() => {
-    const interval = setInterval(() => {
-      setPosition(getReplayPosition(matchId));
-    }, 200);
+    let cancelled = false;
 
-    return () => clearInterval(interval);
+    initReplay(matchId)
+      .then(() => {
+        if (cancelled) return;
+        const replayState = getReplayState(matchId);
+        const events = getReplayEvents(matchId);
+        setPosition(replayState.index ?? 0);
+        setEventsLength(events.length);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setEventsLength(getReplayEvents(matchId).length);
+      });
+
+    const unsubscribeReplay = subscribeReplay(() => {
+      const replayState = getReplayState(matchId);
+      setPosition(replayState.index ?? 0);
+      setEventsLength(getReplayEvents(matchId).length);
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribeReplay();
+    };
   }, [matchId]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const index = Number(e.target.value);
 
     setPosition(index);
-
-    // 🔥 CORE: jump to that ball
-    scrubToPosition(matchId, index);
+    seekReplayUI(matchId, index);
   }
 
   if (eventsLength === 0) return null;

@@ -133,6 +133,13 @@ function openSocket(matchId: string) {
 
   es.onopen = () => {
     state.reconnectAttempts = 0;
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("SSE_CONNECTED", {
+          detail: { matchId },
+        })
+      );
+    }
     refreshLatestSnapshot(matchId).catch((error) => {
       console.error("SSE ERROR: failed to refresh latest snapshot", error);
     });
@@ -185,16 +192,17 @@ export function connectRealtime(matchId: string) {
 
   if (typeof window === "undefined") return;
 
-  state.subscribers += 1;
-
-  if (
+  const isAlreadyConnectedToMatch =
     state.socket &&
     state.activeMatchId === matchId &&
     (state.socket.readyState === EventSource.OPEN ||
-      state.socket.readyState === EventSource.CONNECTING)
-  ) {
-    return; // Already connected
+      state.socket.readyState === EventSource.CONNECTING);
+
+  if (isAlreadyConnectedToMatch) {
+    return;
   }
+
+  state.subscribers = Math.max(1, state.subscribers + 1);
 
   if (state.activeMatchId && state.activeMatchId !== matchId) {
     state.manuallyClosed = true;
@@ -233,5 +241,6 @@ export function getRealtimeConnectionState() {
       state.socket?.readyState === EventSource.CONNECTING,
     readyState: state.socket?.readyState ?? null,
     subscribers: state.subscribers,
+    reconnectAttempts: state.reconnectAttempts,
   };
 }

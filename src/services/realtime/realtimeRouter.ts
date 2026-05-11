@@ -76,6 +76,7 @@ analytics?: Record<string, unknown>;
 
 const lastAcceptedEventIdByMatch = new Map<string, string>();
 const lastAcceptedFingerprintByMatch = new Map<string, string>();
+const lastAcceptedSequenceByMatch = new Map<string, number>();
 
 function emitCricUpdate(detail: Record<string, unknown>) {
   if (typeof window === "undefined") return;
@@ -210,6 +211,15 @@ function shouldAcceptBallState(
   return true;
 }
 
+function shouldAcceptBallSequence(matchId: string, sequence?: number) {
+  if (typeof sequence !== "number") return true;
+
+  const lastAcceptedSequence = lastAcceptedSequenceByMatch.get(matchId);
+  if (lastAcceptedSequence === undefined) return true;
+
+  return sequence > lastAcceptedSequence;
+}
+
 export function routeRealtimeEvent(event: RealtimeEvent) {
   if (!event?.matchId) {
     console.warn("⚠️ Realtime event missing matchId", event);
@@ -222,6 +232,13 @@ export function routeRealtimeEvent(event: RealtimeEvent) {
     matchId: event.matchId,
     type: "CONNECTED",
   });
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("SSE_CONNECTED", {
+        detail: { matchId: event.matchId },
+      })
+    );
+  }
   return;
 
     case "INITIAL_STATE": {
@@ -243,6 +260,7 @@ export function routeRealtimeEvent(event: RealtimeEvent) {
     event.matchId,
     getProgressFingerprint(event.data)
   );
+  lastAcceptedSequenceByMatch.delete(event.matchId);
 
   emitCricUpdate({
     matchId: event.matchId,
@@ -261,8 +279,12 @@ export function routeRealtimeEvent(event: RealtimeEvent) {
 
   const engineEventId =
     event.data.eventMeta?.eventId ?? event.data.engineEvent?.id;
+  const sequence = event.data.eventMeta?.sequence;
 
   if (!shouldAcceptBallState(event.matchId, state, engineEventId)) {
+    return;
+  }
+  if (!shouldAcceptBallSequence(event.matchId, sequence)) {
     return;
   }
 
@@ -302,6 +324,9 @@ patchMatchRuntime(event.matchId, {
 
   if (engineEventId) {
     lastAcceptedEventIdByMatch.set(event.matchId, engineEventId);
+  }
+  if (typeof sequence === "number") {
+    lastAcceptedSequenceByMatch.set(event.matchId, sequence);
   }
 
   lastAcceptedFingerprintByMatch.set(

@@ -66,6 +66,7 @@ import { setMatchMeta } from "@/store/matchStore";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
 import AnimatedScore from "@/components/ui/AnimatedScore";
+import ConnectionStatus from "@/components/ui/ConnectionStatus";
 
 // ─────────────────────────────────────────────
 // Types
@@ -1514,6 +1515,7 @@ function MatchInnerPage({
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      <ConnectionStatus hideWhenConnected={false} />
                       <motion.div
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}

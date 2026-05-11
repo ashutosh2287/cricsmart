@@ -25,8 +25,13 @@ function derivePhase(
 }
 
 export default function ConnectionStatus({ hideWhenConnected = true }: Props) {
-  const [phase, setPhase] = useState<ConnectionPhase>("connecting");
-  const [attempts, setAttempts] = useState(0);
+  const initialState = getRealtimeConnectionState();
+  const initialAttempts =
+    (initialState as { reconnectAttempts?: number }).reconnectAttempts ?? 0;
+  const [phase, setPhase] = useState<ConnectionPhase>(() =>
+    derivePhase(initialState.isConnected, initialState.readyState, initialAttempts)
+  );
+  const [attempts, setAttempts] = useState(initialAttempts);
 
   const refresh = useCallback(() => {
     const state = getRealtimeConnectionState();
@@ -38,7 +43,6 @@ export default function ConnectionStatus({ hideWhenConnected = true }: Props) {
   }, []);
 
   useEffect(() => {
-    refresh();
     const id = setInterval(refresh, 1000);
     return () => clearInterval(id);
   }, [refresh]);

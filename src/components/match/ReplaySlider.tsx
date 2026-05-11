@@ -27,9 +27,13 @@ export default function ReplaySlider({ matchId }: Props) {
         setPosition(replayState.index ?? 0);
         setEventsLength(events.length);
       })
-      .catch(() => {
+      .catch((error) => {
         if (cancelled) return;
-        console.error("[ReplaySlider] Failed to initialize replay state");
+        console.error(
+          "[ReplaySlider] Failed to initialize replay state for match:",
+          matchId,
+          error
+        );
         setEventsLength(getReplayEvents(matchId).length);
       });
 

@@ -92,7 +92,7 @@ export default function MatchControlPanel({ matchId }: Props) {
       });
 
       // ✅ ONLY THIS — NO FETCH HERE
-      connectRealtime(matchId);
+      connectRealtime(matchId, "match-control-panel");
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to start simulation";

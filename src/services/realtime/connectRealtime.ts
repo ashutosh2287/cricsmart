@@ -179,9 +179,13 @@ function openSocket(matchId: string) {
   };
 }
 
-export function connectRealtime(matchId: string, subscriberId = "default") {
+export function connectRealtime(matchId: string, subscriberId: string) {
   if (!matchId) {
     console.error("SSE ERROR: connectRealtime called without matchId");
+    return;
+  }
+  if (!subscriberId?.trim()) {
+    console.error("SSE ERROR: connectRealtime called without subscriberId");
     return;
   }
 
@@ -209,10 +213,14 @@ export function connectRealtime(matchId: string, subscriberId = "default") {
   openSocket(matchId);
 }
 
-export function disconnectRealtime(matchId?: string, subscriberId = "default") {
+export function disconnectRealtime(matchId?: string, subscriberId?: string) {
   if (matchId && state.activeMatchId && state.activeMatchId !== matchId) return;
 
-  state.subscriberIds.delete(subscriberId);
+  if (subscriberId) {
+    state.subscriberIds.delete(subscriberId);
+  } else {
+    state.subscriberIds.clear();
+  }
   state.subscribers = state.subscriberIds.size;
   if (state.subscribers > 0) return;
 

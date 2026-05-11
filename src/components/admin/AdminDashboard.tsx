@@ -94,7 +94,7 @@ const [tossData, setTossData] = useState<TossData | null>(null);
   setStartError(null);
 
   // ✅ ONLY THIS
-  connectRealtime(matchId);
+  connectRealtime(matchId, "admin-dashboard");
 
   // OPTIONAL: redirect if you want
   router.push(`/match/${matchId}`);

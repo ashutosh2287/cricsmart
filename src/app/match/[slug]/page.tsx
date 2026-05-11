@@ -1217,7 +1217,7 @@ function TabsArea({
                       const latestMeta = getMatchMeta(id);
                       if (!latestMeta?.teamA?.name || !latestMeta?.teamB?.name)
                         return setStartError("Please select teams first.");
-                      connectRealtime(id);
+                      connectRealtime(id, "match-page-admin-start");
                     }}
                     className={cls(
                       "rounded-xl px-4 py-2.5 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60",

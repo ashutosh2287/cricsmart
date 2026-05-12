@@ -14,14 +14,14 @@ export async function GET() {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
 
   try {
+    timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     const res = await fetch(
       `https://api.cricapi.com/v1/currentMatches?apikey=${key}&offset=0`,
       { signal: controller.signal, cache: "no-store" }
     );
-    clearTimeout(timeout);
 
     if (!res.ok) {
       return NextResponse.json({
@@ -47,6 +47,8 @@ export async function GET() {
       { status: 200 }
     );
   } finally {
-    clearTimeout(timeout);
+    if (timeout) {
+      clearTimeout(timeout);
+    }
   }
 }

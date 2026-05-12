@@ -39,6 +39,8 @@ type LiveFixture = {
 const FIXTURE_POLL_INTERVAL_MS = 20_000;
 const HEARTBEAT_FRESH_THRESHOLD_MS = 45_000;
 const HEARTBEAT_STALE_THRESHOLD_MS = 150_000;
+const DEFAULT_TEAM_A = "Team A";
+const DEFAULT_TEAM_B = "Team B";
 const ENDED_STATUS_KEYWORDS = ["won by", "result", "abandoned", "stumps", "complete", "ended", "finished"];
 const LIVE_STATUS_KEYWORDS = ["live", "in progress", "innings break", "drinks", "need", "trail", "require"];
 const IPL_KEYWORDS = ["ipl", "indian premier league"];
@@ -121,11 +123,11 @@ function parseFixtureRow(row: unknown): LiveFixture | null {
     .map((entry) => readString(entry))
     .filter((name): name is string => Boolean(name));
 
-  const providerName = readString(record.name) ?? `${teamInfoNames[0] ?? "Team A"} vs ${teamInfoNames[1] ?? "Team B"}`;
+  const providerName = readString(record.name) ?? `${teamInfoNames[0] ?? DEFAULT_TEAM_A} vs ${teamInfoNames[1] ?? DEFAULT_TEAM_B}`;
   const nameParts = providerName.split(/\s+vs\s+/i).map((part) => part.trim()).filter(Boolean);
 
-  const teamA = teamInfoNames[0] ?? teamArrayNames[0] ?? nameParts[0] ?? "Team A";
-  const teamB = teamInfoNames[1] ?? teamArrayNames[1] ?? nameParts[1] ?? "Team B";
+  const teamA = teamInfoNames[0] ?? teamArrayNames[0] ?? nameParts[0] ?? DEFAULT_TEAM_A;
+  const teamB = teamInfoNames[1] ?? teamArrayNames[1] ?? nameParts[1] ?? DEFAULT_TEAM_B;
 
   const scoreRows = Array.isArray(record.score) ? record.score : [];
   const latestScore = asRecord(scoreRows[scoreRows.length - 1]);
@@ -407,6 +409,7 @@ export default function MatchesPage() {
               const heartbeat = getHeartbeatMeta(fixture.lastUpdatedAt);
               const isInitializing = Boolean(initializingByMatchId[fixture.matchId]);
               const actionError = fixtureActionErrors[fixture.matchId];
+              const normalizedFormat = fixture.format.trim().length > 0 ? fixture.format.toUpperCase() : "UNKNOWN";
 
               return (
                 <div
@@ -417,7 +420,7 @@ export default function MatchesPage() {
                     <p className="font-semibold truncate pr-2">
                       {fixture.teamA} vs {fixture.teamB}
                     </p>
-                    <span className="text-xs text-red-300 flex items-center gap-1.5">
+                    <span aria-label="Match is currently live" className="text-xs text-red-300 flex items-center gap-1.5">
                       <span aria-hidden="true" className="relative flex h-2 w-2 shrink-0">
                         <span aria-hidden="true" className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
                         <span aria-hidden="true" className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
@@ -431,10 +434,10 @@ export default function MatchesPage() {
                     {fixture.oversStatus} • {fixture.status}
                   </p>
                   <p className="text-xs text-gray-400 mt-2">
-                    {(fixture.format || "Unknown").toUpperCase()} • {fixture.series}
+                    {normalizedFormat} • {fixture.series}
                   </p>
 
-                  <p className={`text-xs mt-2 flex items-center gap-2 ${heartbeat.badgeClass}`}>
+                  <p role="status" aria-live="polite" className={`text-xs mt-2 flex items-center gap-2 ${heartbeat.badgeClass}`}>
                     <span className={`inline-block w-2 h-2 rounded-full ${heartbeat.dotClass}`} />
                     {heartbeat.text}
                   </p>

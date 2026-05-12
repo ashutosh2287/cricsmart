@@ -99,6 +99,7 @@ export default function MatchHeader({
     const element = scoreRef.current;
     if (!element) return;
     element.classList.remove("score-tick");
+    // Force reflow so the same CSS animation can restart on consecutive score updates.
     void element.offsetWidth;
     element.classList.add("score-tick");
   }, [runs]);
@@ -109,6 +110,7 @@ export default function MatchHeader({
     const element = containerRef.current;
     if (!element) return;
     element.classList.remove("wicket-flash");
+    // Force reflow so the same CSS animation can restart on consecutive wicket updates.
     void element.offsetWidth;
     element.classList.add("wicket-flash");
     const timer = setTimeout(() => element.classList.remove("wicket-flash"), 500);
@@ -122,6 +124,7 @@ export default function MatchHeader({
     const element = statusRef.current;
     if (!element) return;
     element.classList.remove("over-transition");
+    // Force reflow so the same CSS animation can restart on consecutive over/ball updates.
     void element.offsetWidth;
     element.classList.add("over-transition");
     const timer = setTimeout(() => element.classList.remove("over-transition"), 360);

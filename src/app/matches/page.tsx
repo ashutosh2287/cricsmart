@@ -367,7 +367,9 @@ export default function MatchesPage() {
       <section className="mb-8">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xl font-semibold">Live Fixtures Discovery</h2>
-          <span className="text-xs text-gray-400">Auto-refresh: 20s</span>
+          <span role="status" aria-live="polite" className="text-xs text-gray-400">
+            Auto-refresh: 20s
+          </span>
         </div>
 
         {fixturesWarning ? (
@@ -416,9 +418,9 @@ export default function MatchesPage() {
                       {fixture.teamA} vs {fixture.teamB}
                     </p>
                     <span className="text-xs text-red-300 flex items-center gap-1.5">
-                      <span className="relative flex h-2 w-2 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                      <span aria-hidden="true" className="relative flex h-2 w-2 shrink-0">
+                        <span aria-hidden="true" className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                        <span aria-hidden="true" className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
                       </span>
                       LIVE
                     </span>
@@ -429,7 +431,7 @@ export default function MatchesPage() {
                     {fixture.oversStatus} • {fixture.status}
                   </p>
                   <p className="text-xs text-gray-400 mt-2">
-                    {fixture.format.toUpperCase()} • {fixture.series}
+                    {(fixture.format || "Unknown").toUpperCase()} • {fixture.series}
                   </p>
 
                   <p className={`text-xs mt-2 flex items-center gap-2 ${heartbeat.badgeClass}`}>

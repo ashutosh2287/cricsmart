@@ -19,9 +19,11 @@ export async function DELETE(req: NextRequest) {
     const redis = getRedis();
     const storage = new RedisSimulationStorage();
 
-    // Remove from registry list and meta hash
-    await redis.srem(MATCH_LIST_KEY, matchId);
-    await redis.del(getMatchMetaKey(matchId));
+    // Remove registry entries atomically
+    const multi = redis.multi();
+    multi.srem(MATCH_LIST_KEY, matchId);
+    multi.del(getMatchMetaKey(matchId));
+    await multi.exec();
 
     // Remove simulation state
     await storage.delete(matchId);

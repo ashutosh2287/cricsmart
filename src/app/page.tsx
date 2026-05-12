@@ -128,13 +128,13 @@ export default function HomePage() {
 // Close form when clicking outside
 useEffect(() => {
   if (!showCreateForm) return;
-  function handleClick(e: MouseEvent) {
+  function handleClickOutside(e: MouseEvent) {
     if (formRef.current && !formRef.current.contains(e.target as Node)) {
       setShowCreateForm(false);
     }
   }
-  document.addEventListener("mousedown", handleClick);
-  return () => document.removeEventListener("mousedown", handleClick);
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => document.removeEventListener("mousedown", handleClickOutside);
 }, [showCreateForm]);
 
 const router = useRouter();
@@ -267,7 +267,7 @@ const handleDeleteMatch = async (matchId: string) => {
                       disabled={creating}
                       className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg px-4 py-2 text-sm font-semibold text-white"
                     >
-                      {creating ? "Creating..." : "Create & Open Admin"}
+                      {creating ? "Creating..." : "Create and Open Admin"}
                     </button>
                   </div>
                 </div>

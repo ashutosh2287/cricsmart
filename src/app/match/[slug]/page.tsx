@@ -869,35 +869,30 @@ function TabsArea({
         {/* ── Scorecard ── */}
         {activeTab === "scorecard" && (
           <div className="space-y-6">
-            {currentEngineState?.matchEnded && currentEngineState?.winner ? (
-              <div className="mt-3 border-t border-white/10 pt-3 text-center text-sm text-white">
-                {currentEngineState.winner} won{" "}
-                {typeof currentEngineState.winBy === "string"
-                  ? `by ${currentEngineState.winBy}`
-                  : typeof currentEngineState.winBy === "number"
-                  ? `by ${currentEngineState.winBy}`
-                  : ""}
-              </div>
-            ) : null}
 
             <GlassPanel>
               <SectionHeader eyebrow="Innings" title="Scorecard" />
-              <div className="mb-5 flex flex-wrap gap-2">
-                {(currentEngineState?.innings || []).map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedInnings(i)}
-                    className={cls(
-                      "rounded-xl px-4 py-2 text-sm transition",
-                      inningsIndex === i
-                        ? "bg-gradient-to-r from-sky-400 to-cyan-300 text-slate-950 shadow-lg"
-                        : "border border-white/10 bg-white/[0.04] text-gray-300 hover:bg-white/[0.08]"
-                    )}
-                  >
-                    Innings {i + 1}
-                  </button>
-                ))}
-              </div>
+              <div
+  className="flex mb-5"
+  style={{ borderBottom: "1px solid var(--border-subtle)" }}
+>
+  {(currentEngineState?.innings || []).map((inn, i) => (
+    <button
+      key={i}
+      onClick={() => setSelectedInnings(i)}
+      className="px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors"
+      style={{
+        color: inningsIndex === i ? "var(--text-primary)" : "var(--text-muted)",
+        borderBottom: inningsIndex === i
+          ? "2px solid var(--accent-brand)"
+          : "2px solid transparent",
+        marginBottom: "-1px",
+      }}
+    >
+      {inn.battingTeam || `Innings ${i + 1}`}
+    </button>
+  ))}
+</div>
 
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <StatPill
@@ -925,130 +920,201 @@ function TabsArea({
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
               <div className="space-y-6">
-                {/* Batting card */}
-                <GlassPanel>
-                  <SectionHeader
-                    eyebrow="Batting card"
-                    title="Batters"
-                    action={
-                      <span className="text-xs uppercase tracking-[0.18em] text-white/45">
-                        {activePlayers.length === 2
-                          ? `${activePlayers.length} active • ${allPlayers.length} total`
-                          : `${allPlayers.length} total records`}
-                      </span>
-                    }
-                  />
-                  <div className="grid grid-cols-[minmax(160px,1.6fr)_0.7fr_0.7fr_0.7fr_0.8fr] gap-3 border-b border-white/10 px-3 pb-3 text-[11px] uppercase tracking-[0.18em] text-white/45">
-                    <span>Batter</span>
-                    <span className="text-center">R</span>
-                    <span className="text-center">B</span>
-                    <span className="text-center">4s/6s</span>
-                    <span className="text-center">SR</span>
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    {players.length ? (
-                      players.map((player) => {
-                        const sr =
-                          player.balls > 0
-                            ? ((player.runs / player.balls) * 100).toFixed(1)
-                            : "0.0";
-                        return (
-                          <div
-                            key={player.name}
-                            className={cls(
-                              "grid grid-cols-[minmax(160px,1.6fr)_0.7fr_0.7fr_0.7fr_0.8fr] items-center gap-3 rounded-2xl border px-3 py-3 text-sm transition",
-                              player.isStriker
-                                ? "border-amber-400/20 bg-amber-400/10"
-                                : player.isNonStriker
-                                ? "border-sky-400/15 bg-sky-400/10"
-                                : "border-white/10 bg-white/[0.04]"
-                            )}
-                          >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                {player.isStriker && (
-                                  <span className="text-amber-300">★</span>
-                                )}
-                                {player.isNonStriker && (
-                                  <span className="text-sky-300">○</span>
-                                )}
-                                <span className="truncate font-medium text-white">
-                                  {player.name}
-                                </span>
-                              </div>
-                              <p className="mt-1 text-xs text-white/55">
-                                {player.out ? "out" : "not out"}
-                              </p>
-                            </div>
-                            <span className="text-center font-semibold text-emerald-300">
-                              {player.runs}
-                            </span>
-                            <span className="text-center text-white">
-                              {player.balls}
-                            </span>
-                            <span className="text-center text-white/70">
-                              {player.fours}/{player.sixes}
-                            </span>
-                            <span className="text-center text-amber-300">
-                              {sr}
-                            </span>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <p className="text-sm text-white/60">
-                        No batting records available yet.
-                      </p>
-                    )}
-                  </div>
-                </GlassPanel>
+                
 
-                {/* Bowling card */}
-                <GlassPanel>
-                  <SectionHeader eyebrow="Bowling card" title="Bowlers" />
-                  <div className="grid grid-cols-5 gap-3 border-b border-white/10 px-3 pb-3 text-[11px] uppercase tracking-[0.18em] text-white/45">
-                    <span>Bowler</span>
-                    <span className="text-center">O</span>
-                    <span className="text-center">R</span>
-                    <span className="text-center">W</span>
-                    <span className="text-center">Econ</span>
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    {Object.entries(bowling).length ? (
-                      Object.entries(bowling).map(([name, stat]) => {
-                        const overs = stat.overs ?? 0;
-                        const runs = stat.runs ?? 0;
-                        const wkts = stat.wickets ?? 0;
-                        const economy =
-                          overs > 0 ? (runs / overs).toFixed(1) : "0.0";
-                        return (
-                          <div
-                            key={name}
-                            className="grid grid-cols-5 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm hover:bg-white/[0.06]"
-                          >
-                            <span className="truncate text-white">{name}</span>
-                            <span className="text-center text-white">
-                              {overs}
-                            </span>
-                            <span className="text-center text-white">
-                              {runs}
-                            </span>
-                            <span className="text-center font-semibold text-rose-300">
-                              {wkts}
-                            </span>
-                            <span className="text-center text-sky-300">
-                              {economy}
-                            </span>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <p className="text-sm text-white/60">
-                        No bowling records available yet.
-                      </p>
+                {/* Batting table */}
+<GlassPanel>
+  <div className="flex items-center justify-between mb-4">
+    <div>
+      <p className="text-[11px] uppercase tracking-[0.18em] mb-0.5"
+        style={{ color: "var(--text-muted)" }}>
+        Batting card
+      </p>
+      <h3 className="text-base font-semibold"
+        style={{ color: "var(--text-primary)" }}>
+        Batters
+      </h3>
+    </div>
+    <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+      {activePlayers.length === 2
+        ? `${activePlayers.length} active · ${allPlayers.length} total`
+        : `${allPlayers.length} total`}
+    </span>
+  </div>
+
+  <div className="overflow-x-auto">
+    <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
+      <thead>
+        <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+          <th className="text-left pb-2.5 pr-4 font-medium text-[11px] uppercase tracking-[0.18em]"
+            style={{ color: "var(--text-muted)" }}>Batter</th>
+          <th className="text-right pb-2.5 w-12 font-medium text-[11px] uppercase tracking-[0.18em]"
+            style={{ color: "var(--text-muted)" }}>R</th>
+          <th className="text-right pb-2.5 w-12 font-medium text-[11px] uppercase tracking-[0.18em]"
+            style={{ color: "var(--text-muted)" }}>B</th>
+          <th className="text-right pb-2.5 w-16 font-medium text-[11px] uppercase tracking-[0.18em]"
+            style={{ color: "var(--text-muted)" }}>4s/6s</th>
+          <th className="text-right pb-2.5 w-16 font-medium text-[11px] uppercase tracking-[0.18em]"
+            style={{ color: "var(--text-muted)" }}>SR</th>
+        </tr>
+      </thead>
+      <tbody>
+        {players.length ? (
+          players.map((player) => {
+            const sr = player.balls > 0
+              ? ((player.runs / player.balls) * 100).toFixed(1)
+              : "0.0";
+            const isDismissed = player.out && !player.isStriker && !player.isNonStriker;
+            return (
+              <tr
+                key={player.name}
+                style={{
+                  borderBottom: "1px solid var(--border-subtle)",
+                  borderLeft: player.isStriker
+                    ? "3px solid var(--accent-live)"
+                    : player.isNonStriker
+                    ? "3px solid var(--accent-brand)"
+                    : "3px solid transparent",
+                  opacity: isDismissed ? 0.45 : 1,
+                  background: player.isStriker
+                    ? "rgba(34,197,94,0.04)"
+                    : player.isNonStriker
+                    ? "rgba(59,130,246,0.04)"
+                    : "transparent",
+                }}
+              >
+                <td className="py-3 pl-3 pr-4">
+                  <div className="flex items-center gap-2">
+                    {player.isStriker && (
+                      <span style={{ color: "var(--accent-amber)" }}>★</span>
                     )}
+                    {player.isNonStriker && (
+                      <span style={{ color: "var(--accent-brand)" }}>○</span>
+                    )}
+                    <div className="min-w-0">
+                      <span className="font-medium truncate block"
+                        style={{ color: "var(--text-primary)" }}>
+                        {player.name}
+                      </span>
+                      <span className="text-[11px]"
+                        style={{
+                          color: player.out
+                            ? "var(--accent-danger)"
+                            : "var(--text-muted)",
+                        }}>
+                        {player.out ? "out"
+                          : player.isStriker ? "batting ★"
+                          : player.isNonStriker ? "batting"
+                          : "not out"}
+                      </span>
+                    </div>
                   </div>
-                </GlassPanel>
+                </td>
+                <td className="py-3 text-right tabular-nums font-bold"
+                  style={{ color: "var(--accent-live)" }}>
+                  {player.runs}
+                </td>
+                <td className="py-3 text-right tabular-nums"
+                  style={{ color: "var(--text-secondary)" }}>
+                  {player.balls}
+                </td>
+                <td className="py-3 text-right tabular-nums text-xs"
+                  style={{ color: "var(--text-muted)" }}>
+                  {player.fours}/{player.sixes}
+                </td>
+                <td className="py-3 text-right tabular-nums"
+                  style={{ color: "var(--accent-amber)" }}>
+                  {sr}
+                </td>
+              </tr>
+            );
+          })
+        ) : (
+          <tr>
+            <td colSpan={5} className="py-8 text-center text-sm"
+              style={{ color: "var(--text-muted)" }}>
+              No batting records yet.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</GlassPanel>
+                
+
+
+                {/* Bowling table */}
+<GlassPanel>
+  <div className="mb-4">
+    <p className="text-[11px] uppercase tracking-[0.18em] mb-0.5"
+      style={{ color: "var(--text-muted)" }}>Bowling card</p>
+    <h3 className="text-base font-semibold"
+      style={{ color: "var(--text-primary)" }}>Bowlers</h3>
+  </div>
+
+  <div className="overflow-x-auto">
+    <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
+      <thead>
+        <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+          <th className="text-left pb-2.5 pr-4 font-medium text-[11px] uppercase tracking-[0.18em]"
+            style={{ color: "var(--text-muted)" }}>Bowler</th>
+          <th className="text-right pb-2.5 w-12 font-medium text-[11px] uppercase tracking-[0.18em]"
+            style={{ color: "var(--text-muted)" }}>O</th>
+          <th className="text-right pb-2.5 w-12 font-medium text-[11px] uppercase tracking-[0.18em]"
+            style={{ color: "var(--text-muted)" }}>R</th>
+          <th className="text-right pb-2.5 w-12 font-medium text-[11px] uppercase tracking-[0.18em]"
+            style={{ color: "var(--text-muted)" }}>W</th>
+          <th className="text-right pb-2.5 w-16 font-medium text-[11px] uppercase tracking-[0.18em]"
+            style={{ color: "var(--text-muted)" }}>Econ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {Object.entries(bowling).length ? (
+          Object.entries(bowling).map(([name, stat]) => {
+            const overs = stat.overs ?? 0;
+            const runs = stat.runs ?? 0;
+            const wkts = stat.wickets ?? 0;
+            const economy = overs > 0 ? (runs / overs).toFixed(1) : "0.0";
+            return (
+              <tr
+                key={name}
+                style={{
+                  borderBottom: "1px solid var(--border-subtle)",
+                  borderLeft: wkts > 0
+                    ? "3px solid var(--accent-danger)"
+                    : "3px solid transparent",
+                }}
+              >
+                <td className="py-3 pl-3 pr-4 font-medium truncate max-w-[140px]"
+                  style={{ color: "var(--text-primary)" }}>
+                  {name}
+                </td>
+                <td className="py-3 text-right tabular-nums"
+                  style={{ color: "var(--text-secondary)" }}>{overs}</td>
+                <td className="py-3 text-right tabular-nums"
+                  style={{ color: "var(--text-secondary)" }}>{runs}</td>
+                <td className="py-3 text-right tabular-nums font-bold"
+                  style={{ color: wkts > 0 ? "var(--accent-danger)" : "var(--text-muted)" }}>
+                  {wkts}
+                </td>
+                <td className="py-3 text-right tabular-nums"
+                  style={{ color: "var(--accent-brand)" }}>{economy}</td>
+              </tr>
+            );
+          })
+        ) : (
+          <tr>
+            <td colSpan={5} className="py-8 text-center text-sm"
+              style={{ color: "var(--text-muted)" }}>
+              No bowling records yet.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</GlassPanel>
               </div>
 
               <div className="space-y-6">

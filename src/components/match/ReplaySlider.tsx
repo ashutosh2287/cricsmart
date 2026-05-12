@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import {
-  initReplay,
   getReplayEvents,
+  initReplay,
   seekReplayUI,
 } from "@/services/replay/replayController";
 import { getReplayState, subscribeReplay } from "@/services/replay/replayEngine";
@@ -49,9 +49,8 @@ export default function ReplaySlider({ matchId }: Props) {
     };
   }, [matchId]);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const index = Number(e.target.value);
-
+  function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const index = Number(event.target.value);
     setPosition(index);
     seekReplayUI(matchId, index);
   }
@@ -59,29 +58,40 @@ export default function ReplaySlider({ matchId }: Props) {
   if (eventsLength === 0) return null;
 
   return (
-    <div className="bg-gray-900 p-3 rounded-xl mt-4">
-
-      <div className="flex justify-between text-xs mb-1 text-gray-400">
-        <span>0</span>
-        <span>Ball {position}</span>
-        <span>{eventsLength - 1}</span>
+    <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 transition-colors duration-200 hover:border-white/10">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <p className="mb-1 text-[11px] uppercase tracking-[0.22em] text-sky-300/80">
+            Replay
+          </p>
+          <h3 className="text-lg font-semibold text-white">Replay Timeline</h3>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white/60">
+          Ball {position} / {Math.max(eventsLength - 1, 0)}
+        </div>
       </div>
 
+      <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="mb-3 flex justify-between text-xs text-white/55">
+          <span>Start</span>
+          <span>Drag to revisit key moments</span>
+          <span>Latest</span>
+        </div>
 
-<label htmlFor="replay-slider" className="sr-only">
-  Replay Slider
-</label>
+        <label htmlFor="replay-slider" className="sr-only">
+          Replay slider
+        </label>
 
-<input
-  id="replay-slider"
-  type="range"
-  min={0}
-  max={eventsLength - 1}
-  value={position}
-  onChange={handleChange}
-  className="w-full cursor-pointer"
-/>
-
+        <input
+          id="replay-slider"
+          type="range"
+          min={0}
+          max={eventsLength - 1}
+          value={position}
+          onChange={handleChange}
+          className="w-full cursor-pointer accent-sky-400"
+        />
+      </div>
     </div>
   );
 }

@@ -21,6 +21,7 @@ export async function GET() {
       `https://api.cricapi.com/v1/currentMatches?apikey=${key}&offset=0`,
       { signal: controller.signal, cache: "no-store" }
     );
+    clearTimeout(timeout);
 
     if (!res.ok) {
       return NextResponse.json({
@@ -34,7 +35,8 @@ export async function GET() {
 
     return NextResponse.json(data);
   } catch (err) {
-    console.warn("Live fixtures fetch failed", err);
+    const errorType = err instanceof Error ? err.name : typeof err;
+    console.warn(`Live fixtures fetch failed (${errorType})`, err);
 
     return NextResponse.json(
       {

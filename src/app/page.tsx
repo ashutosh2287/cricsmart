@@ -137,6 +137,17 @@ useEffect(() => {
   return () => document.removeEventListener("mousedown", handleClickOutside);
 }, [showCreateForm]);
 
+useEffect(() => {
+  if (!showCreateForm) return;
+  const onEscape = (event: KeyboardEvent) => {
+    if (event.key === "Escape") {
+      setShowCreateForm(false);
+    }
+  };
+  document.addEventListener("keydown", onEscape);
+  return () => document.removeEventListener("keydown", onEscape);
+}, [showCreateForm]);
+
 const router = useRouter();
 
 const handleCreateMatch = async () => {
@@ -311,7 +322,7 @@ const handleDeleteMatch = async (matchId: string) => {
               <p className="text-gray-500">No matches available</p>
             ) : (
               matches.slice(0, 3).map((match) => (
-                <motion.div key={match.matchId} variants={item} className="relative group">
+                <motion.div key={match.matchId} variants={item} className="relative">
                   <Link
                     href={`/match/${match.matchId}`}
                     className={`block rounded-xl p-6 bg-zinc-900 transition-all hover:scale-105
@@ -351,7 +362,7 @@ const handleDeleteMatch = async (matchId: string) => {
                     onClick={() => handleDeleteMatch(match.matchId)}
                     disabled={deletingId === match.matchId}
                     title="Remove match"
-                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-800 hover:bg-red-600 text-gray-400 hover:text-white rounded-lg w-7 h-7 flex items-center justify-center text-xs disabled:opacity-40"
+                    className="absolute top-3 right-3 opacity-80 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-red-400 transition-opacity bg-zinc-800 hover:bg-red-600 text-gray-300 hover:text-white rounded-lg w-7 h-7 flex items-center justify-center text-xs disabled:opacity-40"
                   >
                     {deletingId === match.matchId ? "…" : "✕"}
                   </button>

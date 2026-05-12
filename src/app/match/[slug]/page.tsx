@@ -1727,7 +1727,7 @@ export default function MatchDetailPage({
         //    match page renders correct team names after a page reload/return.
         const teamAName = data.match.teamA?.name;
         const teamBName = data.match.teamB?.name;
-        const toStableTeamId = (id: unknown, name: string) => {
+        const getOrGenerateTeamId = (id: unknown, name: string) => {
           if (typeof id === "string" && id.trim()) return id;
           return name.toLowerCase().trim().replace(/\s+/g, "-");
         };
@@ -1735,11 +1735,11 @@ export default function MatchDetailPage({
           setMatchMeta({
             matchId: id,
             teamA: {
-              id: toStableTeamId(data.match.teamA?.id, teamAName),
+              id: getOrGenerateTeamId(data.match.teamA?.id, teamAName),
               name: teamAName,
             },
             teamB: {
-              id: toStableTeamId(data.match.teamB?.id, teamBName),
+              id: getOrGenerateTeamId(data.match.teamB?.id, teamBName),
               name: teamBName,
             },
             ...(data.match.tossWinner && data.match.tossDecision

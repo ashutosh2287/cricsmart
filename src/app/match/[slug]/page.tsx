@@ -147,19 +147,19 @@ function StatPill({
   tone?: "neutral" | "green" | "blue" | "amber" | "red";
 }) {
   const toneMap = {
-    neutral: "border-white/10 bg-white/[0.03] text-white",
-    green: "border-white/10 bg-white/[0.03] text-white",
-    blue: "border-white/10 bg-white/[0.03] text-white",
-    amber: "border-white/10 bg-white/[0.03] text-white",
-    red: "border-white/10 bg-white/[0.03] text-white",
+    neutral: "border-white/10 bg-white/[0.02] text-white",
+    green: "border-emerald-300/20 bg-emerald-300/8 text-white",
+    blue: "border-sky-300/20 bg-sky-300/8 text-white",
+    amber: "border-amber-300/20 bg-amber-300/8 text-white",
+    red: "border-red-300/20 bg-red-300/8 text-white",
   };
 
   return (
-    <div className={cls("rounded-2xl border px-4 py-3", toneMap[tone])}>
-      <p className="text-[11px] uppercase tracking-[0.18em] text-white/55">
+    <div className={cls("rounded-[var(--radius-sm)] border px-3 py-2", toneMap[tone])}>
+      <p className="text-[10px] uppercase tracking-[0.16em] text-white/55">
         {label}
       </p>
-      <div className="mt-1 text-sm font-semibold text-white">{value}</div>
+      <div className="mt-1 text-xs font-semibold text-white tabular-nums">{value}</div>
     </div>
   );
 }
@@ -174,14 +174,14 @@ function SectionHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-4 flex items-start justify-between gap-4">
+    <div className="ui-section-header">
       <div>
         {eyebrow ? (
-          <p className="mb-1 text-[11px] uppercase tracking-[0.22em] text-sky-300/80">
+          <p className="mb-1 text-[10px] uppercase tracking-[0.2em] text-sky-300/75">
             {eyebrow}
           </p>
         ) : null}
-        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-white/90">{title}</h3>
       </div>
       {action ? <div>{action}</div> : null}
     </div>
@@ -286,7 +286,7 @@ function StickyInsightsRail({ match }: { match: Match }) {
               ) => (
                 <div
                   key={index}
-                  className="rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-sm text-white"
+                  className="rounded-[var(--radius-sm)] border border-white/10 bg-white/[0.03] px-2 py-1 text-xs text-white tabular-nums"
                 >
                   {ball?.runs ?? ball?.label ?? ball?.outcome ?? "•"}
                 </div>
@@ -302,13 +302,13 @@ function StickyInsightsRail({ match }: { match: Match }) {
         <SectionHeader eyebrow="Quick access" title="Control Deck" />
         <div className="space-y-3">
           <LiveMatchStatus matchId={match.slug} />
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <p className="text-sm font-medium text-white">Fixture</p>
+          <div className="ui-inset">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/75">Fixture</p>
             <p className="mt-1 text-sm text-white/70">
               {match.team1}{" "}
               <span className="text-white/40">vs</span> {match.team2}
             </p>
-            <div className="mt-1 text-sm text-gray-400">
+            <div className="mt-1 text-xs text-gray-400">
               Over: {match.currentOver ?? 0}.{match.currentBall ?? 0}
             </div>
           </div>
@@ -542,7 +542,7 @@ function TabsArea({
   ];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0">
         {/* ── Tab Bar ── */}
         <div className="sticky top-24 z-20 mb-6 overflow-x-auto">
@@ -574,7 +574,7 @@ function TabsArea({
 
         {/* ── Overview ── */}
         {activeTab === "overview" && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <GlassPanel>
               <SectionHeader
                 eyebrow="Match center"
@@ -593,8 +593,8 @@ function TabsArea({
               </div>
             </GlassPanel>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
-              <div className="space-y-6">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
+              <div className="space-y-4">
                 <GlassPanel>
                   <SectionHeader eyebrow="Control" title="Match Controls" />
                   <MatchControlPanel matchId={match.slug} />
@@ -612,7 +612,7 @@ function TabsArea({
                   />
                 </GlassPanel>
 
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div className="grid gap-4 lg:grid-cols-2">
                   <GlassPanel>
                     <SectionHeader eyebrow="Flow" title="Momentum" />
                     <MomentumHeatmap data={analytics.momentum} />
@@ -629,7 +629,7 @@ function TabsArea({
                 </GlassPanel>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <GlassPanel>
                   <SectionHeader eyebrow="Stand" title="Partnership Watch" />
                   <PartnershipPanel matchId={match.slug} />
@@ -645,13 +645,13 @@ function TabsArea({
 
         {/* ── Live ── */}
         {activeTab === "live" && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <GlassPanel>
               <SectionHeader eyebrow="Ball by ball" title="Live Commentary" />
               <CommentaryPanel matchId={match.slug} insights={insights} />
             </GlassPanel>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
               <GlassPanel>
                 <SectionHeader eyebrow="Replay" title="Replay Timeline" />
                 <ReplaySlider matchId={match.slug} />
@@ -692,7 +692,7 @@ function TabsArea({
 
         {/* ── Analysis ── */}
         {activeTab === "analysis" && (
-          <div className="space-y-6">
+            <div className="space-y-4">
             <GlassPanel>
               <SectionHeader eyebrow="Filters" title="Analysis View" />
               <div className="flex flex-wrap gap-3">
@@ -744,8 +744,8 @@ function TabsArea({
             </GlassPanel>
 
             {analysisFilter === "ALL" && (
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
-                <div className="space-y-6">
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
+                <div className="space-y-4">
                   <GlassPanel>
                     <SectionHeader eyebrow="Model" title="Win Probability" />
                     <WinProbabilityChart data={winProbabilityData} />
@@ -758,7 +758,7 @@ function TabsArea({
                     <MomentumHeatmap data={analytics.momentum} />
                   </GlassPanel>
                 </div>
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <GlassPanel>
                     <SectionHeader eyebrow="Signals" title="Match Insights" />
                     <MatchInsightsPanel matchId={match.slug} />
@@ -854,7 +854,7 @@ function TabsArea({
 
         {/* ── Timeline ── */}
         {activeTab === "timeline" && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <GlassPanel>
               <SectionHeader eyebrow="Moments" title="Highlight Timeline" />
               <HighlightTimeline matchId={match.slug} />
@@ -868,7 +868,7 @@ function TabsArea({
 
         {/* ── Scorecard ── */}
         {activeTab === "scorecard" && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {currentEngineState?.matchEnded && currentEngineState?.winner ? (
               <div className="mt-3 border-t border-white/10 pt-3 text-center text-sm text-white">
                 {currentEngineState.winner} won{" "}
@@ -923,8 +923,8 @@ function TabsArea({
               </div>
             </GlassPanel>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-              <div className="space-y-6">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+              <div className="space-y-4">
                 {/* Batting card */}
                 <GlassPanel>
                   <SectionHeader
@@ -1051,7 +1051,7 @@ function TabsArea({
                 </GlassPanel>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <GlassPanel>
                   <SectionHeader eyebrow="Dismissals" title="Fall of Wickets" />
                   <div className="flex flex-wrap gap-3">
@@ -1146,7 +1146,7 @@ function TabsArea({
 
         {/* ── Admin ── */}
         {activeTab === "admin" && isAdmin && (
-          <div className="space-y-6">
+            <div className="space-y-4">
             <GlassPanel>
               <SectionHeader eyebrow="Scoring" title="Admin Scoring Panel" />
               <div className="relative z-[9999] pointer-events-auto">
@@ -1154,7 +1154,7 @@ function TabsArea({
               </div>
             </GlassPanel>
 
-            <div className="grid gap-6 xl:grid-cols-2">
+            <div className="grid gap-4 xl:grid-cols-2">
               <GlassPanel>
                 <SectionHeader eyebrow="Broadcast" title="Director Panel" />
                 <BroadcastDirectorPanel />
@@ -1790,7 +1790,7 @@ export default function MatchDetailPage({
   if (!matchId) {
     return (
       <PageMotion>
-        <div className="bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,#020617_0%,#071120_35%,#0b1220_65%,#020617_100%)]">
+        <div className="bg-[var(--bg-base)]">
           <div className="p-10 text-center text-white">
             Invalid match URL.
           </div>
@@ -1803,7 +1803,7 @@ export default function MatchDetailPage({
     // ✅ FIX: matchId prop — NOT value prop
     <MatchProvider matchId={matchId}>
       <PageMotion>
-        <div className="bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,#020617_0%,#071120_35%,#0b1220_65%,#020617_100%)]">
+        <div className="bg-[var(--bg-base)]">
           {match ? (
             <MatchInnerPage
               match={match}

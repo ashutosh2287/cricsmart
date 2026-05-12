@@ -82,17 +82,17 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
   );
 
   return (
-    <div className="bg-gray-900 p-4 rounded-xl">
+    <div className="ui-section">
 
       {/* 🔥 INSIGHTS */}
       {insights && insights.length > 0 && (
-        <div className="mb-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded">
-          <div className="text-xs text-yellow-400 font-semibold mb-1">
+        <div className="mb-3 rounded-[var(--radius-sm)] border border-amber-500/20 bg-amber-500/10 px-3 py-2">
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-300">
             Match Insights
           </div>
 
           {insights.map((i, idx) => (
-            <div key={idx} className="text-xs text-yellow-300">
+            <div key={idx} className="text-xs text-amber-200/90">
               {i.message}
             </div>
           ))}
@@ -100,12 +100,12 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
       )}
 
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="font-bold">Live Commentary</h3>
+      <div className="ui-section-header">
+        <h3 className="text-sm font-semibold text-white">Live Commentary</h3>
 
         <button
           onClick={() => setLang(lang === "EN" ? "HI" : "EN")}
-          className="text-xs px-2 py-1 bg-white/10 rounded hover:bg-white/20"
+          className="rounded-[var(--radius-sm)] border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-white/80 transition hover:bg-white/[0.08]"
         >
           {lang === "EN" ? "हिंदी" : "English"}
         </button>
@@ -117,7 +117,7 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
         className="h-[250px] overflow-y-auto text-sm"
       >
         {messages.length === 0 && (
-          <div className="text-gray-500 text-sm">
+          <div className="text-sm text-white/45">
             Waiting for commentary...
           </div>
         )}
@@ -125,7 +125,7 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
         {Object.entries(grouped).map(([over, balls]) => (
           <div key={over} className="mb-3">
 
-            <div className="text-xs text-gray-400 mb-1">
+            <div className="mb-1 text-[11px] uppercase tracking-[0.14em] text-white/45">
               Over {Number(over) + 1}
             </div>
 
@@ -141,25 +141,25 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
               return (
                 <div
                   key={i}
-                  className="border-b border-gray-800 pb-2 px-2 py-1 rounded"
+                  className="commentary-stream-item mb-1 rounded-[var(--radius-sm)] border border-white/10 bg-white/[0.02] px-2 py-1.5"
                 >
-                  <div className="flex justify-between text-xs text-gray-500">
+                  <div className="flex justify-between text-[11px] text-white/45">
                     <span>Ball {msg.index + 1}</span>
 
                     {isBoundary && (
-                      <span className="text-green-400 font-bold">
+                      <span className="font-bold text-emerald-300">
                         BOUNDARY
                       </span>
                     )}
 
                     {isWicket && (
-                      <span className="text-red-400 font-bold">
+                      <span className="font-bold text-red-300">
                         WICKET
                       </span>
                     )}
                   </div>
 
-                  <div className="mt-1 text-sm text-gray-200">
+                  <div className="mt-1 text-sm text-white/90">
                     {translateCommentary(msg.text, lang)}
                   </div>
                 </div>

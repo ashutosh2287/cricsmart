@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import AnimatedScore from "./ui/AnimatedScore";
 
 type Batsman = {
@@ -72,10 +73,14 @@ export default function MatchHeader({
   winner,
   winBy,
 }: Props) {
-  console.log("🏏 MATCH HEADER RENDER");
-
   const finalTeam1 = team1 || "Team A";
   const finalTeam2 = team2 || "Team B";
+  const [scoreTick, setScoreTick] = useState(false);
+  const [wicketFlash, setWicketFlash] = useState(false);
+  const [overPulse, setOverPulse] = useState(false);
+  const previousRuns = useRef(runs);
+  const previousWickets = useRef(wickets);
+  const previousOverBall = useRef(`${over}.${ball}`);
 
   const totalBalls = totalOvers * 6;
   const ballsBowled = over * 6 + ball;
@@ -88,12 +93,43 @@ export default function MatchHeader({
     typeof runsNeeded === "number" &&
     typeof ballsLeft === "number";
 
+  useEffect(() => {
+    if (runs !== previousRuns.current) {
+      setScoreTick(true);
+      const timer = setTimeout(() => setScoreTick(false), 320);
+      previousRuns.current = runs;
+      return () => clearTimeout(timer);
+    }
+    previousRuns.current = runs;
+  }, [runs]);
+
+  useEffect(() => {
+    if (wickets > previousWickets.current) {
+      setWicketFlash(true);
+      const timer = setTimeout(() => setWicketFlash(false), 500);
+      previousWickets.current = wickets;
+      return () => clearTimeout(timer);
+    }
+    previousWickets.current = wickets;
+  }, [wickets]);
+
+  useEffect(() => {
+    const nextOverBall = `${over}.${ball}`;
+    if (nextOverBall !== previousOverBall.current) {
+      setOverPulse(true);
+      const timer = setTimeout(() => setOverPulse(false), 360);
+      previousOverBall.current = nextOverBall;
+      return () => clearTimeout(timer);
+    }
+    previousOverBall.current = nextOverBall;
+  }, [over, ball]);
+
   return (
     <div
-      className="w-full overflow-hidden"
+      className={`w-full overflow-hidden border border-[var(--border-subtle)] ${wicketFlash ? "wicket-flash" : ""} ${overPulse ? "over-transition" : ""}`}
       style={{
         background: "var(--bg-surface)",
-        borderRadius: "var(--radius-lg)",
+        borderRadius: "var(--radius-md)",
       }}
     >
 
@@ -146,22 +182,13 @@ export default function MatchHeader({
       )}
 
       {/* ── Live / status bar ─────────────────────────────── */}
-      <div className="flex items-center gap-3 px-5 pt-4 pb-0">
+      <div className="flex items-center gap-3 px-4 pt-3 pb-0">
         {isLive && !matchEnded && (
           <span className="flex items-center gap-1.5">
-            <span className="relative flex h-2 w-2">
-              <span
-                className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                style={{ background: "var(--accent-live)" }}
-              />
-              <span
-                className="relative inline-flex rounded-full h-2 w-2"
-                style={{ background: "var(--accent-live)" }}
-              />
-            </span>
+            <span className="live-pulse-red" />
             <span
               className="text-[11px] font-semibold uppercase tracking-[0.18em]"
-              style={{ color: "var(--accent-live)" }}
+              style={{ color: "var(--state-live)" }}
             >
               Live
             </span>
@@ -193,7 +220,7 @@ export default function MatchHeader({
       </div>
 
       {/* ── Main hero: teams + score ──────────────────────── */}
-      <div className="flex items-end justify-between gap-4 px-5 pt-3 pb-2">
+      <div className="flex items-end justify-between gap-4 px-4 pt-2 pb-2">
 
         {/* Both teams — equal visual weight */}
         <div className="min-w-0 flex-1">
@@ -217,16 +244,13 @@ export default function MatchHeader({
               {finalTeam2}
             </span>
           </div>
-          <p
-            className="text-xs mt-1"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
             Live simulation · innings-aware scorecard
           </p>
         </div>
 
         {/* Score — dominant element */}
-        <div className="text-right shrink-0">
+        <div className={`text-right shrink-0 ${scoreTick ? "score-tick" : ""}`}>
           <div
             className="font-extrabold tabular-nums leading-none"
             style={{
@@ -247,7 +271,7 @@ export default function MatchHeader({
       </div>
 
       {/* ── Over progress bar ─────────────────────────────── */}
-      <div className="px-5 pb-1">
+      <div className="px-4 pb-1">
         <div
           className="w-full rounded-full overflow-hidden"
           style={{ height: "3px", background: "var(--bg-overlay)" }}
@@ -266,7 +290,7 @@ export default function MatchHeader({
       {/* ── Players row ───────────────────────────────────── */}
       {(striker || nonStriker || bowler) && (
         <div
-          className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-2.5 text-sm"
+          className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-sm"
           style={{ borderTop: "1px solid var(--border-subtle)" }}
         >
           {striker && (
@@ -330,7 +354,7 @@ export default function MatchHeader({
       {/* ── Last over balls ───────────────────────────────── */}
       {lastOverBalls.length > 0 && (
         <div
-          className="flex items-center gap-1.5 px-5 py-2.5"
+          className="flex items-center gap-1.5 px-4 py-2"
           style={{ borderTop: "1px solid var(--border-subtle)" }}
         >
           <span
@@ -355,7 +379,7 @@ export default function MatchHeader({
       {/* ── Chase info (innings 2) ────────────────────────── */}
       {showChase && (
         <div
-          className="flex flex-wrap items-center gap-x-5 gap-y-1 px-5 py-2.5 text-sm"
+          className="flex flex-wrap items-center gap-x-5 gap-y-1 px-4 py-2 text-sm"
           style={{ borderTop: "1px solid var(--border-subtle)" }}
         >
           <span>

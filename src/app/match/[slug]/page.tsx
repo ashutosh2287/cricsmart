@@ -1723,16 +1723,40 @@ export default function MatchDetailPage({
         // ✅ CRITICAL: also push into eventStore so MatchProvider sees initial state
         setMatchState(id, data.match);
 
+        // ✅ Restore in-memory matchMeta from persisted engine state so the
+        //    match page renders correct team names after a page reload/return.
+        const teamAName = data.match.teamA?.name;
+        const teamBName = data.match.teamB?.name;
+        if (teamAName && teamBName) {
+          setMatchMeta({
+            matchId: id,
+            teamA: { id: data.match.teamA?.id ?? teamAName, name: teamAName },
+            teamB: { id: data.match.teamB?.id ?? teamBName, name: teamBName },
+            ...(data.match.tossWinner && data.match.tossDecision
+              ? { toss: { winner: data.match.tossWinner, decision: data.match.tossDecision } }
+              : {}),
+          });
+        }
+
         if (!cancelled) {
           setMatch({
             id,
             slug: id,
-            team1: data.match.teamA?.name ?? "Team A",
-            team2: data.match.teamB?.name ?? "Team B",
+            team1: teamAName ?? "Team A",
+            team2: teamBName ?? "Team B",
             currentOver: 0,
             currentBall: 0,
             status: data.match.matchEnded ? "Completed" : "Live",
           });
+        }
+
+        // ✅ Auto-connect SSE so live updates flow when returning to the page
+        //    while a simulation is still running in the backend.
+        const runtime = data.runtime;
+        const isRunning = runtime?.isRunning === true && !data.match.matchEnded;
+        if (!cancelled && isRunning) {
+          // connectRealtime is safe to call if already connected — it's a no-op
+          connectRealtime(id, "match-detail-page-auto");
         }
       } catch (err) {
         console.error("LOAD MATCH ERROR", err);

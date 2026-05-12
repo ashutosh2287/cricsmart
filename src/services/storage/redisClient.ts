@@ -11,16 +11,17 @@ function normalizeRedisUrl(rawUrl: string): string {
 
   try {
     const parsed = new URL(value);
-    const isUpstashHost = /^([a-z0-9-]+\.)*upstash\.io$/i.test(parsed.hostname);
+    const isUpstashHost = /^([a-zA-Z0-9-]+\.)*upstash\.io$/i.test(parsed.hostname);
 
     if (parsed.protocol === "redis:" && isUpstashHost) {
       parsed.protocol = "rediss:";
     }
 
     return parsed.toString();
-  } catch {
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Malformed URL";
     throw new Error(
-      "Invalid REDIS_URL. Use a valid URL like redis://<host>:6379 or rediss://<host>:6379"
+      `Invalid REDIS_URL format (${reason}). Expected redis://<host>:6379 or rediss://<host>:6379`
     );
   }
 }

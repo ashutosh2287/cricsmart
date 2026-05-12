@@ -23,7 +23,6 @@ import PartnershipPanel from "@/components/PartnershipPanel";
 import ReplaySlider from "@/components/match/ReplaySlider";
 import TeamSelector from "@/components/teams/TeamSelector";
 import TossPanel from "@/components/match/TossPanel";
-import WinProbabilityChart from "@/components/analytics/WinProbabilityChart";
 import { getMatchMeta, subscribeStore } from "@/store/matchStore";
 import { MatchProvider, useMatch } from "@/context/MatchContext";
 import {
@@ -160,7 +159,7 @@ function StatPill({
   return (
     <div
       className={cls(
-        "flex h-full min-h-[104px] flex-col justify-between rounded-2xl border px-4 py-3",
+        "flex h-full min-h-[70px] flex-col justify-between rounded-xl border px-3 py-2.5",
         toneMap[tone]
       )}
     >
@@ -182,7 +181,7 @@ function SectionHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-4 flex items-start justify-between gap-4">
+    <div className="mb-3 flex items-start justify-between gap-3">
       <div>
         {eyebrow ? (
           <p className="mb-1 text-[11px] uppercase tracking-[0.22em] text-sky-300/80">
@@ -192,6 +191,44 @@ function SectionHeader({
         <h3 className="text-lg font-semibold text-white">{title}</h3>
       </div>
       {action ? <div>{action}</div> : null}
+    </div>
+  );
+}
+
+function CompactWinProbabilityBar({
+  leftLabel,
+  rightLabel,
+  leftPercent,
+  rightPercent,
+  context,
+}: {
+  leftLabel: string;
+  rightLabel: string;
+  leftPercent: number;
+  rightPercent: number;
+  context?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+      <div className="mb-2 flex items-center justify-between text-sm font-semibold text-white">
+        <span>{leftLabel} {leftPercent.toFixed(0)}%</span>
+        <span>{rightLabel} {rightPercent.toFixed(0)}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+        <div className="flex h-full">
+          <div
+            className="h-full bg-gradient-to-r from-sky-400 to-blue-500"
+            style={{ width: `${leftPercent}%` }}
+          />
+          <div
+            className="h-full bg-gradient-to-r from-amber-400 to-orange-500"
+            style={{ width: `${rightPercent}%` }}
+          />
+        </div>
+      </div>
+      {context ? (
+        <p className="mt-2 text-xs text-white/60">{context}</p>
+      ) : null}
     </div>
   );
 }
@@ -369,6 +406,7 @@ function TabsArea({
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1500);
+  const [showReplayTimeline, setShowReplayTimeline] = useState(false);
 
   const hasLiveMatchState =
     !!currentEngineState &&
@@ -559,36 +597,27 @@ function TabsArea({
     currentEngineState?.innings?.[currentEngineState.currentInningsIndex]?.bowlingTeam ??
     matchMeta?.teamB?.name ??
     match.team2;
-  const liveBowlerName = inningsData?.currentBowler ?? "—";
-  const liveBowlerStats = liveBowlerName !== "—" ? bowling?.[liveBowlerName] : undefined;
-  const currentOverBalls = currentEngineState?.innings?.[inningsIndex]?.overs
-    ? Object.keys(currentEngineState.innings[inningsIndex].overs)
-        .map(Number)
-        .filter((value) => Number.isFinite(value))
-        .sort((a, b) => a - b)
-        .slice(-1)
-        .flatMap(
-          (lastOver) => currentEngineState.innings[inningsIndex].overs[lastOver] ?? []
-        )
-        .map((ball) => {
-          if (ball.type === "WICKET") return "W";
-          if (ball.extraType === "WD") return "Wd";
-          if (ball.extraType === "NB") return "Nb";
-          if (ball.runs === 4) return "4";
-          if (ball.runs === 6) return "6";
-          return String(ball.totalRuns ?? ball.runs ?? 0);
-         })
-    : [];
   const inningsRunRate =
     inningsData && (inningsData.over > 0 || inningsData.ball > 0)
       ? (inningsData.runs / (inningsData.over + inningsData.ball / 6)).toFixed(2)
       : "0.00";
+  const firstInningsRuns = currentEngineState?.innings?.[0]?.runs ?? 0;
+  const chaseRuns = currentEngineState?.innings?.[1]?.runs ?? 0;
+  const chaseTarget = firstInningsRuns > 0 ? firstInningsRuns + 1 : 0;
+  const chaseNeeded = Math.max(chaseTarget - chaseRuns, 0);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div
+      className={cls(
+        "grid gap-4",
+        activeTab === "live"
+          ? "grid-cols-1"
+          : "lg:grid-cols-[minmax(0,1fr)_300px]"
+      )}
+    >
       <div className="min-w-0">
         {/* ── Tab Bar ── */}
-        <div className="sticky top-24 z-20 mb-6 overflow-x-auto">
+        <div className="sticky top-24 z-20 mb-4 overflow-x-auto">
   <div
     className="inline-flex min-w-full"
     style={{ borderBottom: "1px solid var(--border-subtle)" }}
@@ -617,14 +646,14 @@ function TabsArea({
 
         {/* ── Overview ── */}
         {activeTab === "overview" && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <GlassPanel>
               <SectionHeader
                 eyebrow="Match center"
                 title="Overview"
                 action={<LiveMatchStatus matchId={match.slug} />}
               />
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-4">
                 {summaryCards.map((item) => (
                   <StatPill
                     key={item.label}
@@ -636,8 +665,8 @@ function TabsArea({
               </div>
             </GlassPanel>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
-              <div className="space-y-6">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
+              <div className="space-y-4">
                 <GlassPanel>
                   <SectionHeader eyebrow="Control" title="Match Controls" />
                   <MatchControlPanel matchId={match.slug} />
@@ -646,6 +675,21 @@ function TabsArea({
                 <GlassPanel>
                   <SectionHeader eyebrow="Narrative" title="Match Story" />
                   <MatchStory matchId={match.slug} />
+                </GlassPanel>
+
+                <GlassPanel>
+                  <SectionHeader eyebrow="Model" title="Win Probability" />
+                  <CompactWinProbabilityBar
+                    leftLabel={overviewBattingTeam}
+                    rightLabel={overviewBowlingTeam}
+                    leftPercent={Math.max(0, Math.min(100, winProbabilityData.at(-1)?.batting ?? 50))}
+                    rightPercent={Math.max(0, Math.min(100, winProbabilityData.at(-1)?.bowling ?? 50))}
+                    context={
+                      inningsIndex === 1
+                        ? `${chaseNeeded} runs needed · target ${chaseTarget}`
+                        : "Chase context will appear in 2nd innings."
+                    }
+                  />
                 </GlassPanel>
 
                 <GlassPanel>
@@ -660,7 +704,7 @@ function TabsArea({
                   />
                 </GlassPanel>
 
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div className="grid gap-4 lg:grid-cols-2">
                   <GlassPanel>
                     <SectionHeader eyebrow="Intelligence" title="Insights" />
                     <MatchInsightsPanel matchId={match.slug} />
@@ -677,7 +721,7 @@ function TabsArea({
                 </GlassPanel>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <GlassPanel>
                   <SectionHeader eyebrow="Moments" title="Highlights" />
                   <HighlightTimeline matchId={match.slug} />
@@ -689,111 +733,36 @@ function TabsArea({
 
         {/* ── Live ── */}
         {activeTab === "live" && (
-          <div className="space-y-6">
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
-              <GlassPanel>
-                <SectionHeader eyebrow="Ball by ball" title="Live Commentary" />
-                <CommentaryPanel matchId={match.slug} insights={insights} />
-              </GlassPanel>
+          <div className="space-y-4">
+            <GlassPanel>
+              <SectionHeader eyebrow="Ball by ball" title="Live Commentary" />
+              <CommentaryPanel matchId={match.slug} insights={insights} />
+            </GlassPanel>
 
-              <div className="space-y-6">
-                <GlassPanel>
-                  <SectionHeader eyebrow="Live strip" title="Current Over" />
-                  <div className="space-y-4">
-                    <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">
-                            Over in focus
-                          </p>
-                          <p className="mt-2 text-xl font-semibold text-white">
-                            {displayOver}
-                          </p>
-                        </div>
-                        <div className="rounded-2xl bg-sky-400/10 px-3 py-2 text-sm text-sky-200">
-                          {currentOverBalls.length > 0
-                            ? currentOverBalls.join("  ")
-                            : "Waiting for next ball"}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3">
-                      <StatPill
-                        label="Current striker"
-                        value={inningsData?.striker ?? "—"}
-                        tone="amber"
-                      />
-                      <StatPill
-                        label="Non-striker"
-                        value={inningsData?.nonStriker ?? "—"}
-                        tone="neutral"
-                      />
-                      <StatPill
-                        label="Current bowler"
-                        value={
-                          liveBowlerStats
-                            ? `${liveBowlerName} · ${liveBowlerStats.overs ?? 0}-${liveBowlerStats.runs ?? 0}-${liveBowlerStats.wickets ?? 0}`
-                            : liveBowlerName
-                        }
-                        tone="red"
-                      />
-                    </div>
-                  </div>
-                </GlassPanel>
-
-                <GlassPanel>
-                  <SectionHeader eyebrow="Live score" title="Quick Match View" />
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <StatPill
-                      label={currentEngineState?.teamA?.name ?? match.team1}
-                      value={`${currentEngineState?.innings?.[0]?.runs ?? 0}/${currentEngineState?.innings?.[0]?.wickets ?? 0}`}
-                      tone="green"
-                    />
-                    <StatPill
-                      label={currentEngineState?.teamB?.name ?? match.team2}
-                      value={
-                        currentEngineState?.innings?.[1]
-                          ? `${currentEngineState.innings[1].runs}/${currentEngineState.innings[1].wickets}`
-                          : "Yet to bat"
-                      }
-                      tone="blue"
-                    />
-                    <StatPill
-                      label="Current innings"
-                      value={`Innings ${inningsIndex + 1}`}
-                      tone="neutral"
-                    />
-                    <StatPill
-                      label="Batting rate"
-                      value={inningsRunRate}
-                      tone="amber"
-                    />
-                  </div>
-                </GlassPanel>
-
-                {insights.length > 0 ? (
-                  <GlassPanel>
-                    <SectionHeader eyebrow="Intel" title="Live Match Notes" />
-                    <div className="space-y-3">
-                      {insights.slice(0, 4).map((insight, index) => (
-                        <div
-                          key={`${insight.type}-${index}`}
-                          className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/75"
-                        >
-                          <div className="mb-2 text-[11px] uppercase tracking-[0.18em] text-sky-300/70">
-                            {insight.type.replaceAll("_", " ")}
-                          </div>
-                          <div>{insight.message}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </GlassPanel>
-                ) : null}
-
-                <ReplaySlider matchId={match.slug} />
+            <GlassPanel>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-sky-300/80">
+                    Replay
+                  </p>
+                  <p className="text-sm text-white/65">
+                    Timeline appears only when replay mode is opened.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReplayTimeline((prev) => !prev)}
+                  className="rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-white/85 transition hover:bg-white/[0.08]"
+                >
+                  {showReplayTimeline ? "Hide Replay Timeline" : "Open Replay Timeline"}
+                </button>
               </div>
-            </div>
+              {showReplayTimeline ? (
+                <div className="mt-3">
+                  <ReplaySlider matchId={match.slug} />
+                </div>
+              ) : null}
+            </GlassPanel>
           </div>
         )}
 
@@ -854,10 +823,6 @@ function TabsArea({
               <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
                 <div className="space-y-6">
                   <GlassPanel>
-                    <SectionHeader eyebrow="Model" title="Win Probability" />
-                    <WinProbabilityChart data={winProbabilityData} />
-                  </GlassPanel>
-                  <GlassPanel>
                     <SectionHeader
                       eyebrow="Energy"
                       title="Momentum Heatmap"
@@ -887,9 +852,9 @@ function TabsArea({
                 <GlassPanel>
                   <SectionHeader
                     eyebrow="Batting"
-                    title="Run Pressure & Projection"
+                    title="Momentum Pressure"
                   />
-                  <WinProbabilityChart data={winProbabilityData} />
+                  <MomentumHeatmap data={analytics.momentum} />
                 </GlassPanel>
                 <GlassPanel>
                   <SectionHeader
@@ -933,13 +898,6 @@ function TabsArea({
 
             {analysisFilter === "PRESSURE" && (
               <div className="space-y-6">
-                <GlassPanel>
-                  <SectionHeader
-                    eyebrow="Pressure"
-                    title="Win Pressure Curve"
-                  />
-                  <WinProbabilityChart data={winProbabilityData} />
-                </GlassPanel>
                 <GlassPanel>
                   <SectionHeader
                     eyebrow="Pressure"
@@ -1448,9 +1406,11 @@ function TabsArea({
       </div>
 
       {/* ── Right rail ── */}
-      <div className="hidden lg:block">
-        <StickyInsightsRail match={match} />
-      </div>
+      {activeTab !== "live" ? (
+        <div className="hidden lg:block">
+          <StickyInsightsRail match={match} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1672,7 +1632,7 @@ function MatchInnerPage({
 />
 
                   {/* Stats pills */}
-                  <div className="grid auto-rows-fr gap-3 md:grid-cols-2 xl:grid-cols-5">
+                  <div className="grid auto-rows-fr gap-2.5 md:grid-cols-2 xl:grid-cols-5">
                     <StatPill
                       label={innings1?.battingTeam ?? "Team 1"}
                       value={`${innings1?.runs ?? 0}/${innings1?.wickets ?? 0}`}
@@ -1702,13 +1662,6 @@ function MatchInnerPage({
                     )}
                     {innings2 && !currentEngineState.matchEnded && (
                       <StatPill
-                        label="Need"
-                        value={`${runsNeeded} in ${ballsLeft}`}
-                        tone="amber"
-                      />
-                    )}
-                    {innings2 && !currentEngineState.matchEnded && (
-                      <StatPill
                         label="RRR"
                         value={rrr ? rrr.toFixed(2) : "0.00"}
                         tone="red"
@@ -1719,24 +1672,6 @@ function MatchInnerPage({
                       value={crr ? crr.toFixed(2) : "0.00"}
                       tone="blue"
                     />
-                    {innings2 && !currentEngineState.matchEnded && (
-                      <StatPill
-                        label="Win %"
-                        value={`${winProbability.toFixed(0)}%`}
-                        tone="green"
-                      />
-                    )}
-                    {innings2 && !currentEngineState.matchEnded && (
-                      <StatPill
-                        label="Pressure"
-                        value={
-                          rrr > crr ? "High" : rrr > crr * 0.8 ? "Medium" : "Low"
-                        }
-                        tone={
-                          rrr > crr ? "red" : rrr > crr * 0.8 ? "amber" : "green"
-                        }
-                      />
-                    )}
                     <StatPill
                       label="Status"
                       value={<LiveMatchStatus matchId={match.slug} />}

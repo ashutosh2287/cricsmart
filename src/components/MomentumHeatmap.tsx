@@ -9,85 +9,101 @@ type Props = {
   data: MomentumPoint[];
 };
 
-function getTone(score: number) {
-  if (score >= 4) {
-    return {
-      bar: "from-emerald-300 to-emerald-500",
-      label: "Batting surge",
-    };
-  }
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
 
-  if (score > 0) {
-    return {
-      bar: "from-emerald-200 to-emerald-400",
-      label: "Batting edge",
-    };
-  }
-
-  if (score <= -4) {
-    return {
-      bar: "from-rose-300 to-rose-500",
-      label: "Bowling surge",
-    };
-  }
-
-  if (score < 0) {
-    return {
-      bar: "from-orange-200 to-orange-400",
-      label: "Bowling edge",
-    };
-  }
+function toCellStyle(normalized: number) {
+  const red = Math.max(0, -normalized);
+  const green = Math.max(0, normalized);
+  const balanced = 1 - Math.abs(normalized);
 
   return {
-    bar: "from-amber-200 to-amber-400",
-    label: "Balanced phase",
+    background: `linear-gradient(135deg,
+      rgba(239,68,68,${0.12 + red * 0.45}) 0%,
+      rgba(245,158,11,${0.1 + balanced * 0.35}) 52%,
+      rgba(34,197,94,${0.12 + green * 0.45}) 100%)`,
+    borderColor: `rgba(255,255,255,${0.08 + Math.abs(normalized) * 0.24})`,
   };
 }
 
 export default function MomentumHeatmap({ data }: Props) {
   if (!data.length) return null;
 
+  const maxAbs = Math.max(...data.map((point) => Math.abs(point.score)), 1);
+  const normalized = data.map((point) => ({
+    over: point.over,
+    raw: point.score,
+    norm: clamp(point.score / maxAbs, -1, 1),
+  }));
+
+  const lanes = [
+    {
+      key: "overall",
+      label: "Overall",
+      values: normalized.map((point) => point.norm),
+    },
+    {
+      key: "batting",
+      label: "Batting",
+      values: normalized.map((point) => Math.max(0, point.norm)),
+    },
+    {
+      key: "bowling",
+      label: "Bowling",
+      values: normalized.map((point) => -Math.min(0, point.norm)),
+    },
+    {
+      key: "swing",
+      label: "Swing",
+      values: normalized.map((point) => Math.abs(point.norm)),
+    },
+  ];
+
   return (
-    <div className="w-full rounded-[28px] border border-white/10 bg-slate-950/45 p-5">
-      <div className="mb-4 flex flex-col gap-2">
-        <h3 className="text-lg font-semibold text-white">Momentum Map</h3>
-        <p className="text-sm leading-6 text-white/60">
-          Green blocks favour the batting side, red blocks favour the bowling
-          side, and yellow shows a balanced spell.
-        </p>
+    <div className="w-full rounded-[16px] border border-white/10 bg-slate-950/50 p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className="text-base font-semibold text-white">Momentum Heatmap</h3>
+        <span className="text-xs text-white/55">Normalized scale</span>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        {data.map((point) => {
-          const tone = getTone(point.score);
+      <div className="overflow-x-auto">
+        <div className="min-w-[720px] space-y-2">
+          <div
+            className="grid items-center gap-1.5"
+            style={{ gridTemplateColumns: `96px repeat(${normalized.length}, minmax(38px, 1fr))` }}
+          >
+            <div />
+            {normalized.map((point) => (
+              <div key={`head-${point.over}`} className="text-center text-[10px] text-white/55">
+                {point.over}
+              </div>
+            ))}
+          </div>
 
-          return (
+          {lanes.map((lane) => (
             <div
-              key={`${point.over}-${point.score}`}
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-3"
-              title={`Over ${point.over}`}
+              key={lane.key}
+              className="grid items-center gap-1.5"
+              style={{ gridTemplateColumns: `96px repeat(${lane.values.length}, minmax(38px, 1fr))` }}
             >
-              <div className="mb-3 flex items-center justify-between gap-3 text-xs uppercase tracking-[0.18em] text-white/45">
-                <span>Over {point.over}</span>
-                <span>{tone.label}</span>
-              </div>
+              <div className="pr-2 text-xs text-white/70">{lane.label}</div>
+              {lane.values.map((value, index) => {
+                const signedValue = lane.key === "overall" ? value : normalized[index].norm;
+                const style = toCellStyle(signedValue);
 
-              <div className="h-3 overflow-hidden rounded-full bg-white/10">
-                <div
-                  className={`h-full rounded-full bg-gradient-to-r ${tone.bar}`}
-                  style={{
-                    width: `${Math.min(100, Math.max(20, Math.abs(point.score) * 16))}%`,
-                  }}
-                />
-              </div>
-
-              <div className="mt-3 text-sm font-medium text-white">
-                {point.score > 0 ? "+" : ""}
-                {point.score.toFixed(1)}
-              </div>
+                return (
+                  <div
+                    key={`${lane.key}-${index}`}
+                    title={`Over ${normalized[index].over}: ${normalized[index].raw.toFixed(1)}`}
+                    className="h-6 rounded border"
+                    style={style}
+                  />
+                );
+              })}
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
     </div>
   );

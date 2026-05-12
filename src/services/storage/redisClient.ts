@@ -12,11 +12,11 @@ function normalizeRedisUrl(rawUrl: string): string {
   }
 
   // Common typo: "...:6379s" (trailing "s" on port)
-  value = value.replace(/:(\d+)s(?=\/|$)/, ":$1");
+  value = value.replace(/:(\d+)s\b/, ":$1");
 
   try {
     const parsed = new URL(value);
-    const isUpstashHost = /^[a-zA-Z0-9-]+\.upstash\.io$/i.test(parsed.hostname);
+    const isUpstashHost = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.upstash\.io$/i.test(parsed.hostname);
 
     if (parsed.protocol === "redis:" && isUpstashHost) {
       parsed.protocol = "rediss:";

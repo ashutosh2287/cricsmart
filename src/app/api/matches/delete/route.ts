@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/services/storage/redisClient";
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
-
-const MATCH_LIST_KEY = "matches:list";
-const getMatchMetaKey = (matchId: string) => `match:${matchId}:meta`;
+import {
+  MATCH_LIST_KEY,
+  getMatchMetaKey,
+} from "@/services/match/matchRegistry";
 
 export async function DELETE(req: NextRequest) {
   try {

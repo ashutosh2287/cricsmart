@@ -1,7 +1,7 @@
 import { getRedis } from "@/services/storage/redisClient";
 
-const MATCH_LIST_KEY = "matches:list";
-const getMatchMetaKey = (matchId: string) => `match:${matchId}:meta`;
+export const MATCH_LIST_KEY = "matches:list";
+export const getMatchMetaKey = (matchId: string) => `match:${matchId}:meta`;
 
 export type MatchRegistryStatus = "LIVE" | "UPCOMING" | "COMPLETED";
 export type MatchRegistryType = "LIVE" | "SIMULATION";

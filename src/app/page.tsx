@@ -131,6 +131,8 @@ useEffect(() => {
   function handleClickOutside(e: MouseEvent) {
     if (formRef.current && !formRef.current.contains(e.target as Node)) {
       setShowCreateForm(false);
+      setTeamAInput("");
+      setTeamBInput("");
     }
   }
   document.addEventListener("mousedown", handleClickOutside);
@@ -278,7 +280,7 @@ const handleDeleteMatch = async (matchId: string) => {
                       disabled={creating}
                       className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg px-4 py-2 text-sm font-semibold text-white"
                     >
-                      {creating ? "Creating..." : "Create and Open Admin"}
+                      {creating ? "Creating..." : "Create Match"}
                     </button>
                   </div>
                 </div>

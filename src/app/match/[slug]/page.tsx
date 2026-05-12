@@ -81,6 +81,8 @@ type MainTab =
   | "scorecard"
   | "admin";
 
+const AUTO_RECONNECT_SUBSCRIBER_ID = "match-detail-page-auto";
+
 type PlayerStat = {
   runs: number;
   balls: number;
@@ -1727,8 +1729,10 @@ export default function MatchDetailPage({
         //    match page renders correct team names after a page reload/return.
         const teamAName = data.match.teamA?.name;
         const teamBName = data.match.teamB?.name;
-        const getOrGenerateTeamId = (id: unknown, name: string) => {
-          if (typeof id === "string" && id.trim()) return id;
+        const getOrGenerateTeamId = (existingId: unknown, name: string) => {
+          if (typeof existingId === "string" && existingId.trim()) {
+            return existingId;
+          }
           return name.toLowerCase().trim().replace(/\s+/g, "-");
         };
         if (teamAName && teamBName) {
@@ -1766,7 +1770,7 @@ export default function MatchDetailPage({
         const isRunning = runtime?.isRunning === true && !data.match.matchEnded;
         if (!cancelled && isRunning) {
           // connectRealtime is safe to call if already connected — it's a no-op
-          connectRealtime(id, "match-detail-page-auto");
+          connectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID);
         }
       } catch (err) {
         console.error("LOAD MATCH ERROR", err);

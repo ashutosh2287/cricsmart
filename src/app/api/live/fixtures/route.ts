@@ -108,7 +108,6 @@ export async function GET() {
 
     return NextResponse.json(data);
   } catch (err) {
-    clearTimeout(timeout);
     const errorType = err instanceof Error ? err.name : typeof err;
     console.warn(`Live fixtures fetch failed (${errorType})`, err);
 

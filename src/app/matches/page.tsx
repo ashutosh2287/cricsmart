@@ -36,6 +36,23 @@ type LiveFixture = {
   providerName: string;
 };
 
+const FIXTURE_POLL_INTERVAL_MS = 20_000;
+const HEARTBEAT_FRESH_THRESHOLD_MS = 45_000;
+const HEARTBEAT_STALE_THRESHOLD_MS = 150_000;
+const ENDED_STATUS_KEYWORDS = ["won by", "result", "abandoned", "stumps", "complete", "ended", "finished"];
+const LIVE_STATUS_KEYWORDS = ["live", "in progress", "innings break", "drinks", "need", "trail", "require"];
+const IPL_KEYWORDS = ["ipl", "indian premier league"];
+const INTERNATIONAL_KEYWORDS = [
+  "international",
+  "test",
+  "odi",
+  "t20i",
+  "icc",
+  "world cup",
+  "champions trophy",
+  "asia cup",
+];
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (typeof value !== "object" || value === null) return null;
   return value as Record<string, unknown>;
@@ -69,10 +86,8 @@ function parseTimestamp(value: unknown): number | undefined {
 
 function deriveLiveStatus(status: string) {
   const normalized = status.toLowerCase();
-  const endedKeywords = ["won by", "result", "abandoned", "stumps", "complete", "ended", "finished"];
-  const liveKeywords = ["live", "in progress", "innings break", "drinks", "need", "trail", "require"];
-  const ended = endedKeywords.some((keyword) => normalized.includes(keyword));
-  const live = liveKeywords.some((keyword) => normalized.includes(keyword));
+  const ended = ENDED_STATUS_KEYWORDS.some((keyword) => normalized.includes(keyword));
+  const live = LIVE_STATUS_KEYWORDS.some((keyword) => normalized.includes(keyword));
   return live && !ended;
 }
 
@@ -152,20 +167,8 @@ function isCurrentLiveInternationalOrIplFixture(fixture: LiveFixture) {
   if (!fixture.isLive) return false;
 
   const metadata = `${fixture.series} ${fixture.format} ${fixture.providerName} ${fixture.status}`.toLowerCase();
-  const iplKeywords = ["ipl", "indian premier league"];
-  const internationalKeywords = [
-    "international",
-    "test",
-    "odi",
-    "t20i",
-    "icc",
-    "world cup",
-    "champions trophy",
-    "asia cup",
-  ];
-
-  const isIpl = iplKeywords.some((keyword) => metadata.includes(keyword));
-  const isInternational = internationalKeywords.some((keyword) => metadata.includes(keyword));
+  const isIpl = IPL_KEYWORDS.some((keyword) => metadata.includes(keyword));
+  const isInternational = INTERNATIONAL_KEYWORDS.some((keyword) => metadata.includes(keyword));
 
   return isIpl || isInternational;
 }
@@ -179,7 +182,7 @@ function selectCurrentFixtures(fixtures: LiveFixture[]) {
 function getHeartbeatMeta(lastUpdatedAt: number) {
   const ageMs = Date.now() - lastUpdatedAt;
 
-  if (ageMs <= 45_000) {
+  if (ageMs <= HEARTBEAT_FRESH_THRESHOLD_MS) {
     return {
       text: "Heartbeat: fresh",
       badgeClass: "text-emerald-300",
@@ -187,7 +190,7 @@ function getHeartbeatMeta(lastUpdatedAt: number) {
     };
   }
 
-  if (ageMs <= 150_000) {
+  if (ageMs <= HEARTBEAT_STALE_THRESHOLD_MS) {
     return {
       text: "Heartbeat: stale",
       badgeClass: "text-amber-300",
@@ -288,7 +291,7 @@ export default function MatchesPage() {
     };
 
     loadFixtures();
-    const timer = setInterval(loadFixtures, 20_000);
+    const timer = setInterval(loadFixtures, FIXTURE_POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
@@ -368,11 +371,15 @@ export default function MatchesPage() {
         </div>
 
         {fixturesWarning ? (
-          <p className="text-xs text-amber-300 mb-3">{fixturesWarning}</p>
+          <p role="status" aria-live="polite" className="text-xs text-amber-300 mb-3">
+            {fixturesWarning}
+          </p>
         ) : null}
 
         {fixturesError ? (
-          <p className="text-sm text-rose-300 mb-3">{fixturesError}</p>
+          <p role="alert" className="text-sm text-rose-300 mb-3">
+            {fixturesError}
+          </p>
         ) : null}
 
         {fixturesLoading ? (

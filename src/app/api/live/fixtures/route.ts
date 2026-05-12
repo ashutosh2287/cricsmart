@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+const REQUEST_TIMEOUT_MS = 4500;
+
 export async function GET() {
   const key = process.env.CRICKET_API_KEY;
 
@@ -12,7 +14,7 @@ export async function GET() {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 4500);
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
     const res = await fetch(

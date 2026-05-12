@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Navbar from "@/components/layout/Navbar";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
 import StadiumOverlay from "@/components/StadiumOverlay";
@@ -9,14 +9,14 @@ import EngineBootstrap from "@/components/EngineBootstrap";
 import PageTransition from "@/components/ui/PageTransition";
 import MonitoringBootstrap from "@/components/MonitoringBootstrap";
 
-const geistSans = Geist({
+const geistSans = localFont({
+  src: "../../public/fonts/geist-latin.woff2",
   variable: "--font-geist-sans",
-  subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: "../../public/fonts/geist-mono-latin.woff2",
   variable: "--font-geist-mono",
-  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {

@@ -5,12 +5,14 @@ export type ApiBallEvent = {
   over: number
   ball: number
   batsman: string
+  nonStriker?: string
   bowler: string
   runs: number
   wicket: boolean
   type: string
   timestamp: number
   innings: number // 🔥 NEW (important)
+  commentary?: string
   dismissal?: string;
 }
 

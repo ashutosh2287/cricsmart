@@ -25,6 +25,24 @@ type Match = {
   status: "Live" | "Upcoming" | "Completed";
 };
 
+type ScoreEntry = { r?: number; w?: number; o?: number; inning?: string };
+
+type RealMatch = {
+  id: string;
+  name?: string;
+  matchType?: string;
+  matchCategory?: string;
+  status?: string;
+  venue?: string;
+  date?: string;
+  dateTimeGMT?: string;
+  teams?: string[];
+  teamInfo?: { name?: string; shortname?: string }[];
+  score?: ScoreEntry[];
+  isLive?: boolean;
+  isCompleted?: boolean;
+};
+
 /*
 ========================================
 ANIMATION
@@ -44,8 +62,37 @@ const item = {
   show: { opacity: 1, y: 0 },
 };
 
+/*
+========================================
+HELPERS
+========================================
+*/
+
+function getTeamNames(match: RealMatch): [string, string] {
+  const a =
+    match.teamInfo?.[0]?.name ??
+    match.teams?.[0] ??
+    (match.name ?? "").split(/\s+vs\s+/i)[0]?.trim() ??
+    "Team A";
+  const b =
+    match.teamInfo?.[1]?.name ??
+    match.teams?.[1] ??
+    (match.name ?? "").split(/\s+vs\s+/i)[1]?.trim() ??
+    "Team B";
+  return [a, b];
+}
+
+function formatScoreEntry(entry: ScoreEntry): string {
+  const runs = entry.r ?? 0;
+  const wickets = entry.w ?? 0;
+  const overs = entry.o ?? 0;
+  return `${runs}/${wickets} (${overs} ov)`;
+}
+
 export default function HomePage() {
   const [matches, setMatches] = useState<Match[]>([]);
+  const [liveMatches, setLiveMatches] = useState<RealMatch[]>([]);
+  const [liveStale, setLiveStale] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [teamAInput, setTeamAInput] = useState("");
   const [teamBInput, setTeamBInput] = useState("");
@@ -61,75 +108,87 @@ export default function HomePage() {
 
   /*
   ========================================
-  FETCH MATCHES
+  FETCH SIMULATED MATCHES
   ========================================
   */
 
-  const fetchMatches = async () => {
-    try {
-      const res = await fetch("/api/matches");
-      const data: ApiMatch[] = await res.json();
+  useEffect(() => {
+    let mounted = true;
 
-      const normalized: Match[] = data.map((m) => {
-        let status: Match["status"];
+    const load = async () => {
+      try {
+        const res = await fetch("/api/matches");
+        const data: ApiMatch[] = await res.json();
 
-        if (m.status === "LIVE") status = "Live";
-        else if (m.status === "COMPLETED") status = "Completed";
-        else status = "Upcoming";
+        const normalized: Match[] = data.map((m) => {
+          let status: Match["status"];
 
-        return {
-          matchId: m.matchId,
-          teamA: m.teamA,
-          teamB: m.teamB,
-          status,
-        };
-      });
+          if (m.status === "LIVE") status = "Live";
+          else if (m.status === "COMPLETED") status = "Completed";
+          else status = "Upcoming";
 
-      setMatches(normalized);
-    } catch (err) {
-      console.error("❌ Failed to fetch matches", err);
-    }
-  };
+          return {
+            matchId: m.matchId,
+            teamA: m.teamA,
+            teamB: m.teamB,
+            status,
+          };
+        });
+
+        if (mounted) setMatches(normalized);
+
+      } catch (err) {
+        console.error("❌ Failed to fetch matches", err);
+      }
+    };
+
+    load();
+
+    const interval = setInterval(load, 3000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  /*
+  ========================================
+  FETCH LIVE (REAL) MATCHES
+  ========================================
+  */
 
   useEffect(() => {
-  let mounted = true;
+    let mounted = true;
+    const liveSnap = { current: [] as RealMatch[] };
 
-  const load = async () => {
-    try {
-      const res = await fetch("/api/matches");
-      const data: ApiMatch[] = await res.json();
+    const load = async () => {
+      try {
+        const res = await fetch("/api/live/fixtures", { cache: "no-store" });
+        const payload = (await res.json()) as { data?: RealMatch[]; stale?: boolean };
+        if (!mounted) return;
 
-      const normalized: Match[] = data.map((m) => {
-        let status: Match["status"];
+        const data = Array.isArray(payload.data) ? payload.data : [];
+        const live = data.filter((m) => m.isLive);
+        liveSnap.current = live;
+        setLiveMatches(live);
+        setLiveStale(Boolean(payload.stale));
+      } catch {
+        if (!mounted) return;
+        if (liveSnap.current.length > 0) {
+          setLiveMatches(liveSnap.current);
+          setLiveStale(true);
+        }
+      }
+    };
 
-        if (m.status === "LIVE") status = "Live";
-        else if (m.status === "COMPLETED") status = "Completed";
-        else status = "Upcoming";
-
-        return {
-          matchId: m.matchId,
-          teamA: m.teamA,
-          teamB: m.teamB,
-          status,
-        };
-      });
-
-      if (mounted) setMatches(normalized);
-
-    } catch (err) {
-      console.error("❌ Failed to fetch matches", err);
-    }
-  };
-
-  load();
-
-  const interval = setInterval(load, 3000);
-
-  return () => {
-    mounted = false;
-    clearInterval(interval);
-  };
-}, []);
+    load();
+    const interval = setInterval(load, 60_000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
 // Close form when clicking outside
 useEffect(() => {
@@ -222,7 +281,7 @@ const handleDeleteMatch = async (matchId: string) => {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-28"
+          className="text-center mb-20"
         >
           <h1 className="text-6xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 text-transparent bg-clip-text">
             CricSmart
@@ -309,11 +368,81 @@ const handleDeleteMatch = async (matchId: string) => {
 
         </motion.div>
 
-        {/* LIVE MATCHES */}
-        <div className="mb-28">
+        {/* SECTION 1: LIVE NOW (real cricAPI matches) */}
+        <div className="mb-20">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-semibold text-gray-200">Live Now</h2>
+            <Link href="/matches" className="text-sm text-blue-400 hover:underline">
+              View all →
+            </Link>
+          </div>
 
-          <h2 className="text-2xl font-semibold mb-10 text-gray-200">
-            Live Matches
+          {liveStale && (
+            <p className="text-xs text-amber-300 mb-3">Scores may be delayed</p>
+          )}
+
+          {liveMatches.length === 0 ? (
+            <p className="text-gray-500 text-sm">No live matches right now. Check back soon.</p>
+          ) : (
+            <motion.div
+              variants={container}
+              initial="hidden"
+              animate="show"
+              className="grid md:grid-cols-3 gap-6"
+            >
+              {liveMatches.slice(0, 6).map((match) => {
+                const [teamA, teamB] = getTeamNames(match);
+                const category = match.matchCategory ?? match.matchType?.toUpperCase() ?? "T20";
+                const scores = Array.isArray(match.score) ? match.score : [];
+
+                return (
+                  <motion.div key={match.id} variants={item}>
+                    <Link href={`/matches/${match.id}`}>
+                      <div className="block rounded-xl p-5 bg-zinc-900 border border-red-500/30 live-cinematic hover:scale-[1.02] transition-transform">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-gray-300 uppercase font-medium">
+                            {category}
+                          </span>
+                          <span className="flex items-center gap-1.5 text-xs text-red-400">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                            </span>
+                            LIVE
+                          </span>
+                        </div>
+
+                        <p className="font-semibold text-sm mb-2">
+                          {teamA} vs {teamB}
+                        </p>
+
+                        {scores.length > 0 && (
+                          <div className="space-y-0.5">
+                            {scores.map((s, i) => (
+                              <p key={i} className="text-sm font-mono text-gray-300">
+                                {formatScoreEntry(s)}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+
+                        {match.status && (
+                          <p className="text-xs text-gray-400 mt-2 truncate">{match.status}</p>
+                        )}
+                      </div>
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
+        </div>
+
+        {/* SECTION 2: YOUR SIMULATIONS */}
+        <div className="mb-20">
+
+          <h2 className="text-2xl font-semibold mb-6 text-gray-200">
+            Your Simulations
           </h2>
 
           <motion.div
@@ -323,7 +452,7 @@ const handleDeleteMatch = async (matchId: string) => {
             className="grid md:grid-cols-3 gap-8"
           >
             {matches.length === 0 ? (
-              <p className="text-gray-500">No matches available</p>
+              <p className="text-gray-500">No simulations yet. Create one above.</p>
             ) : (
               matches.slice(0, 3).map((match) => (
                 <motion.div key={match.matchId} variants={item} className="relative">

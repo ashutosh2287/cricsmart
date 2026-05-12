@@ -6,20 +6,21 @@ let redis: Redis | null = null;
 function normalizeRedisUrl(rawUrl: string): string {
   let value = rawUrl.trim();
 
+  // Common typo: "...:6379s" (trailing "s" on port)
   value = value.replace(/:(\d+)s(?=\/|$)/, ":$1");
 
   try {
     const parsed = new URL(value);
-    if (parsed.protocol === "redis:" && parsed.hostname.endsWith("upstash.io")) {
+    const isUpstashHost = /^([a-z0-9-]+\.)*upstash\.io$/i.test(parsed.hostname);
+
+    if (parsed.protocol === "redis:" && isUpstashHost) {
       parsed.protocol = "rediss:";
     }
-    if (!parsed.port) {
-      parsed.port = "6379";
-    }
+
     return parsed.toString();
   } catch {
     throw new Error(
-      "Invalid REDIS_URL. Use a valid URL like rediss://default:<password>@<host>:6379"
+      "Invalid REDIS_URL. Use a valid URL like redis://<host>:6379 or rediss://<host>:6379"
     );
   }
 }

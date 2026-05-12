@@ -306,6 +306,7 @@ export default function MatchesPage() {
       ? matches
       : matches.filter((match) => match.status === activeTab);
   }, [activeTab, matches]);
+  const hasMatches = matches.length > 0;
 
   const openLiveMatch = async (fixture: LiveFixture) => {
     const { matchId } = fixture;
@@ -474,6 +475,22 @@ export default function MatchesPage() {
           </button>
         ))}
       </div>
+
+      {hasMatches ? (
+        <div className="flex gap-3 mb-6">
+          {(["ALL", "LIVE", "UPCOMING", "COMPLETED"] as TabType[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 rounded-full ${
+                activeTab === tab ? "bg-purple-600" : "bg-gray-800"
+              }`}
+            >
+              {tab === "LIVE" ? "LIVE 🔴" : tab}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {loading ? (
         <p className="text-gray-400">Loading matches...</p>

@@ -127,30 +127,30 @@ export default function MatchCard({ match: initialMatch }: Props) {
       ref={cardRef}
       onClick={() => router.push(`/match/${matchId}`)}
       className={`
-        ui-section relative overflow-hidden
+        border p-5 rounded-xl shadow relative overflow-hidden
         transition-all duration-200 cursor-pointer
-        hover:scale-[1.01] active:scale-[0.99]
+        hover:scale-[1.02] active:scale-[0.98]
         ${status.cinematic}
         ${energy ? "energy-sweep" : ""}
       `}
     >
 
       {/* HEADER */}
-      <div className="ui-section-header !mb-2 !pb-2">
+      <div className="flex justify-between items-center">
 
-        <h2 className="flex items-center gap-2 text-base font-semibold">
+        <h2 className="font-semibold text-lg flex items-center gap-2">
           {initialMatch.teamA} vs {initialMatch.teamB}
 
-          <div className="text-xs text-gray-400">
+          <div className="text-sm text-gray-400">
             Over: {match.currentOver ?? 0}.{match.currentBall ?? 0}
           </div>
 
           {match.status === "Live" && (
-            <span className="live-pulse-red" />
+            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"/>
           )}
         </h2>
 
-        <span className={`rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.1em] ${status.text}`}>
+        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${status.text}`}>
           {match.status}
         </span>
 
@@ -158,7 +158,7 @@ export default function MatchCard({ match: initialMatch }: Props) {
 
       {/* 🔥 MOMENTUM BAR */}
       {match.status === "Live" && (
-        <div className="mt-1 h-1 w-full overflow-hidden rounded bg-gray-800">
+        <div className="h-1 w-full bg-gray-800 mt-2 rounded overflow-hidden">
           <div
             className="h-full bg-green-500 transition-all duration-500"
             style={{
@@ -170,13 +170,13 @@ export default function MatchCard({ match: initialMatch }: Props) {
 
       {/* LIVE */}
       {match.status === "Live" && runs !== undefined && wickets !== undefined && (
-        <div className="mt-2 space-y-1">
+        <div className="mt-3 space-y-1">
 
           {/* SCORE */}
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">Score</span>
+            <span className="text-gray-400 text-sm">Score</span>
 
-            <span ref={scoreRef} className="text-lg font-bold score-tick">
+            <span ref={scoreRef} className="text-xl font-bold">
               <AnimatedScore value={`${runs}/${wickets}`} />
             </span>
 
@@ -186,15 +186,15 @@ export default function MatchCard({ match: initialMatch }: Props) {
           </div>
 
           {/* OVERS */}
-          {overs && <p className="text-xs text-gray-400">Overs: {overs}</p>}
+          {overs && <p className="text-sm text-gray-400">Overs: {overs}</p>}
 
           {/* RUN RATE */}
           {runRate && (
-            <p className="text-xs text-gray-400">Run Rate: {runRate}</p>
+            <p className="text-sm text-gray-400">Run Rate: {runRate}</p>
           )}
 
           {/* 🔥 BATSMEN */}
-          <div className="mt-2 text-xs text-gray-300">
+          <div className="text-sm text-gray-300 mt-2">
             🏏 {striker} <span className="text-yellow-400">*</span>
             <br />
             🏃 {nonStriker}
@@ -202,14 +202,14 @@ export default function MatchCard({ match: initialMatch }: Props) {
 
           {/* 🔥 LAST BALL */}
           {lastEvent && (
-            <div className="mt-2 text-xs text-gray-400">
+            <div className="text-xs text-gray-400 mt-2">
               Last ball: {lastEvent.type} {lastEvent.runs ?? ""}
             </div>
           )}
 
           {/* 🔥 COMMENTARY */}
           {commentary.length > 0 && (
-  <div className="mt-2 truncate text-xs italic text-gray-400">
+  <div className="text-xs text-gray-400 mt-2 italic truncate">
     {commentary[0]}
   </div>
 )}

@@ -11,12 +11,12 @@ function LiveScoreCard({
   const score = useScore(matchId);
 
   return (
-    <div className="ui-inset">
-      <div className="text-lg font-bold tabular-nums score-tick">
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+      <div className="text-xl font-bold">
         {score.runs}/{score.wickets}
       </div>
 
-      <div className="text-xs text-gray-400">
+      <div className="text-sm text-gray-400">
         Overs: {score.overs}
       </div>
     </div>

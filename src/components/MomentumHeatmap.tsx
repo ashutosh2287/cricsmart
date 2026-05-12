@@ -9,41 +9,86 @@ type Props = {
   data: MomentumPoint[];
 };
 
-export default function MomentumHeatmap({ data }: Props) {
-
-  if (!data.length) return null;
-
-  function getColor(value: number) {
-    if (value > 3) return "bg-green-500";
-    if (value > 0) return "bg-green-300";
-    if (value < -3) return "bg-red-500";
-    if (value < 0) return "bg-red-300";
-    return "bg-yellow-400";
+function getTone(score: number) {
+  if (score >= 4) {
+    return {
+      bar: "from-emerald-300 to-emerald-500",
+      label: "Batting surge",
+    };
   }
 
+  if (score > 0) {
+    return {
+      bar: "from-emerald-200 to-emerald-400",
+      label: "Batting edge",
+    };
+  }
+
+  if (score <= -4) {
+    return {
+      bar: "from-rose-300 to-rose-500",
+      label: "Bowling surge",
+    };
+  }
+
+  if (score < 0) {
+    return {
+      bar: "from-orange-200 to-orange-400",
+      label: "Bowling edge",
+    };
+  }
+
+  return {
+    bar: "from-amber-200 to-amber-400",
+    label: "Balanced phase",
+  };
+}
+
+export default function MomentumHeatmap({ data }: Props) {
+  if (!data.length) return null;
+
   return (
-    <div className="bg-gray-900 text-white p-4 rounded-xl w-full overflow-hidden">
-
-      <h3 className="font-bold mb-3">
-        Momentum Map
-      </h3>
-
-      <div className="flex gap-1 overflow-x-auto">
-
-        <div className="flex gap-[2px] min-w-max">
-
-          {data.map((p, index) => (
-            <div
-              key={index}
-              className={`w-2 h-10 ${getColor(p.score)}`}
-              title={`Over ${p.over}`}
-            />
-          ))}
-
-        </div>
-
+    <div className="w-full rounded-[28px] border border-white/10 bg-slate-950/45 p-5">
+      <div className="mb-4 flex flex-col gap-2">
+        <h3 className="text-lg font-semibold text-white">Momentum Map</h3>
+        <p className="text-sm leading-6 text-white/60">
+          Green blocks favour the batting side, red blocks favour the bowling
+          side, and yellow shows a balanced spell.
+        </p>
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-3">
+        {data.map((point) => {
+          const tone = getTone(point.score);
+
+          return (
+            <div
+              key={`${point.over}-${point.score}`}
+              className="rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+              title={`Over ${point.over}`}
+            >
+              <div className="mb-3 flex items-center justify-between gap-3 text-xs uppercase tracking-[0.18em] text-white/45">
+                <span>Over {point.over}</span>
+                <span>{tone.label}</span>
+              </div>
+
+              <div className="h-3 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className={`h-full rounded-full bg-gradient-to-r ${tone.bar}`}
+                  style={{
+                    width: `${Math.min(100, Math.max(20, Math.abs(point.score) * 16))}%`,
+                  }}
+                />
+              </div>
+
+              <div className="mt-3 text-sm font-medium text-white">
+                {point.score > 0 ? "+" : ""}
+                {point.score.toFixed(1)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

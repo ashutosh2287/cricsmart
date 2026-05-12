@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import AnimatedScore from "./ui/AnimatedScore";
 
 type Batsman = {
@@ -74,6 +75,12 @@ export default function MatchHeader({
 }: Props) {
   const finalTeam1 = team1 || "Team A";
   const finalTeam2 = team2 || "Team B";
+  const containerRef = useRef<HTMLDivElement>(null);
+  const statusRef = useRef<HTMLDivElement>(null);
+  const scoreRef = useRef<HTMLDivElement>(null);
+  const previousRuns = useRef(runs);
+  const previousWickets = useRef(wickets);
+  const previousOverBall = useRef(`${over}.${ball}`);
 
   const totalBalls = totalOvers * 6;
   const ballsBowled = over * 6 + ball;
@@ -86,16 +93,50 @@ export default function MatchHeader({
     typeof runsNeeded === "number" &&
     typeof ballsLeft === "number";
 
+  useEffect(() => {
+    if (runs === previousRuns.current) return;
+    previousRuns.current = runs;
+    const element = scoreRef.current;
+    if (!element) return;
+    element.classList.remove("score-tick");
+    void element.offsetWidth;
+    element.classList.add("score-tick");
+  }, [runs]);
+
+  useEffect(() => {
+    if (wickets <= previousWickets.current) return;
+    previousWickets.current = wickets;
+    const element = containerRef.current;
+    if (!element) return;
+    element.classList.remove("wicket-flash");
+    void element.offsetWidth;
+    element.classList.add("wicket-flash");
+    const timer = setTimeout(() => element.classList.remove("wicket-flash"), 500);
+    return () => clearTimeout(timer);
+  }, [wickets]);
+
+  useEffect(() => {
+    const overBall = `${over}.${ball}`;
+    if (overBall === previousOverBall.current) return;
+    previousOverBall.current = overBall;
+    const element = statusRef.current;
+    if (!element) return;
+    element.classList.remove("over-transition");
+    void element.offsetWidth;
+    element.classList.add("over-transition");
+    const timer = setTimeout(() => element.classList.remove("over-transition"), 360);
+    return () => clearTimeout(timer);
+  }, [over, ball]);
+
   return (
     <div
+      ref={containerRef}
       className="relative w-full overflow-hidden border border-[var(--border-subtle)]"
       style={{
         background: "var(--bg-surface)",
         borderRadius: "var(--radius-md)",
       }}
     >
-      <div key={`wicket-${wickets}`} className="pointer-events-none absolute inset-0 wicket-flash" />
-
       {/* ── Winner banner (match ended) ───────────────────── */}
       {matchEnded && winner && (
         <div
@@ -145,7 +186,7 @@ export default function MatchHeader({
       )}
 
       {/* ── Live / status bar ─────────────────────────────── */}
-      <div key={`over-${over}-${ball}`} className="over-transition flex items-center gap-3 px-4 pt-3 pb-0">
+      <div ref={statusRef} className="flex items-center gap-3 px-4 pt-3 pb-0">
         {isLive && !matchEnded && (
           <span className="flex items-center gap-1.5">
             <span className="live-pulse-red" />
@@ -213,7 +254,7 @@ export default function MatchHeader({
         </div>
 
         {/* Score — dominant element */}
-        <div key={`score-${runs}-${wickets}`} className="score-tick text-right shrink-0">
+        <div ref={scoreRef} className="text-right shrink-0">
           <div
             className="font-extrabold tabular-nums leading-none"
             style={{

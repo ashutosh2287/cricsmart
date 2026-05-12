@@ -14,30 +14,20 @@ export default function LiveMatchStatus({ matchId }: Props) {
   );
 
   return (
-    <div className="bg-gradient-to-r from-blue-900/40 via-zinc-900 to-purple-900/40 border border-zinc-800 rounded-xl p-4 shadow-lg">
-      <div className="flex flex-wrap gap-6 text-sm text-gray-300">
-        
-        <div>
-          <span className="text-gray-400">Score:</span>{" "}
-          <span className="text-white font-semibold">
-            {score.runs}/{score.wickets}
-          </span>
-        </div>
-
-        <div>
-          <span className="text-gray-400">Overs:</span>{" "}
-          <span className="text-white font-semibold">
-            {score.overs}
-          </span>
-        </div>
-
-        <div>
-          <span className="text-gray-400">Innings:</span>{" "}
-          <span className="text-white font-semibold">
-            {(inningsIndex ?? 0) + 1}
-          </span>
-        </div>
-
+    <div className="ui-inset">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
+        <span className="inline-flex items-center gap-2 text-white/75">
+          <span className="live-pulse-red" />
+          LIVE
+        </span>
+        <span className="text-white/60">Score</span>
+        <span className="font-semibold text-white tabular-nums">
+          {score.runs}/{score.wickets}
+        </span>
+        <span className="text-white/60">Overs</span>
+        <span className="font-semibold text-white tabular-nums">{score.overs}</span>
+        <span className="text-white/60">Innings</span>
+        <span className="font-semibold text-white">{(inningsIndex ?? 0) + 1}</span>
       </div>
     </div>
   );

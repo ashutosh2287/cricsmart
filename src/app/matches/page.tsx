@@ -65,16 +65,21 @@ export default function MatchesPage() {
   }, [activeTab, matches]);
 
   return (
-    <div className="p-6 text-white">
-      <h1 className="text-2xl font-bold mb-6">Matches</h1>
+    <div className="mx-auto max-w-7xl px-4 py-6 text-white md:px-6">
+      <div className="ui-section">
+      <div className="ui-section-header">
+        <h1 className="text-xl font-bold">Matches</h1>
+      </div>
 
-      <div className="flex gap-3 mb-6">
+      <div className="mb-4 flex flex-wrap gap-2">
         {(["ALL", "LIVE", "UPCOMING", "COMPLETED"] as TabType[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-full ${
-              activeTab === tab ? "bg-purple-600" : "bg-gray-800"
+            className={`rounded-md border px-3 py-1.5 text-xs font-semibold tracking-[0.1em] ${
+              activeTab === tab
+                ? "border-sky-300/40 bg-sky-300 text-slate-950"
+                : "border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/[0.08]"
             }`}
           >
             {tab === "LIVE" ? "LIVE 🔴" : tab}
@@ -83,11 +88,11 @@ export default function MatchesPage() {
       </div>
 
       {loading ? (
-        <p className="text-gray-400">Loading matches...</p>
+        <p className="text-sm text-white/50">Loading matches...</p>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {filteredMatches.length === 0 ? (
-            <p className="text-gray-500">No matches available</p>
+            <p className="text-sm text-white/45">No matches available</p>
           ) : (
             filteredMatches.map((match) => (
               <MatchCard
@@ -115,6 +120,7 @@ export default function MatchesPage() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -128,15 +134,28 @@ function MatchCard({ match, onClick }: MatchCardProps) {
   const isLive = match.status === "LIVE";
 
   return (
-    <div onClick={onClick} className="bg-gray-900 p-4 rounded-xl cursor-pointer">
-      <h2>
-        {match.teamA} vs {match.teamB}
-      </h2>
+    <div onClick={onClick} className="ui-rail cursor-pointer transition hover:border-white/20">
+      <div className="flex items-start justify-between gap-2">
+        <h2 className="truncate text-sm font-semibold">
+          {match.teamA} vs {match.teamB}
+        </h2>
+        <span
+          className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${
+            match.status === "LIVE"
+              ? "bg-red-500/15 text-red-300"
+              : match.status === "UPCOMING"
+              ? "bg-sky-500/15 text-sky-300"
+              : "bg-zinc-700/30 text-zinc-300"
+          }`}
+        >
+          {match.status}
+        </span>
+      </div>
 
       {isLive && (
         <>
-          <p>{match.score ?? "0/0"} ({match.overDisplay ?? "0.0"})</p>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="mt-1 text-sm tabular-nums">{match.score ?? "0/0"} ({match.overDisplay ?? "0.0"})</p>
+          <p className="mt-1 text-xs text-white/50">
             Connection: {match.reconnectHealth ?? "unknown"}
             {match.heartbeatFresh ? " • fresh" : " • waiting"}
           </p>
@@ -144,12 +163,14 @@ function MatchCard({ match, onClick }: MatchCardProps) {
       )}
 
       {match.commentaryPreview ? (
-        <p className="text-xs text-gray-400 mt-2 italic truncate">
+        <p className="mt-2 truncate text-xs italic text-white/55">
           {match.commentaryPreview}
         </p>
       ) : null}
 
-      <button className="mt-3 bg-purple-600 px-3 py-1 rounded">Open Match</button>
+      <button className="mt-3 rounded-md bg-sky-400 px-3 py-1 text-xs font-semibold text-slate-950">
+        Open Match
+      </button>
     </div>
   );
 }

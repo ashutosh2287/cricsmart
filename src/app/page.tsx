@@ -1,15 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-
-/*
-========================================
-TYPES
-========================================
-*/
 
 type ApiMatch = {
   matchId: string;
@@ -25,286 +18,161 @@ type Match = {
   status: "Live" | "Upcoming" | "Completed";
 };
 
-/*
-========================================
-ANIMATION
-========================================
-*/
-
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.12 },
-  },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 25 },
-  show: { opacity: 1, y: 0 },
+const statusTone: Record<Match["status"], string> = {
+  Live: "text-red-300",
+  Upcoming: "text-sky-300",
+  Completed: "text-zinc-400",
 };
 
 export default function HomePage() {
   const [matches, setMatches] = useState<Match[]>([]);
-
-  /*
-  ========================================
-  FETCH MATCHES
-  ========================================
-  */
-
-  const fetchMatches = async () => {
-    try {
-      const res = await fetch("/api/matches");
-      const data: ApiMatch[] = await res.json();
-
-      const normalized: Match[] = data.map((m) => {
-        let status: Match["status"];
-
-        if (m.status === "LIVE") status = "Live";
-        else if (m.status === "COMPLETED") status = "Completed";
-        else status = "Upcoming";
-
-        return {
-          matchId: m.matchId,
-          teamA: m.teamA,
-          teamB: m.teamB,
-          status,
-        };
-      });
-
-      setMatches(normalized);
-    } catch (err) {
-      console.error("❌ Failed to fetch matches", err);
-    }
-  };
+  const router = useRouter();
 
   useEffect(() => {
-  let mounted = true;
+    let mounted = true;
 
-  const load = async () => {
-    try {
-      const res = await fetch("/api/matches");
-      const data: ApiMatch[] = await res.json();
+    const load = async () => {
+      try {
+        const res = await fetch("/api/matches");
+        const data: ApiMatch[] = await res.json();
 
-      const normalized: Match[] = data.map((m) => {
-        let status: Match["status"];
+        const normalized: Match[] = data.map((m) => {
+          let status: Match["status"];
+          if (m.status === "LIVE") status = "Live";
+          else if (m.status === "COMPLETED") status = "Completed";
+          else status = "Upcoming";
 
-        if (m.status === "LIVE") status = "Live";
-        else if (m.status === "COMPLETED") status = "Completed";
-        else status = "Upcoming";
+          return {
+            matchId: m.matchId,
+            teamA: m.teamA,
+            teamB: m.teamB,
+            status,
+          };
+        });
 
-        return {
-          matchId: m.matchId,
-          teamA: m.teamA,
-          teamB: m.teamB,
-          status,
-        };
-      });
+        if (mounted) setMatches(normalized);
+      } catch (err) {
+        console.error("❌ Failed to fetch matches", err);
+      }
+    };
 
-      if (mounted) setMatches(normalized);
+    load();
+    const interval = setInterval(load, 3000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
-    } catch (err) {
-      console.error("❌ Failed to fetch matches", err);
-    }
-  };
+  const quickAdminMatch = useMemo(
+    () =>
+      matches.find((m) => m.status === "Live") ||
+      matches.find((m) => m.status === "Upcoming") ||
+      matches[0],
+    [matches]
+  );
 
-  load();
-
-  const interval = setInterval(load, 3000);
-
-  return () => {
-    mounted = false;
-    clearInterval(interval);
-  };
-}, []);
-
-const router = useRouter();
-
-const handleCreateMatch = async () => {
-  console.log("🔥 BUTTON CLICKED");
-
-  try {
-    const res = await fetch("/api/create-match", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        teamA: "Team A",
-        teamB: "Team B",
-      }),
-    });
-
-    const data = await res.json();
-
-    console.log("API RESPONSE:", data);
-
-    if (!data?.matchId) {
-      throw new Error("Match creation failed");
-    }
-
-    router.push(`/admin/${data.matchId}`);
-
-  } catch (err) {
-    console.error("❌ ERROR:", err);
-  }
-};
-
-  /*
-  ========================================
-  UI
-  ========================================
-  */
+  const liveCount = matches.filter((m) => m.status === "Live").length;
 
   return (
-    <div className="relative min-h-screen text-white overflow-hidden">
+    <div className="min-h-screen bg-[var(--bg-base)] text-white">
+      <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
+        <section className="ui-section">
+          <div className="ui-section-header">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-sky-300/80">
+                CricSmart Console
+              </p>
+              <h1 className="mt-1 text-3xl font-bold tracking-tight md:text-4xl">
+                Real-Time Cricket Intelligence
+              </h1>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-white/70">
+              <span className="live-pulse-red" />
+              {liveCount} Live
+            </div>
+          </div>
 
-      {/* BACKGROUND */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[900px] bg-purple-600/20 blur-[160px] rounded-full"/>
-      <div className="absolute top-40 left-20 w-[600px] h-[600px] bg-blue-600/20 blur-[140px] rounded-full"/>
-      <div className="absolute inset-0 bg-gradient-to-b from-blue-900/10 via-black to-black"/>
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="ui-inset">
+              <p className="text-[11px] uppercase tracking-[0.15em] text-white/50">Matches</p>
+              <p className="mt-1 text-xl font-semibold tabular-nums">{matches.length}</p>
+            </div>
+            <div className="ui-inset">
+              <p className="text-[11px] uppercase tracking-[0.15em] text-white/50">Live</p>
+              <p className="mt-1 text-xl font-semibold tabular-nums text-red-300">{liveCount}</p>
+            </div>
+            <div className="ui-inset">
+              <p className="text-[11px] uppercase tracking-[0.15em] text-white/50">Upcoming</p>
+              <p className="mt-1 text-xl font-semibold tabular-nums text-sky-300">
+                {matches.filter((m) => m.status === "Upcoming").length}
+              </p>
+            </div>
+            <div className="ui-inset">
+              <p className="text-[11px] uppercase tracking-[0.15em] text-white/50">Completed</p>
+              <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-400">
+                {matches.filter((m) => m.status === "Completed").length}
+              </p>
+            </div>
+          </div>
 
-      <div className="relative max-w-7xl mx-auto px-6 py-16">
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link href="/matches" className="rounded-md bg-sky-400 px-4 py-2 text-sm font-semibold text-slate-950">
+              View Matches
+            </Link>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch("/api/create-match", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ teamA: "Team A", teamB: "Team B" }),
+                  });
+                  const data = await res.json();
+                  if (!data?.matchId) throw new Error("Match creation failed");
+                  router.push(`/admin/${data.matchId}`);
+                } catch (err) {
+                  console.error("❌ ERROR:", err);
+                }
+              }}
+              className="rounded-md border border-white/15 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/85 hover:bg-white/[0.08]"
+            >
+              Create Match
+            </button>
+            {quickAdminMatch ? (
+              <Link
+                href={`/admin/${quickAdminMatch.matchId}`}
+                className="rounded-md border border-white/15 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/85 hover:bg-white/[0.08]"
+              >
+                Open Admin Panel
+              </Link>
+            ) : null}
+          </div>
+        </section>
 
-        {/* HERO */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-28"
-        >
-          <h1 className="text-6xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 text-transparent bg-clip-text">
-            CricSmart
-          </h1>
-
-          <p className="text-gray-300 text-xl mb-6">
-            Real-Time Cricket Intelligence Platform
-          </p>
-
-          <p className="text-gray-500 max-w-2xl mx-auto mb-10 text-sm">
-            Analyze cricket matches with advanced analytics.
-          </p>
-
-    
-
- <div className="flex gap-4 justify-center">
-
-  <Link
-    href="/matches"
-    className="inline-block bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-xl font-semibold"
-  >
-    View Matches
-  </Link>
-
-  <button
-    onClick={handleCreateMatch}
-    className="inline-block bg-purple-600 hover:bg-purple-500 px-8 py-3 rounded-xl font-semibold"
-  >
-    Create Match
-  </button>
-
-  {matches.length > 0 && (() => {
-    const targetMatch =
-      matches.find(m => m.status === "Live") ||
-      matches.find(m => m.status === "Upcoming") ||
-      matches[0];
-
-    return (
-      <Link
-        href={`/admin/${targetMatch.matchId}`}
-        className="inline-block bg-purple-600 hover:bg-purple-500 px-8 py-3 rounded-xl font-semibold"
-      >
-        Open Admin Panel
-      </Link>
-    );
-  })()}
-
-</div>
-
-        </motion.div>
-
-        {/* LIVE MATCHES */}
-        <div className="mb-28">
-
-          <h2 className="text-2xl font-semibold mb-10 text-gray-200">
-            Live Matches
-          </h2>
-
-          <motion.div
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="grid md:grid-cols-3 gap-8"
-          >
-            {matches.length === 0 ? (
-              <p className="text-gray-500">No matches available</p>
-            ) : (
-              matches.slice(0, 3).map((match) => (
-                <motion.div key={match.matchId} variants={item}>
-                  <Link
-                    href={`/match/${match.matchId}`}
-                    className={`block rounded-xl p-6 bg-zinc-900 transition-all hover:scale-105
-                      ${
-                        match.status === "Live"
-                          ? "border border-red-500 hover:shadow-red-500/30"
-                          : match.status === "Upcoming"
-                          ? "border border-blue-500"
-                          : "border border-zinc-700"
-                      }`}
-                  >
-                    <p className="text-lg font-semibold">
-                      {match.teamA} vs {match.teamB}
-                    </p>
-
-                    <p
-                      className={`text-sm mt-2 ${
-                        match.status === "Live"
-                          ? "text-red-400"
-                          : match.status === "Upcoming"
-                          ? "text-blue-400"
-                          : "text-gray-400"
-                      }`}
-                    >
-                      {match.status}
-                    </p>
-                  </Link>
-                </motion.div>
-              ))
-            )}
-          </motion.div>
-        </div>
-
-        {/* FEATURES (UNCHANGED) */}
-        <div>
-          <h2 className="text-2xl font-semibold mb-10 text-gray-200">
-            Platform Features
-          </h2>
-
-          <motion.div
-            variants={container}
-            initial="hidden"
-            animate="show"
-            className="grid md:grid-cols-4 gap-8"
-          >
-            <motion.div variants={item} className="bg-zinc-900 p-6 rounded-xl">
-              Win Probability
-            </motion.div>
-
-            <motion.div variants={item} className="bg-zinc-900 p-6 rounded-xl">
-              Momentum Engine
-            </motion.div>
-
-            <motion.div variants={item} className="bg-zinc-900 p-6 rounded-xl">
-              Turning Points
-            </motion.div>
-
-            <motion.div variants={item} className="bg-zinc-900 p-6 rounded-xl">
-              Replay Timeline
-            </motion.div>
-          </motion.div>
-        </div>
-
+        <section className="mt-4 ui-section">
+          <div className="ui-section-header">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-white/80">Live Board</h2>
+          </div>
+          {matches.length === 0 ? (
+            <p className="text-sm text-white/50">No matches available</p>
+          ) : (
+            <div className="space-y-1">
+              {matches.slice(0, 6).map((match) => (
+                <Link
+                  key={match.matchId}
+                  href={`/match/${match.matchId}`}
+                  className="ui-row hover:bg-white/[0.04]"
+                >
+                  <span className="truncate text-sm text-white">{match.teamA} vs {match.teamB}</span>
+                  <span className={`text-xs font-semibold uppercase tracking-[0.12em] ${statusTone[match.status]}`}>
+                    {match.status}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

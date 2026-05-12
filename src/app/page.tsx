@@ -53,6 +53,12 @@ export default function HomePage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
+  function closeCreateForm() {
+    setShowCreateForm(false);
+    setTeamAInput("");
+    setTeamBInput("");
+  }
+
   /*
   ========================================
   FETCH MATCHES
@@ -130,9 +136,7 @@ useEffect(() => {
   if (!showCreateForm) return;
   function handleClickOutside(e: MouseEvent) {
     if (formRef.current && !formRef.current.contains(e.target as Node)) {
-      setShowCreateForm(false);
-      setTeamAInput("");
-      setTeamBInput("");
+      closeCreateForm();
     }
   }
   document.addEventListener("mousedown", handleClickOutside);
@@ -143,7 +147,7 @@ useEffect(() => {
   if (!showCreateForm) return;
   const onEscape = (event: KeyboardEvent) => {
     if (event.key === "Escape") {
-      setShowCreateForm(false);
+      closeCreateForm();
     }
   };
   document.addEventListener("keydown", onEscape);
@@ -172,9 +176,7 @@ const handleCreateMatch = async () => {
       throw new Error("Match creation failed");
     }
 
-    setShowCreateForm(false);
-    setTeamAInput("");
-    setTeamBInput("");
+    closeCreateForm();
     router.push(`/admin/${data.matchId}`);
   } catch (err) {
     console.error("❌ ERROR:", err);
@@ -364,7 +366,8 @@ const handleDeleteMatch = async (matchId: string) => {
                     onClick={() => handleDeleteMatch(match.matchId)}
                     disabled={deletingId === match.matchId}
                     title="Remove match"
-                    className="absolute top-3 right-3 opacity-80 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-red-400 transition-opacity bg-zinc-800 hover:bg-red-600 text-gray-300 hover:text-white rounded-lg w-7 h-7 flex items-center justify-center text-xs disabled:opacity-40"
+                    aria-label={`Remove ${match.teamA} vs ${match.teamB}`}
+                    className="absolute z-10 top-3 right-3 opacity-80 hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-red-400 transition-opacity bg-zinc-800 hover:bg-red-600 text-gray-300 hover:text-white rounded-lg w-7 h-7 flex items-center justify-center text-xs disabled:opacity-40"
                   >
                     {deletingId === match.matchId ? "…" : "✕"}
                   </button>

@@ -63,24 +63,27 @@ export default function MatchesPage() {
       ? matches
       : matches.filter((match) => match.status === activeTab);
   }, [activeTab, matches]);
+  const hasMatches = matches.length > 0;
 
   return (
     <div className="p-6 text-white">
       <h1 className="text-2xl font-bold mb-6">Matches</h1>
 
-      <div className="flex gap-3 mb-6">
-        {(["ALL", "LIVE", "UPCOMING", "COMPLETED"] as TabType[]).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-full ${
-              activeTab === tab ? "bg-purple-600" : "bg-gray-800"
-            }`}
-          >
-            {tab === "LIVE" ? "LIVE 🔴" : tab}
-          </button>
-        ))}
-      </div>
+      {hasMatches ? (
+        <div className="flex gap-3 mb-6">
+          {(["ALL", "LIVE", "UPCOMING", "COMPLETED"] as TabType[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 rounded-full ${
+                activeTab === tab ? "bg-purple-600" : "bg-gray-800"
+              }`}
+            >
+              {tab === "LIVE" ? "LIVE 🔴" : tab}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {loading ? (
         <p className="text-gray-400">Loading matches...</p>

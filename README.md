@@ -21,7 +21,6 @@ npm run build
 
 - `REDIS_URL` – Redis connection string used by server routes/services.
 - `CRICKET_API_KEY` – Server-side API key used for live CricAPI scorecard ingestion.
-- `NEXT_PUBLIC_CRICKET_API_KEY` – Optional compatibility fallback key for live polling.
 - `NEXT_PUBLIC_BASE_URL` – Public frontend URL for client calls.
 - `NEXT_PUBLIC_ERROR_ENDPOINT` – Optional monitoring endpoint for client crash reports.
 - `LOG_LEVEL` – Structured logger minimum level (`debug`, `info`, `warn`, `error`).
@@ -36,7 +35,6 @@ npm run build
      ```
    - Ensure Redis is reachable via `REDIS_URL`.
    - Set `CRICKET_API_KEY` in `.env.local`.
-   - For compatibility, set `NEXT_PUBLIC_CRICKET_API_KEY` to the same value.
 
 2. Pick IDs:
    - `externalMatchId`: valid CricAPI match id.
@@ -74,7 +72,14 @@ npm run build
 
 7. Troubleshooting checklist:
    - Check `/api/match/init` response first.
-   - Validate API keys (`CRICKET_API_KEY`, compatibility fallback).
+   - Validate `CRICKET_API_KEY` is set in server env:
+     ```bash
+     printenv CRICKET_API_KEY
+     ```
+   - Validate key against CricAPI:
+     ```bash
+     curl "https://api.cricapi.com/v1/currentMatches?apikey=$CRICKET_API_KEY&offset=0"
+     ```
    - Validate `externalMatchId`.
    - Validate Redis connectivity.
    - Validate worker and live ingestor are running.

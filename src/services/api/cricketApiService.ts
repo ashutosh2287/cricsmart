@@ -29,7 +29,7 @@ type ApiInnings = {
 }
 
 const API_BASE = "https://api.cricapi.com/v1"
-const API_KEY = process.env.CRICKET_API_KEY || process.env.NEXT_PUBLIC_CRICKET_API_KEY
+const API_KEY = process.env.CRICKET_API_KEY
 
 const REQUEST_TIMEOUT = 8000
 
@@ -66,6 +66,9 @@ export async function fetchLiveMatchEvents(
   matchId: string,
   signal?: AbortSignal
 ): Promise<ApiBallEvent[]> {
+  if (!API_KEY) {
+    throw new Error("Missing CRICKET_API_KEY for live match ingestion")
+  }
 
   const url = `${API_BASE}/match_scorecard?apikey=${API_KEY}&id=${matchId}`
 

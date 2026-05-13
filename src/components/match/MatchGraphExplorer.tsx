@@ -51,6 +51,9 @@ type ChartTab =
 
 type TeamFilter = "both" | "batting" | "bowling";
 
+const MOMENTUM_POSITIVE_THRESHOLD = 1.5;
+const MOMENTUM_NEGATIVE_THRESHOLD = -1.5;
+
 type ProgressionPoint = {
   label: string;
   batting: number | null;
@@ -161,14 +164,14 @@ export default function MatchGraphExplorer({
         ? `${currentBattingTeam} slightly ahead`
         : `${currentBowlingTeam} applying pressure`;
   const pressureSnapshot =
-    latestMomentum > 1.5
+    latestMomentum > MOMENTUM_POSITIVE_THRESHOLD
       ? {
           momentum: "Batting control",
           momentumNote: "Pressure easing",
           pressure: "Low",
           pressureNote: "Required RR dropping",
         }
-      : latestMomentum < -1.5
+      : latestMomentum < MOMENTUM_NEGATIVE_THRESHOLD
         ? {
             momentum: "Bowling control",
             momentumNote: "Pressure building",

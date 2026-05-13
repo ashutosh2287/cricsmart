@@ -9,6 +9,13 @@ type Props = {
   data: MomentumPoint[];
 };
 
+const BASE_RED_OPACITY = 0.12;
+const BASE_YELLOW_OPACITY = 0.1;
+const BASE_GREEN_OPACITY = 0.12;
+const RED_GREEN_SCALE = 0.45;
+const BALANCE_SCALE = 0.35;
+const MID_STOP = 52;
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -20,9 +27,9 @@ function toCellStyle(normalized: number) {
 
   return {
     background: `linear-gradient(135deg,
-      rgba(239,68,68,${0.12 + red * 0.45}) 0%,
-      rgba(245,158,11,${0.1 + balanced * 0.35}) 52%,
-      rgba(34,197,94,${0.12 + green * 0.45}) 100%)`,
+      rgba(239,68,68,${BASE_RED_OPACITY + red * RED_GREEN_SCALE}) 0%,
+      rgba(245,158,11,${BASE_YELLOW_OPACITY + balanced * BALANCE_SCALE}) ${MID_STOP}%,
+      rgba(34,197,94,${BASE_GREEN_OPACITY + green * RED_GREEN_SCALE}) 100%)`,
     borderColor: `rgba(255,255,255,${0.08 + Math.abs(normalized) * 0.24})`,
   };
 }

@@ -213,7 +213,8 @@ function buildOverBlocks(innings: InningsState | undefined): OverBlock[] {
   const batterStats: Record<string, BatterSnapshot> = {};
   const bowlerStats: Record<string, BowlerSnapshot> = {};
   const seenBatters = new Set<string>();
-  const bowlerSpellOvers: Record<string, number> = {};
+  let currentSpellBowler: string | null = null;
+  let currentSpellOvers = 0;
   let score = 0;
   let wickets = 0;
 
@@ -284,20 +285,25 @@ function buildOverBlocks(innings: InningsState | undefined): OverBlock[] {
     const lastDelivery = deliveries[deliveries.length - 1];
     const firstDelivery = deliveries[0];
     if (firstDelivery?.batsman && !seenBatters.has(firstDelivery.batsman)) {
-      contextNotes.push(`New batter in: ${firstDelivery.batsman} takes strike.`);
+      contextNotes.push(`New batter in: ${firstDelivery.batsman} on strike.`);
       seenBatters.add(firstDelivery.batsman);
     }
     if (firstDelivery?.nonStriker && !seenBatters.has(firstDelivery.nonStriker)) {
+      contextNotes.push(`New batter in: ${firstDelivery.nonStriker} at non-striker's end.`);
       seenBatters.add(firstDelivery.nonStriker);
     }
 
     if (lastDelivery?.bowler) {
-      bowlerSpellOvers[lastDelivery.bowler] = (bowlerSpellOvers[lastDelivery.bowler] ?? 0) + 1;
-      const spellOvers = bowlerSpellOvers[lastDelivery.bowler];
+      if (currentSpellBowler !== lastDelivery.bowler) {
+        currentSpellBowler = lastDelivery.bowler;
+        currentSpellOvers = 1;
+      } else {
+        currentSpellOvers += 1;
+      }
       contextNotes.push(
-        spellOvers === 1
+        currentSpellOvers === 1
           ? `${lastDelivery.bowler} starts a new spell.`
-          : `${lastDelivery.bowler} continues spell (${spellOvers} overs).`
+          : `${lastDelivery.bowler} continues spell (${currentSpellOvers} overs).`
       );
     }
 

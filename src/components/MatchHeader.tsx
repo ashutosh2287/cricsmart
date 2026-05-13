@@ -29,8 +29,6 @@ type Props = {
   lastOverBalls?: string[];
   isLive?: boolean;
   target?: number;
-  runsNeeded?: number;
-  ballsLeft?: number;
   rrr?: number;
   crr?: number;
   totalOvers?: number;
@@ -63,8 +61,6 @@ export default function MatchHeader({
   lastOverBalls = [],
   isLive = true,
   target,
-  runsNeeded,
-  ballsLeft,
   rrr,
   crr,
   totalOvers = 20,
@@ -73,8 +69,6 @@ export default function MatchHeader({
   winBy,
 }: Props) {
   console.log("🏏 MATCH HEADER RENDER");
-  void runsNeeded;
-  void ballsLeft;
 
   const finalTeam1 = team1 || "Team A";
   const finalTeam2 = team2 || "Team B";

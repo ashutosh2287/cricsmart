@@ -16,8 +16,9 @@ function getOutcome(ball: BallEvent) {
   if (ball.type === "WICKET" || ball.wicket) return "W";
   if (ball.extraType === "WD") return "Wd";
   if (ball.extraType === "NB") return "Nb";
-  if ((ball.runs ?? 0) === 0) return "•";
-  return String(ball.totalRuns ?? ball.runs ?? 0);
+  const totalRuns = ball.totalRuns ?? ball.runs ?? 0;
+  if (totalRuns === 0) return "•";
+  return String(totalRuns);
 }
 
 function getOutcomeTone(outcome: string) {

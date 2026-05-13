@@ -208,21 +208,27 @@ function CompactWinProbabilityBar({
   rightPercent: number;
   context?: string;
 }) {
+  const safeLeft = Math.max(0, Math.min(100, leftPercent));
+  const safeRightInput = Math.max(0, Math.min(100, rightPercent));
+  const total = safeLeft + safeRightInput;
+  const normalizedLeft = total > 0 ? (safeLeft / total) * 100 : 50;
+  const normalizedRight = 100 - normalizedLeft;
+
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
       <div className="mb-2 flex items-center justify-between text-sm font-semibold text-white">
-        <span>{leftLabel} {leftPercent.toFixed(0)}%</span>
-        <span>{rightLabel} {rightPercent.toFixed(0)}%</span>
+        <span>{leftLabel} {normalizedLeft.toFixed(0)}%</span>
+        <span>{rightLabel} {normalizedRight.toFixed(0)}%</span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-white/10">
         <div className="flex h-full">
           <div
             className="h-full bg-gradient-to-r from-sky-400 to-blue-500"
-            style={{ width: `${leftPercent}%` }}
+            style={{ width: `${normalizedLeft}%` }}
           />
           <div
             className="h-full bg-gradient-to-r from-amber-400 to-orange-500"
-            style={{ width: `${rightPercent}%` }}
+            style={{ width: `${normalizedRight}%` }}
           />
         </div>
       </div>
@@ -692,7 +698,7 @@ function TabsArea({
                     context={
                       isSecondInningsLive
                         ? `${chaseNeeded} runs needed from ${chaseBallsLeft} balls · target ${chaseTarget}`
-                        : "Chase context will appear in 2nd innings."
+                        : "Chase context will appear once 2nd innings begins."
                     }
                   />
                 </GlassPanel>
@@ -1625,8 +1631,6 @@ function MatchInnerPage({
   winner={currentEngineState.winner}
   winBy={currentEngineState.winBy}
   target={innings2 ? target : undefined}
-  runsNeeded={innings2 && !currentEngineState.matchEnded ? runsNeeded : undefined}
-  ballsLeft={innings2 && !currentEngineState.matchEnded ? ballsLeft : undefined}
   rrr={innings2 && !currentEngineState.matchEnded ? rrr : undefined}
   crr={crr}
 />

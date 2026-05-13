@@ -17,7 +17,19 @@ const BASE_SCORE_OTHER = 30;
 type MatchRecord = Record<string, unknown>;
 type NormalizedStatus = "LIVE" | "UPCOMING" | "COMPLETED" | "UNKNOWN";
 type MatchBucket = "live" | "upcoming" | "recent" | "other";
-type SectionKey = "featured" | "recent" | "upcoming" | "lowerPriorityLive";
+type SectionKey = "live" | "featured" | "recent" | "upcoming";
+const PREMIUM_TOURNAMENT_KEYWORDS = [
+  "ipl",
+  "indian premier league",
+  "icc",
+  "world cup",
+  "champions trophy",
+  "asia cup",
+  "india",
+  "international",
+  "test championship",
+  "wtc",
+];
 
 type NormalizedMatch = {
   raw: MatchRecord;
@@ -209,13 +221,13 @@ function buildCuratedSections(
   const featured = featuredPool.slice(0, 6).map((m) => m.raw);
   const recentSection = recent.slice(0, 8).map((m) => m.raw);
   const upcomingSection = upcoming.slice(0, 8).map((m) => m.raw);
-  const lowerPriorityLiveSection = live.slice(6, 12).map((m) => m.raw);
+  const liveSection = live.slice(0, 12).map((m) => m.raw);
 
   const anyNonEmpty =
     featured.length > 0 ||
     recentSection.length > 0 ||
     upcomingSection.length > 0 ||
-    lowerPriorityLiveSection.length > 0;
+    liveSection.length > 0;
   const nonOtherFallback = scoredMatches.filter((match) => match.bucket !== "other");
   const fallbackPool = nonOtherFallback.length > 0 ? nonOtherFallback : scoredMatches;
   const removedByFilters = scoredMatches.filter((match) => match.bucket === "other").length;
@@ -224,13 +236,27 @@ function buildCuratedSections(
 
   return {
     sections: {
+      live: liveSection,
       featured: safeFeatured,
       recent: recentSection,
       upcoming: upcomingSection,
-      lowerPriorityLive: lowerPriorityLiveSection,
     },
     removedByFilters,
   };
+}
+
+function isPremiumTournamentMatch(match: ScoredMatch): boolean {
+  const fields = [
+    typeof match.raw.name === "string" ? match.raw.name : "",
+    typeof match.raw.seriesName === "string" ? match.raw.seriesName : "",
+    typeof match.raw.series === "string" ? match.raw.series : "",
+    typeof match.raw.competition === "string" ? match.raw.competition : "",
+    typeof match.raw.tournament === "string" ? match.raw.tournament : "",
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return PREMIUM_TOURNAMENT_KEYWORDS.some((keyword) => fields.includes(keyword));
 }
 
 function selectFeaturedPool(
@@ -239,9 +265,11 @@ function selectFeaturedPool(
   upcoming: ScoredMatch[],
   fallback: ScoredMatch[]
 ) {
-  if (live.length > 0) return live;
+  const premiumPool = fallback.filter(isPremiumTournamentMatch);
+  if (premiumPool.length > 0) return premiumPool;
   if (upcoming.length > 0) return upcoming;
   if (recent.length > 0) return recent;
+  if (live.length > 0) return live;
   return fallback;
 }
 
@@ -365,23 +393,25 @@ export async function GET() {
     });
     logger.debug("MATCH_CURATION", "Final section-builder output", {
       totalMatchesRemovedByFilters: removedByFilters,
+      curatedSectionKeys: Object.keys(sections),
       sectionCounts: {
+        live: sections.live.length,
         featured: sections.featured.length,
         recent: sections.recent.length,
         upcoming: sections.upcoming.length,
-        lowerPriorityLive: sections.lowerPriorityLive.length,
       },
       allSectionsEmpty:
+        sections.live.length === 0 &&
         sections.featured.length === 0 &&
         sections.recent.length === 0 &&
-        sections.upcoming.length === 0 &&
-        sections.lowerPriorityLive.length === 0,
+        sections.upcoming.length === 0,
     });
 
     const responsePayload =
       data && typeof data === "object"
         ? {
             ...(data as Record<string, unknown>),
+            sections,
             curatedSections: sections,
           }
         : data;

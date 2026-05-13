@@ -41,6 +41,12 @@ const EMPTY_DISCOVERY: CuratedDiscoveryPayload = {
 function toPayload(payload: unknown): CuratedDiscoveryPayload {
   if (!payload || typeof payload !== "object") return EMPTY_DISCOVERY;
   const record = payload as Partial<CuratedDiscoveryPayload>;
+  const sectionSource =
+    record.curatedSections && typeof record.curatedSections === "object"
+      ? record.curatedSections
+      : record.sections && typeof record.sections === "object"
+        ? record.sections
+        : undefined;
   return {
     success: Boolean(record.success),
     source: record.source === "cache" || record.source === "stale" ? record.source : "live",
@@ -48,16 +54,12 @@ function toPayload(payload: unknown): CuratedDiscoveryPayload {
     updatedAt: typeof record.updatedAt === "string" ? record.updatedAt : new Date().toISOString(),
     data: Array.isArray(record.data) ? (record.data as CuratedMatch[]) : [],
     sections:
-      record.sections && typeof record.sections === "object"
+      sectionSource
         ? {
-            live: Array.isArray(record.sections.live) ? (record.sections.live as CuratedMatch[]) : [],
-            upcoming: Array.isArray(record.sections.upcoming)
-              ? (record.sections.upcoming as CuratedMatch[])
-              : [],
-            recent: Array.isArray(record.sections.recent) ? (record.sections.recent as CuratedMatch[]) : [],
-            featured: Array.isArray(record.sections.featured)
-              ? (record.sections.featured as CuratedMatch[])
-              : [],
+            live: Array.isArray(sectionSource.live) ? (sectionSource.live as CuratedMatch[]) : [],
+            upcoming: Array.isArray(sectionSource.upcoming) ? (sectionSource.upcoming as CuratedMatch[]) : [],
+            recent: Array.isArray(sectionSource.recent) ? (sectionSource.recent as CuratedMatch[]) : [],
+            featured: Array.isArray(sectionSource.featured) ? (sectionSource.featured as CuratedMatch[]) : [],
           }
         : EMPTY_DISCOVERY.sections,
     error: typeof record.error === "string" ? record.error : undefined,
@@ -133,6 +135,18 @@ export default function MatchesPage() {
 
   const sections = useMemo(() => discovery.sections, [discovery]);
 
+  useEffect(() => {
+    console.debug("MATCHES_CURATED_SECTIONS", {
+      keys: Object.keys(sections),
+      counts: {
+        live: sections.live.length,
+        upcoming: sections.upcoming.length,
+        recent: sections.recent.length,
+        featured: sections.featured.length,
+      },
+    });
+  }, [sections]);
+
   return (
     <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 text-white md:px-6">
       <h1 className="text-xl font-bold tracking-tight text-zinc-100 md:text-2xl">Matches</h1>
@@ -157,26 +171,32 @@ export default function MatchesPage() {
 
       <MatchSection title="UPCOMING MATCHES">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {(sections.upcoming.length > 0 ? sections.upcoming : discovery.data.slice(0, 6)).map((match) => (
-            <MatchCardCompact key={`upcoming-${match.id}`} match={match} />
-          ))}
+          {sections.upcoming.length === 0 ? (
+            <p className="text-sm text-zinc-500">No upcoming matches in curated sections.</p>
+          ) : (
+            sections.upcoming.map((match) => <MatchCardCompact key={`upcoming-${match.id}`} match={match} />)
+          )}
         </div>
       </MatchSection>
 
       <MatchSection title="RECENT RESULTS">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {(sections.recent.length > 0 ? sections.recent : discovery.data.slice(0, 6)).map((match) => (
-            <MatchCardCompact key={`recent-${match.id}`} match={match} />
-          ))}
+          {sections.recent.length === 0 ? (
+            <p className="text-sm text-zinc-500">No recent results in curated sections.</p>
+          ) : (
+            sections.recent.map((match) => <MatchCardCompact key={`recent-${match.id}`} match={match} />)
+          )}
         </div>
       </MatchSection>
 
       <MatchSection title="FEATURED SERIES">
         <FeaturedSeriesStrip matches={sections.featured} />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {(sections.featured.length > 0 ? sections.featured : discovery.data.slice(0, 6)).map((match) => (
-            <MatchCardCompact key={`featured-${match.id}`} match={match} />
-          ))}
+          {sections.featured.length === 0 ? (
+            <p className="text-sm text-zinc-500">No featured matches in curated sections.</p>
+          ) : (
+            sections.featured.map((match) => <MatchCardCompact key={`featured-${match.id}`} match={match} />)
+          )}
         </div>
       </MatchSection>
 

@@ -94,5 +94,6 @@ export type CuratedDiscoveryPayload = {
   updatedAt: string;
   data: CuratedMatch[];
   sections: MatchSections;
+  curatedSections?: MatchSections;
   error?: string;
 };

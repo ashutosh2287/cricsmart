@@ -36,7 +36,10 @@ function MoonIcon() {
 export default function ThemeToggle() {
   const { resolvedTheme, toggleTheme } = useTheme();
   const hasHydrated = useSyncExternalStore(
-    () => () => {},
+    (callback) => {
+      void callback;
+      return () => {};
+    },
     () => true,
     () => false,
   );

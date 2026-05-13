@@ -1,5 +1,7 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+
 import { useTheme } from "@/context/ThemeContext";
 
 function SunIcon() {
@@ -33,13 +35,24 @@ function MoonIcon() {
 
 export default function ThemeToggle() {
   const { resolvedTheme, toggleTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
   const isLight = resolvedTheme === "light";
+  const ariaLabel = mounted
+    ? isLight
+      ? "Switch to dark theme"
+      : "Switch to light theme"
+    : "Switch theme";
 
   return (
     <button
       type="button"
-      aria-label={isLight ? "Switch to dark theme" : "Switch to light theme"}
-      aria-pressed={isLight}
+      aria-label={ariaLabel}
+      aria-pressed={mounted ? isLight : false}
       onClick={toggleTheme}
       className="theme-toggle"
     >
@@ -53,4 +66,3 @@ export default function ThemeToggle() {
     </button>
   );
 }
-

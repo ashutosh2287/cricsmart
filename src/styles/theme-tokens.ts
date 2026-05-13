@@ -120,10 +120,10 @@ export const lightTheme: ThemeTokens = {
     success: "#008A67",
     border: "#DCE3F1",
     textPrimary: "#111827",
-    textSecondary: "#5B647A",
+    textSecondary: "#3F4A63",
   },
   borders: {
-    subtle: "color-mix(in srgb, #111827 12%, transparent)",
+    subtle: "color-mix(in srgb, #111827 18%, transparent)",
     strong: "color-mix(in srgb, #3366FF 28%, transparent)",
   },
   shadows: {
@@ -143,7 +143,7 @@ export const lightTheme: ThemeTokens = {
   typography: {
     heading: "#111827",
     body: "#1F2937",
-    muted: "#5B647A",
+    muted: "#4D5872",
   },
   charts: {
     positive: "#008A67",

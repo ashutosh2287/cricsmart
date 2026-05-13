@@ -257,17 +257,19 @@ if (!innings) return null;
 
       {/* OVER SEEK */}
       {overCount > 1 && (
-        <div className="mt-4 flex flex-wrap gap-2 justify-center max-w-2xl">
-          <span className="text-xs text-gray-400 self-center">Jump to over:</span>
-          {Array.from({ length: overCount }, (_, i) => (
-            <button
-              key={i}
-              onClick={() => handleSeekOver(i)}
-              className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded"
-            >
-              {i + 1}
-            </button>
-          ))}
+        <div className="mt-4 w-full max-w-2xl space-y-2">
+          <span className="block text-center text-xs text-gray-400">Jump to over:</span>
+          <div className="flex max-h-24 flex-wrap justify-center gap-1.5 overflow-y-auto pr-1">
+            {Array.from({ length: overCount }, (_, i) => (
+              <button
+                key={i}
+                onClick={() => handleSeekOver(i)}
+                className="min-w-8 rounded-md bg-white/10 px-2 py-1 text-xs leading-none hover:bg-white/20"
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

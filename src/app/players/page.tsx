@@ -14,7 +14,7 @@ export default function PlayersPage() {
 
     <PageMotion>
 
-      <main className="max-w-7xl mx-auto px-6 py-12 space-y-10 text-white">
+      <main className="max-w-7xl mx-auto px-6 py-12 space-y-10 text-[var(--text-primary)]">
 
         {/* PAGE HEADER */}
 
@@ -24,11 +24,11 @@ export default function PlayersPage() {
             Players
           </h1>
 
-          <p className="text-gray-400 text-sm">
+          <p className="text-sm text-[var(--text-secondary)]">
             Performance analytics and impact statistics
           </p>
 
-          <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent mt-4"/>
+          <div className="mt-4 h-px bg-gradient-to-r from-transparent via-[var(--border-subtle)] to-transparent"/>
 
         </div>
 

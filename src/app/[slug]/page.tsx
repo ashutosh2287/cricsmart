@@ -37,23 +37,42 @@ export default async function SectionPage({ params }: { params: Promise<{ slug: 
   const description = sectionDescriptions[slug];
 
   return (
-    <section className="mx-auto max-w-3xl space-y-6 rounded-xl border border-white/10 bg-zinc-950/70 p-6 md:p-8">
-      <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">CricSmart Section</p>
-      <h1 className="text-2xl font-semibold text-zinc-100 md:text-3xl">{title}</h1>
-      <p className="text-sm text-zinc-300 md:text-base">{description}</p>
-      <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-100">
+    <section
+      className="mx-auto max-w-3xl space-y-6 rounded-xl p-6 md:p-8"
+      style={{
+        border: "1px solid var(--border-subtle)",
+        background: "color-mix(in srgb, var(--bg-surface) 92%, transparent)",
+      }}
+    >
+      <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-muted)]">CricSmart Section</p>
+      <h1 className="text-2xl font-semibold text-[var(--text-primary)] md:text-3xl">{title}</h1>
+      <p className="text-sm text-[var(--text-secondary)] md:text-base">{description}</p>
+      <div
+        className="rounded-lg p-4 text-sm"
+        style={{
+          border: "1px solid color-mix(in srgb, var(--accent-brand) 25%, transparent)",
+          background: "color-mix(in srgb, var(--accent-brand) 10%, transparent)",
+          color: "var(--text-primary)",
+        }}
+      >
         Content scaffolding is ready. Data integration and deeper views will be rolled in without changing the drawer navigation structure.
       </div>
       <div className="flex items-center gap-3">
         <Link
           href="/"
-          className="inline-flex items-center rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-medium text-zinc-200 transition hover:bg-white/[0.1]"
+          className="inline-flex items-center rounded-md px-3 py-2 text-xs font-medium transition"
+          style={{
+            border: "1px solid var(--border-subtle)",
+            background: "color-mix(in srgb, var(--bg-overlay) 90%, transparent)",
+            color: "var(--text-primary)",
+          }}
         >
           Back to Home
         </Link>
         <Link
           href="/matches"
-          className="inline-flex items-center rounded-md bg-blue-500/80 px-3 py-2 text-xs font-medium text-white transition hover:bg-blue-400"
+          className="inline-flex items-center rounded-md px-3 py-2 text-xs font-medium text-white transition hover:opacity-90"
+          style={{ background: "var(--accent-brand)" }}
         >
           Open Matches
         </Link>

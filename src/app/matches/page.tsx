@@ -148,31 +148,45 @@ export default function MatchesPage() {
   }, [sections]);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 text-white md:px-6">
-      <h1 className="text-xl font-bold tracking-tight text-zinc-100 md:text-2xl">Matches</h1>
+    <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 text-[var(--text-primary)] md:px-6">
+      <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)] md:text-2xl">Matches</h1>
 
       {discovery.stale && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-900/30 px-3 py-2 text-xs text-amber-300">
+        <div
+          className="rounded-lg px-3 py-2 text-xs"
+          style={{
+            border: "1px solid color-mix(in srgb, var(--accent-amber) 35%, transparent)",
+            background: "color-mix(in srgb, var(--accent-amber) 16%, transparent)",
+            color: "var(--accent-amber)",
+          }}
+        >
           Scores may be delayed
         </div>
       )}
 
       <MatchSection title="LIVE NOW" subtitle="Auto-refresh: 60s">
         {realLoading ? (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-28 animate-pulse rounded-lg border border-zinc-800 bg-zinc-900/70" />
-            ))}
-          </div>
-        ) : (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-28 animate-pulse rounded-lg"
+                  style={{
+                    border: "1px solid var(--border-subtle)",
+                    background: "color-mix(in srgb, var(--bg-surface) 88%, transparent)",
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
           <MatchRail matches={sections.live} />
         )}
       </MatchSection>
 
       <MatchSection title="UPCOMING MATCHES">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {sections.upcoming.length === 0 ? (
-            <p className="text-sm text-zinc-500">No upcoming matches in curated sections.</p>
+            <p className="text-sm text-[var(--text-muted)]">No upcoming matches in curated sections.</p>
           ) : (
             sections.upcoming.map((match) => <MatchCardCompact key={`upcoming-${match.id}`} match={match} />)
           )}
@@ -180,9 +194,9 @@ export default function MatchesPage() {
       </MatchSection>
 
       <MatchSection title="RECENT RESULTS">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {sections.recent.length === 0 ? (
-            <p className="text-sm text-zinc-500">No recent results in curated sections.</p>
+            <p className="text-sm text-[var(--text-muted)]">No recent results in curated sections.</p>
           ) : (
             sections.recent.map((match) => <MatchCardCompact key={`recent-${match.id}`} match={match} />)
           )}
@@ -193,7 +207,7 @@ export default function MatchesPage() {
         <FeaturedSeriesStrip matches={sections.featured} />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {sections.featured.length === 0 ? (
-            <p className="text-sm text-zinc-500">No featured matches in curated sections.</p>
+            <p className="text-sm text-[var(--text-muted)]">No featured matches in curated sections.</p>
           ) : (
             sections.featured.map((match) => <MatchCardCompact key={`featured-${match.id}`} match={match} />)
           )}
@@ -202,9 +216,9 @@ export default function MatchesPage() {
 
       <MatchSection title="YOUR SIMULATIONS">
         {simLoading ? (
-          <p className="text-sm text-zinc-400">Loading simulations...</p>
+          <p className="text-sm text-[var(--text-secondary)]">Loading simulations...</p>
         ) : simMatches.length === 0 ? (
-          <p className="text-sm text-zinc-500">No simulations available.</p>
+          <p className="text-sm text-[var(--text-muted)]">No simulations available.</p>
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {simMatches.map((match) => {
@@ -227,27 +241,37 @@ export default function MatchesPage() {
                     });
                     router.push(`/match/${match.matchId}`);
                   }}
-                  className="rounded-lg border border-white/10 bg-zinc-900/70 p-3 text-left transition-colors hover:border-white/20"
-                >
-                  <p className="text-sm font-semibold text-zinc-100">
-                    {match.teamA} vs {match.teamB}
-                  </p>
+                    className="rounded-lg p-3 text-left transition-colors"
+                    style={{
+                      border: "1px solid var(--border-subtle)",
+                      background: "color-mix(in srgb, var(--bg-surface) 92%, transparent)",
+                    }}
+                  >
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">
+                      {match.teamA} vs {match.teamB}
+                    </p>
                   <p
                     className={`mt-1 text-xs font-medium uppercase tracking-wide ${
-                      isLive ? "text-red-300" : match.status === "UPCOMING" ? "text-blue-300" : "text-zinc-400"
-                    }`}
-                  >
-                    {match.status}
-                  </p>
-                  {isLive ? (
-                    <p className="mt-2 text-xs font-mono text-zinc-300">
-                      {match.score ?? "0/0"} ({match.overDisplay ?? "0.0"})
+                        isLive
+                          ? "text-[var(--accent-live)]"
+                          : match.status === "UPCOMING"
+                            ? "text-[var(--accent-brand)]"
+                            : "text-[var(--text-secondary)]"
+                      }`}
+                    >
+                      {match.status}
                     </p>
-                  ) : null}
-                  {match.commentaryPreview ? (
-                    <p className="mt-2 line-clamp-1 text-xs text-zinc-500 italic">{match.commentaryPreview}</p>
-                  ) : null}
-                </button>
+                    {isLive ? (
+                      <p className="mt-2 text-xs font-mono text-[var(--text-secondary)]">
+                        {match.score ?? "0/0"} ({match.overDisplay ?? "0.0"})
+                      </p>
+                    ) : null}
+                    {match.commentaryPreview ? (
+                      <p className="mt-2 line-clamp-1 text-xs italic text-[var(--text-muted)]">
+                        {match.commentaryPreview}
+                      </p>
+                    ) : null}
+                  </button>
               );
             })}
           </div>

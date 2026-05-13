@@ -9,7 +9,9 @@ import BroadcastDirectorPanel from "@/components/BroadcastDirectorPanel";
 import CommentaryPanel from "@/components/match/CommentaryPanel";
 import GlassPanel from "@/components/ui/GlassPanel";
 import HighlightTimeline from "@/components/HighlightTimeline";
-import LiveMatchStatus from "@/components/LiveMatchStatus";
+import LiveMatchStatus, {
+  getLiveMatchStatusLabel,
+} from "@/components/LiveMatchStatus";
 import MatchControlPanel from "@/components/MatchControlPanel";
 import MatchHeader from "@/components/MatchHeader";
 import MatchInsightsPanel from "@/components/analytics/MatchInsightsPanel";
@@ -148,29 +150,25 @@ function StatPill({
   value: React.ReactNode;
   tone?: "neutral" | "green" | "blue" | "amber" | "red";
 }) {
-  const toneAccent: Record<"neutral" | "green" | "blue" | "amber" | "red", string> = {
-    neutral: "var(--text-secondary)",
-    green: "var(--accent-success)",
-    blue: "var(--accent-brand)",
-    amber: "var(--accent-amber)",
-    red: "var(--accent-danger)",
+  const toneMap = {
+    neutral: "border-white/10 bg-white/[0.03] text-white",
+    green: "border-white/10 bg-white/[0.03] text-white",
+    blue: "border-white/10 bg-white/[0.03] text-white",
+    amber: "border-white/10 bg-white/[0.03] text-white",
+    red: "border-white/10 bg-white/[0.03] text-white",
   };
 
   return (
     <div
-      className="flex h-full min-h-[70px] flex-col justify-between rounded-xl border px-3 py-2.5 text-[var(--text-primary)]"
-      style={{
-        borderColor: "var(--border-subtle)",
-        background: "color-mix(in srgb, var(--bg-overlay) 90%, transparent)",
-      }}
+      className={cls(
+        "flex h-full min-h-[70px] flex-col justify-between rounded-xl border px-3 py-2.5",
+        toneMap[tone]
+      )}
     >
-      <p
-        className="text-[11px] uppercase tracking-[0.18em]"
-        style={{ color: toneAccent[tone] }}
-      >
+      <p className="text-[11px] uppercase tracking-[0.18em] text-white/55">
         {label}
       </p>
-      <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{value}</div>
+      <div className="mt-2 text-sm font-semibold text-white">{value}</div>
     </div>
   );
 }
@@ -188,11 +186,11 @@ function SectionHeader({
     <div className="mb-3 flex items-start justify-between gap-3">
       <div>
         {eyebrow ? (
-          <p className="mb-1 text-[11px] uppercase tracking-[0.22em] text-[var(--accent-brand)]">
+          <p className="mb-1 text-[11px] uppercase tracking-[0.22em] text-sky-300/80">
             {eyebrow}
           </p>
         ) : null}
-        <h3 className="text-lg font-semibold text-[var(--text-primary)]">{title}</h3>
+        <h3 className="text-lg font-semibold text-white">{title}</h3>
       </div>
       {action ? <div>{action}</div> : null}
     </div>
@@ -596,7 +594,7 @@ function TabsArea({
               : "2px solid transparent",
             marginBottom: "-1px",
           }}
-          className="px-4 py-3 text-sm font-medium capitalize whitespace-nowrap transition-colors hover:text-white"
+          className="px-4 py-3 text-sm font-medium capitalize whitespace-nowrap transition-colors hover:text-[var(--text-primary)]"
         >
           {tab}
         </button>
@@ -708,22 +706,26 @@ function TabsArea({
                   {
                     key: "ALL",
                     label: "All",
-                    active: "bg-sky-500 text-slate-950",
+                    active:
+                      "border border-sky-400/35 bg-sky-400/20 text-[var(--text-primary)]",
                   },
                   {
                     key: "BATTING",
                     label: "Batting",
-                    active: "bg-emerald-500 text-slate-950",
+                    active:
+                      "border border-emerald-400/35 bg-emerald-400/20 text-[var(--text-primary)]",
                   },
                   {
                     key: "BOWLING",
                     label: "Bowling",
-                    active: "bg-rose-500 text-white",
+                    active:
+                      "border border-rose-400/40 bg-rose-400/20 text-[var(--text-primary)]",
                   },
                   {
                     key: "PRESSURE",
                     label: "Pressure",
-                    active: "bg-amber-500 text-slate-950",
+                    active:
+                      "border border-amber-400/40 bg-amber-400/20 text-[var(--text-primary)]",
                   },
                 ].map((f) => (
                   <button
@@ -735,7 +737,7 @@ function TabsArea({
                       "rounded-xl border px-4 py-2 text-sm transition",
                       analysisFilter === f.key
                         ? f.active
-                        : "border-white/10 bg-white/[0.04] text-gray-300 hover:bg-white/[0.08] hover:text-white"
+                        : "border-[var(--border-subtle)] bg-[var(--bg-raised)]/60 text-[var(--text-secondary)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
                     )}
                   >
                     {f.label}
@@ -1508,13 +1510,13 @@ function MatchInnerPage({
                   {/* Header row */}
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--accent-brand)]">
+                      <p className="text-[11px] uppercase tracking-[0.22em] text-sky-300/80">
                         CricSmart Match Center
                       </p>
-                      <h1 className="text-2xl font-semibold text-[var(--text-primary)] md:text-3xl">
+                      <h1 className="text-2xl font-semibold text-white md:text-3xl">
                         {team1Name} vs {team2Name}
                       </h1>
-                      <p className="text-sm text-[var(--text-secondary)]">
+                      <p className="text-sm text-white/60">
                         Live simulation, analytics, commentary, and
                         innings-aware scorecard.
                       </p>
@@ -1527,7 +1529,7 @@ function MatchInnerPage({
                       >
                         <Link
                           href="/"
-                          className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[color-mix(in_srgb,var(--bg-overlay)_90%,transparent)] px-4 py-2 text-sm font-medium text-[var(--text-primary)] backdrop-blur-md transition"
+                          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-md transition"
                         >
                           ← Back to Home
                         </Link>
@@ -1599,7 +1601,9 @@ function MatchInnerPage({
                     />
                     <StatPill
                       label="Status"
-                      value={<LiveMatchStatus matchId={match.slug} />}
+                      value={
+                        getLiveMatchStatusLabel(currentEngineState.matchEnded)
+                      }
                       tone="neutral"
                     />
                   </div>

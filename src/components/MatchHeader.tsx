@@ -73,6 +73,8 @@ export default function MatchHeader({
   winBy,
 }: Props) {
   console.log("🏏 MATCH HEADER RENDER");
+  void runsNeeded;
+  void ballsLeft;
 
   const finalTeam1 = team1 || "Team A";
   const finalTeam2 = team2 || "Team B";

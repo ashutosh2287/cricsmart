@@ -89,7 +89,12 @@ export default function MomentumHeatmap({ data }: Props) {
             >
               <div className="pr-2 text-xs text-white/70">{lane.label}</div>
               {lane.values.map((value, index) => {
-                const signedValue = lane.key === "overall" ? value : normalized[index].norm;
+                const signedValue =
+                  lane.key === "overall"
+                    ? value
+                    : lane.key === "bowling"
+                    ? -value
+                    : value;
                 const style = toCellStyle(signedValue);
 
                 return (

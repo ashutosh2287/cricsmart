@@ -605,6 +605,11 @@ function TabsArea({
   const chaseRuns = currentEngineState?.innings?.[1]?.runs ?? 0;
   const chaseTarget = firstInningsRuns > 0 ? firstInningsRuns + 1 : 0;
   const chaseNeeded = Math.max(chaseTarget - chaseRuns, 0);
+  const chaseOver = currentEngineState?.innings?.[1]?.over ?? 0;
+  const chaseBall = currentEngineState?.innings?.[1]?.ball ?? 0;
+  const chaseBallsBowled = Math.max(0, chaseOver * 6 + chaseBall);
+  const chaseBallsLeft = Math.max(120 - chaseBallsBowled, 0);
+  const isSecondInningsLive = (currentEngineState?.currentInningsIndex ?? 0) === 1;
 
   return (
     <div
@@ -685,8 +690,8 @@ function TabsArea({
                     leftPercent={Math.max(0, Math.min(100, winProbabilityData.at(-1)?.batting ?? 50))}
                     rightPercent={Math.max(0, Math.min(100, winProbabilityData.at(-1)?.bowling ?? 50))}
                     context={
-                      inningsIndex === 1
-                        ? `${chaseNeeded} runs needed · target ${chaseTarget}`
+                      isSecondInningsLive
+                        ? `${chaseNeeded} runs needed from ${chaseBallsLeft} balls · target ${chaseTarget}`
                         : "Chase context will appear in 2nd innings."
                     }
                   />
@@ -1562,11 +1567,6 @@ function MatchInnerPage({
       Math.floor(displayOver) * 6 +
       Math.round((displayOver % 1) * 10);
     if (ballsBowled > 0) crr = (runs / ballsBowled) * 6;
-  }
-
-  let winProbability = 50;
-  if (innings2 && !currentEngineState.matchEnded && rrr > 0) {
-    winProbability = Math.max(0, Math.min(100, 100 - rrr * 5));
   }
 
   return (

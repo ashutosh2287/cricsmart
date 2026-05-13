@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { useMatchSelector } from "@/services/matchSelectors";
 import type { BallEvent } from "@/types/ballEvent";
 
@@ -37,13 +36,12 @@ function InningsRow({
   innings?: InningsSlice;
   title: string;
 }) {
-  const overs = useMemo(() => {
-    if (!innings?.overs) return [];
-    return Object.keys(innings.overs)
-      .map(Number)
-      .filter((value) => Number.isFinite(value))
-      .sort((a, b) => a - b);
-  }, [innings?.overs]);
+  const overs = !innings?.overs
+    ? []
+    : Object.keys(innings.overs)
+        .map(Number)
+        .filter((value) => Number.isFinite(value))
+        .sort((a, b) => a - b);
 
   if (!overs.length) {
     return (

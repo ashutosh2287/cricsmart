@@ -48,12 +48,10 @@ export default function HighlightTimeline({ matchId }: Props) {
   if (!highlights.length) return null;
 
   return (
-    <div className="backdrop-blur-md bg-white/5 
-                border border-white/10 
-                text-white rounded-xl p-3">
+    <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] text-white">
 
       {/* HEADER */}
-      <div className="flex items-center justify-between border-b border-gray-700 pb-2 mb-2">
+      <div className="flex items-center justify-between border-b border-gray-700/70 px-3 py-2">
 
         <h3 className="text-sm font-semibold text-gray-300 uppercase">
           Match Highlights
@@ -68,7 +66,7 @@ export default function HighlightTimeline({ matchId }: Props) {
       {/* LIST */}
       <div
         ref={containerRef}
-        className="h-[320px] overflow-y-auto space-y-2 pr-1 
+        className="h-[320px] overflow-y-auto space-y-1.5 px-2 py-2
            scrollbar-thin scrollbar-thumb-gray-600 
            scrollbar-track-transparent"
       >
@@ -78,7 +76,7 @@ export default function HighlightTimeline({ matchId }: Props) {
             key={h.id}
             className="flex items-center justify-between 
                        bg-zinc-900/80 hover:bg-zinc-800 
-                       px-3 py-2 rounded-md 
+                       px-2.5 py-2 rounded-md 
                        transition text-sm"
           >
 

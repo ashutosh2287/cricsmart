@@ -160,6 +160,27 @@ export default function MatchGraphExplorer({
       : battingWin > bowlingWin
         ? `${currentBattingTeam} slightly ahead`
         : `${currentBowlingTeam} applying pressure`;
+  const pressureSnapshot =
+    latestMomentum > 1.5
+      ? {
+          momentum: "Batting control",
+          momentumNote: "Pressure easing",
+          pressure: "Low",
+          pressureNote: "Required RR dropping",
+        }
+      : latestMomentum < -1.5
+        ? {
+            momentum: "Bowling control",
+            momentumNote: "Pressure building",
+            pressure: "High",
+            pressureNote: "Required RR climbing",
+          }
+        : {
+            momentum: "Balanced",
+            momentumNote: "Pressure shifting",
+            pressure: "Medium",
+            pressureNote: "Required RR stable",
+          };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -189,13 +210,9 @@ export default function MatchGraphExplorer({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
             <p className="text-[11px] uppercase tracking-[0.24em] text-sky-300/80">
-              Key stats
+              KEY STATS
             </p>
-            <h3 className="text-xl font-semibold text-white">Win probability</h3>
-            <p className="max-w-2xl text-sm leading-6 text-white/65">
-              A simple view of who is ahead right now, how fast the innings is
-              moving, and how the match pressure is changing over time.
-            </p>
+            <h3 className="text-xl font-semibold text-white">Win Probability</h3>
           </div>
 
           <button
@@ -207,21 +224,21 @@ export default function MatchGraphExplorer({
           </button>
         </div>
 
-        <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
+        <div className="mt-5 space-y-5">
           <div className="rounded-[24px] border border-white/10 bg-slate-950/45 p-5">
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-white">{leader}</p>
-                <p className="mt-1 text-xs uppercase tracking-[0.22em] text-white/45">
-                  Live edge meter
-                </p>
-              </div>
-              <div className="text-right text-xs text-white/55">
-                Updates ball by ball
-              </div>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-white/55">
+              WIN PROBABILITY
+            </p>
+            <div className="mt-3 flex items-center justify-between gap-3 text-sm font-medium text-white">
+              <span>
+                {currentBattingTeam} {battingWin.toFixed(0)}%
+              </span>
+              <span>
+                {currentBowlingTeam} {bowlingWin.toFixed(0)}%
+              </span>
             </div>
 
-            <div className="h-5 overflow-hidden rounded-full bg-white/10">
+            <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/10">
               <div className="flex h-full">
                 <div
                   className="h-full bg-gradient-to-r from-emerald-400 to-emerald-300"
@@ -233,52 +250,46 @@ export default function MatchGraphExplorer({
                 />
               </div>
             </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-100/70">
-                  {currentBattingTeam}
-                </p>
-                <p className="mt-2 text-2xl font-semibold text-white">
-                  {battingWin.toFixed(0)}%
-                </p>
-              </div>
-              <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-rose-100/70">
-                  {currentBowlingTeam}
-                </p>
-                <p className="mt-2 text-2xl font-semibold text-white">
-                  {bowlingWin.toFixed(0)}%
-                </p>
-              </div>
-            </div>
+            <p className="mt-4 text-sm text-white/70">
+              {leader}. Pressure shifting ball-by-ball.
+            </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
               <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">
                 Overs
               </p>
               <p className="mt-2 text-lg font-semibold text-white">{currentOver}</p>
-              <p className="mt-1 text-sm text-white/55">Match progress so far</p>
+              <p className="mt-1 text-sm text-white/55">Match progress</p>
             </div>
-            <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+            <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
               <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">
                 Current rate
               </p>
               <p className="mt-2 text-lg font-semibold text-white">{currentRunRate}</p>
-              <p className="mt-1 text-sm text-white/55">Runs scored per over</p>
+              <p className="mt-1 text-sm text-white/55">Runs per over</p>
             </div>
-            <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+            <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
               <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">
                 Momentum
               </p>
               <p className="mt-2 text-lg font-semibold text-white">
-                {latestMomentum > 0 ? "+" : ""}
-                {latestMomentum.toFixed(1)}
+                {pressureSnapshot.momentum}
               </p>
               <p className="mt-1 text-sm text-white/55">
-                Positive means pressure is easing for the batting side
+                {pressureSnapshot.momentumNote}
+              </p>
+            </div>
+            <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">
+                Pressure
+              </p>
+              <p className="mt-2 text-lg font-semibold text-white">
+                {pressureSnapshot.pressure}
+              </p>
+              <p className="mt-1 text-sm text-white/55">
+                {pressureSnapshot.pressureNote}
               </p>
             </div>
           </div>

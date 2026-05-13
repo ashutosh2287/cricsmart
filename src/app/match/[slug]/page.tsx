@@ -195,50 +195,6 @@ function SectionHeader({
   );
 }
 
-function CompactWinProbabilityBar({
-  leftLabel,
-  rightLabel,
-  leftPercent,
-  rightPercent,
-  context,
-}: {
-  leftLabel: string;
-  rightLabel: string;
-  leftPercent: number;
-  rightPercent: number;
-  context?: string;
-}) {
-  const safeLeft = Math.max(0, Math.min(100, leftPercent));
-  const safeRightInput = Math.max(0, Math.min(100, rightPercent));
-  const total = safeLeft + safeRightInput;
-  const normalizedLeft = total > 0 ? (safeLeft / total) * 100 : 50;
-  const normalizedRight = 100 - normalizedLeft;
-
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-      <div className="mb-2 flex items-center justify-between text-sm font-semibold text-white">
-        <span>{leftLabel} {normalizedLeft.toFixed(0)}%</span>
-        <span>{rightLabel} {normalizedRight.toFixed(0)}%</span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-white/10">
-        <div className="flex h-full">
-          <div
-            className="h-full bg-gradient-to-r from-sky-400 to-blue-500"
-            style={{ width: `${normalizedLeft}%` }}
-          />
-          <div
-            className="h-full bg-gradient-to-r from-amber-400 to-orange-500"
-            style={{ width: `${normalizedRight}%` }}
-          />
-        </div>
-      </div>
-      {context ? (
-        <p className="mt-2 text-xs text-white/60">{context}</p>
-      ) : null}
-    </div>
-  );
-}
-
 // ─────────────────────────────────────────────
 // StickyInsightsRail — uses useMatch() ✅
 // ─────────────────────────────────────────────
@@ -607,16 +563,6 @@ function TabsArea({
     inningsData && (inningsData.over > 0 || inningsData.ball > 0)
       ? (inningsData.runs / (inningsData.over + inningsData.ball / 6)).toFixed(2)
       : "0.00";
-  const firstInningsRuns = currentEngineState?.innings?.[0]?.runs ?? 0;
-  const chaseRuns = currentEngineState?.innings?.[1]?.runs ?? 0;
-  const chaseTarget = firstInningsRuns > 0 ? firstInningsRuns + 1 : 0;
-  const chaseNeeded = Math.max(chaseTarget - chaseRuns, 0);
-  const chaseOver = currentEngineState?.innings?.[1]?.over ?? 0;
-  const chaseBall = currentEngineState?.innings?.[1]?.ball ?? 0;
-  const chaseBallsBowled = Math.max(0, chaseOver * 6 + chaseBall);
-  const chaseBallsLeft = Math.max(120 - chaseBallsBowled, 0);
-  const isSecondInningsLive = (currentEngineState?.currentInningsIndex ?? 0) === 1;
-
   return (
     <div
       className={cls(
@@ -676,63 +622,34 @@ function TabsArea({
               </div>
             </GlassPanel>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
-              <div className="space-y-4">
+            <div className="space-y-4">
+              <GlassPanel>
+                <SectionHeader eyebrow="Control" title="Match Controls" />
+                <MatchControlPanel matchId={match.slug} />
+              </GlassPanel>
+
+              <GlassPanel>
+                <SectionHeader eyebrow="Narrative" title="Match Story" />
+                <MatchStory matchId={match.slug} />
+              </GlassPanel>
+
+              <GlassPanel>
+                <MatchGraphExplorer
+                  currentBattingTeam={overviewBattingTeam}
+                  currentBowlingTeam={overviewBowlingTeam}
+                  currentOver={displayOver}
+                  currentRunRate={inningsRunRate}
+                  innings={currentEngineState?.innings ?? []}
+                  momentumData={analytics.momentum}
+                  winProbabilityData={winProbabilityData}
+                />
+              </GlassPanel>
+
+              <div className="grid gap-4 lg:grid-cols-2">
                 <GlassPanel>
-                  <SectionHeader eyebrow="Control" title="Match Controls" />
-                  <MatchControlPanel matchId={match.slug} />
+                  <SectionHeader eyebrow="Stand" title="Partnership Watch" />
+                  <PartnershipPanel matchId={match.slug} />
                 </GlassPanel>
-
-                <GlassPanel>
-                  <SectionHeader eyebrow="Narrative" title="Match Story" />
-                  <MatchStory matchId={match.slug} />
-                </GlassPanel>
-
-                <GlassPanel>
-                  <SectionHeader eyebrow="Model" title="Win Probability" />
-                  <CompactWinProbabilityBar
-                    leftLabel={overviewBattingTeam}
-                    rightLabel={overviewBowlingTeam}
-                    leftPercent={Math.max(0, Math.min(100, winProbabilityData.at(-1)?.batting ?? 50))}
-                    rightPercent={Math.max(0, Math.min(100, winProbabilityData.at(-1)?.bowling ?? 50))}
-                    context={
-                      isSecondInningsLive
-                        ? `${chaseNeeded} runs needed from ${chaseBallsLeft} balls · target ${chaseTarget}`
-                        : "Chase context will appear once second innings begins."
-                    }
-                  />
-                </GlassPanel>
-
-                <GlassPanel>
-                  <MatchGraphExplorer
-                    currentBattingTeam={overviewBattingTeam}
-                    currentBowlingTeam={overviewBowlingTeam}
-                    currentOver={displayOver}
-                    currentRunRate={inningsRunRate}
-                    innings={currentEngineState?.innings ?? []}
-                    momentumData={analytics.momentum}
-                    winProbabilityData={winProbabilityData}
-                  />
-                </GlassPanel>
-
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <GlassPanel>
-                    <SectionHeader eyebrow="Intelligence" title="Insights" />
-                    <MatchInsightsPanel matchId={match.slug} />
-                  </GlassPanel>
-                  <GlassPanel>
-                    <SectionHeader eyebrow="Stand" title="Partnership Watch" />
-                    <PartnershipPanel matchId={match.slug} />
-                  </GlassPanel>
-                </div>
-
-                <GlassPanel>
-                  <SectionHeader eyebrow="Storyline" title="Narrative Arc" />
-                  <MatchNarrativePanel matchId={match.slug} />
-                </GlassPanel>
-              </div>
-
-              <div className="space-y-4">
                 <GlassPanel>
                   <SectionHeader eyebrow="Moments" title="Highlights" />
                   <HighlightTimeline matchId={match.slug} />

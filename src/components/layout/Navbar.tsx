@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import AppDrawer from "@/components/navigation/AppDrawer";
 import MobileMenuButton from "@/components/navigation/MobileMenuButton";
 import { isPathActive } from "@/components/navigation/navigationUtils";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 import { useDrawer } from "@/hooks/useDrawer";
 
 const quickLinks = [
@@ -41,18 +42,18 @@ export default function Navbar() {
       <nav
         className={`relative transition-all duration-300 ${
           scrolled
-            ? "bg-black/70 backdrop-blur-xl border-b border-white/10"
-            : "bg-black/45 backdrop-blur-md border-b border-white/5"
+            ? "border-b border-[var(--nav-border-strong)] bg-[var(--nav-bg-scrolled)] backdrop-blur-xl"
+            : "border-b border-[var(--nav-border-soft)] bg-[var(--nav-bg)] backdrop-blur-md"
         }`}
       >
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-pink-500/5" />
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[var(--gradient-surface)] opacity-50" />
 
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-3">
             <MobileMenuButton isOpen={isOpen} onClick={toggleDrawer} />
             <Link
               href="/"
-              className="text-lg font-bold tracking-tight text-white transition hover:text-blue-300 md:text-xl"
+              className="text-lg font-bold tracking-tight text-[var(--text-primary)] transition hover:text-[var(--accent-brand)] md:text-xl"
             >
               CricSmart
             </Link>
@@ -66,14 +67,16 @@ export default function Navbar() {
                   key={link.href}
                   href={link.href}
                   className={`relative px-1 py-1 text-sm font-medium transition ${
-                    isActive ? "text-white" : "text-white/65 hover:text-white"
+                    isActive
+                      ? "text-[var(--text-primary)]"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   }`}
                 >
                   {link.name}
                   {isActive ? (
                     <motion.span
                       layoutId="navbar-active-indicator"
-                      className="absolute -bottom-[9px] left-0 right-0 h-[2px] rounded-full bg-blue-400"
+                      className="absolute -bottom-[9px] right-0 left-0 h-[2px] rounded-full bg-[var(--accent-brand)]"
                       transition={{ type: "spring", stiffness: 500, damping: 34 }}
                     />
                   ) : null}
@@ -82,10 +85,11 @@ export default function Navbar() {
             })}
           </div>
 
-          <div className="hidden min-w-[140px] justify-end md:flex">
-            <span className="rounded-md border border-white/10 bg-white/[0.02] px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-zinc-400">
+          <div className="flex min-w-[120px] items-center justify-end gap-3 md:min-w-[190px]">
+            <span className="hidden rounded-md border border-[var(--nav-border-soft)] bg-[var(--bg-raised)]/40 px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-[var(--text-secondary)] md:inline-flex">
               {activeLink?.name ?? "Cricket"}
             </span>
+            <ThemeToggle />
           </div>
         </div>
       </nav>

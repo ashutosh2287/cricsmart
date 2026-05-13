@@ -54,41 +54,44 @@ function MomentumChart({ matchId }: Props) {
   }, [handleUpdate]);
 
   const lineColor = useMemo(() => {
-    if (!data.length) return "#3b82f6";
+    if (!data.length) return "var(--chart-batting)";
     const lastPoint = data[data.length - 1];
-    if (lastPoint.momentum > 2) return "#22c55e";
-    if (lastPoint.momentum < -2) return "#ef4444";
-    return "#eab308";
+    if (lastPoint.momentum > 2) return "var(--chart-positive)";
+    if (lastPoint.momentum < -2) return "var(--chart-negative)";
+    return "var(--chart-neutral)";
   }, [data]);
 
   return (
     <AnalyticsErrorBoundary fallbackTitle="Momentum chart is temporarily unavailable.">
-      <div className="bg-zinc-900 p-4 rounded-xl shadow-lg">
+      <div className="theme-chart-shell rounded-xl p-4">
 
-      <h3 className="text-lg font-semibold mb-3 text-white">
+      <h3 className="mb-3 text-lg font-semibold text-[var(--text-primary)]">
         Momentum
       </h3>
 
       <ResponsiveContainer width="100%" height={180}>
         <LineChart data={data}>
 
-          <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
 
-          <XAxis
-            dataKey="over"
-            tick={{ fill: "#aaa", fontSize: 12 }}
-          />
+            <XAxis
+              dataKey="over"
+              tick={{ fill: "var(--chart-axis)", fontSize: 12 }}
+            />
 
-          <YAxis
-            domain={["auto", "auto"]}
-            tick={{ fill: "#aaa", fontSize: 12 }}
-          />
+            <YAxis
+              domain={["auto", "auto"]}
+              tick={{ fill: "var(--chart-axis)", fontSize: 12 }}
+            />
 
-          <Tooltip
-            contentStyle={{ backgroundColor: "#111", border: "none" }}
-            labelStyle={{ color: "#aaa" }}
-            cursor={{ stroke: "#444", strokeWidth: 1 }}
-          />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "var(--chart-tooltip-bg)",
+                border: "1px solid var(--chart-tooltip-border)",
+              }}
+              labelStyle={{ color: "var(--text-secondary)" }}
+              cursor={{ stroke: "var(--chart-grid)", strokeWidth: 1 }}
+            />
 
             <Line
               type="monotone"
@@ -98,9 +101,9 @@ function MomentumChart({ matchId }: Props) {
               dot={false}
             />
 
-          <ReferenceArea y1={2} y2={10} fill="rgba(34,197,94,0.08)" />
-          <ReferenceArea y1={-2} y2={2} fill="rgba(234,179,8,0.05)" />
-          <ReferenceArea y1={-10} y2={-2} fill="rgba(239,68,68,0.08)" />
+          <ReferenceArea y1={2} y2={10} fill="var(--chart-zone-positive)" />
+          <ReferenceArea y1={-2} y2={2} fill="var(--chart-zone-neutral)" />
+          <ReferenceArea y1={-10} y2={-2} fill="var(--chart-zone-negative)" />
 
         </LineChart>
       </ResponsiveContainer>

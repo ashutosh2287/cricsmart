@@ -8,6 +8,24 @@ import BroadcastDirectorOverlay from "@/components/BroadcastDirectorOverlay";
 import EngineBootstrap from "@/components/EngineBootstrap";
 import PageTransition from "@/components/ui/PageTransition";
 import MonitoringBootstrap from "@/components/MonitoringBootstrap";
+import { ThemeProvider } from "@/context/ThemeContext";
+
+const themeInitializerScript = `
+(() => {
+  try {
+    const key = "cricsmart-theme";
+    const saved = window.localStorage.getItem(key);
+    const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+    const resolved = saved === "light" ? "light" : saved === "dark" ? "dark" : prefersLight ? "light" : "dark";
+    const root = document.documentElement;
+    if (resolved === "light") {
+      root.setAttribute("data-theme", "light");
+    } else {
+      root.removeAttribute("data-theme");
+    }
+  } catch (_) {}
+})();
+`;
 
 const geistSans = localFont({
   src: "../../public/fonts/geist-latin.woff2",
@@ -30,50 +48,55 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitializerScript }} />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased text-white bg-black`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {/* ========================================
-           CINEMATIC BACKGROUND
-        ======================================== */}
-        <div className="fixed inset-0 -z-10 overflow-hidden">
-          <div className="absolute inset-0 bg-black" />
+        <ThemeProvider>
+          {/* ========================================
+             CINEMATIC BACKGROUND
+          ======================================== */}
+          <div className="cinematic-background fixed inset-0 -z-10 overflow-hidden">
+            <div className="cinematic-background__base absolute inset-0" />
 
-          {/* Blue glow */}
-          <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[140px]" />
+            {/* Blue glow */}
+            <div className="cinematic-background__glow cinematic-background__glow--blue absolute top-0 left-1/4 h-[600px] w-[600px] rounded-full blur-[140px]" />
 
-          {/* Purple glow */}
-          <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[140px]" />
-        </div>
-
-        {/* ========================================
-           ENGINE
-        ======================================== */}
-        <EngineBootstrap />
-        <MonitoringBootstrap />
-
-        {/* ========================================
-           OVERLAYS
-        ======================================== */}
-        <StadiumOverlay />
-        <BroadcastDirectorOverlay />
-
-        {/* ========================================
-           NAVBAR (UPGRADED)
-        ======================================== */}
-         <div className="sticky top-0 z-50">  
-                  <Navbar />
-        </div>
-
-        {/* ========================================
-           MAIN CONTENT (ANIMATED)
-        ======================================== */}
-        <main className="min-h-screen">
-          <div className="max-w-7xl mx-auto px-6 py-8">
-            <PageTransition>{children}</PageTransition>
+            {/* Purple glow */}
+            <div className="cinematic-background__glow cinematic-background__glow--purple absolute right-1/4 bottom-0 h-[600px] w-[600px] rounded-full blur-[140px]" />
           </div>
-        </main>
+
+          {/* ========================================
+             ENGINE
+          ======================================== */}
+          <EngineBootstrap />
+          <MonitoringBootstrap />
+
+          {/* ========================================
+             OVERLAYS
+          ======================================== */}
+          <StadiumOverlay />
+          <BroadcastDirectorOverlay />
+
+          {/* ========================================
+             NAVBAR (UPGRADED)
+          ======================================== */}
+          <div className="sticky top-0 z-50">
+            <Navbar />
+          </div>
+
+          {/* ========================================
+             MAIN CONTENT (ANIMATED)
+          ======================================== */}
+          <main className="min-h-screen">
+            <div className="mx-auto max-w-7xl px-6 py-8">
+              <PageTransition>{children}</PageTransition>
+            </div>
+          </main>
+        </ThemeProvider>
       </body>
     </html>
   );

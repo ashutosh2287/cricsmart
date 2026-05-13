@@ -47,19 +47,19 @@ function WinProbabilityChart({
   const renderMarkerDot = useCallback(({ cx, cy, payload }: DotProps) => {
     if (!payload?.marker || cx === undefined || cy === undefined) return null;
 
-    let color = "#facc15";
+    let color = "var(--chart-marker-default)";
     let label = "";
 
     if (payload.marker === "TURNING_POINT") {
       label = "TP";
     } else if (payload.marker === "WICKET") {
-      color = "#ef4444";
+      color = "var(--chart-negative)";
       label = "W";
     } else if (payload.marker === "SIX") {
-      color = "#22c55e";
+      color = "var(--chart-positive)";
       label = "6";
     } else if (payload.marker === "FOUR") {
-      color = "#60a5fa";
+      color = "var(--chart-batting)";
       label = "4";
     } else if (payload.marker === "SWING") {
       label = "⚡";
@@ -67,8 +67,20 @@ function WinProbabilityChart({
 
     return (
       <g>
-        <circle cx={cx} cy={cy} r={6} fill={color} stroke="#fff" />
-        <text x={cx} y={cy - 10} textAnchor="middle" fontSize="10" fill="#fff">
+        <circle
+          cx={cx}
+          cy={cy}
+          r={6}
+          fill={color}
+          stroke="var(--chart-marker-stroke)"
+        />
+        <text
+          x={cx}
+          y={cy - 10}
+          textAnchor="middle"
+          fontSize="10"
+          fill="var(--chart-marker-text)"
+        >
           {label}
         </text>
       </g>
@@ -79,22 +91,22 @@ function WinProbabilityChart({
 
   return (
     <AnalyticsErrorBoundary fallbackTitle="Win probability chart is temporarily unavailable.">
-      <div className="bg-zinc-900 p-4 rounded-xl shadow-lg">
+      <div className="theme-chart-shell rounded-xl p-4">
 
       {/* HEADER */}
       <div className="flex justify-between items-center mb-3">
 
-        <h3 className="text-sm uppercase text-gray-400">
+        <h3 className="text-sm uppercase text-[var(--text-secondary)]">
           Win Probability
         </h3>
 
         <div className="text-xs flex gap-3">
 
-          <span className="text-green-400 font-semibold">
+          <span className="font-semibold text-[var(--chart-positive)]">
             {team1 ?? "BAT"} {lastPoint.batting.toFixed(1)}%
           </span>
 
-          <span className="text-red-400 font-semibold">
+          <span className="font-semibold text-[var(--chart-negative)]">
             {team2 ?? "BOWL"} {lastPoint.bowling.toFixed(1)}%
           </span>
 
@@ -109,38 +121,46 @@ function WinProbabilityChart({
           {/* GRADIENTS */}
           <defs>
             <linearGradient id="battingFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#22c55e" stopOpacity={0.4}/>
-              <stop offset="100%" stopColor="#22c55e" stopOpacity={0}/>
+              <stop offset="0%" stopColor="var(--chart-positive)" stopOpacity={0.4}/>
+              <stop offset="100%" stopColor="var(--chart-positive)" stopOpacity={0}/>
             </linearGradient>
 
             <linearGradient id="bowlingFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity={0.4}/>
-              <stop offset="100%" stopColor="#ef4444" stopOpacity={0}/>
+              <stop offset="0%" stopColor="var(--chart-negative)" stopOpacity={0.4}/>
+              <stop offset="100%" stopColor="var(--chart-negative)" stopOpacity={0}/>
             </linearGradient>
           </defs>
 
           {/* PHASE ZONES */}
-          <ReferenceArea x1={0} x2={6} fill="#1e40af" fillOpacity={0.08} />
-          <ReferenceArea x1={6} x2={15} fill="#065f46" fillOpacity={0.08} />
-          <ReferenceArea x1={15} x2={20} fill="#7f1d1d" fillOpacity={0.08} />
+          <ReferenceArea x1={0} x2={6} fill="var(--chart-zone-neutral)" fillOpacity={1} />
+          <ReferenceArea x1={6} x2={15} fill="var(--chart-zone-positive)" fillOpacity={1} />
+          <ReferenceArea x1={15} x2={20} fill="var(--chart-zone-negative)" fillOpacity={1} />
 
-          <CartesianGrid stroke="#333" strokeDasharray="3 3" />
+          <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
 
           <Area type="monotone" dataKey="batting" fill="url(#battingFill)" stroke="none" />
           <Area type="monotone" dataKey="bowling" fill="url(#bowlingFill)" stroke="none" />
 
-          <XAxis dataKey="over" stroke="#aaa" />
-          <YAxis domain={[0, 100]} stroke="#aaa" tickFormatter={(v) => `${v}%`} />
+          <XAxis dataKey="over" stroke="var(--chart-axis)" />
+          <YAxis domain={[0, 100]} stroke="var(--chart-axis)" tickFormatter={(v) => `${v}%`} />
 
-          <ReferenceLine y={50} stroke="#666" strokeDasharray="4 4" />
+          <ReferenceLine y={50} stroke="var(--chart-grid)" strokeDasharray="4 4" />
 
-          <Tooltip formatter={(v) => `${Number(v).toFixed(1)}%`} />
+          <Tooltip
+            formatter={(v) => `${Number(v).toFixed(1)}%`}
+            contentStyle={{
+              backgroundColor: "var(--chart-tooltip-bg)",
+              border: "1px solid var(--chart-tooltip-border)",
+              color: "var(--chart-tooltip-text)",
+            }}
+            labelStyle={{ color: "var(--text-secondary)" }}
+          />
 
           {/* MAIN LINE */}
           <Line
             type="monotone"
             dataKey="batting"
-            stroke="#22c55e"
+            stroke="var(--chart-positive)"
             strokeWidth={3}
             dot={renderMarkerDot}
           />
@@ -148,7 +168,7 @@ function WinProbabilityChart({
           <Line
             type="monotone"
             dataKey="bowling"
-            stroke="#ef4444"
+            stroke="var(--chart-negative)"
             strokeWidth={3}
             dot={false}
           />

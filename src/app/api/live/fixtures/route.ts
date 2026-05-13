@@ -34,6 +34,16 @@ type ScoredMatch = ClassifiedMatch & {
   priorityScore: number;
 };
 
+type MatchSummary = {
+  id: unknown;
+  name: unknown;
+  status: unknown;
+  matchStarted: unknown;
+  matchEnded: unknown;
+  dateTimeGMT: unknown;
+  date: unknown;
+};
+
 function categorizeMatch(match: Record<string, unknown>): string {
   const name = (typeof match.name === "string" ? match.name : "").toLowerCase();
   const type = (typeof match.matchType === "string" ? match.matchType : "").toLowerCase();
@@ -235,7 +245,7 @@ function selectFeaturedPool(
   return fallback;
 }
 
-function summarizeMatches(matches: MatchRecord[]) {
+function summarizeMatches(matches: MatchRecord[]): MatchSummary[] {
   return matches.slice(0, 5).map((match) => ({
     id: match.id,
     name: match.name,

@@ -21,7 +21,12 @@ function maskKey(value: string): string {
 }
 
 function summarizeStatus(matches: MatchRecord[]) {
-  return matches.reduce(
+  return matches.reduce<{
+    live: number;
+    upcoming: number;
+    completed: number;
+    unknown: number;
+  }>(
     (acc, match) => {
       const started = Boolean(match.matchStarted);
       const ended = Boolean(match.matchEnded);

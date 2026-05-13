@@ -80,10 +80,10 @@ npm run build
      ```bash
      curl "https://<your-domain>/api/live/runtime-check"
      ```
-    - Validate key against CricAPI:
-      ```bash
-      curl "https://api.cricapi.com/v1/currentMatches?apikey=$CRICKET_API_KEY&offset=0"
-      ```
+   - Validate key against CricAPI:
+     ```bash
+     curl "https://api.cricapi.com/v1/currentMatches?apikey=$CRICKET_API_KEY&offset=0"
+     ```
    - Validate `externalMatchId`.
    - Validate Redis connectivity.
    - Validate worker and live ingestor are running.

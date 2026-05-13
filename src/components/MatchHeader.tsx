@@ -29,8 +29,6 @@ type Props = {
   lastOverBalls?: string[];
   isLive?: boolean;
   target?: number;
-  runsNeeded?: number;
-  ballsLeft?: number;
   rrr?: number;
   crr?: number;
   totalOvers?: number;
@@ -63,8 +61,6 @@ export default function MatchHeader({
   lastOverBalls = [],
   isLive = true,
   target,
-  runsNeeded,
-  ballsLeft,
   rrr,
   crr,
   totalOvers = 20,
@@ -81,12 +77,11 @@ export default function MatchHeader({
   const ballsBowled = over * 6 + ball;
   const progress = Math.min(ballsBowled / totalBalls, 1);
 
-  const showChase =
+  const showSecondInningsMetrics =
     !matchEnded &&
     typeof target === "number" &&
     target > 0 &&
-    typeof runsNeeded === "number" &&
-    typeof ballsLeft === "number";
+    typeof rrr === "number";
 
   return (
     <div
@@ -352,48 +347,62 @@ export default function MatchHeader({
         </div>
       )}
 
-      {/* ── Chase info (innings 2) ────────────────────────── */}
-      {showChase && (
+      {/* ── Match metrics (innings-aware) ─────────────────── */}
+      {!matchEnded && (
         <div
           className="flex flex-wrap items-center gap-x-5 gap-y-1 px-5 py-2.5 text-sm"
           style={{ borderTop: "1px solid var(--border-subtle)" }}
         >
-          <span>
+          <span className="tabular-nums">
             <span
               className="text-[11px] uppercase tracking-[0.12em] mr-1.5"
               style={{ color: "var(--text-muted)" }}
             >
-              Target
+              Overs
             </span>
             <span
               className="font-semibold tabular-nums"
               style={{ color: "var(--text-primary)" }}
             >
-              {target}
+              {over}.{ball}
             </span>
           </span>
 
-          <span>
-            <span
-              className="text-[11px] uppercase tracking-[0.12em] mr-1.5"
-              style={{ color: "var(--text-muted)" }}
-            >
-              Need
+          {typeof crr === "number" && crr >= 0 && (
+            <span>
+              <span
+                className="text-[11px] uppercase tracking-[0.12em] mr-1.5"
+                style={{ color: "var(--text-muted)" }}
+              >
+                CRR
+              </span>
+              <span
+                className="tabular-nums"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {crr.toFixed(2)}
+              </span>
             </span>
-            <span
-              className="font-semibold tabular-nums"
-              style={{
-                color:
-                  (runsNeeded ?? 0) > 12
-                    ? "var(--accent-danger)"
-                    : "var(--accent-live)",
-              }}
-            >
-              {runsNeeded} off {ballsLeft}
-            </span>
-          </span>
+          )}
 
-          {typeof rrr === "number" && rrr > 0 && (
+          {showSecondInningsMetrics && (
+            <span>
+              <span
+                className="text-[11px] uppercase tracking-[0.12em] mr-1.5"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Target
+              </span>
+              <span
+                className="font-semibold tabular-nums"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {target}
+              </span>
+            </span>
+          )}
+
+          {showSecondInningsMetrics && typeof rrr === "number" && rrr > 0 && (
             <span>
               <span
                 className="text-[11px] uppercase tracking-[0.12em] mr-1.5"
@@ -415,22 +424,6 @@ export default function MatchHeader({
             </span>
           )}
 
-          {typeof crr === "number" && crr > 0 && (
-            <span className="ml-auto">
-              <span
-                className="text-[11px] uppercase tracking-[0.12em] mr-1.5"
-                style={{ color: "var(--text-muted)" }}
-              >
-                CRR
-              </span>
-              <span
-                className="tabular-nums"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                {crr.toFixed(2)}
-              </span>
-            </span>
-          )}
         </div>
       )}
 

@@ -51,6 +51,7 @@ type OverSummary = {
 
 type OverBlock = {
   balls: CommentaryBall[];
+  contextNotes: string[];
   summary: OverSummary;
 };
 
@@ -211,6 +212,9 @@ function buildOverBlocks(innings: InningsState | undefined): OverBlock[] {
 
   const batterStats: Record<string, BatterSnapshot> = {};
   const bowlerStats: Record<string, BowlerSnapshot> = {};
+  const seenBatters = new Set<string>();
+  let currentSpellBowler: string | null = null;
+  let currentSpellOvers = 0;
   let score = 0;
   let wickets = 0;
 
@@ -218,6 +222,7 @@ function buildOverBlocks(innings: InningsState | undefined): OverBlock[] {
 
   overKeys.forEach((overNumber) => {
     const deliveries = innings.overs[overNumber] ?? [];
+    const contextNotes: string[] = [];
     let legalBallNumber = 0;
     let overRuns = 0;
     let overWickets = 0;
@@ -278,6 +283,30 @@ function buildOverBlocks(innings: InningsState | undefined): OverBlock[] {
     });
 
     const lastDelivery = deliveries[deliveries.length - 1];
+    const firstDelivery = deliveries[0];
+    if (firstDelivery?.batsman && !seenBatters.has(firstDelivery.batsman)) {
+      contextNotes.push(`New batter in: ${firstDelivery.batsman} on strike.`);
+      seenBatters.add(firstDelivery.batsman);
+    }
+    if (firstDelivery?.nonStriker && !seenBatters.has(firstDelivery.nonStriker)) {
+      contextNotes.push(`New batter in: ${firstDelivery.nonStriker} at non-striker's end.`);
+      seenBatters.add(firstDelivery.nonStriker);
+    }
+
+    if (lastDelivery?.bowler) {
+      if (currentSpellBowler !== lastDelivery.bowler) {
+        currentSpellBowler = lastDelivery.bowler;
+        currentSpellOvers = 1;
+      } else {
+        currentSpellOvers += 1;
+      }
+      contextNotes.push(
+        currentSpellOvers === 1
+          ? `${lastDelivery.bowler} starts a new spell.`
+          : `${lastDelivery.bowler} continues spell (${currentSpellOvers} overs).`
+      );
+    }
+
     const finalBatters = lastDelivery
       ? [lastDelivery.batsman, lastDelivery.nonStriker]
           .filter(Boolean)
@@ -286,6 +315,7 @@ function buildOverBlocks(innings: InningsState | undefined): OverBlock[] {
       : [];
 
     blocks.push({
+      contextNotes,
       summary: {
         batters: finalBatters,
         bowler: lastDelivery ? bowlerStats[lastDelivery.bowler] ?? null : null,
@@ -310,7 +340,7 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
   const overBlocks = useMemo(() => buildOverBlocks(innings), [innings]);
 
   return (
-    <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.95),rgba(2,6,23,0.88))] p-5">
+    <div className="rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.95),rgba(2,6,23,0.9))] p-4">
       {insights && insights.length > 0 ? (
         <div className="mb-4 rounded-3xl border border-yellow-500/20 bg-yellow-500/10 p-4">
           <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-yellow-300">
@@ -324,10 +354,10 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
         </div>
       ) : null}
 
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
-          <h3 className="text-xl font-semibold text-white">Detailed Commentary</h3>
-          <p className="mt-1 text-sm leading-6 text-white/60">
+          <h3 className="text-lg font-semibold text-white">Live Commentary</h3>
+          <p className="mt-1 text-sm leading-5 text-white/60">
             Latest over first, with richer ball-by-ball notes and a quick over
             summary after each phase.
           </p>
@@ -341,7 +371,7 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
         </button>
       </div>
 
-      <div className="max-h-[860px] space-y-6 overflow-y-auto pr-1">
+      <div className="max-h-[78vh] space-y-4 overflow-y-auto pr-1">
         {overBlocks.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-sm text-white/55">
             Waiting for live commentary...
@@ -349,9 +379,9 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
         ) : null}
 
         {overBlocks.map((block) => (
-          <div key={block.summary.key} className="space-y-4">
-            <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5 shadow-[0_18px_60px_rgba(2,6,23,0.2)]">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div key={block.summary.key} className="space-y-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <div className="flex items-center gap-3">
                     <span className="text-base font-semibold text-white">
@@ -377,7 +407,20 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-4 border-t border-white/10 pt-4 md:grid-cols-[minmax(0,1fr)_auto]">
+              {!!block.contextNotes.length && (
+                <div className="mt-3 space-y-1 border-t border-dashed border-white/10 pt-3">
+                  {block.contextNotes.map((note, index) => (
+                    <div
+                      key={`${block.summary.key}-note-${index}`}
+                      className="text-xs uppercase tracking-[0.14em] text-sky-200/80"
+                    >
+                      {note}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-4 grid gap-4 border-t border-white/10 pt-3 md:grid-cols-[minmax(0,1fr)_auto]">
                 <div className="space-y-2 text-sm text-white/75">
                   {block.summary.batters.map((batter) => (
                     <div key={batter.name} className="flex items-center justify-between gap-3">
@@ -400,17 +443,21 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
                 ) : null}
               </div>
 
-              <div className="mt-4 flex items-center justify-between border-t border-dashed border-white/10 pt-3 text-xs uppercase tracking-[0.18em] text-white/45">
-                <span>View all overs</span>
+              <div className="mt-3 flex items-center justify-between border-t border-dashed border-white/10 pt-3 text-xs uppercase tracking-[0.18em] text-white/45">
+                <span>Over summary card</span>
                 <span>Latest phase</span>
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {block.balls.map((ball) => (
                 <div
                   key={ball.key}
-                  className="rounded-3xl border border-white/10 bg-slate-950/55 p-4"
+                  className={`rounded-2xl border p-3.5 ${
+                    ball.tag === "WICKET"
+                      ? "border-red-400/35 bg-red-950/20"
+                      : "border-white/10 bg-slate-950/55"
+                  }`}
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>

@@ -9,7 +9,7 @@ export default function GlassPanel({
 }) {
   return (
     <div
-      className={`rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 transition-colors duration-200 hover:border-white/10 ${className}`}
+      className={`rounded-[8px] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 transition-colors duration-200 hover:border-white/15 ${className}`}
     >
       {children}
     </div>

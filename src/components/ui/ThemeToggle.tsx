@@ -35,24 +35,24 @@ function MoonIcon() {
 
 export default function ThemeToggle() {
   const { resolvedTheme, toggleTheme } = useTheme();
-  const mounted = useSyncExternalStore(
+  const hasHydrated = useSyncExternalStore(
     () => () => {},
     () => true,
     () => false,
   );
 
   const isLight = resolvedTheme === "light";
-  const ariaLabel = mounted
+  const ariaLabel = hasHydrated
     ? isLight
       ? "Switch to dark theme"
       : "Switch to light theme"
-    : "Switch theme";
+    : "Toggle theme preference";
 
   return (
     <button
       type="button"
       aria-label={ariaLabel}
-      aria-pressed={mounted ? isLight : false}
+      aria-pressed={hasHydrated ? isLight : false}
       onClick={toggleTheme}
       className="theme-toggle"
     >

@@ -64,7 +64,7 @@ export default function Navbar() {
             aria-label="Open menu"
             aria-expanded={isMenuOpen}
             onClick={() => setIsMenuOpen((prev) => !prev)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/85 transition hover:bg-white/[0.08]"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/85 transition hover:bg-white/[0.08] md:hidden"
           >
             <span className="sr-only">Menu</span>
             <span className="flex flex-col gap-1">

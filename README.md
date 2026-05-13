@@ -76,6 +76,10 @@ npm run build
      ```bash
      printenv CRICKET_API_KEY
      ```
+   - Run production runtime check endpoint (safe key mask + live provider counts):
+     ```bash
+     curl "https://<your-domain>/api/live/runtime-check"
+     ```
    - Validate key against CricAPI:
      ```bash
      curl "https://api.cricapi.com/v1/currentMatches?apikey=$CRICKET_API_KEY&offset=0"

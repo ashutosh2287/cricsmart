@@ -74,46 +74,36 @@ function applyHtmlTheme(resolved: ResolvedTheme) {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<ThemeMode>("system");
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("dark");
+  const [theme, setThemeState] = useState<ThemeMode>(() => getStoredTheme() ?? "system");
+  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() => getSystemTheme());
+  const resolvedTheme = theme === "system" ? systemTheme : theme;
 
   useEffect(() => {
-    const storedTheme = getStoredTheme();
-    const preferredTheme = storedTheme ?? "system";
-    const resolved = resolveTheme(preferredTheme);
-
-    setThemeState(preferredTheme);
-    setResolvedTheme(resolved);
-    applyHtmlTheme(resolved);
-  }, []);
-
-  useEffect(() => {
-    if (theme !== "system") {
-      return;
-    }
-
     if (typeof window.matchMedia !== "function") {
       return;
     }
 
     const media = window.matchMedia("(prefers-color-scheme: light)");
     const handleSystemChange = (event: MediaQueryListEvent) => {
-      const nextResolved: ResolvedTheme = event.matches ? "light" : "dark";
-      setResolvedTheme(nextResolved);
-      applyHtmlTheme(nextResolved);
+      setSystemTheme(event.matches ? "light" : "dark");
     };
 
     media.addEventListener("change", handleSystemChange);
     return () => media.removeEventListener("change", handleSystemChange);
-  }, [theme]);
+  }, []);
+
+  useEffect(() => {
+    applyHtmlTheme(resolvedTheme);
+  }, [resolvedTheme]);
 
   const setTheme = useCallback((mode: ThemeMode) => {
     setThemeState(mode);
     window.localStorage.setItem(THEME_STORAGE_KEY, mode);
 
     const nextResolved = resolveTheme(mode);
-    setResolvedTheme(nextResolved);
-    applyHtmlTheme(nextResolved);
+    if (mode !== "system") {
+      applyHtmlTheme(nextResolved);
+    }
   }, []);
 
   const toggleTheme = useCallback(() => {

@@ -1,9 +1,32 @@
 import { NextResponse } from "next/server";
 import { getRedis } from "@/services/storage/redisClient";
+import { logger } from "@/lib/logger";
 
 const CACHE_KEY = "live:fixtures:cache";
 const CACHE_TTL_SECONDS = 60;
 const REQUEST_TIMEOUT_MS = 20000;
+const RECENT_WINDOW_MS = 48 * 60 * 60 * 1000;
+const UPCOMING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+type MatchRecord = Record<string, unknown>;
+type NormalizedStatus = "LIVE" | "UPCOMING" | "COMPLETED" | "UNKNOWN";
+type MatchBucket = "live" | "upcoming" | "recent" | "lowerPriorityLive" | "other";
+type SectionKey = "featured" | "recent" | "upcoming" | "lowerPriorityLive";
+
+type NormalizedMatch = {
+  raw: MatchRecord;
+  normalizedStatus: NormalizedStatus;
+  parsedDateMs?: number;
+  dateParseValid: boolean;
+};
+
+type ClassifiedMatch = NormalizedMatch & {
+  bucket: MatchBucket;
+};
+
+type ScoredMatch = ClassifiedMatch & {
+  priorityScore: number;
+};
 
 function categorizeMatch(match: Record<string, unknown>): string {
   const name = (typeof match.name === "string" ? match.name : "").toLowerCase();
@@ -40,6 +63,154 @@ function enrichMatches(data: unknown): unknown {
   });
 
   return { ...record, data: enriched };
+}
+
+function getProviderMatches(raw: unknown): MatchRecord[] {
+  if (!raw || typeof raw !== "object") return [];
+  const record = raw as Record<string, unknown>;
+  return Array.isArray(record.data)
+    ? record.data.filter((match): match is MatchRecord => typeof match === "object" && match !== null)
+    : [];
+}
+
+function parseProviderDate(match: MatchRecord): { parsedDateMs?: number; dateParseValid: boolean } {
+  const rawDate =
+    typeof match.dateTimeGMT === "string"
+      ? match.dateTimeGMT
+      : typeof match.date === "string"
+        ? match.date
+        : undefined;
+
+  if (!rawDate) return { dateParseValid: false };
+  const parsed = Date.parse(rawDate);
+  if (!Number.isFinite(parsed)) return { dateParseValid: false };
+  return { parsedDateMs: parsed, dateParseValid: true };
+}
+
+function normalizeStatus(match: MatchRecord, parsedDateMs?: number): NormalizedStatus {
+  const status = typeof match.status === "string" ? match.status.toLowerCase() : "";
+  const started = Boolean(match.matchStarted);
+  const ended = Boolean(match.matchEnded);
+  const now = Date.now();
+
+  if (ended || status.includes("result") || status.includes("won by") || status.includes("match over")) {
+    return "COMPLETED";
+  }
+  if ((started && !ended) || status.includes("live") || status.includes("innings break")) {
+    return "LIVE";
+  }
+  if (
+    status.includes("starts") ||
+    status.includes("yet to begin") ||
+    status.includes("scheduled") ||
+    status.includes("upcoming")
+  ) {
+    return "UPCOMING";
+  }
+  if (parsedDateMs !== undefined && parsedDateMs > now) {
+    return "UPCOMING";
+  }
+
+  return "UNKNOWN";
+}
+
+function normalizeMatches(matches: MatchRecord[]): NormalizedMatch[] {
+  return matches.map((raw) => {
+    const { parsedDateMs, dateParseValid } = parseProviderDate(raw);
+    return {
+      raw,
+      normalizedStatus: normalizeStatus(raw, parsedDateMs),
+      parsedDateMs,
+      dateParseValid,
+    };
+  });
+}
+
+function classifyMatches(matches: NormalizedMatch[]): ClassifiedMatch[] {
+  const now = Date.now();
+  return matches.map((match) => {
+    if (match.normalizedStatus === "LIVE") {
+      return { ...match, bucket: "live" };
+    }
+    if (match.normalizedStatus === "UPCOMING") {
+      return { ...match, bucket: "upcoming" };
+    }
+    if (
+      match.normalizedStatus === "COMPLETED" &&
+      match.parsedDateMs !== undefined &&
+      now - match.parsedDateMs <= RECENT_WINDOW_MS
+    ) {
+      return { ...match, bucket: "recent" };
+    }
+    return { ...match, bucket: "other" };
+  });
+}
+
+function getPriorityScore(match: ClassifiedMatch): number {
+  const base =
+    match.bucket === "live" ? 120 : match.bucket === "upcoming" ? 80 : match.bucket === "recent" ? 70 : 30;
+  const category = typeof match.raw.matchCategory === "string" ? match.raw.matchCategory.toUpperCase() : "";
+  const categoryBoost =
+    category === "IPL" ? 15 : category === "TEST" || category === "ODI" || category === "T20I" ? 10 : 0;
+
+  const now = Date.now();
+  const proximityBoost =
+    match.parsedDateMs === undefined
+      ? 0
+      : Math.max(0, Math.round((UPCOMING_WINDOW_MS - Math.abs(match.parsedDateMs - now)) / (24 * 60 * 60 * 1000)));
+
+  return base + categoryBoost + proximityBoost;
+}
+
+function scoreMatches(matches: ClassifiedMatch[]): ScoredMatch[] {
+  return matches
+    .map((match) => ({ ...match, priorityScore: getPriorityScore(match) }))
+    .sort((a, b) => b.priorityScore - a.priorityScore);
+}
+
+function buildCuratedSections(
+  scoredMatches: ScoredMatch[]
+): { sections: Record<SectionKey, MatchRecord[]>; removedByFilters: number } {
+  const live = scoredMatches.filter((m) => m.bucket === "live");
+  const recent = scoredMatches.filter((m) => m.bucket === "recent");
+  const upcoming = scoredMatches.filter((m) => m.bucket === "upcoming");
+
+  const featuredPool =
+    live.length > 0 ? live : upcoming.length > 0 ? upcoming : recent.length > 0 ? recent : scoredMatches;
+  const featured = featuredPool.slice(0, 6).map((m) => m.raw);
+  const recentSection = recent.slice(0, 8).map((m) => m.raw);
+  const upcomingSection = upcoming.slice(0, 8).map((m) => m.raw);
+  const lowerPriorityLiveSection = live.slice(6, 12).map((m) => m.raw);
+
+  const anyNonEmpty =
+    featured.length > 0 ||
+    recentSection.length > 0 ||
+    upcomingSection.length > 0 ||
+    lowerPriorityLiveSection.length > 0;
+
+  const safeFeatured = anyNonEmpty ? featured : scoredMatches.slice(0, 6).map((m) => m.raw);
+
+  return {
+    sections: {
+      featured: safeFeatured,
+      recent: recentSection,
+      upcoming: upcomingSection,
+      lowerPriorityLive: lowerPriorityLiveSection,
+    },
+    removedByFilters: Math.max(0, scoredMatches.length - (live.length + recent.length + upcoming.length)),
+  };
+}
+
+function summarizeMatches(matches: MatchRecord[]) {
+  return matches.slice(0, 5).map((match) => ({
+    id: match.id,
+    name: match.name,
+    status: match.status,
+    matchStarted: match.matchStarted,
+    matchEnded: match.matchEnded,
+    dateTimeGMT: match.dateTimeGMT,
+    date: match.date,
+  }));
 }
 
 function isAbortError(err: unknown): boolean {
@@ -106,17 +277,83 @@ export async function GET() {
 
     const raw = await res.json();
     const data = enrichMatches(raw);
+    const providerMatches = getProviderMatches(raw);
+    const normalizedMatches = normalizeMatches(getProviderMatches(data));
+    const classifiedMatches = classifyMatches(normalizedMatches);
+    const scoredMatches = scoreMatches(classifiedMatches);
+    const { sections, removedByFilters } = buildCuratedSections(scoredMatches);
+
+    logger.debug("CURATED_DISCOVERY_DEBUG", "Raw provider payload", {
+      totalProviderMatches: providerMatches.length,
+      sample: summarizeMatches(providerMatches),
+    });
+    logger.debug("CURATED_DISCOVERY_DEBUG", "Normalized matches output", {
+      totalNormalizedMatches: normalizedMatches.length,
+      statusCounts: normalizedMatches.reduce<Record<NormalizedStatus, number>>(
+        (acc, match) => {
+          acc[match.normalizedStatus] += 1;
+          return acc;
+        },
+        { LIVE: 0, UPCOMING: 0, COMPLETED: 0, UNKNOWN: 0 }
+      ),
+      invalidDateCount: normalizedMatches.filter((match) => !match.dateParseValid).length,
+    });
+    logger.debug("CURATED_DISCOVERY_DEBUG", "Classified matches output", {
+      totalClassifiedMatches: classifiedMatches.length,
+      bucketCounts: classifiedMatches.reduce<Record<MatchBucket, number>>(
+        (acc, match) => {
+          acc[match.bucket] += 1;
+          return acc;
+        },
+        { live: 0, upcoming: 0, recent: 0, lowerPriorityLive: 0, other: 0 }
+      ),
+    });
+    logger.debug("CURATED_DISCOVERY_DEBUG", "Priority-scored matches output", {
+      totalPriorityScoredMatches: scoredMatches.length,
+      topScored: scoredMatches.slice(0, 5).map((match) => ({
+        id: match.raw.id,
+        name: match.raw.name,
+        normalizedStatus: match.normalizedStatus,
+        bucket: match.bucket,
+        priorityScore: match.priorityScore,
+      })),
+    });
+    logger.debug("CURATED_DISCOVERY_DEBUG", "Final section-builder output", {
+      totalProviderMatches: providerMatches.length,
+      totalNormalizedMatches: normalizedMatches.length,
+      totalClassifiedMatches: classifiedMatches.length,
+      totalMatchesRemovedByFilters: removedByFilters,
+      sectionCounts: {
+        featured: sections.featured.length,
+        recent: sections.recent.length,
+        upcoming: sections.upcoming.length,
+        lowerPriorityLive: sections.lowerPriorityLive.length,
+      },
+      allSectionsEmpty:
+        sections.featured.length === 0 &&
+        sections.recent.length === 0 &&
+        sections.upcoming.length === 0 &&
+        sections.lowerPriorityLive.length === 0,
+    });
+
+    const responsePayload =
+      data && typeof data === "object"
+        ? {
+            ...(data as Record<string, unknown>),
+            curatedSections: sections,
+          }
+        : data;
 
     // 4. Store in cache
     if (redis) {
       try {
-        await redis.set(CACHE_KEY, JSON.stringify(data), "EX", CACHE_TTL_SECONDS);
+        await redis.set(CACHE_KEY, JSON.stringify(responsePayload), "EX", CACHE_TTL_SECONDS);
       } catch (cacheSetErr) {
         console.warn("Redis set failed", cacheSetErr);
       }
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(responsePayload);
   } catch (err) {
     if (isAbortError(err)) {
       console.warn(`Live fixtures fetch timed out after ${REQUEST_TIMEOUT_MS}ms`);

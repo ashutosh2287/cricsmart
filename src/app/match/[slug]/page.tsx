@@ -9,7 +9,9 @@ import BroadcastDirectorPanel from "@/components/BroadcastDirectorPanel";
 import CommentaryPanel from "@/components/match/CommentaryPanel";
 import GlassPanel from "@/components/ui/GlassPanel";
 import HighlightTimeline from "@/components/HighlightTimeline";
-import LiveMatchStatus from "@/components/LiveMatchStatus";
+import LiveMatchStatus, {
+  getLiveMatchStatusLabel,
+} from "@/components/LiveMatchStatus";
 import MatchControlPanel from "@/components/MatchControlPanel";
 import MatchHeader from "@/components/MatchHeader";
 import MatchInsightsPanel from "@/components/analytics/MatchInsightsPanel";
@@ -1600,9 +1602,7 @@ function MatchInnerPage({
                     <StatPill
                       label="Status"
                       value={
-                        currentEngineState.matchEnded
-                          ? "Completed"
-                          : "Live"
+                        getLiveMatchStatusLabel(currentEngineState.matchEnded)
                       }
                       tone="neutral"
                     />

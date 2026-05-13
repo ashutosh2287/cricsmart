@@ -6,23 +6,29 @@ type Props = {
   matchId: string;
 };
 
+export function getLiveMatchStatusLabel(matchEnded: boolean): "Live" | "Completed" {
+  return matchEnded ? "Completed" : "Live";
+}
+
 export default function LiveMatchStatus({ matchId }: Props) {
   const score = useScore(matchId);
   const inningsIndex = useMatchSelector(
     matchId,
     (state) => state.currentInningsIndex
   );
-  const matchEnded = useMatchSelector(matchId, (state) => state.matchEnded);
+  const matchEnded = Boolean(
+    useMatchSelector(matchId, (state) => state.matchEnded)
+  );
 
   return (
     <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-raised)]/70 px-3 py-2 text-xs">
       <span className="inline-flex items-center gap-1.5">
-        {!matchEnded ? <span className="live-pulse-dot" /> : null}
+        {!matchEnded && <span className="live-pulse-dot" />}
         <span
           className="font-semibold uppercase tracking-[0.14em]"
           style={{ color: matchEnded ? "var(--text-muted)" : "var(--accent-live)" }}
         >
-          {matchEnded ? "Completed" : "Live"}
+          {getLiveMatchStatusLabel(matchEnded)}
         </span>
       </span>
       <span className="text-[var(--text-secondary)]">

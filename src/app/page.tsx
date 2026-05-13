@@ -71,7 +71,10 @@ function categoryBadgeColor(cat: string) {
   if (c === "TEST") return { bg: "rgba(239,68,68,0.12)", color: "#ef4444" };
   if (c === "ODI") return { bg: "rgba(34,197,94,0.12)", color: "#22c55e" };
   if (c.includes("T20")) return { bg: "rgba(59,130,246,0.12)", color: "#60a5fa" };
-  return { bg: "rgba(255,255,255,0.06)", color: "#a1a1aa" };
+  return {
+    bg: "color-mix(in srgb, var(--text-primary) 8%, transparent)",
+    color: "var(--text-secondary)",
+  };
 }
 
 // ─────────────────────────────────────────────

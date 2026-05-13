@@ -26,26 +26,44 @@ export default function AnalyticsPage() {
             Match Analytics
           </h1>
 
-          <p className="text-gray-400 text-sm mt-1">
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
             Real-time cricket intelligence dashboard
           </p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-lg hover:border-blue-500 transition">
+          <div
+            className="rounded-xl p-5 shadow-lg transition"
+            style={{
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border-subtle)",
+            }}
+          >
             <WinProbabilityChart data={[]} />
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 shadow-lg hover:border-blue-500 transition">
+          <div
+            className="rounded-xl p-5 shadow-lg transition"
+            style={{
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border-subtle)",
+            }}
+          >
             <WinProbabilityChart data={[]} />
           </div>
 
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-lg hover:border-blue-500 transition">
+        <div
+          className="rounded-xl p-6 shadow-lg transition"
+          style={{
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border-subtle)",
+          }}
+        >
 
-          <h2 className="text-sm font-semibold text-gray-400 uppercase mb-4">
+          <h2 className="mb-4 text-sm font-semibold uppercase text-[var(--text-secondary)]">
             Match Phases
           </h2>
 

@@ -22,7 +22,7 @@ export default function PlayerAnalyticsPage() {
           Player Analytics
         </h1>
 
-        <p className="text-gray-400 text-sm">
+        <p className="text-sm text-[var(--text-secondary)]">
           Player performance insights
         </p>
 
@@ -36,7 +36,11 @@ export default function PlayerAnalyticsPage() {
 
               <div
                 key={name}
-                className="bg-zinc-900 border border-zinc-800 rounded-xl p-5"
+                className="rounded-xl p-5"
+                style={{
+                  background: "var(--bg-surface)",
+                  border: "1px solid var(--border-subtle)",
+                }}
               >
 
                 <h2 className="text-lg font-semibold mb-3">
@@ -65,7 +69,7 @@ export default function PlayerAnalyticsPage() {
                     Wickets: {playerStats.bowling.wickets}
                   </div>
 
-                  <div className="text-blue-400 font-medium mt-2">
+                  <div className="mt-2 font-medium text-[var(--accent-brand)]">
                     Impact Score: {impact.toFixed(1)}
                   </div>
 

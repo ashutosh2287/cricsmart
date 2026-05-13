@@ -3,7 +3,7 @@ import { getRedis } from "@/services/storage/redisClient";
 
 const CACHE_KEY = "live:fixtures:cache";
 const CACHE_TTL_SECONDS = 60;
-const REQUEST_TIMEOUT_MS = 8000;
+const REQUEST_TIMEOUT_MS = 20000;
 
 function categorizeMatch(match: Record<string, unknown>): string {
   const name = (typeof match.name === "string" ? match.name : "").toLowerCase();
@@ -40,6 +40,16 @@ function enrichMatches(data: unknown): unknown {
   });
 
   return { ...record, data: enriched };
+}
+
+function isAbortError(err: unknown): boolean {
+  return (
+    (err instanceof Error && err.name === "AbortError") ||
+    (typeof err === "object" &&
+      err !== null &&
+      "name" in err &&
+      (err as { name?: unknown }).name === "AbortError")
+  );
 }
 
 export async function GET() {
@@ -108,8 +118,12 @@ export async function GET() {
 
     return NextResponse.json(data);
   } catch (err) {
-    const errorType = err instanceof Error ? err.name : typeof err;
-    console.warn(`Live fixtures fetch failed (${errorType})`, err);
+    if (isAbortError(err)) {
+      console.warn(`Live fixtures fetch timed out after ${REQUEST_TIMEOUT_MS}ms`);
+    } else {
+      const errorType = err instanceof Error ? err.name : typeof err;
+      console.warn(`Live fixtures fetch failed (${errorType})`, err);
+    }
 
     // 5. On failure: return stale cache with stale flag, or empty
     if (redis) {

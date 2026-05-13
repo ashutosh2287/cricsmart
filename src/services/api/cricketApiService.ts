@@ -1,3 +1,5 @@
+import { NonRetryableFetchError } from "./reliableFetch"
+
 // src/services/api/cricketApiService.ts
 
 export type ApiBallEvent = {
@@ -86,7 +88,11 @@ export async function fetchLiveMatchEvents(
   }
 
   if (!res.ok) {
-    throw new Error(`CricAPI error ${res.status}`)
+    if ((res.status >= 500 && res.status < 600) || res.status === 429) {
+      console.warn(`⚠️ CricAPI temporary error ${res.status}; skipping this poll`)
+      return []
+    }
+    throw new NonRetryableFetchError(`CricAPI error ${res.status}`)
   }
 
   const data = await res.json()

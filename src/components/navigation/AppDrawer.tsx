@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import MenuSection, { DrawerMenuItem } from "@/components/navigation/MenuSection";
 
 const icon = (path: string) => (
@@ -64,8 +64,6 @@ const sections: DrawerSection[] = [
 export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<number | null>(null);
-
-  const menuSections = useMemo(() => sections, []);
 
   useEffect(() => {
     if (!isOpen || !drawerRef.current) {
@@ -166,7 +164,7 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
           </div>
 
           <nav className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label="Primary navigation">
-            {menuSections.map((section) => (
+            {sections.map((section) => (
               <MenuSection
                 key={section.title}
                 title={section.title}

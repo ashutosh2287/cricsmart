@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import AppDrawer from "@/components/navigation/AppDrawer";
 import MobileMenuButton from "@/components/navigation/MobileMenuButton";
@@ -20,9 +20,8 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const { isOpen, closeDrawer, toggleDrawer } = useDrawer();
 
-  const activeLink = useMemo(
-    () => quickLinks.find((link) => pathname === link.href || (link.href !== "/" && pathname.startsWith(`${link.href}/`))),
-    [pathname],
+  const activeLink = quickLinks.find(
+    (link) => pathname === link.href || (link.href !== "/" && pathname.startsWith(`${link.href}/`)),
   );
 
   useEffect(() => {

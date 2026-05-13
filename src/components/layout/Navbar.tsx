@@ -126,15 +126,7 @@ export default function Navbar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            role="button"
-            aria-label="Close menu"
-            tabIndex={0}
             onClick={() => setIsMenuOpen(false)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                setIsMenuOpen(false);
-              }
-            }}
           >
             <motion.div
               ref={menuRef}

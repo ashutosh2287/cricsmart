@@ -229,7 +229,7 @@ export default function MatchGraphExplorer({
 
         <div className="mt-5 space-y-5">
           <div className="rounded-[24px] border border-white/10 bg-slate-950/45 p-5">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-white/55">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-white/55">
               WIN PROBABILITY
             </p>
             <div className="mt-3 flex items-center justify-between gap-3 text-sm font-medium text-white">

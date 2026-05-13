@@ -129,7 +129,7 @@ export default function Navbar() {
           >
             <motion.div
               ref={menuRef}
-              className="h-full w-full max-w-xs border-r border-white/10 bg-[#0b1220] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
+              className="h-full w-full max-w-xs border-r border-white/10 bg-slate-950/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
               initial={{ x: -40, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -40, opacity: 0 }}

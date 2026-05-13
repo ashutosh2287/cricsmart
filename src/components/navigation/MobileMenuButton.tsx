@@ -13,7 +13,7 @@ export default function MobileMenuButton({ isOpen, onClick }: MobileMenuButtonPr
       aria-expanded={isOpen}
       aria-controls="cricsmart-app-drawer"
       onClick={onClick}
-      className="relative inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] text-white/80 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80"
+      className="relative inline-flex h-10 w-10 items-center justify-center rounded-md border border-[var(--border-subtle)] bg-[var(--bg-raised)]/65 text-[var(--text-primary)] transition hover:bg-[var(--bg-raised)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80"
     >
       <span
         className={`absolute h-[2px] w-5 rounded-full bg-current transition duration-300 ${

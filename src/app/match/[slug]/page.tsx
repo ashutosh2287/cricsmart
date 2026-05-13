@@ -592,7 +592,7 @@ function TabsArea({
               : "2px solid transparent",
             marginBottom: "-1px",
           }}
-          className="px-4 py-3 text-sm font-medium capitalize whitespace-nowrap transition-colors hover:text-white"
+          className="px-4 py-3 text-sm font-medium capitalize whitespace-nowrap transition-colors hover:text-[var(--text-primary)]"
         >
           {tab}
         </button>
@@ -704,22 +704,26 @@ function TabsArea({
                   {
                     key: "ALL",
                     label: "All",
-                    active: "bg-sky-500 text-slate-950",
+                    active:
+                      "border border-sky-400/35 bg-sky-400/20 text-[var(--text-primary)]",
                   },
                   {
                     key: "BATTING",
                     label: "Batting",
-                    active: "bg-emerald-500 text-slate-950",
+                    active:
+                      "border border-emerald-400/35 bg-emerald-400/20 text-[var(--text-primary)]",
                   },
                   {
                     key: "BOWLING",
                     label: "Bowling",
-                    active: "bg-rose-500 text-white",
+                    active:
+                      "border border-rose-400/40 bg-rose-400/20 text-[var(--text-primary)]",
                   },
                   {
                     key: "PRESSURE",
                     label: "Pressure",
-                    active: "bg-amber-500 text-slate-950",
+                    active:
+                      "border border-amber-400/40 bg-amber-400/20 text-[var(--text-primary)]",
                   },
                 ].map((f) => (
                   <button
@@ -731,7 +735,7 @@ function TabsArea({
                       "rounded-xl border px-4 py-2 text-sm transition",
                       analysisFilter === f.key
                         ? f.active
-                        : "border-white/10 bg-white/[0.04] text-gray-300 hover:bg-white/[0.08] hover:text-white"
+                        : "border-[var(--border-subtle)] bg-[var(--bg-raised)]/60 text-[var(--text-secondary)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
                     )}
                   >
                     {f.label}
@@ -1595,7 +1599,11 @@ function MatchInnerPage({
                     />
                     <StatPill
                       label="Status"
-                      value={<LiveMatchStatus matchId={match.slug} />}
+                      value={
+                        currentEngineState.matchEnded
+                          ? "Completed"
+                          : "Live"
+                      }
                       tone="neutral"
                     />
                   </div>

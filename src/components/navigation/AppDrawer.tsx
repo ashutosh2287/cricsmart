@@ -140,21 +140,21 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
             onClose();
           }
         }}
-        className={`absolute left-0 top-0 h-full w-[80vw] max-w-[320px] border-r border-white/10 bg-gradient-to-b from-zinc-950 via-zinc-950 to-zinc-900 transition-transform duration-300 ease-out md:w-[320px] ${
+        className={`absolute left-0 top-0 h-full w-[80vw] max-w-[320px] border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-transform duration-300 ease-out md:w-[320px] ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-4 py-3">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-400">Navigation</p>
-              <p className="text-sm font-semibold text-zinc-100">CricSmart</p>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-secondary)]">Navigation</p>
+              <p className="text-sm font-semibold text-[var(--text-primary)]">CricSmart</p>
             </div>
             <button
               type="button"
               onClick={onClose}
               aria-label="Close menu"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border-subtle)] bg-[var(--bg-raised)]/65 text-[var(--text-secondary)] transition hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80"
             >
               <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
                 <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />

@@ -23,17 +23,17 @@ export default function TeamSelector({ onStart }: Props) {
   const canStart = !!teamA && !!teamB && !sameTeam;
 
   return (
-    <div className="rounded-lg bg-gray-900 p-4 text-white space-y-4">
-      <h2 className="text-lg font-semibold">Select Teams</h2>
+    <div className="space-y-4 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 text-[var(--text-primary)]">
+      <h2 className="text-lg font-semibold text-[var(--text-primary)]">Select Teams</h2>
 
       <div>
-        <label htmlFor="teamA" className="mb-1 block text-sm">
+        <label htmlFor="teamA" className="mb-1 block text-sm text-[var(--text-secondary)]">
           Team A
         </label>
         <select
           id="teamA"
           value={teamAName}
-          className="w-full rounded bg-gray-800 p-2"
+          className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-raised)] px-3 py-2 text-[var(--text-primary)]"
           onChange={(e) => setTeamAName(e.target.value)}
         >
           <option value="">Select Team</option>
@@ -46,13 +46,13 @@ export default function TeamSelector({ onStart }: Props) {
       </div>
 
       <div>
-        <label htmlFor="teamB" className="mb-1 block text-sm">
+        <label htmlFor="teamB" className="mb-1 block text-sm text-[var(--text-secondary)]">
           Team B
         </label>
         <select
           id="teamB"
           value={teamBName}
-          className="w-full rounded bg-gray-800 p-2"
+          className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-raised)] px-3 py-2 text-[var(--text-primary)]"
           onChange={(e) => setTeamBName(e.target.value)}
         >
           <option value="">Select Team</option>
@@ -78,7 +78,7 @@ export default function TeamSelector({ onStart }: Props) {
           console.log("✅ Teams selected:", teamA.name, teamB.name);
           onStart(teamA, teamB);
         }}
-        className="w-full rounded bg-blue-600 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-md bg-blue-600 py-2 text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
         Start Match
       </button>

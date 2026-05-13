@@ -208,6 +208,7 @@ function buildCuratedSections(
     lowerPriorityLiveSection.length > 0;
   const nonOtherFallback = scoredMatches.filter((match) => match.bucket !== "other");
   const fallbackPool = nonOtherFallback.length > 0 ? nonOtherFallback : scoredMatches;
+  const removedByFilters = scoredMatches.filter((match) => match.bucket === "other").length;
 
   const safeFeatured = anyNonEmpty ? featured : fallbackPool.slice(0, 6).map((m) => m.raw);
 
@@ -218,7 +219,7 @@ function buildCuratedSections(
       upcoming: upcomingSection,
       lowerPriorityLive: lowerPriorityLiveSection,
     },
-    removedByFilters: 0,
+    removedByFilters,
   };
 }
 
@@ -353,9 +354,6 @@ export async function GET() {
       })),
     });
     logger.debug("MATCH_CURATION", "Final section-builder output", {
-      totalProviderMatches: providerMatches.length,
-      totalNormalizedMatches: normalizedMatches.length,
-      totalClassifiedMatches: classifiedMatches.length,
       totalMatchesRemovedByFilters: removedByFilters,
       sectionCounts: {
         featured: sections.featured.length,

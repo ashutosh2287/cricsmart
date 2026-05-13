@@ -19,11 +19,11 @@ function MomentumLeadersChart() {
 
   if (!data.length) {
     return (
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-        <h3 className="text-xs text-gray-400 uppercase mb-2">
+      <div className="theme-chart-shell rounded-xl p-4">
+        <h3 className="mb-2 text-xs uppercase text-[var(--text-secondary)]">
           Momentum Leaders
         </h3>
-        <div className="text-gray-500 text-sm">
+        <div className="text-sm text-[var(--text-secondary)]">
           No momentum data yet
         </div>
       </div>
@@ -31,9 +31,9 @@ function MomentumLeadersChart() {
   }
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+    <div className="theme-chart-shell rounded-xl p-4">
 
-      <h3 className="text-xs text-gray-400 uppercase mb-3">
+      <h3 className="mb-3 text-xs uppercase text-[var(--text-secondary)]">
         Momentum Leaders
       </h3>
 
@@ -41,13 +41,16 @@ function MomentumLeadersChart() {
 
         <BarChart data={data}>
 
-          <XAxis dataKey="matchId" stroke="#aaa" />
-          <YAxis stroke="#aaa" />
+          <XAxis dataKey="matchId" stroke="var(--chart-axis)" />
+          <YAxis stroke="var(--chart-axis)" />
 
           {/* 🔥 UPGRADED TOOLTIP */}
           <Tooltip
-            contentStyle={{ backgroundColor: "#111", border: "none" }}
-            labelStyle={{ color: "#aaa" }}
+            contentStyle={{
+              backgroundColor: "var(--chart-tooltip-bg)",
+              border: "1px solid var(--chart-tooltip-border)",
+            }}
+            labelStyle={{ color: "var(--text-secondary)" }}
           />
 
           <Bar dataKey="score" radius={[4, 4, 0, 0]}>
@@ -57,10 +60,10 @@ function MomentumLeadersChart() {
                 key={index}
                 fill={
                   entry.score > 70
-                    ? "#22c55e"   // green
+                    ? "var(--chart-positive)"
                     : entry.score < 30
-                    ? "#ef4444"   // red
-                    : "#eab308"   // yellow
+                    ? "var(--chart-negative)"
+                    : "var(--chart-neutral)"
                 }
               />
             ))}

@@ -123,10 +123,10 @@ function ChartShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4 md:p-6">
+    <div className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-surface)]/70 p-4 md:p-6">
       <div className="mb-5 flex flex-col gap-2">
-        <h4 className="text-lg font-semibold text-white">{title}</h4>
-        <p className="max-w-3xl text-sm leading-6 text-white/65">{description}</p>
+        <h4 className="text-lg font-semibold text-[var(--text-primary)]">{title}</h4>
+        <p className="max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">{description}</p>
       </div>
       {children}
     </div>
@@ -209,30 +209,35 @@ export default function MatchGraphExplorer({
 
   return (
     <>
-      <div className="rounded-[30px] border border-white/10 bg-[linear-gradient(135deg,rgba(56,189,248,0.1),rgba(17,24,39,0.88))] p-6 shadow-[0_24px_80px_rgba(2,6,23,0.28)]">
+      <div
+        className="rounded-[30px] border border-[var(--border-subtle)] bg-[var(--gradient-surface)] p-6"
+        style={{
+          boxShadow: "0 24px 80px color-mix(in srgb, var(--bg-base) 38%, transparent)",
+        }}
+      >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-sky-300/80">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--accent-brand)]">
               KEY STATS
             </p>
-            <h3 className="text-xl font-semibold text-white">Win Probability</h3>
+            <h3 className="text-xl font-semibold text-[var(--text-primary)]">Win Probability</h3>
           </div>
 
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className="inline-flex items-center justify-center rounded-2xl border border-sky-400/30 bg-sky-400/10 px-4 py-2 text-sm font-medium text-sky-200 transition hover:bg-sky-400/15"
+            className="inline-flex items-center justify-center rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-raised)]/70 px-4 py-2 text-sm font-medium text-[var(--text-primary)] transition hover:bg-[var(--bg-raised)]"
           >
             View graph ›
           </button>
         </div>
 
         <div className="mt-5 space-y-5">
-          <div className="rounded-[24px] border border-white/10 bg-slate-950/45 p-5">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-white/55">
+          <div className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-surface)]/80 p-5">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-secondary)]">
               WIN PROBABILITY
             </p>
-            <div className="mt-3 flex items-center justify-between gap-3 text-sm font-medium text-white">
+            <div className="mt-3 flex items-center justify-between gap-3 text-sm font-medium text-[var(--text-primary)]">
               <span aria-label={`${currentBattingTeam} win probability ${battingWin.toFixed(0)} percent`}>
                 <span>{currentBattingTeam}</span>{" "}
                 <span className="tabular-nums">{battingWin.toFixed(0)}%</span>
@@ -243,57 +248,65 @@ export default function MatchGraphExplorer({
               </span>
             </div>
 
-            <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/10">
+            <div className="mt-3 h-3 overflow-hidden rounded-full bg-[var(--overlay-soft)]">
               <div className="flex h-full">
                 <div
-                  className="h-full bg-gradient-to-r from-emerald-400 to-emerald-300"
-                  style={{ width: `${battingWin}%` }}
+                  className="h-full"
+                  style={{
+                    background:
+                      "linear-gradient(to right, var(--chart-positive), color-mix(in srgb, var(--chart-positive) 65%, white))",
+                    width: `${battingWin}%`,
+                  }}
                 />
                 <div
-                  className="h-full bg-gradient-to-r from-rose-400 to-amber-300"
-                  style={{ width: `${bowlingWin}%` }}
+                  className="h-full"
+                  style={{
+                    background:
+                      "linear-gradient(to right, var(--chart-negative), var(--chart-neutral))",
+                    width: `${bowlingWin}%`,
+                  }}
                 />
               </div>
             </div>
-            <p className="mt-4 text-sm text-white/70">
+            <p className="mt-4 text-sm text-[var(--text-secondary)]">
               {leader}. Pressure shifting ball-by-ball.
             </p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">
+            <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-raised)]/60 p-4">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-secondary)]">
                 Overs
               </p>
-              <p className="mt-2 text-lg font-semibold text-white">{currentOver}</p>
-              <p className="mt-1 text-sm text-white/55">Match progress</p>
+              <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{currentOver}</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">Match progress</p>
             </div>
-            <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">
+            <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-raised)]/60 p-4">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-secondary)]">
                 Current rate
               </p>
-              <p className="mt-2 text-lg font-semibold text-white">{currentRunRate}</p>
-              <p className="mt-1 text-sm text-white/55">Runs per over</p>
+              <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{currentRunRate}</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">Runs per over</p>
             </div>
-            <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">
+            <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-raised)]/60 p-4">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-secondary)]">
                 Momentum
               </p>
-              <p className="mt-2 text-lg font-semibold text-white">
+              <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">
                 {pressureSnapshot.momentum}
               </p>
-              <p className="mt-1 text-sm text-white/55">
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">
                 {pressureSnapshot.momentumNote}
               </p>
             </div>
-            <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">
+            <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-raised)]/60 p-4">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-secondary)]">
                 Pressure
               </p>
-              <p className="mt-2 text-lg font-semibold text-white">
+              <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">
                 {pressureSnapshot.pressure}
               </p>
-              <p className="mt-1 text-sm text-white/55">
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">
                 {pressureSnapshot.pressureNote}
               </p>
             </div>
@@ -302,18 +315,23 @@ export default function MatchGraphExplorer({
       </div>
 
       {isOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-md">
-          <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[32px] border border-white/10 bg-[#08111f] shadow-[0_32px_120px_rgba(2,6,23,0.55)]">
-            <div className="flex flex-col gap-5 border-b border-white/10 p-5 md:p-6">
+        <div className="theme-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+          <div
+            className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-overlay)]"
+            style={{
+              boxShadow: "0 32px 120px color-mix(in srgb, var(--bg-base) 55%, transparent)",
+            }}
+          >
+            <div className="flex flex-col gap-5 border-b border-[var(--border-subtle)] p-5 md:p-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-2">
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-sky-300/80">
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--accent-brand)]">
                     Match graphs
                   </p>
-                  <h3 className="text-2xl font-semibold text-white">
+                  <h3 className="text-2xl font-semibold text-[var(--text-primary)]">
                     Understand the match at a glance
                   </h3>
-                  <p className="max-w-3xl text-sm leading-6 text-white/65">
+                  <p className="max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">
                     Switch between win probability, over-by-over scoring, run
                     rate, worm progression, and momentum views.
                   </p>
@@ -322,7 +340,7 @@ export default function MatchGraphExplorer({
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-xl text-white/70 transition hover:bg-white/[0.08]"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-raised)]/65 text-xl text-[var(--text-secondary)] transition hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
                   aria-label="Close graphs"
                 >
                   ✕
@@ -345,8 +363,8 @@ export default function MatchGraphExplorer({
                       onClick={() => setActiveTab(key as ChartTab)}
                       className={
                         activeTab === key
-                          ? "rounded-2xl bg-sky-400 px-4 py-2 text-sm font-medium text-slate-950"
-                          : "rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70 transition hover:bg-white/[0.08] hover:text-white"
+                          ? "rounded-2xl bg-[var(--accent-brand)] px-4 py-2 text-sm font-medium text-[var(--bg-base)]"
+                          : "rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-raised)]/65 px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
                       }
                     >
                       {label}
@@ -366,8 +384,8 @@ export default function MatchGraphExplorer({
                       onClick={() => setTeamFilter(key as TeamFilter)}
                       className={
                         teamFilter === key
-                          ? "rounded-2xl bg-white px-4 py-2 text-sm font-medium text-slate-950"
-                          : "rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/70 transition hover:bg-white/[0.08] hover:text-white"
+                          ? "rounded-2xl bg-[var(--text-primary)] px-4 py-2 text-sm font-medium text-[var(--bg-base)]"
+                          : "rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-raised)]/65 px-4 py-2 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
                       }
                     >
                       {label}
@@ -399,15 +417,15 @@ export default function MatchGraphExplorer({
                   <div className="h-[420px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={progression.overs}>
-                        <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
-                        <XAxis dataKey="label" stroke="#94a3b8" />
-                        <YAxis stroke="#94a3b8" />
+                        <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
+                        <XAxis dataKey="label" stroke="var(--chart-axis)" />
+                        <YAxis stroke="var(--chart-axis)" />
                         <Tooltip />
                         {showBattingSeries ? (
                           <Bar
                             dataKey="batting"
                             name={currentBattingTeam}
-                            fill="#34d399"
+                            fill="var(--chart-positive)"
                             radius={[8, 8, 0, 0]}
                           />
                         ) : null}
@@ -415,7 +433,7 @@ export default function MatchGraphExplorer({
                           <Bar
                             dataKey="bowling"
                             name={currentBowlingTeam}
-                            fill="#f97316"
+                            fill="var(--chart-bowling)"
                             radius={[8, 8, 0, 0]}
                           />
                         ) : null}
@@ -433,16 +451,16 @@ export default function MatchGraphExplorer({
                   <div className="h-[420px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={progression.runRate}>
-                        <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
-                        <XAxis dataKey="label" stroke="#94a3b8" />
-                        <YAxis stroke="#94a3b8" />
+                        <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
+                        <XAxis dataKey="label" stroke="var(--chart-axis)" />
+                        <YAxis stroke="var(--chart-axis)" />
                         <Tooltip />
                         {showBattingSeries ? (
                           <Line
                             type="monotone"
                             dataKey="batting"
                             name={currentBattingTeam}
-                            stroke="#38bdf8"
+                            stroke="var(--chart-batting)"
                             strokeWidth={3}
                             dot={false}
                           />
@@ -452,7 +470,7 @@ export default function MatchGraphExplorer({
                             type="monotone"
                             dataKey="bowling"
                             name={currentBowlingTeam}
-                            stroke="#f59e0b"
+                            stroke="var(--chart-neutral)"
                             strokeWidth={3}
                             dot={false}
                           />
@@ -473,24 +491,24 @@ export default function MatchGraphExplorer({
                       <AreaChart data={progression.worm}>
                         <defs>
                           <linearGradient id="wormBatting" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.45} />
-                            <stop offset="100%" stopColor="#38bdf8" stopOpacity={0} />
+                            <stop offset="0%" stopColor="var(--chart-batting)" stopOpacity={0.45} />
+                            <stop offset="100%" stopColor="var(--chart-batting)" stopOpacity={0} />
                           </linearGradient>
                           <linearGradient id="wormBowling" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#f97316" stopOpacity={0.45} />
-                            <stop offset="100%" stopColor="#f97316" stopOpacity={0} />
+                            <stop offset="0%" stopColor="var(--chart-bowling)" stopOpacity={0.45} />
+                            <stop offset="100%" stopColor="var(--chart-bowling)" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
-                        <XAxis dataKey="label" stroke="#94a3b8" />
-                        <YAxis stroke="#94a3b8" />
+                        <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
+                        <XAxis dataKey="label" stroke="var(--chart-axis)" />
+                        <YAxis stroke="var(--chart-axis)" />
                         <Tooltip />
                         {showBattingSeries ? (
                           <Area
                             type="monotone"
                             dataKey="batting"
                             name={currentBattingTeam}
-                            stroke="#38bdf8"
+                            stroke="var(--chart-batting)"
                             fill="url(#wormBatting)"
                             strokeWidth={3}
                           />
@@ -500,7 +518,7 @@ export default function MatchGraphExplorer({
                             type="monotone"
                             dataKey="bowling"
                             name={currentBowlingTeam}
-                            stroke="#f97316"
+                            stroke="var(--chart-bowling)"
                             fill="url(#wormBowling)"
                             strokeWidth={3}
                           />
@@ -519,15 +537,15 @@ export default function MatchGraphExplorer({
                   <div className="h-[420px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={momentumData}>
-                        <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
-                        <XAxis dataKey="over" stroke="#94a3b8" />
-                        <YAxis stroke="#94a3b8" />
+                        <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
+                        <XAxis dataKey="over" stroke="var(--chart-axis)" />
+                        <YAxis stroke="var(--chart-axis)" />
                         <Tooltip />
                         <Line
                           type="monotone"
                           dataKey="score"
                           name="Momentum score"
-                          stroke="#a78bfa"
+                          stroke="var(--accent-glow)"
                           strokeWidth={3}
                           dot={{ r: 4 }}
                         />

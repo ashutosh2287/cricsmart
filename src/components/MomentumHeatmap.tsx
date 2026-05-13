@@ -27,10 +27,10 @@ function toCellStyle(normalized: number) {
 
   return {
     background: `linear-gradient(135deg,
-      rgba(239,68,68,${BASE_RED_OPACITY + red * RED_GREEN_SCALE}) 0%,
-      rgba(245,158,11,${BASE_YELLOW_OPACITY + balanced * BALANCE_SCALE}) ${MID_STOP}%,
-      rgba(34,197,94,${BASE_GREEN_OPACITY + green * RED_GREEN_SCALE}) 100%)`,
-    borderColor: `rgba(255,255,255,${0.08 + Math.abs(normalized) * 0.24})`,
+      color-mix(in srgb, var(--chart-negative) ${Math.round((BASE_RED_OPACITY + red * RED_GREEN_SCALE) * 100)}%, transparent) 0%,
+      color-mix(in srgb, var(--chart-neutral) ${Math.round((BASE_YELLOW_OPACITY + balanced * BALANCE_SCALE) * 100)}%, transparent) ${MID_STOP}%,
+      color-mix(in srgb, var(--chart-positive) ${Math.round((BASE_GREEN_OPACITY + green * RED_GREEN_SCALE) * 100)}%, transparent) 100%)`,
+    borderColor: `color-mix(in srgb, var(--text-primary) ${Math.round((0.08 + Math.abs(normalized) * 0.24) * 100)}%, transparent)`,
   };
 }
 
@@ -68,10 +68,10 @@ export default function MomentumHeatmap({ data }: Props) {
   ];
 
   return (
-    <div className="w-full rounded-[16px] border border-white/10 bg-slate-950/50 p-4">
+    <div className="w-full rounded-[16px] border border-[var(--border-subtle)] bg-[var(--bg-surface)]/70 p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className="text-base font-semibold text-white">Momentum Heatmap</h3>
-        <span className="text-xs text-white/55">Normalized scale</span>
+        <h3 className="text-base font-semibold text-[var(--text-primary)]">Momentum Heatmap</h3>
+        <span className="text-xs text-[var(--text-secondary)]">Normalized scale</span>
       </div>
 
       <div className="overflow-x-auto">
@@ -82,10 +82,10 @@ export default function MomentumHeatmap({ data }: Props) {
           >
             <div />
             {normalized.map((point) => (
-              <div key={`head-${point.over}`} className="text-center text-[10px] text-white/55">
-                {point.over}
-              </div>
-            ))}
+               <div key={`head-${point.over}`} className="text-center text-[10px] text-[var(--text-secondary)]">
+                 {point.over}
+               </div>
+             ))}
           </div>
 
           {lanes.map((lane) => (
@@ -94,7 +94,7 @@ export default function MomentumHeatmap({ data }: Props) {
               className="grid items-center gap-1.5"
               style={{ gridTemplateColumns: `96px repeat(${lane.values.length}, minmax(38px, 1fr))` }}
             >
-              <div className="pr-2 text-xs text-white/70">{lane.label}</div>
+               <div className="pr-2 text-xs text-[var(--text-secondary)]">{lane.label}</div>
               {lane.values.map((value, index) => {
                 const signedValue =
                   lane.key === "overall"

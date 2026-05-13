@@ -62,8 +62,8 @@ export default function RootLayout({
         {/* ========================================
            NAVBAR (UPGRADED)
         ======================================== */}
-        <div className="sticky top-0 z-50 backdrop-blur-lg bg-black/40 border-b border-white/10">
-          <Navbar />
+         <div className="sticky top-0 z-50">  
+                  <Navbar />
         </div>
 
         {/* ========================================

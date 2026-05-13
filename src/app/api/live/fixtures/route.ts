@@ -7,10 +7,14 @@ const CACHE_TTL_SECONDS = 60;
 const REQUEST_TIMEOUT_MS = 20000;
 const RECENT_WINDOW_MS = 48 * 60 * 60 * 1000;
 const UPCOMING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const BASE_SCORE_LIVE = 120;
+const BASE_SCORE_UPCOMING = 80;
+const BASE_SCORE_RECENT = 70;
+const BASE_SCORE_OTHER = 30;
 
 type MatchRecord = Record<string, unknown>;
 type NormalizedStatus = "LIVE" | "UPCOMING" | "COMPLETED" | "UNKNOWN";
-type MatchBucket = "live" | "upcoming" | "recent" | "lowerPriorityLive" | "other";
+type MatchBucket = "live" | "upcoming" | "recent" | "other";
 type SectionKey = "featured" | "recent" | "upcoming" | "lowerPriorityLive";
 
 type NormalizedMatch = {
@@ -148,7 +152,13 @@ function classifyMatches(matches: NormalizedMatch[]): ClassifiedMatch[] {
 
 function getPriorityScore(match: ClassifiedMatch): number {
   const base =
-    match.bucket === "live" ? 120 : match.bucket === "upcoming" ? 80 : match.bucket === "recent" ? 70 : 30;
+    match.bucket === "live"
+      ? BASE_SCORE_LIVE
+      : match.bucket === "upcoming"
+        ? BASE_SCORE_UPCOMING
+        : match.bucket === "recent"
+          ? BASE_SCORE_RECENT
+          : BASE_SCORE_OTHER;
   const category = typeof match.raw.matchCategory === "string" ? match.raw.matchCategory.toUpperCase() : "";
   const categoryBoost =
     category === "IPL" ? 15 : category === "TEST" || category === "ODI" || category === "T20I" ? 10 : 0;
@@ -174,9 +184,7 @@ function buildCuratedSections(
   const live = scoredMatches.filter((m) => m.bucket === "live");
   const recent = scoredMatches.filter((m) => m.bucket === "recent");
   const upcoming = scoredMatches.filter((m) => m.bucket === "upcoming");
-
-  const featuredPool =
-    live.length > 0 ? live : upcoming.length > 0 ? upcoming : recent.length > 0 ? recent : scoredMatches;
+  const featuredPool = selectFeaturedPool(live, recent, upcoming, scoredMatches);
   const featured = featuredPool.slice(0, 6).map((m) => m.raw);
   const recentSection = recent.slice(0, 8).map((m) => m.raw);
   const upcomingSection = upcoming.slice(0, 8).map((m) => m.raw);
@@ -199,6 +207,18 @@ function buildCuratedSections(
     },
     removedByFilters: Math.max(0, scoredMatches.length - (live.length + recent.length + upcoming.length)),
   };
+}
+
+function selectFeaturedPool(
+  live: ScoredMatch[],
+  recent: ScoredMatch[],
+  upcoming: ScoredMatch[],
+  fallback: ScoredMatch[]
+) {
+  if (live.length > 0) return live;
+  if (upcoming.length > 0) return upcoming;
+  if (recent.length > 0) return recent;
+  return fallback;
 }
 
 function summarizeMatches(matches: MatchRecord[]) {
@@ -278,16 +298,17 @@ export async function GET() {
     const raw = await res.json();
     const data = enrichMatches(raw);
     const providerMatches = getProviderMatches(raw);
-    const normalizedMatches = normalizeMatches(getProviderMatches(data));
+    const enrichedMatches = getProviderMatches(data);
+    const normalizedMatches = normalizeMatches(enrichedMatches);
     const classifiedMatches = classifyMatches(normalizedMatches);
     const scoredMatches = scoreMatches(classifiedMatches);
     const { sections, removedByFilters } = buildCuratedSections(scoredMatches);
 
-    logger.debug("CURATED_DISCOVERY_DEBUG", "Raw provider payload", {
+    logger.debug("MATCH_CURATION", "Raw provider payload", {
       totalProviderMatches: providerMatches.length,
       sample: summarizeMatches(providerMatches),
     });
-    logger.debug("CURATED_DISCOVERY_DEBUG", "Normalized matches output", {
+    logger.debug("MATCH_CURATION", "Normalized matches output", {
       totalNormalizedMatches: normalizedMatches.length,
       statusCounts: normalizedMatches.reduce<Record<NormalizedStatus, number>>(
         (acc, match) => {
@@ -298,17 +319,17 @@ export async function GET() {
       ),
       invalidDateCount: normalizedMatches.filter((match) => !match.dateParseValid).length,
     });
-    logger.debug("CURATED_DISCOVERY_DEBUG", "Classified matches output", {
+    logger.debug("MATCH_CURATION", "Classified matches output", {
       totalClassifiedMatches: classifiedMatches.length,
       bucketCounts: classifiedMatches.reduce<Record<MatchBucket, number>>(
         (acc, match) => {
           acc[match.bucket] += 1;
           return acc;
         },
-        { live: 0, upcoming: 0, recent: 0, lowerPriorityLive: 0, other: 0 }
+        { live: 0, upcoming: 0, recent: 0, other: 0 }
       ),
     });
-    logger.debug("CURATED_DISCOVERY_DEBUG", "Priority-scored matches output", {
+    logger.debug("MATCH_CURATION", "Priority-scored matches output", {
       totalPriorityScoredMatches: scoredMatches.length,
       topScored: scoredMatches.slice(0, 5).map((match) => ({
         id: match.raw.id,
@@ -318,7 +339,7 @@ export async function GET() {
         priorityScore: match.priorityScore,
       })),
     });
-    logger.debug("CURATED_DISCOVERY_DEBUG", "Final section-builder output", {
+    logger.debug("MATCH_CURATION", "Final section-builder output", {
       totalProviderMatches: providerMatches.length,
       totalNormalizedMatches: normalizedMatches.length,
       totalClassifiedMatches: classifiedMatches.length,

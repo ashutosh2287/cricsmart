@@ -67,11 +67,19 @@ export default function Navbar() {
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/85 transition hover:bg-white/[0.08] md:hidden"
           >
             <span className="sr-only">Menu</span>
-            <span className="flex flex-col gap-1">
-              <span className="h-[2px] w-4 rounded-full bg-current" />
-              <span className="h-[2px] w-4 rounded-full bg-current" />
-              <span className="h-[2px] w-4 rounded-full bg-current" />
-            </span>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="18" x2="20" y2="18" />
+            </svg>
           </button>
 
           <Link
@@ -145,7 +153,18 @@ export default function Navbar() {
                   aria-label="Close menu"
                   className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/75 transition hover:bg-white/[0.08] hover:text-white"
                 >
-                  ✕
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  >
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                  </svg>
                 </button>
               </div>
               <div className="space-y-1">

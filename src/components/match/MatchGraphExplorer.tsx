@@ -233,11 +233,13 @@ export default function MatchGraphExplorer({
               WIN PROBABILITY
             </p>
             <div className="mt-3 flex items-center justify-between gap-3 text-sm font-medium text-white">
-              <span>
-                {currentBattingTeam} {battingWin.toFixed(0)}%
+              <span aria-label={`${currentBattingTeam} win probability ${battingWin.toFixed(0)} percent`}>
+                <span>{currentBattingTeam}</span>{" "}
+                <span className="tabular-nums">{battingWin.toFixed(0)}%</span>
               </span>
-              <span>
-                {currentBowlingTeam} {bowlingWin.toFixed(0)}%
+              <span aria-label={`${currentBowlingTeam} win probability ${bowlingWin.toFixed(0)} percent`}>
+                <span>{currentBowlingTeam}</span>{" "}
+                <span className="tabular-nums">{bowlingWin.toFixed(0)}%</span>
               </span>
             </div>
 

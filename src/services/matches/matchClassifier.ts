@@ -64,18 +64,20 @@ function normalizeTeams(match: ProviderMatch): Team[] {
 
 function normalizeScore(value: unknown): ScoreEntry[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((entry) => {
-      if (typeof entry !== "object" || entry === null) return null;
-      const row = entry as Record<string, unknown>;
-      return {
-        r: typeof row.r === "number" ? row.r : undefined,
-        w: typeof row.w === "number" ? row.w : undefined,
-        o: typeof row.o === "number" ? row.o : undefined,
-        inning: asString(row.inning) || undefined,
-      };
-    })
-    .filter((entry): entry is ScoreEntry => Boolean(entry));
+  const normalized: ScoreEntry[] = [];
+
+  for (const entry of value) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const row = entry as Record<string, unknown>;
+    normalized.push({
+      r: typeof row.r === "number" ? row.r : undefined,
+      w: typeof row.w === "number" ? row.w : undefined,
+      o: typeof row.o === "number" ? row.o : undefined,
+      inning: asString(row.inning) || undefined,
+    });
+  }
+
+  return normalized;
 }
 
 function detectFormat(matchType: string, seriesName: string): MatchFormat {

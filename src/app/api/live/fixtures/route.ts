@@ -252,11 +252,12 @@ function isPremiumTournamentMatch(match: ScoredMatch): boolean {
     typeof match.raw.series === "string" ? match.raw.series : "",
     typeof match.raw.competition === "string" ? match.raw.competition : "",
     typeof match.raw.tournament === "string" ? match.raw.tournament : "",
-  ]
-    .join(" ")
-    .toLowerCase();
+  ];
 
-  return PREMIUM_TOURNAMENT_KEYWORDS.some((keyword) => fields.includes(keyword));
+  return fields.some((field) => {
+    const normalized = field.toLowerCase();
+    return PREMIUM_TOURNAMENT_KEYWORDS.some((keyword) => normalized.includes(keyword));
+  });
 }
 
 function selectFeaturedPool(

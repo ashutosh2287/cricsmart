@@ -164,14 +164,14 @@ export default function MatchGraphExplorer({
         ? `${currentBattingTeam} slightly ahead`
         : `${currentBowlingTeam} applying pressure`;
   const pressureSnapshot =
-    latestMomentum > MOMENTUM_POSITIVE_THRESHOLD
+    latestMomentum >= MOMENTUM_POSITIVE_THRESHOLD
       ? {
           momentum: "Batting control",
           momentumNote: "Pressure easing",
           pressure: "Low",
           pressureNote: "Required RR dropping",
         }
-      : latestMomentum < MOMENTUM_NEGATIVE_THRESHOLD
+      : latestMomentum <= MOMENTUM_NEGATIVE_THRESHOLD
         ? {
             momentum: "Bowling control",
             momentumNote: "Pressure building",

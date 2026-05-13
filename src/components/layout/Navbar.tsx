@@ -126,6 +126,15 @@ export default function Navbar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            role="button"
+            aria-label="Close menu"
+            tabIndex={0}
+            onClick={() => setIsMenuOpen(false)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                setIsMenuOpen(false);
+              }
+            }}
           >
             <motion.div
               ref={menuRef}
@@ -134,6 +143,7 @@ export default function Navbar() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -40, opacity: 0 }}
               transition={{ duration: 0.2 }}
+              onClick={(event) => event.stopPropagation()}
             >
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-base font-semibold text-white">Menu</h3>

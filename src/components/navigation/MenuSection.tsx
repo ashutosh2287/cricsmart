@@ -24,7 +24,7 @@ export default function MenuSection({ title, items, pathname, onNavigate }: Menu
     <section className="border-t border-white/10 pt-3 first:border-t-0 first:pt-0" aria-label={title}>
       <button
         type="button"
-        onClick={() => setExpanded((previous) => !previous)}
+        onClick={() => setExpanded((prev) => !prev)}
         className="mb-2 flex w-full items-center justify-between rounded-md px-2 py-1 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400 transition hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80"
         aria-expanded={expanded}
       >

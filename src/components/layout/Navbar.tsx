@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 
 import AppDrawer from "@/components/navigation/AppDrawer";
 import MobileMenuButton from "@/components/navigation/MobileMenuButton";
+import { isPathActive } from "@/components/navigation/navigationUtils";
 import { useDrawer } from "@/hooks/useDrawer";
 
 const quickLinks = [
@@ -22,7 +23,7 @@ export default function Navbar() {
   const { isOpen, closeDrawer, toggleDrawer } = useDrawer();
 
   const activeLink = quickLinks.find(
-    (link) => pathname === link.href || (link.href !== "/" && pathname.startsWith(`${link.href}/`)),
+    (link) => isPathActive(pathname, link.href),
   );
 
   useEffect(() => {
@@ -59,7 +60,7 @@ export default function Navbar() {
 
           <div className="hidden items-center gap-5 md:flex">
             {quickLinks.map((link) => {
-              const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(`${link.href}/`));
+              const isActive = isPathActive(pathname, link.href);
               return (
                 <Link
                   key={link.href}

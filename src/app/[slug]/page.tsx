@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 const sectionDescriptions: Record<string, string> = {
   "live-matches": "Track active fixtures, momentum shifts, and real-time match flow.",
@@ -26,8 +27,14 @@ const toTitle = (value: string) =>
 
 export default async function SectionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+
+  const isValidSlug = /^[a-z0-9-]+$/.test(slug) && slug in sectionDescriptions;
+  if (!isValidSlug) {
+    notFound();
+  }
+
   const title = toTitle(slug);
-  const description = sectionDescriptions[slug] ?? "This section is being prepared for the next CricSmart UI release.";
+  const description = sectionDescriptions[slug];
 
   return (
     <section className="mx-auto max-w-3xl space-y-6 rounded-xl border border-white/10 bg-zinc-950/70 p-6 md:p-8">

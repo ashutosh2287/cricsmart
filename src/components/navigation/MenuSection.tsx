@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import MenuItem from "@/components/navigation/MenuItem";
+import { isPathActive } from "@/components/navigation/navigationUtils";
 
 export type DrawerMenuItem = {
   label: string;
@@ -48,7 +49,7 @@ export default function MenuSection({ title, items, pathname, onNavigate }: Menu
               label={item.label}
               icon={item.icon}
               isLoading={item.isLoading}
-              isActive={pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`))}
+              isActive={isPathActive(pathname, item.href)}
               onNavigate={onNavigate}
             />
           ))}

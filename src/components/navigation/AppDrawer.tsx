@@ -20,6 +20,9 @@ type AppDrawerProps = {
   onClose: () => void;
 };
 
+const focusableSelector =
+  "a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex='-1'])";
+
 const sections: DrawerSection[] = [
   {
     title: "Live",
@@ -71,9 +74,7 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
     }
 
     const drawer = drawerRef.current;
-    const focusables = drawer.querySelectorAll<HTMLElement>(
-      "a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex='-1'])",
-    );
+    const focusables = drawer.querySelectorAll<HTMLElement>(focusableSelector);
 
     if (focusables.length > 0) {
       focusables[0].focus();
@@ -86,9 +87,7 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
         return;
       }
 
-      const elements = drawer.querySelectorAll<HTMLElement>(
-        "a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex='-1'])",
-      );
+      const elements = drawer.querySelectorAll<HTMLElement>(focusableSelector);
 
       if (elements.length === 0) {
         return;

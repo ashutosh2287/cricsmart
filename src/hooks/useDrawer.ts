@@ -45,13 +45,13 @@ export function useDrawer() {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setIsOpen(false);
+        closeDrawer();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
+  }, [closeDrawer, isOpen]);
 
   return {
     isOpen,

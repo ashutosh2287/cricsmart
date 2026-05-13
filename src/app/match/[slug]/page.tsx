@@ -698,7 +698,7 @@ function TabsArea({
                     context={
                       isSecondInningsLive
                         ? `${chaseNeeded} runs needed from ${chaseBallsLeft} balls · target ${chaseTarget}`
-                        : "Chase context will appear once 2nd innings begins."
+                        : "Chase context will appear once second innings begins."
                     }
                   />
                 </GlassPanel>

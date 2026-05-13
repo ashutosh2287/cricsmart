@@ -266,8 +266,15 @@ function selectFeaturedPool(
   upcoming: ScoredMatch[],
   fallback: ScoredMatch[]
 ) {
-  const premiumPool = fallback.filter(isPremiumTournamentMatch);
-  if (premiumPool.length > 0) return premiumPool;
+  const premiumLive = live.filter(isPremiumTournamentMatch);
+  const premiumUpcoming = upcoming.filter(isPremiumTournamentMatch);
+  const premiumRecent = recent.filter(isPremiumTournamentMatch);
+  const prioritizedPremiumPool = [...premiumLive, ...premiumUpcoming, ...premiumRecent];
+  if (prioritizedPremiumPool.length > 0) return prioritizedPremiumPool;
+
+  const premiumFallbackPool = fallback.filter(isPremiumTournamentMatch);
+  if (premiumFallbackPool.length > 0) return premiumFallbackPool;
+
   if (upcoming.length > 0) return upcoming;
   if (recent.length > 0) return recent;
   if (live.length > 0) return live;

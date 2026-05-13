@@ -5,8 +5,10 @@ import { logger } from "@/lib/logger";
 const CACHE_KEY = "live:fixtures:cache";
 const CACHE_TTL_SECONDS = 60;
 const REQUEST_TIMEOUT_MS = 20000;
-const RECENT_WINDOW_MS = 48 * 60 * 60 * 1000;
-const UPCOMING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const HOURS_IN_MS = 60 * 60 * 1000;
+const DAYS_IN_MS = 24 * HOURS_IN_MS;
+const RECENT_WINDOW_MS = 48 * HOURS_IN_MS;
+const UPCOMING_WINDOW_MS = 7 * DAYS_IN_MS;
 const BASE_SCORE_LIVE = 120;
 const BASE_SCORE_UPCOMING = 80;
 const BASE_SCORE_RECENT = 70;
@@ -160,14 +162,23 @@ function getPriorityScore(match: ClassifiedMatch): number {
           ? BASE_SCORE_RECENT
           : BASE_SCORE_OTHER;
   const category = typeof match.raw.matchCategory === "string" ? match.raw.matchCategory.toUpperCase() : "";
-  const categoryBoost =
-    category === "IPL" ? 15 : category === "TEST" || category === "ODI" || category === "T20I" ? 10 : 0;
+  const categoryBoostMap: Record<string, number> = {
+    IPL: 15,
+    TEST: 10,
+    ODI: 10,
+    T20I: 10,
+  };
+  const categoryBoost = categoryBoostMap[category] ?? 0;
 
   const now = Date.now();
-  const proximityBoost =
-    match.parsedDateMs === undefined
-      ? 0
-      : Math.max(0, Math.round((UPCOMING_WINDOW_MS - Math.abs(match.parsedDateMs - now)) / (24 * 60 * 60 * 1000)));
+  let proximityBoost = 0;
+  if (match.parsedDateMs !== undefined) {
+    if (match.parsedDateMs >= now) {
+      proximityBoost = Math.max(0, Math.round((UPCOMING_WINDOW_MS - (match.parsedDateMs - now)) / DAYS_IN_MS));
+    } else if (match.bucket === "recent") {
+      proximityBoost = Math.max(0, Math.round((RECENT_WINDOW_MS - (now - match.parsedDateMs)) / HOURS_IN_MS));
+    }
+  }
 
   return base + categoryBoost + proximityBoost;
 }
@@ -195,8 +206,10 @@ function buildCuratedSections(
     recentSection.length > 0 ||
     upcomingSection.length > 0 ||
     lowerPriorityLiveSection.length > 0;
+  const nonOtherFallback = scoredMatches.filter((match) => match.bucket !== "other");
+  const fallbackPool = nonOtherFallback.length > 0 ? nonOtherFallback : scoredMatches;
 
-  const safeFeatured = anyNonEmpty ? featured : scoredMatches.slice(0, 6).map((m) => m.raw);
+  const safeFeatured = anyNonEmpty ? featured : fallbackPool.slice(0, 6).map((m) => m.raw);
 
   return {
     sections: {
@@ -205,7 +218,7 @@ function buildCuratedSections(
       upcoming: upcomingSection,
       lowerPriorityLive: lowerPriorityLiveSection,
     },
-    removedByFilters: Math.max(0, scoredMatches.length - (live.length + recent.length + upcoming.length)),
+    removedByFilters: 0,
   };
 }
 

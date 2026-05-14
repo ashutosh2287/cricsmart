@@ -151,3 +151,7 @@ export function stopWorker(matchId: string) {
   workers[matchId] = false;
   workerLocks.delete(matchId);
 }
+
+export function isWorkerRunning(matchId: string): boolean {
+  return workerLocks.has(matchId) && workers[matchId] === true;
+}

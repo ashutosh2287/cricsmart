@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, use, useRef } from "react";
+import React, { useEffect, useMemo, useState, use } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AdminScoringPanel from "@/components/admin/AdminScoringPanel";
@@ -1745,25 +1745,6 @@ export default function MatchDetailPage({
 
     loadMatch();
     return () => { cancelled = true; };
-  }, [matchId]);
-
-  // Match init API (one-shot)
-  const hasInitialized = useRef(false);
-  useEffect(() => {
-    if (!matchId || hasInitialized.current) return;
-    hasInitialized.current = true;
-
-    fetch("/api/match/init", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        matchId,
-        teamA: match?.team1 ?? "Team A",
-        teamB: match?.team2 ?? "Team B",
-        type: "LIVE",
-        externalMatchId: matchId,
-      }),
-    });
   }, [matchId]);
 
   // Analytics / insights from window events

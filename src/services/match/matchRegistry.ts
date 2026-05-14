@@ -6,6 +6,12 @@ export const getMatchMetaKey = (matchId: string) => `match:${matchId}:meta`;
 export type MatchRegistryStatus = "LIVE" | "UPCOMING" | "COMPLETED";
 export type MatchRegistryType = "LIVE" | "SIMULATION";
 export type MatchReconnectHealth = "healthy" | "stale" | "disconnected";
+export type LiveSessionStatus =
+  | "bootstrapping"
+  | "live"
+  | "degraded"
+  | "recovering"
+  | "stopped";
 
 export type MatchRegistryRecord = {
   matchId: string;
@@ -26,6 +32,16 @@ export type MatchRegistryRecord = {
   heartbeatFresh?: boolean;
   reconnectHealth?: MatchReconnectHealth;
   isLiveConnected?: boolean;
+  liveSessionStatus?: LiveSessionStatus;
+  sessionOwner?: string;
+  sessionOwnerAcquiredAt?: number;
+  providerName?: string;
+  providerExternalMatchId?: string;
+  providerRetryPolicy?: string;
+  ingestionRunning?: boolean;
+  workerRunning?: boolean;
+  lastRecoveryAt?: number;
+  sessionIdempotencyKey?: string;
 };
 
 function toOptionalNumber(value: unknown): number | undefined {
@@ -67,6 +83,16 @@ function decodeRecord(raw: Record<string, string>, fallbackMatchId: string): Mat
     heartbeatFresh: toBool(raw.heartbeatFresh),
     reconnectHealth: toOptionalString(raw.reconnectHealth) as MatchReconnectHealth | undefined,
     isLiveConnected: toBool(raw.isLiveConnected),
+    liveSessionStatus: toOptionalString(raw.liveSessionStatus) as LiveSessionStatus | undefined,
+    sessionOwner: toOptionalString(raw.sessionOwner),
+    sessionOwnerAcquiredAt: toOptionalNumber(raw.sessionOwnerAcquiredAt),
+    providerName: toOptionalString(raw.providerName),
+    providerExternalMatchId: toOptionalString(raw.providerExternalMatchId),
+    providerRetryPolicy: toOptionalString(raw.providerRetryPolicy),
+    ingestionRunning: toBool(raw.ingestionRunning),
+    workerRunning: toBool(raw.workerRunning),
+    lastRecoveryAt: toOptionalNumber(raw.lastRecoveryAt),
+    sessionIdempotencyKey: toOptionalString(raw.sessionIdempotencyKey),
   };
 }
 
@@ -92,6 +118,22 @@ function encodeRecord(record: MatchRegistryRecord): Record<string, string> {
   if (record.heartbeatFresh !== undefined) encoded.heartbeatFresh = String(record.heartbeatFresh);
   if (record.reconnectHealth) encoded.reconnectHealth = record.reconnectHealth;
   if (record.isLiveConnected !== undefined) encoded.isLiveConnected = String(record.isLiveConnected);
+  if (record.liveSessionStatus) encoded.liveSessionStatus = record.liveSessionStatus;
+  if (record.sessionOwner) encoded.sessionOwner = record.sessionOwner;
+  if (record.sessionOwnerAcquiredAt !== undefined) {
+    encoded.sessionOwnerAcquiredAt = String(record.sessionOwnerAcquiredAt);
+  }
+  if (record.providerName) encoded.providerName = record.providerName;
+  if (record.providerExternalMatchId) {
+    encoded.providerExternalMatchId = record.providerExternalMatchId;
+  }
+  if (record.providerRetryPolicy) encoded.providerRetryPolicy = record.providerRetryPolicy;
+  if (record.ingestionRunning !== undefined) {
+    encoded.ingestionRunning = String(record.ingestionRunning);
+  }
+  if (record.workerRunning !== undefined) encoded.workerRunning = String(record.workerRunning);
+  if (record.lastRecoveryAt !== undefined) encoded.lastRecoveryAt = String(record.lastRecoveryAt);
+  if (record.sessionIdempotencyKey) encoded.sessionIdempotencyKey = record.sessionIdempotencyKey;
 
   return encoded;
 }
@@ -169,6 +211,7 @@ export async function markMatchDisconnected(matchId: string) {
     heartbeatFresh: false,
     reconnectHealth: "disconnected",
     isLiveConnected: false,
+    liveSessionStatus: "degraded",
   });
 }
 
@@ -178,6 +221,9 @@ export async function markMatchStopped(matchId: string) {
     heartbeatFresh: false,
     reconnectHealth: "disconnected",
     isLiveConnected: false,
+    liveSessionStatus: "stopped",
+    ingestionRunning: false,
+    workerRunning: false,
   });
 }
 

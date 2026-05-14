@@ -16,6 +16,7 @@ const pollingIntervals: Record<string, ReturnType<typeof setInterval>> = {};
 const processedEvents: Record<string, Set<string>> = {};
 const abortControllers: Record<string, AbortController> = {};
 const lastProcessedPointer: Record<string, string> = {};
+const activeExternalMatchId: Record<string, string> = {};
 
 const POLL_INTERVAL = 4000;
 const MAX_EVENT_CACHE = 300;
@@ -63,6 +64,7 @@ export function startLiveMatchIngestor(matchId: string, externalMatchId: string)
   const provider = getLiveProvider();
 
   processedEvents[matchId] = new Set();
+  activeExternalMatchId[matchId] = externalMatchId;
   abortControllers[matchId]?.abort();
   abortControllers[matchId] = new AbortController();
 
@@ -241,9 +243,18 @@ export function stopLiveMatchIngestor(matchId: string) {
 
   delete processedEvents[matchId];
   delete lastProcessedPointer[matchId];
+  delete activeExternalMatchId[matchId];
 
   // Non-blocking on shutdown to avoid delaying interval teardown.
   markMatchDisconnected(matchId).catch((error) => {
     console.error("❌ Failed to mark match disconnected", error);
   });
+}
+
+export function isLiveMatchIngestorRunning(matchId: string): boolean {
+  return Boolean(pollingIntervals[matchId]);
+}
+
+export function getLiveMatchIngestorExternalMatchId(matchId: string): string | null {
+  return activeExternalMatchId[matchId] ?? null;
 }

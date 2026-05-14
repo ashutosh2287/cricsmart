@@ -3,11 +3,8 @@ import { initMatch, getMatchState } from "@/services/matchEngine";
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 import { SimulationState } from "@/services/simulation/simulationState";
 import { startSimulation } from "@/services/simulation/matchSimulator";
-import { startMatch } from "@/services/match/matchManager";
-import { startLiveMatchIngestor } from "@/services/ingestion/liveMatchIngestor";
-import { startWorker } from "@/services/queue/eventWorker";
-import { initPlayerRegistry } from "@/services/player/playerRegistry";
 import { upsertMatchRegistry } from "@/services/match/matchRegistry";
+import { bootstrapLiveSession } from "@/services/live/liveSessionOrchestrator";
 
 const createTeam = (name: string) => ({
   name,
@@ -39,6 +36,7 @@ export async function POST(req: NextRequest) {
       externalMatchId,
       tossWinner,
       decision,
+      idempotencyKey,
     } = body as {
       matchId?: string;
       teamA?: string;
@@ -47,6 +45,7 @@ export async function POST(req: NextRequest) {
       externalMatchId?: string;
       tossWinner?: string;
       decision?: "BAT" | "BOWL";
+      idempotencyKey?: string;
     };
 
     if (!matchId || !teamA || !teamB) {
@@ -58,8 +57,32 @@ export async function POST(req: NextRequest) {
 
     const matchType = type === "LIVE" ? "LIVE" : "SIMULATION";
 
-    startMatch(matchId);
-    initPlayerRegistry(matchId);
+    if (matchType === "LIVE") {
+      if (!externalMatchId) {
+        return NextResponse.json(
+          { success: false, message: "Missing externalMatchId for live match" },
+          { status: 400 }
+        );
+      }
+
+      const bootstrap = await bootstrapLiveSession({
+        matchId,
+        teamA,
+        teamB,
+        externalMatchId,
+        idempotencyKey:
+          req.headers.get("x-idempotency-key") ??
+          (typeof idempotencyKey === "string" ? idempotencyKey : undefined),
+      });
+
+      return NextResponse.json({
+        success: true,
+        matchId,
+        alreadyInitialized: bootstrap.alreadyActive,
+        liveSession: bootstrap,
+      });
+    }
+
     initMatch(matchId);
 
     const state = getMatchState(matchId);
@@ -82,19 +105,20 @@ export async function POST(req: NextRequest) {
       matchId,
       teamA,
       teamB,
-      type: matchType,
-      status: matchType === "LIVE" ? "LIVE" : "UPCOMING",
-      externalMatchId,
-      isLiveConnected: matchType === "LIVE",
+      type: "SIMULATION",
+      status: existing?.control?.isRunning ? "LIVE" : "UPCOMING",
+      isLiveConnected: false,
       heartbeatFresh: false,
-      reconnectHealth: matchType === "LIVE" ? "stale" : "disconnected",
+      reconnectHealth: "disconnected",
+      liveSessionStatus: "stopped",
+      ingestionRunning: false,
+      workerRunning: false,
     });
 
-    if (matchType === "SIMULATION" && !existing) {
+    if (!existing) {
       const teamAObj = createTeam(teamA);
       const teamBObj = createTeam(teamB);
 
-      // Default to teamA batting when toss data is not provided by caller.
       const resolvedTossWinner = tossWinner ?? teamA;
       const resolvedDecision = decision ?? "BAT";
 
@@ -150,28 +174,6 @@ export async function POST(req: NextRequest) {
         heartbeatFresh: true,
         reconnectHealth: "healthy",
       });
-    }
-
-    if (matchType === "LIVE") {
-      if (!externalMatchId) {
-        return NextResponse.json(
-          { success: false, message: "Missing externalMatchId for live match" },
-          { status: 400 }
-        );
-      }
-      if (!process.env.CRICKET_API_KEY) {
-        return NextResponse.json(
-          {
-            success: false,
-            message:
-              "Missing server-side CRICKET_API_KEY for live provider integration",
-          },
-          { status: 400 }
-        );
-      }
-
-      startWorker(matchId);
-      startLiveMatchIngestor(matchId, externalMatchId);
     }
 
     return NextResponse.json({

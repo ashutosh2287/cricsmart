@@ -82,10 +82,10 @@ const normalized = outcomes.map(o => ({
   prob: o.prob / totalProb
 }));
 
-return weightedRandom(normalized);
+return weightedRandom(normalized, matchId);
 }
 
-function weightedRandom(options: Outcome[]): Outcome {
+function weightedRandom(options: Outcome[], matchId?: string): Outcome {
   const rand = randomForMatch(matchId);
   let sum = 0;
 

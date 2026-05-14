@@ -114,6 +114,11 @@ export function adaptApiEventToEngineEvent(
     over: apiEvent.over,
     ball: apiEvent.ball,
     timestamp,
+    providerType: apiEvent.providerType,
+    providerTimestamp: apiEvent.providerTimestamp ?? timestamp,
+    ingestionTimestamp: apiEvent.ingestionTimestamp ?? Date.now(),
+    eventSource: apiEvent.eventSource,
+    replaySourceId: apiEvent.replaySourceId,
   };
 
   switch (eventType) {

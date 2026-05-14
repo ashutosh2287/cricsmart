@@ -49,6 +49,7 @@ export async function POST(req: Request) {
       teamB,
       status: "UPCOMING",
       type: "SIMULATION",
+      sourceType: "SIMULATION",
       isLiveConnected: false,
       heartbeatFresh: false,
       reconnectHealth: "disconnected",

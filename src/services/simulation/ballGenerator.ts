@@ -30,6 +30,10 @@ export function generateBallEvent(state: SimulationState, matchId?: string): Bal
     timestamp: Date.now(),
     valid: true,
     innings: state.currentInningsIndex,
+    providerType: "simulation",
+    providerTimestamp: Date.now(),
+    ingestionTimestamp: Date.now(),
+    eventSource: "SIMULATION" as const,
     commentary: undefined,
     branchId: undefined,
     replacedBy: undefined

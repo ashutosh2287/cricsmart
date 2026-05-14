@@ -2,6 +2,7 @@ import { getRedis } from "@/services/storage/redisClient";
 import type {
   LiveSessionProvider,
   LiveSessionState,
+  SessionSourceType,
 } from "@/types/liveSession";
 
 export const MATCH_LIST_KEY = "matches:list";
@@ -20,6 +21,7 @@ export type MatchRegistryRecord = {
   type: MatchRegistryType;
   sessionState?: LiveSessionState;
   provider?: LiveSessionProvider;
+  sourceType?: SessionSourceType;
   externalMatchId?: string;
   seriesName?: string;
   format?: string;
@@ -92,6 +94,7 @@ function decodeRecord(
     type,
     sessionState,
     provider: toOptionalString(raw.provider) as LiveSessionProvider | undefined,
+    sourceType: toOptionalString(raw.sourceType) as SessionSourceType | undefined,
     externalMatchId: toOptionalString(raw.externalMatchId),
     seriesName: toOptionalString(raw.seriesName),
     format: toOptionalString(raw.format),
@@ -125,6 +128,7 @@ function encodeRecord(record: MatchRegistryRecord): Record<string, string> {
   if (record.slug) encoded.slug = record.slug;
   if (record.sessionState) encoded.sessionState = record.sessionState;
   if (record.provider) encoded.provider = record.provider;
+  if (record.sourceType) encoded.sourceType = record.sourceType;
   if (record.externalMatchId) encoded.externalMatchId = record.externalMatchId;
   if (record.seriesName) encoded.seriesName = record.seriesName;
   if (record.format) encoded.format = record.format;
@@ -237,6 +241,7 @@ export async function registerLiveMatchSession(payload: {
   slug?: string;
   externalMatchId: string;
   provider: LiveSessionProvider;
+  sourceType?: SessionSourceType;
   teamA: string;
   teamB: string;
   seriesName?: string;
@@ -250,6 +255,7 @@ export async function registerLiveMatchSession(payload: {
     slug: payload.slug ?? payload.matchId,
     externalMatchId: payload.externalMatchId,
     provider: payload.provider,
+    sourceType: payload.sourceType ?? "LIVE",
     teamA: payload.teamA,
     teamB: payload.teamB,
     type: "LIVE",

@@ -10,6 +10,7 @@ import { initPlayerRegistry } from "@/services/player/playerRegistry";
 import { upsertMatchRegistry } from "@/services/match/matchRegistry";
 import { getProviderMode } from "@/config/providerMode";
 import { logger } from "@/lib/logger";
+import type { SessionSourceType } from "@/types/liveSession";
 
 const createTeam = (name: string) => ({
   name,
@@ -60,6 +61,14 @@ export async function POST(req: NextRequest) {
 
     const matchType = type === "LIVE" ? "LIVE" : "SIMULATION";
     const providerMode = getProviderMode();
+    const sourceType: SessionSourceType =
+      matchType === "SIMULATION"
+        ? "SIMULATION"
+        : providerMode === "mock"
+          ? "MOCK"
+          : providerMode === "simulation"
+            ? "SIMULATION"
+            : "LIVE";
 
     startMatch(matchId);
     initPlayerRegistry(matchId);
@@ -88,6 +97,7 @@ export async function POST(req: NextRequest) {
       type: matchType,
       status: matchType === "LIVE" ? "LIVE" : "UPCOMING",
       externalMatchId,
+      sourceType,
       isLiveConnected: matchType === "LIVE",
       heartbeatFresh: false,
       reconnectHealth: matchType === "LIVE" ? "stale" : "disconnected",
@@ -148,6 +158,7 @@ export async function POST(req: NextRequest) {
         teamA,
         teamB,
         type: "SIMULATION",
+        sourceType: "SIMULATION",
         status: "LIVE",
         isLiveConnected: true,
         heartbeatFresh: true,

@@ -3,6 +3,7 @@ type SeedState = {
 };
 
 const seedByMatch = new Map<string, SeedState>();
+const seedTokenByMatch = new Map<string, string>();
 
 function hashSeed(seed: string): number {
   let h = 2166136261;
@@ -24,10 +25,12 @@ function xorshift32(state: SeedState): number {
 
 export function setSimulationSeed(matchId: string, seed: string) {
   seedByMatch.set(matchId, { value: hashSeed(seed) || 1 });
+  seedTokenByMatch.set(matchId, seed);
 }
 
 export function clearSimulationSeed(matchId: string) {
   seedByMatch.delete(matchId);
+  seedTokenByMatch.delete(matchId);
 }
 
 export function randomForMatch(matchId?: string): number {
@@ -35,4 +38,8 @@ export function randomForMatch(matchId?: string): number {
   const state = seedByMatch.get(matchId);
   if (!state) return Math.random();
   return xorshift32(state);
+}
+
+export function getSimulationSeed(matchId: string): string | undefined {
+  return seedTokenByMatch.get(matchId);
 }

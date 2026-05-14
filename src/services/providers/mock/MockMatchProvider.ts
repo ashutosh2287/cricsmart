@@ -107,6 +107,14 @@ export const mockMatchProvider: MatchProvider = {
   getMatchState: async (externalMatchId) => getMockMatchState(externalMatchId),
   pollMatchEvents: async (externalMatchId) => {
     const batch = consumeMockEvents(externalMatchId);
+    const now = Date.now();
+    const enrichedBatch: ApiBallEvent[] = batch.map((event) => ({
+      ...event,
+      providerType: "mock",
+      providerTimestamp: event.timestamp,
+      ingestionTimestamp: now,
+      eventSource: "MOCK_INGESTION",
+    }));
     if (batch.length > 0) {
       logger.info("PROVIDER", "provider_poll_success", {
         provider: "mock",
@@ -114,6 +122,6 @@ export const mockMatchProvider: MatchProvider = {
         emitted: batch.length,
       });
     }
-    return batch;
+    return enrichedBatch;
   },
 };

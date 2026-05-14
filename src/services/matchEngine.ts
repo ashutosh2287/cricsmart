@@ -81,6 +81,11 @@ type BaseEvent = {
   over?: number;
   ball?: number;
   timestamp?: number;
+  providerType?: string;
+  providerTimestamp?: number;
+  ingestionTimestamp?: number;
+  eventSource?: "LIVE_INGESTION" | "MOCK_INGESTION" | "SIMULATION" | "REPLAY" | "MANUAL";
+  replaySourceId?: string;
 };
 
 export type EngineBallEvent =
@@ -507,6 +512,11 @@ const finalBowler = bowler || "Unknown Bowler";
     nonStriker,
     bowler: finalBowler,
     innings: inningsIndex,
+    providerType: event.providerType,
+    providerTimestamp: event.providerTimestamp ?? event.timestamp,
+    ingestionTimestamp: event.ingestionTimestamp ?? Date.now(),
+    eventSource: event.eventSource,
+    replaySourceId: event.replaySourceId,
   };
 
   switch (event.type) {
@@ -678,7 +688,17 @@ function assertValidActiveBatters(
   }
 }
 
-type ScoringEventWithId = ScoringEvent & { id?: string };
+type ScoringEventWithId = ScoringEvent &
+  Pick<
+    BaseEvent,
+    | "id"
+    | "timestamp"
+    | "providerType"
+    | "providerTimestamp"
+    | "ingestionTimestamp"
+    | "eventSource"
+    | "replaySourceId"
+  >;
 
 function reduce(
   state: MatchState,

@@ -16,6 +16,11 @@ export type ApiBallEvent = {
   innings: number // 🔥 NEW (important)
   commentary?: string
   dismissal?: string;
+  providerType?: string;
+  providerTimestamp?: number;
+  ingestionTimestamp?: number;
+  eventSource?: "LIVE_INGESTION" | "MOCK_INGESTION" | "SIMULATION" | "REPLAY" | "MANUAL";
+  replaySourceId?: string;
 }
 
 type ApiInnings = {
@@ -130,8 +135,11 @@ export async function fetchLiveMatchEvents(
           wicket: ball?.wicket === 1,
 
           type: ball?.type ?? "RUN",
-
-          timestamp: now
+          timestamp: now,
+          providerType: "cricapi",
+          providerTimestamp: now,
+          ingestionTimestamp: now,
+          eventSource: "LIVE_INGESTION",
         })
       }
     }

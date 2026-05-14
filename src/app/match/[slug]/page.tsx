@@ -1838,6 +1838,7 @@ export default function MatchDetailPage({
               match={match}
               analytics={analytics}
               insights={insights}
+              sessionMeta={sessionMeta}
             />
           ) : (
             <div className="p-10 text-center text-white">

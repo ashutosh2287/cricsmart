@@ -1,0 +1,13 @@
+{
+  "modelVersion": "legacy-winprob-wrapper.v1",
+  "featureSchemaVersion": "win-probability.v1",
+  "brierScore": 0,
+  "reliabilityDiagram": {
+    "bins": []
+  },
+  "calibrationCurve": {
+    "predicted": [],
+    "observed": []
+  },
+  "confidenceStability": 0
+}

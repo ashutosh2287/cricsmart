@@ -16,6 +16,7 @@ export type RecordingMetadata = {
   provider?: string;
   seed?: string;
   version: string;
+  featureSchemaVersion?: string;
   createdAt: number;
   updatedAt: number;
 };
@@ -37,6 +38,7 @@ function ensureSession(matchId: string): RecordingSession {
       matchId,
       sourceType: "SIMULATION",
       version: "v1",
+      featureSchemaVersion: "win-probability.v1",
       createdAt: now,
       updatedAt: now,
     },

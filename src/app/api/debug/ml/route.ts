@@ -1,20 +1,15 @@
-import { NextResponse } from "next/server";
-import { getActivePredictionModelVersion } from "@/services/ml/prediction/winProbabilityPredictor";
-import { getPredictionMetrics } from "@/services/ml/prediction/predictionMetricsStore";
+import { NextRequest, NextResponse } from "next/server";
+import { getMlDiagnostics } from "@/services/ml/observability/mlObservabilityStore";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const metrics = getPredictionMetrics();
+export async function GET(req: NextRequest) {
+  const matchId = req.nextUrl.searchParams.get("matchId") ?? undefined;
 
   return NextResponse.json({
     success: true,
     timestamp: new Date().toISOString(),
-    modelVersion: getActivePredictionModelVersion(),
-    requestCount: metrics.requestCount,
-    avgLatencyMs: metrics.avgLatencyMs,
-    cacheHitRate: metrics.cacheHitRate,
-    recentRequests: metrics.recentLogs,
+    ...getMlDiagnostics(matchId),
   });
 }

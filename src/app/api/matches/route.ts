@@ -8,6 +8,7 @@ import { isWorkerRunning } from "@/services/queue/eventWorker";
 type MatchListRow = MatchRegistryRecord & {
   heartbeatFresh: boolean;
 };
+const TRANSITIONAL_SESSION_STATES = new Set(["bootstrapping", "recovering"]);
 
 function withDerivedFreshness(match: MatchRegistryRecord): MatchListRow {
   const now = Date.now();
@@ -17,8 +18,8 @@ function withDerivedFreshness(match: MatchRegistryRecord): MatchListRow {
   const workerRunning = match.type === "LIVE" ? isWorkerRunning(match.matchId) : false;
   let liveSessionStatus = match.liveSessionStatus;
   const transitionalStatus =
-    match.liveSessionStatus === "bootstrapping" ||
-    match.liveSessionStatus === "recovering";
+    typeof match.liveSessionStatus === "string" &&
+    TRANSITIONAL_SESSION_STATES.has(match.liveSessionStatus);
 
   if (match.type === "LIVE" && !transitionalStatus) {
     if (ingestionRunning && workerRunning) {

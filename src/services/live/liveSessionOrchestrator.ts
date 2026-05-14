@@ -17,6 +17,11 @@ const LIVE_OWNER_PREFIX = "live-owner";
 const LIVE_PROVIDER_NAME = "cricapi";
 const LIVE_PROVIDER_RETRY_POLICY = "retry-3-backoff-15s";
 const LOCK_TTL_MS = 15_000;
+const LIVE_SSE_ALLOWED_STATES = new Set<LiveSessionStatus>([
+  "bootstrapping",
+  "live",
+  "recovering",
+]);
 
 type BootstrapArgs = {
   matchId: string;
@@ -104,7 +109,7 @@ export async function bootstrapLiveSession(args: BootstrapArgs): Promise<Bootstr
     throw new Error("Missing server-side CRICKET_API_KEY for live provider integration");
   }
 
-  const lockOwner = `${LIVE_OWNER_PREFIX}:${args.matchId}:${randomUUID()}`;
+  const lockOwner = `${LIVE_OWNER_PREFIX}:${randomUUID()}`;
   const lockAcquired = await acquireLock(args.matchId, lockOwner);
 
   if (!lockAcquired) {
@@ -170,6 +175,7 @@ export async function bootstrapLiveSession(args: BootstrapArgs): Promise<Bootstr
     if (!isLiveMatchIngestorRunning(args.matchId)) {
       startLiveMatchIngestor(args.matchId, args.externalMatchId);
     }
+    const isRunning = isSessionRunning(args.matchId);
 
     await patchSessionRuntime(args.matchId, "live", {
       owner,
@@ -181,7 +187,7 @@ export async function bootstrapLiveSession(args: BootstrapArgs): Promise<Bootstr
       matchId: args.matchId,
       owner,
       sessionStatus: "live",
-      alreadyActive: !shouldRecover && isSessionRunning(args.matchId),
+      alreadyActive: !shouldRecover && isRunning,
       recovered: shouldRecover,
     };
   } catch (error) {
@@ -199,7 +205,7 @@ export async function bootstrapLiveSession(args: BootstrapArgs): Promise<Bootstr
 }
 
 export async function stopLiveSession(matchId: string) {
-  const lockOwner = `${LIVE_OWNER_PREFIX}:${matchId}:stop:${randomUUID()}`;
+  const lockOwner = `${LIVE_OWNER_PREFIX}:stop:${randomUUID()}`;
   const lockAcquired = await acquireLock(matchId, lockOwner);
   if (!lockAcquired) {
     return { matchId, stopped: false };
@@ -233,13 +239,8 @@ export async function getLiveSessionRuntimeGate(matchId: string) {
     };
   }
 
-  const allowedStates = new Set<LiveSessionStatus>([
-    "bootstrapping",
-    "live",
-    "recovering",
-  ]);
   const sessionStatus = registry.liveSessionStatus ?? "degraded";
-  const allowSse = allowedStates.has(sessionStatus);
+  const allowSse = LIVE_SSE_ALLOWED_STATES.has(sessionStatus);
 
   return {
     allowSse,

@@ -70,8 +70,7 @@ export async function POST(req: NextRequest) {
         teamA,
         teamB,
         externalMatchId,
-        // Header takes precedence so API gateway/retry layers can enforce
-        // idempotency without relying on JSON body mutation.
+        // Header idempotency key takes precedence for gateway/retry compatibility.
         idempotencyKey:
           req.headers.get("x-idempotency-key") ??
           (typeof idempotencyKey === "string" ? idempotencyKey : undefined),

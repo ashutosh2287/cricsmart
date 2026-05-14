@@ -10,11 +10,14 @@ import { listMatchRegistry } from "@/services/match/matchRegistry";
 import { getPollingLimits } from "@/services/providers/polling/pollingStrategy";
 import { getSnapshotResilienceMetrics } from "@/services/runtime/snapshotCache";
 import { getSessionRecoveryDiagnostics } from "@/services/runtime/sessionRecovery";
+import { ensureSessionRecoveryStarted } from "@/services/runtime/sessionRecoveryBootstrap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  ensureSessionRecoveryStarted();
+
   const providerMode = getProviderMode();
   const polling = listPollingHealth();
   const viewers = listClientCounts();

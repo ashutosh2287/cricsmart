@@ -1,5 +1,4 @@
 import { logger } from "@/lib/logger";
-import { getMatchRegistry } from "@/services/match/matchRegistry";
 import { getSimulationSeed } from "@/services/simulation/simulationRandom";
 import type { BallEvent } from "@/types/ballEvent";
 import type { SessionSourceType } from "@/types/liveSession";
@@ -21,19 +20,17 @@ function resolveSourceFromEvent(event: BallEvent): SessionSourceType {
 }
 
 export async function recordBallEvent(matchId: string, event: BallEvent) {
-  const fallback: SessionFallback = {
+  const metadata: SessionFallback = {
     sourceType: resolveSourceFromEvent(event),
     provider: event.providerType,
   };
 
   try {
-    const registry = await getMatchRegistry(matchId);
-    const sourceType = registry?.sourceType ?? fallback.sourceType;
     const seed = getSimulationSeed(matchId);
 
     patchRecordingMetadata(matchId, {
-      sourceType,
-      provider: registry?.provider ?? fallback.provider,
+      sourceType: metadata.sourceType,
+      provider: metadata.provider,
       seed,
     });
     appendRecordingEvent(matchId, event);
@@ -42,7 +39,7 @@ export async function recordBallEvent(matchId: string, event: BallEvent) {
       matchId,
       error: error instanceof Error ? error.message : String(error),
     });
-    patchRecordingMetadata(matchId, fallback);
+    patchRecordingMetadata(matchId, metadata);
     appendRecordingEvent(matchId, event);
   }
 }

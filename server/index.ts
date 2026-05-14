@@ -1,7 +1,6 @@
 import http from "http";
 import next from "next";
 import { initSocket } from "./socket";
-import { recoverRuntimeSessions } from "@/services/runtime/sessionRecovery";
 
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
@@ -9,9 +8,7 @@ const handle = app.getRequestHandler();
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
-app.prepare().then(async () => {
-  await recoverRuntimeSessions();
-
+app.prepare().then(() => {
   const server = http.createServer((req, res) => {
     handle(req, res);
   });

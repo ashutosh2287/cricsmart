@@ -11,6 +11,7 @@ import { upsertMatchRegistry } from "@/services/match/matchRegistry";
 import { getProviderMode } from "@/config/providerMode";
 import { logger } from "@/lib/logger";
 import type { SessionSourceType } from "@/types/liveSession";
+import { ensureSessionRecoveryStarted } from "@/services/runtime/sessionRecoveryBootstrap";
 
 const createTeam = (name: string) => ({
   name,
@@ -31,6 +32,8 @@ const createTeam = (name: string) => ({
 });
 
 export async function POST(req: NextRequest) {
+  ensureSessionRecoveryStarted();
+
   try {
     const body = await req.json();
 

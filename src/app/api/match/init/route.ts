@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
         // Header idempotency key takes precedence for gateway/retry compatibility.
         idempotencyKey:
           req.headers.get("x-idempotency-key") ??
-          (typeof idempotencyKey === "string" ? idempotencyKey : undefined),
+          idempotencyKey,
       });
 
       return NextResponse.json({

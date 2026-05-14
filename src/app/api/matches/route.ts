@@ -17,11 +17,11 @@ function withDerivedFreshness(match: MatchRegistryRecord): MatchListRow {
   const ingestionRunning = match.type === "LIVE" ? isLiveMatchIngestorRunning(match.matchId) : false;
   const workerRunning = match.type === "LIVE" ? isWorkerRunning(match.matchId) : false;
   let liveSessionStatus = match.liveSessionStatus;
-  const transitionalStatus =
+  const isTransitionalStatus =
     typeof match.liveSessionStatus === "string" &&
     TRANSITIONAL_SESSION_STATES.has(match.liveSessionStatus);
 
-  if (match.type === "LIVE" && !transitionalStatus) {
+  if (match.type === "LIVE" && !isTransitionalStatus) {
     if (ingestionRunning && workerRunning) {
       liveSessionStatus = "live";
     } else if (match.status === "LIVE") {

@@ -156,10 +156,17 @@ export async function bootstrapLiveSession(args: BootstrapArgs): Promise<Bootstr
     initMatch(args.matchId);
     await saveRuntimeIfMissing(args.matchId);
 
+    const hadPriorLiveSession =
+      existing?.type === "LIVE" &&
+      (existing.status === "LIVE" ||
+        existing.liveSessionStatus === "live" ||
+        existing.liveSessionStatus === "degraded" ||
+        existing.liveSessionStatus === "recovering");
     const shouldRecover =
-      !isLiveMatchIngestorRunning(args.matchId) ||
-      !isWorkerRunning(args.matchId) ||
-      existing?.liveSessionStatus === "degraded";
+      hadPriorLiveSession &&
+      (!isLiveMatchIngestorRunning(args.matchId) ||
+        !isWorkerRunning(args.matchId) ||
+        existing?.liveSessionStatus === "degraded");
 
     if (shouldRecover) {
       await patchSessionRuntime(args.matchId, "recovering", {

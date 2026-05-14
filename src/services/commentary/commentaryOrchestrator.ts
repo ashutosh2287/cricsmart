@@ -1,0 +1,40 @@
+import type { BallEvent } from "@/types/ballEvent";
+import { processCommentaryEvent } from "./commentaryEngine";
+import { buildCommentaryContext } from "./commentaryContextBuilder";
+import { evolveCommentaryNarrative } from "./commentaryNarrativeEngine";
+import { classifyCommentarySituation } from "./commentarySituationClassifier";
+import { selectCommentaryTone } from "./commentaryToneEngine";
+import { validateCommentaryContext } from "./commentaryContextValidator";
+import { appendCommentaryContextSnapshot, getCommentaryContextSnapshots } from "./commentaryContextSnapshotStore";
+
+export function runCommentaryOrchestration(
+  matchId: string,
+  branchId: string,
+  event: BallEvent,
+) {
+  const context = buildCommentaryContext(matchId, branchId, event);
+
+  if (context) {
+    const narrative = evolveCommentaryNarrative(context);
+    const situation = classifyCommentarySituation(context);
+    const tone = selectCommentaryTone(context, situation);
+    const validation = validateCommentaryContext(context);
+    const sequence = getCommentaryContextSnapshots(matchId).length + 1;
+
+    appendCommentaryContextSnapshot({
+      matchId,
+      branchId,
+      eventId: event.id,
+      sequence,
+      timestamp: event.timestamp,
+      source: event.eventSource ?? "MANUAL",
+      context,
+      narrative,
+      situation,
+      tone,
+      validation,
+    });
+  }
+
+  processCommentaryEvent(matchId, branchId, event);
+}

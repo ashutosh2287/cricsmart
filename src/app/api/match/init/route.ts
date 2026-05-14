@@ -70,7 +70,8 @@ export async function POST(req: NextRequest) {
         teamA,
         teamB,
         externalMatchId,
-        // Header idempotency key takes precedence for gateway/retry compatibility.
+        // Optional idempotency key: header takes precedence for gateway/retry compatibility.
+        // If omitted, bootstrap lock still prevents duplicate concurrent sessions.
         idempotencyKey:
           req.headers.get("x-idempotency-key") ??
           idempotencyKey,

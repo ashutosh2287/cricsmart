@@ -237,12 +237,13 @@ export async function stopLiveSession(matchId: string) {
   }
 }
 
-export async function getLiveSessionRuntimeGate(matchId: string) {
+export async function validateLiveSessionForSse(matchId: string) {
   const registry = await getMatchRegistry(matchId);
   if (!registry || registry.type !== "LIVE") {
+    // Non-live sessions use SSE for simulation/replay updates, so pass through.
     return {
       allowSse: true,
-      reason: "not-live",
+      reason: "non-live-pass-through",
     };
   }
 

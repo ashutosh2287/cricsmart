@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { listMatchRegistry, type MatchRegistryRecord } from "@/services/match/matchRegistry";
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 import { getCommentary } from "@/services/commentary/commentaryStore";
-import { isLiveMatchIngestorRunning } from "@/services/ingestion/liveMatchIngestor";
-import { isWorkerRunning } from "@/services/queue/eventWorker";
 
 type MatchListRow = MatchRegistryRecord & {
   heartbeatFresh: boolean;
@@ -14,8 +12,8 @@ function withDerivedFreshness(match: MatchRegistryRecord): MatchListRow {
   const now = Date.now();
   const heartbeatTs = match.lastHeartbeatAt ?? 0;
   const heartbeatFresh = now - heartbeatTs <= 20_000;
-  const ingestionRunning = match.type === "LIVE" ? isLiveMatchIngestorRunning(match.matchId) : false;
-  const workerRunning = match.type === "LIVE" ? isWorkerRunning(match.matchId) : false;
+  const ingestionRunning = match.type === "LIVE" ? Boolean(match.ingestionRunning) : false;
+  const workerRunning = match.type === "LIVE" ? Boolean(match.workerRunning) : false;
   let liveSessionStatus = match.liveSessionStatus;
   const isTransitionalStatus =
     typeof match.liveSessionStatus === "string" &&

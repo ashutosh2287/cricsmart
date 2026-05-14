@@ -4,7 +4,7 @@ import {
   addClient,
   removeClient,
 } from "@/services/realtime/realtimeController";
-import { getLiveSessionRuntimeGate } from "@/services/live/liveSessionOrchestrator";
+import { validateLiveSessionForSse } from "@/services/live/liveSessionOrchestrator";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +27,7 @@ export async function GET(
     return new Response("Invalid matchId", { status: 400 });
   }
 
-  const gate = await getLiveSessionRuntimeGate(matchId);
+  const gate = await validateLiveSessionForSse(matchId);
   if (!gate.allowSse) {
     return new Response(`Live session unavailable: ${gate.reason}`, { status: 409 });
   }

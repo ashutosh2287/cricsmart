@@ -19,6 +19,7 @@ type ChartPoint = {
   over: number;
   batting: number;
   bowling: number;
+  confidence?: number;
   marker?: "WICKET" | "SIX" | "FOUR" | "SWING" | "TURNING_POINT";
 };
 
@@ -109,6 +110,12 @@ function WinProbabilityChart({
           <span className="font-semibold text-[var(--chart-negative)]">
             {team2 ?? "BOWL"} {lastPoint.bowling.toFixed(1)}%
           </span>
+
+          {lastPoint.confidence !== undefined ? (
+            <span className="font-semibold text-[var(--text-secondary)]">
+              Confidence {(lastPoint.confidence * 100).toFixed(0)}%
+            </span>
+          ) : null}
 
         </div>
 

@@ -1,12 +1,16 @@
 type WinProbabilityPoint = {
   over: number;
   value: number;
+  confidence?: number;
+  marker?: "WICKET" | "SIX" | "FOUR" | "SWING" | "TURNING_POINT";
 };
 
 export type WinProbabilityChartPoint = {
   over: number;
   batting: number;
   bowling: number;
+  confidence?: number;
+  marker?: "WICKET" | "SIX" | "FOUR" | "SWING" | "TURNING_POINT";
 };
 
 export function calculateWinProbability(
@@ -20,6 +24,8 @@ export function calculateWinProbability(
       over: point.over,
       batting,
       bowling: 100 - batting,
+      confidence: point.confidence,
+      marker: point.marker,
     };
   });
 }

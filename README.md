@@ -17,6 +17,17 @@ npm run lint
 npm run build
 ```
 
+## ML win probability (Phase 2 scaffold)
+
+- Offline ML workspace: `/ml`
+- Inference service: `ml/inference/main.py` (`POST /predict/win-probability`)
+- App debug endpoint: `/api/debug/ml`
+
+Runtime flags:
+
+- `WIN_PROBABILITY_MODE` (`legacy` | `ml_local`, default `legacy`)
+- `WIN_PROBABILITY_DEBOUNCE_MS` (default `120`)
+
 ## Production environment variables
 
 - `REDIS_URL` – Redis connection string used by server routes/services.

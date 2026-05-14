@@ -1,6 +1,7 @@
 import { MatchState } from "../matchEngine";
-import { computeWinProbability } from "../winProbabilityEngine";
 import { BallEvent } from "@/types/ballEvent";
+import { getEventStream } from "../matchEngine";
+import { predictWinProbabilityFromState } from "../ml/prediction/winProbabilityPredictor";
 
 export type WinProbabilityPoint = {
   over: number;
@@ -27,8 +28,11 @@ export function updateWinProbability(
   ballEvent?: BallEvent
 ) {
 
-  const result = computeWinProbability(state);
-  if (!result) return;
+  const result = predictWinProbabilityFromState(
+    matchId,
+    state,
+    getEventStream(matchId)
+  );
 
   if (!winProbStore[matchId]) {
     initWinProbability(matchId);
@@ -54,7 +58,7 @@ timeline.push({
   over,
   batting,
   bowling,
-  timestamp: ballEvent?.timestamp ?? Date.now()
+  timestamp: ballEvent?.timestamp ?? Date.now(),
 });
 }
 

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cricsmart.dev/schemas/dataset_manifest.schema.json",
+  "title": "CricSmartDatasetManifest",
+  "type": "object",
+  "required": [
+    "datasetId",
+    "source",
+    "matchCount",
+    "format",
+    "generatedAt",
+    "preprocessingVersion",
+    "files"
+  ],
+  "properties": {
+    "datasetId": { "type": "string" },
+    "source": { "type": "string" },
+    "matchCount": { "type": "integer", "minimum": 0 },
+    "format": { "type": "string" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "preprocessingVersion": { "type": "string" },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "path", "rows"],
+        "properties": {
+          "name": { "type": "string" },
+          "path": { "type": "string" },
+          "rows": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "notes": { "type": "string" }
+  }
+}

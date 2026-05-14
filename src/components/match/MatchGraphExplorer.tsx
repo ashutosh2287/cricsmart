@@ -23,6 +23,7 @@ type WinProbabilityPoint = {
   over: number;
   batting: number;
   bowling: number;
+  confidence?: number;
   marker?: "WICKET" | "SIX" | "FOUR" | "SWING" | "TURNING_POINT";
 };
 
@@ -157,6 +158,7 @@ export default function MatchGraphExplorer({
 
   const battingWin = latestWinPoint?.batting ?? 50;
   const bowlingWin = latestWinPoint?.bowling ?? 50;
+  const confidence = latestWinPoint?.confidence;
   const leader =
     battingWin === bowlingWin
       ? "Match evenly balanced"
@@ -247,6 +249,12 @@ export default function MatchGraphExplorer({
                 <span className="tabular-nums">{bowlingWin.toFixed(0)}%</span>
               </span>
             </div>
+
+            {confidence !== undefined ? (
+              <p className="mt-2 text-xs text-[var(--text-secondary)]">
+                Model confidence {(confidence * 100).toFixed(0)}%
+              </p>
+            ) : null}
 
             <div className="mt-3 h-3 overflow-hidden rounded-full bg-[var(--overlay-soft)]">
               <div className="flex h-full">

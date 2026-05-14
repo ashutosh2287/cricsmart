@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ml artifacts
+ml/.venv/
+ml/models/*.joblib
+ml/models/*.pkl
+ml/datasets/processed/

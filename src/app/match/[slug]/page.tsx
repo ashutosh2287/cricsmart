@@ -1684,7 +1684,15 @@ export default function MatchDetailPage({
   const [sessionMeta, setSessionMeta] = useState<MatchSessionMeta | null>(null);
   const [insights, setInsights] = useState<BroadcastInsight[]>([]);
 
-  type WinPoint = { over: number; value: number };
+  type WinPoint = {
+    over: number;
+    value: number;
+    confidence?: number;
+    delta?: number;
+    modelVersion?: string;
+    timestamp?: number;
+    marker?: "WICKET" | "SIX" | "FOUR" | "SWING" | "TURNING_POINT";
+  };
   type MomentumPoint = { over: number; score: number };
 
   const [analytics, setAnalytics] = useState<{
@@ -1800,6 +1808,17 @@ export default function MatchDetailPage({
         analytics?: {
           winProbability: WinPoint[];
           momentum: MomentumPoint[];
+          prediction?: {
+            currentProbability: number;
+            previousProbability: number;
+            probabilityDelta: number;
+            confidence: number;
+            modelVersion: string;
+            predictionTimestamp: number;
+            latencyMs: number;
+            cacheHit: boolean;
+            debounced: boolean;
+          };
         };
       }>;
       const data = customEvent.detail;

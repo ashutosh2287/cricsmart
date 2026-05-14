@@ -1,0 +1,21 @@
+{
+  "datasetId": "cricsmart-t20-v1",
+  "source": "cricsheet",
+  "matchCount": 0,
+  "format": "T20",
+  "generatedAt": "1970-01-01T00:00:00Z",
+  "preprocessingVersion": "v1",
+  "files": [
+    {
+      "name": "normalized_deliveries",
+      "path": "ml/datasets/processed/normalized_deliveries.csv",
+      "rows": 0
+    },
+    {
+      "name": "match_summary",
+      "path": "ml/datasets/processed/match_summary.csv",
+      "rows": 0
+    }
+  ],
+  "notes": "Template manifest for generated datasets"
+}

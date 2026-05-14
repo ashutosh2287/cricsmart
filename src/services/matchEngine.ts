@@ -12,9 +12,7 @@ import { addCommentary } from "@/services/commentary/commentaryStore";
 import { setAnalytics } from "@/services/analytics/liveAnalyticsStore";
 import { getMomentumTimeline } from "@/services/analytics/momentumTimelineEngine";
 import { generateBroadcastInsights } from "./broadcast/broadcastInsightEngine";
-import { getWinProbabilityTimeline } from "@/services/analytics/winProbabilityTimelineEngine";
 import { processMomentumEvent } from "@/services/analytics/momentumTimelineEngine";
-import { computeWinProbability } from "@/services/winProbabilityEngine";
 import { getAnalytics } from "@/services/analytics/liveAnalyticsStore";
 import { getBroadcastInsights } from "./broadcast/broadcastInsightEngine";
 import { getCommentary } from "@/services/commentary/commentaryStore";
@@ -24,6 +22,7 @@ import { broadcast } from "@/services/realtime/eventBus";
 import { appendEventTimeline, resetEventTimeline } from "@/services/replay/eventTimeline";
 import { appendCommentaryTimeline, resetCommentaryTimeline } from "@/services/commentary/commentaryTimelineStore";
 import { recordBallEvent } from "@/services/recording/eventRecorder";
+import { predictWinProbabilityFromState } from "@/services/ml/prediction/winProbabilityPredictor";
 
 
 
@@ -1203,8 +1202,12 @@ addCommentary(matchId, commentaryText);
 // 🧠 INSIGHTS
 generateBroadcastInsights(matchId);
 const insights = getBroadcastInsights(matchId) || [];
-// 🔥 WIN PROBABILITY (REAL ENGINE)
-const win = computeWinProbability(state);
+// 🔥 WIN PROBABILITY (ML/LEGACY HYBRID ENGINE)
+const prediction = predictWinProbabilityFromState(
+  matchId,
+  state,
+  eventStreams[matchId] ?? []
+);
 
 // 📊 MOMENTUM TIMELINE
 const momentumTimeline = getMomentumTimeline(matchId);
@@ -1217,15 +1220,26 @@ const prevAnalytics = getAnalytics(matchId) || {
 };
 
 // 🔥 APPEND (DO NOT REPLACE)
-const updatedWinProbability = win
-  ? [
-      ...prevAnalytics.winProbability,
-      {
-        over: currentInningsState.over + currentInningsState.ball / 10,
-        value: win.battingWinProbability,
-      },
-    ]
-  : prevAnalytics.winProbability;
+const updatedWinProbability = [
+  ...prevAnalytics.winProbability,
+  {
+    over: currentInningsState.over + currentInningsState.ball / 10,
+    value: prediction.battingWinProbability,
+    confidence: prediction.confidence,
+    delta:
+      prediction.battingWinProbability -
+      (prevAnalytics.prediction?.currentProbability ?? prediction.battingWinProbability),
+    modelVersion: prediction.modelVersion,
+    timestamp: Date.now(),
+    marker:
+      Math.abs(
+        prediction.battingWinProbability -
+          (prevAnalytics.prediction?.currentProbability ?? prediction.battingWinProbability)
+      ) >= 8
+        ? "SWING"
+        : undefined,
+  },
+];
 
 // 📦 STORE ANALYTICS
 setAnalytics(matchId, {
@@ -1234,6 +1248,20 @@ setAnalytics(matchId, {
     over: Math.floor(p.ballIndex / 6),
     score: p.momentum,
   })),
+  prediction: {
+    currentProbability: prediction.battingWinProbability,
+    previousProbability:
+      prevAnalytics.prediction?.currentProbability ?? prediction.battingWinProbability,
+    probabilityDelta:
+      prediction.battingWinProbability -
+      (prevAnalytics.prediction?.currentProbability ?? prediction.battingWinProbability),
+    confidence: prediction.confidence,
+    modelVersion: prediction.modelVersion,
+    predictionTimestamp: Date.now(),
+    latencyMs: prediction.latencyMs,
+    cacheHit: prediction.cacheHit,
+    debounced: prediction.debounced,
+  },
 });
 // ========================================
 // 🔥 FINAL BROADCAST (CLEAN & SINGLE)

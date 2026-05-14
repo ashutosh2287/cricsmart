@@ -123,10 +123,6 @@ export async function bootstrapLiveSession(args: BootstrapArgs): Promise<Bootstr
   try {
     const existing = await getMatchRegistry(args.matchId);
     const owner = existing?.sessionOwner ?? lockOwner;
-    const sameIdempotency =
-      Boolean(args.idempotencyKey) &&
-      Boolean(existing?.sessionIdempotencyKey) &&
-      args.idempotencyKey === existing?.sessionIdempotencyKey;
 
     await upsertMatchRegistry({
       matchId: args.matchId,
@@ -157,8 +153,7 @@ export async function bootstrapLiveSession(args: BootstrapArgs): Promise<Bootstr
     const shouldRecover =
       !isLiveMatchIngestorRunning(args.matchId) ||
       !isWorkerRunning(args.matchId) ||
-      existing?.liveSessionStatus === "degraded" ||
-      existing?.liveSessionStatus === "recovering";
+      existing?.liveSessionStatus === "degraded";
 
     if (shouldRecover) {
       await patchSessionRuntime(args.matchId, "recovering", {
@@ -185,7 +180,7 @@ export async function bootstrapLiveSession(args: BootstrapArgs): Promise<Bootstr
       matchId: args.matchId,
       owner,
       sessionStatus: "live",
-      alreadyActive: !shouldRecover && (sameIdempotency || isSessionRunning(args.matchId)),
+      alreadyActive: !shouldRecover && isSessionRunning(args.matchId),
       recovered: shouldRecover,
     };
   } catch (error) {

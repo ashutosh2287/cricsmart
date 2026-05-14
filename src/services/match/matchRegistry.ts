@@ -1,8 +1,4 @@
 import { getRedis } from "@/services/storage/redisClient";
-import type {
-  LiveSessionProvider,
-  LiveSessionState,
-} from "@/types/liveSession";
 
 export const MATCH_LIST_KEY = "matches:list";
 export const getMatchMetaKey = (matchId: string) => `match:${matchId}:meta`;
@@ -10,20 +6,20 @@ export const getMatchMetaKey = (matchId: string) => `match:${matchId}:meta`;
 export type MatchRegistryStatus = "LIVE" | "UPCOMING" | "COMPLETED";
 export type MatchRegistryType = "LIVE" | "SIMULATION";
 export type MatchReconnectHealth = "healthy" | "stale" | "disconnected";
+export type LiveSessionStatus =
+  | "bootstrapping"
+  | "live"
+  | "degraded"
+  | "recovering"
+  | "stopped";
 
 export type MatchRegistryRecord = {
   matchId: string;
-  slug?: string;
   teamA: string;
   teamB: string;
   status: MatchRegistryStatus;
   type: MatchRegistryType;
-  sessionState?: LiveSessionState;
-  provider?: LiveSessionProvider;
   externalMatchId?: string;
-  seriesName?: string;
-  format?: string;
-  scheduledStart?: string;
   currentRuns?: number;
   currentWickets?: number;
   currentOver?: number;
@@ -31,15 +27,22 @@ export type MatchRegistryRecord = {
   score?: string;
   overDisplay?: string;
   commentaryPreview?: string;
-  createdAt?: number;
   lastUpdateAt: number;
   lastHeartbeatAt?: number;
   heartbeatFresh?: boolean;
   reconnectHealth?: MatchReconnectHealth;
   isLiveConnected?: boolean;
+  liveSessionStatus?: LiveSessionStatus;
+  sessionOwner?: string;
+  sessionOwnerAcquiredAt?: number;
+  providerName?: string;
+  providerExternalMatchId?: string;
+  providerRetryPolicy?: string;
+  ingestionRunning?: boolean;
+  workerRunning?: boolean;
+  lastRecoveryAt?: number;
+  sessionIdempotencyKey?: string;
 };
-
-const LIVE_TERMINAL_STATES = new Set<LiveSessionState>(["COMPLETED", "FAILED"]);
 
 function toOptionalNumber(value: unknown): number | undefined {
   if (value === undefined || value === null || value === "") return undefined;
@@ -60,42 +63,14 @@ function toBool(value: unknown): boolean | undefined {
   return undefined;
 }
 
-function deriveRegistryStatus(
-  type: MatchRegistryType,
-  sessionState?: LiveSessionState,
-  explicitStatus?: MatchRegistryStatus
-): MatchRegistryStatus {
-  if (explicitStatus) return explicitStatus;
-  if (type !== "LIVE") return "UPCOMING";
-  if (!sessionState) return "LIVE";
-  if (sessionState === "COMPLETED") return "COMPLETED";
-  return "LIVE";
-}
-
-function decodeRecord(
-  raw: Record<string, string>,
-  fallbackMatchId: string
-): MatchRegistryRecord {
-  const type = (raw.type as MatchRegistryType) ?? "SIMULATION";
-  const sessionState = toOptionalString(raw.sessionState) as LiveSessionState | undefined;
-
+function decodeRecord(raw: Record<string, string>, fallbackMatchId: string): MatchRegistryRecord {
   return {
     matchId: raw.matchId ?? fallbackMatchId,
-    slug: toOptionalString(raw.slug),
     teamA: raw.teamA ?? "Team A",
     teamB: raw.teamB ?? "Team B",
-    status: deriveRegistryStatus(
-      type,
-      sessionState,
-      (raw.status as MatchRegistryStatus) ?? undefined
-    ),
-    type,
-    sessionState,
-    provider: toOptionalString(raw.provider) as LiveSessionProvider | undefined,
+    status: (raw.status as MatchRegistryStatus) ?? "UPCOMING",
+    type: (raw.type as MatchRegistryType) ?? "SIMULATION",
     externalMatchId: toOptionalString(raw.externalMatchId),
-    seriesName: toOptionalString(raw.seriesName),
-    format: toOptionalString(raw.format),
-    scheduledStart: toOptionalString(raw.scheduledStart),
     currentRuns: toOptionalNumber(raw.currentRuns),
     currentWickets: toOptionalNumber(raw.currentWickets),
     currentOver: toOptionalNumber(raw.currentOver),
@@ -103,12 +78,21 @@ function decodeRecord(
     score: toOptionalString(raw.score),
     overDisplay: toOptionalString(raw.overDisplay),
     commentaryPreview: toOptionalString(raw.commentaryPreview),
-    createdAt: toOptionalNumber(raw.createdAt),
     lastUpdateAt: toOptionalNumber(raw.lastUpdateAt) ?? Date.now(),
     lastHeartbeatAt: toOptionalNumber(raw.lastHeartbeatAt),
     heartbeatFresh: toBool(raw.heartbeatFresh),
     reconnectHealth: toOptionalString(raw.reconnectHealth) as MatchReconnectHealth | undefined,
     isLiveConnected: toBool(raw.isLiveConnected),
+    liveSessionStatus: toOptionalString(raw.liveSessionStatus) as LiveSessionStatus | undefined,
+    sessionOwner: toOptionalString(raw.sessionOwner),
+    sessionOwnerAcquiredAt: toOptionalNumber(raw.sessionOwnerAcquiredAt),
+    providerName: toOptionalString(raw.providerName),
+    providerExternalMatchId: toOptionalString(raw.providerExternalMatchId),
+    providerRetryPolicy: toOptionalString(raw.providerRetryPolicy),
+    ingestionRunning: toBool(raw.ingestionRunning),
+    workerRunning: toBool(raw.workerRunning),
+    lastRecoveryAt: toOptionalNumber(raw.lastRecoveryAt),
+    sessionIdempotencyKey: toOptionalString(raw.sessionIdempotencyKey),
   };
 }
 
@@ -117,18 +101,12 @@ function encodeRecord(record: MatchRegistryRecord): Record<string, string> {
     matchId: record.matchId,
     teamA: record.teamA,
     teamB: record.teamB,
-    status: deriveRegistryStatus(record.type, record.sessionState, record.status),
+    status: record.status,
     type: record.type,
     lastUpdateAt: String(record.lastUpdateAt),
   };
 
-  if (record.slug) encoded.slug = record.slug;
-  if (record.sessionState) encoded.sessionState = record.sessionState;
-  if (record.provider) encoded.provider = record.provider;
   if (record.externalMatchId) encoded.externalMatchId = record.externalMatchId;
-  if (record.seriesName) encoded.seriesName = record.seriesName;
-  if (record.format) encoded.format = record.format;
-  if (record.scheduledStart) encoded.scheduledStart = record.scheduledStart;
   if (record.currentRuns !== undefined) encoded.currentRuns = String(record.currentRuns);
   if (record.currentWickets !== undefined) encoded.currentWickets = String(record.currentWickets);
   if (record.currentOver !== undefined) encoded.currentOver = String(record.currentOver);
@@ -136,11 +114,26 @@ function encodeRecord(record: MatchRegistryRecord): Record<string, string> {
   if (record.score) encoded.score = record.score;
   if (record.overDisplay) encoded.overDisplay = record.overDisplay;
   if (record.commentaryPreview) encoded.commentaryPreview = record.commentaryPreview;
-  if (record.createdAt !== undefined) encoded.createdAt = String(record.createdAt);
   if (record.lastHeartbeatAt !== undefined) encoded.lastHeartbeatAt = String(record.lastHeartbeatAt);
   if (record.heartbeatFresh !== undefined) encoded.heartbeatFresh = String(record.heartbeatFresh);
   if (record.reconnectHealth) encoded.reconnectHealth = record.reconnectHealth;
   if (record.isLiveConnected !== undefined) encoded.isLiveConnected = String(record.isLiveConnected);
+  if (record.liveSessionStatus) encoded.liveSessionStatus = record.liveSessionStatus;
+  if (record.sessionOwner) encoded.sessionOwner = record.sessionOwner;
+  if (record.sessionOwnerAcquiredAt !== undefined) {
+    encoded.sessionOwnerAcquiredAt = String(record.sessionOwnerAcquiredAt);
+  }
+  if (record.providerName) encoded.providerName = record.providerName;
+  if (record.providerExternalMatchId) {
+    encoded.providerExternalMatchId = record.providerExternalMatchId;
+  }
+  if (record.providerRetryPolicy) encoded.providerRetryPolicy = record.providerRetryPolicy;
+  if (record.ingestionRunning !== undefined) {
+    encoded.ingestionRunning = String(record.ingestionRunning);
+  }
+  if (record.workerRunning !== undefined) encoded.workerRunning = String(record.workerRunning);
+  if (record.lastRecoveryAt !== undefined) encoded.lastRecoveryAt = String(record.lastRecoveryAt);
+  if (record.sessionIdempotencyKey) encoded.sessionIdempotencyKey = record.sessionIdempotencyKey;
 
   return encoded;
 }
@@ -159,19 +152,16 @@ export async function upsertMatchRegistry(
 ): Promise<MatchRegistryRecord> {
   const redis = getRedis();
   const existing = await getMatchRegistry(payload.matchId);
-  const now = payload.lastUpdateAt ?? Date.now();
 
   const next: MatchRegistryRecord = {
     ...existing,
     ...payload,
     matchId: payload.matchId,
-    slug: payload.slug ?? existing?.slug ?? payload.matchId,
     teamA: payload.teamA,
     teamB: payload.teamB,
+    status: payload.status,
     type: payload.type,
-    status: deriveRegistryStatus(payload.type, payload.sessionState, payload.status),
-    createdAt: payload.createdAt ?? existing?.createdAt ?? now,
-    lastUpdateAt: now,
+    lastUpdateAt: payload.lastUpdateAt ?? Date.now(),
   };
 
   await redis.hset(getMatchMetaKey(payload.matchId), encodeRecord(next));
@@ -191,12 +181,6 @@ export async function patchMatchRegistry(
     ...existing,
     ...patch,
     matchId,
-    slug: patch.slug ?? existing.slug ?? matchId,
-    status: deriveRegistryStatus(
-      patch.type ?? existing.type,
-      patch.sessionState ?? existing.sessionState,
-      patch.status
-    ),
     lastUpdateAt: patch.lastUpdateAt ?? Date.now(),
   };
 
@@ -205,162 +189,51 @@ export async function patchMatchRegistry(
   return next;
 }
 
+export async function touchMatchHeartbeat(
+  matchId: string,
+  patch?: Partial<Pick<MatchRegistryRecord, "commentaryPreview" | "currentRuns" | "currentWickets" | "currentOver" | "currentBall" | "score" | "overDisplay">>
+) {
+  const heartbeatTs = Date.now();
+  const reconnectHealth: MatchReconnectHealth = "healthy";
+  return patchMatchRegistry(matchId, {
+    ...patch,
+    lastHeartbeatAt: heartbeatTs,
+    heartbeatFresh: true,
+    reconnectHealth,
+    isLiveConnected: true,
+    status: "LIVE",
+    lastUpdateAt: heartbeatTs,
+  });
+}
+
+export async function markMatchDisconnected(matchId: string) {
+  return patchMatchRegistry(matchId, {
+    heartbeatFresh: false,
+    reconnectHealth: "disconnected",
+    isLiveConnected: false,
+    liveSessionStatus: "degraded",
+  });
+}
+
+export async function markMatchStopped(matchId: string) {
+  return patchMatchRegistry(matchId, {
+    status: "COMPLETED",
+    heartbeatFresh: false,
+    reconnectHealth: "disconnected",
+    isLiveConnected: false,
+    liveSessionStatus: "stopped",
+    ingestionRunning: false,
+    workerRunning: false,
+  });
+}
+
 export async function listMatchRegistry(): Promise<MatchRegistryRecord[]> {
   const redis = getRedis();
   const ids = await redis.smembers(MATCH_LIST_KEY);
+
   const rows = await Promise.all(ids.map((id) => getMatchRegistry(id)));
 
   return rows
     .filter((row): row is MatchRegistryRecord => Boolean(row))
     .sort((a, b) => b.lastUpdateAt - a.lastUpdateAt);
-}
-
-export async function findLiveMatchSession(input: {
-  externalMatchId: string;
-  provider: LiveSessionProvider;
-}): Promise<MatchRegistryRecord | null> {
-  const rows = await listMatchRegistry();
-
-  return (
-    rows.find(
-      (row) =>
-        row.type === "LIVE" &&
-        row.externalMatchId === input.externalMatchId &&
-        row.provider === input.provider &&
-        !LIVE_TERMINAL_STATES.has(row.sessionState ?? "ACTIVE")
-    ) ?? null
-  );
-}
-
-export async function registerLiveMatchSession(payload: {
-  matchId: string;
-  slug?: string;
-  externalMatchId: string;
-  provider: LiveSessionProvider;
-  teamA: string;
-  teamB: string;
-  seriesName?: string;
-  format?: string;
-  scheduledStart?: string;
-  sessionState?: LiveSessionState;
-}): Promise<MatchRegistryRecord> {
-  const now = Date.now();
-  return upsertMatchRegistry({
-    matchId: payload.matchId,
-    slug: payload.slug ?? payload.matchId,
-    externalMatchId: payload.externalMatchId,
-    provider: payload.provider,
-    teamA: payload.teamA,
-    teamB: payload.teamB,
-    type: "LIVE",
-    sessionState: payload.sessionState ?? "INITIALIZING",
-    status: "LIVE",
-    seriesName: payload.seriesName,
-    format: payload.format,
-    scheduledStart: payload.scheduledStart,
-    createdAt: now,
-    lastHeartbeatAt: now,
-    heartbeatFresh: false,
-    reconnectHealth: "disconnected",
-    isLiveConnected: false,
-  });
-}
-
-async function patchLiveSessionState(
-  matchId: string,
-  sessionState: LiveSessionState,
-  patch?: Partial<MatchRegistryRecord>
-) {
-  const isLiveConnected =
-    sessionState === "ACTIVE"
-      ? true
-      : sessionState === "COMPLETED"
-        ? false
-        : patch?.isLiveConnected;
-
-  return patchMatchRegistry(matchId, {
-    ...patch,
-    sessionState,
-    status: deriveRegistryStatus(patch?.type ?? "LIVE", sessionState, patch?.status),
-    isLiveConnected,
-  });
-}
-
-export async function markMatchInitializing(matchId: string) {
-  return patchLiveSessionState(matchId, "INITIALIZING", {
-    heartbeatFresh: false,
-    reconnectHealth: "disconnected",
-    isLiveConnected: false,
-  });
-}
-
-export async function markMatchActive(matchId: string) {
-  const heartbeatTs = Date.now();
-  return patchLiveSessionState(matchId, "ACTIVE", {
-    lastHeartbeatAt: heartbeatTs,
-    heartbeatFresh: true,
-    reconnectHealth: "healthy",
-    isLiveConnected: true,
-    lastUpdateAt: heartbeatTs,
-  });
-}
-
-export async function markMatchStale(matchId: string, patch?: Partial<MatchRegistryRecord>) {
-  return patchLiveSessionState(matchId, "STALE", {
-    ...patch,
-    heartbeatFresh: false,
-    reconnectHealth: "stale",
-    isLiveConnected: false,
-  });
-}
-
-export async function markMatchDisconnected(matchId: string) {
-  return patchLiveSessionState(matchId, "DISCONNECTED", {
-    heartbeatFresh: false,
-    reconnectHealth: "disconnected",
-    isLiveConnected: false,
-  });
-}
-
-export async function markMatchFailed(matchId: string, message?: string) {
-  return patchLiveSessionState(matchId, "FAILED", {
-    heartbeatFresh: false,
-    reconnectHealth: "disconnected",
-    isLiveConnected: false,
-    commentaryPreview: message,
-  });
-}
-
-export async function touchMatchHeartbeat(
-  matchId: string,
-  patch?: Partial<
-    Pick<
-      MatchRegistryRecord,
-      | "commentaryPreview"
-      | "currentRuns"
-      | "currentWickets"
-      | "currentOver"
-      | "currentBall"
-      | "score"
-      | "overDisplay"
-    >
-  >
-) {
-  const heartbeatTs = Date.now();
-  return patchLiveSessionState(matchId, "ACTIVE", {
-    ...patch,
-    lastHeartbeatAt: heartbeatTs,
-    heartbeatFresh: true,
-    reconnectHealth: "healthy",
-    isLiveConnected: true,
-    lastUpdateAt: heartbeatTs,
-  });
-}
-
-export async function markMatchStopped(matchId: string) {
-  return patchLiveSessionState(matchId, "COMPLETED", {
-    heartbeatFresh: false,
-    reconnectHealth: "disconnected",
-    isLiveConnected: false,
-  });
 }

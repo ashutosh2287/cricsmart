@@ -170,3 +170,7 @@ export function stopWorker(matchId: string) {
   delete processedPointers[matchId];
   delete processedKeys[matchId];
 }
+
+export function isWorkerRunning(matchId: string): boolean {
+  return workerLocks.has(matchId) && workers[matchId] === true;
+}

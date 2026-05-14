@@ -3,7 +3,8 @@ import { stopMatch } from "@/services/match/matchManager";
 import { stopLiveMatchIngestor } from "@/services/ingestion/liveMatchIngestor";
 import { resetMatchState } from "@/services/matchEngine";
 import { stopWorker } from "@/services/queue/eventWorker";
-import { markMatchStopped } from "@/services/match/matchRegistry";
+import { markMatchStopped, getMatchRegistry } from "@/services/match/matchRegistry";
+import { stopLiveSession } from "@/services/live/liveSessionOrchestrator";
 
 /* ========================= */
 /* API: STOP MATCH */
@@ -23,25 +24,18 @@ export async function POST(req: NextRequest) {
 
     console.log("🛑 STOP MATCH:", matchId);
 
-    /* ========================= */
-    /* 🔥 STOP INGESTION */
-    /* ========================= */
-    stopLiveMatchIngestor(matchId);
+    const registry = await getMatchRegistry(matchId);
+    const isLive = registry?.type === "LIVE";
 
-    /* ========================= */
-    /* 🔥 STOP MATCH LIFECYCLE */
-    /* ========================= */
-    stopMatch(matchId);
+    if (isLive) {
+      await stopLiveSession(matchId);
+    } else {
+      stopLiveMatchIngestor(matchId);
+      stopMatch(matchId);
+      stopWorker(matchId);
+    }
 
-    /* ========================= */
-    /* 🔥 RESET ENGINE STATE */
-    /* ========================= */
     resetMatchState(matchId);
-
-    /* ========================= */
-    /* 🔥 STOP WORKER */
-    /* ========================= */
-    stopWorker(matchId);
 
     await markMatchStopped(matchId);
 

@@ -6,15 +6,35 @@ import { getCommentary } from "@/services/commentary/commentaryStore";
 type MatchListRow = MatchRegistryRecord & {
   heartbeatFresh: boolean;
 };
+const TRANSITIONAL_SESSION_STATES = new Set(["bootstrapping", "recovering"]);
 
 function withDerivedFreshness(match: MatchRegistryRecord): MatchListRow {
   const now = Date.now();
   const heartbeatTs = match.lastHeartbeatAt ?? 0;
   const heartbeatFresh = now - heartbeatTs <= 20_000;
+  const ingestionRunning = match.type === "LIVE" ? Boolean(match.ingestionRunning) : false;
+  const workerRunning = match.type === "LIVE" ? Boolean(match.workerRunning) : false;
+  let liveSessionStatus = match.liveSessionStatus;
+  const isTransitionalStatus =
+    typeof match.liveSessionStatus === "string" &&
+    TRANSITIONAL_SESSION_STATES.has(match.liveSessionStatus);
+
+  if (match.type === "LIVE" && !isTransitionalStatus) {
+    if (ingestionRunning && workerRunning) {
+      liveSessionStatus = "live";
+    } else if (match.status === "LIVE") {
+      liveSessionStatus = "degraded";
+    } else {
+      liveSessionStatus = "stopped";
+    }
+  }
 
   return {
     ...match,
     heartbeatFresh,
+    ingestionRunning,
+    workerRunning,
+    liveSessionStatus,
     reconnectHealth:
       match.status === "LIVE"
         ? heartbeatFresh

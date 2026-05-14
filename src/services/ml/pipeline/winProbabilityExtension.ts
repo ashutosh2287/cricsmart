@@ -44,6 +44,14 @@ export function runWinProbabilityExtension(
     previousBattingProbability: input.previousBattingProbability,
   });
 
+  let smoothingResult = {
+    applied: false,
+    previousWeight: 0,
+    currentWeight: 1,
+    criticalMoment: false,
+    smoothedProbability: clamp(input.rawBattingProbability),
+  };
+
   const resilient = runResilientInference<number>({
     matchId: input.matchId,
     mode,
@@ -60,6 +68,7 @@ export function runWinProbabilityExtension(
         previousProbability: input.previousBattingProbability,
         currentProbability: calibrated,
       });
+      smoothingResult = smoothing;
 
       logger.debug("ML", "prediction_smoothed", {
         matchId: input.matchId,
@@ -74,12 +83,6 @@ export function runWinProbabilityExtension(
   });
 
   const finalProbability = clamp(resilient.value);
-  const smoothing = smoothProbability({
-    state: input.state,
-    ballEvent: input.ballEvent,
-    previousProbability: input.previousBattingProbability,
-    currentProbability: finalProbability,
-  });
 
   if (input.previousBattingProbability !== undefined) {
     recordPredictionDelta(input.matchId, finalProbability - input.previousBattingProbability);
@@ -126,10 +129,10 @@ export function runWinProbabilityExtension(
     latencyMs: resilient.latencyMs,
     retryCount: resilient.retryCount,
     smoothing: {
-      applied: smoothing.applied,
-      previousWeight: smoothing.previousWeight,
-      currentWeight: smoothing.currentWeight,
-      criticalMoment: smoothing.criticalMoment,
+      applied: smoothingResult.applied,
+      previousWeight: smoothingResult.previousWeight,
+      currentWeight: smoothingResult.currentWeight,
+      criticalMoment: smoothingResult.criticalMoment,
     },
   };
 }

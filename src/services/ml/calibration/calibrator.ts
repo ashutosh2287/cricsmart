@@ -5,6 +5,8 @@ import {
 } from "@/services/ml/calibration/calibrationManifest";
 import { markCalibrationLoaded } from "@/services/ml/observability/mlObservabilityStore";
 
+const INTERPOLATION_EPSILON = 1e-9;
+
 function clampProbability(value: number): number {
   return Math.max(0, Math.min(100, value));
 }
@@ -32,7 +34,7 @@ function applyIsotonic(p: number, manifest: CalibrationManifest): number {
     const prev = sorted[i - 1];
     const next = sorted[i];
     if (p <= next.input) {
-      const ratio = (p - prev.input) / (next.input - prev.input || 1);
+      const ratio = (p - prev.input) / Math.max(next.input - prev.input, INTERPOLATION_EPSILON);
       return prev.output + ratio * (next.output - prev.output);
     }
   }

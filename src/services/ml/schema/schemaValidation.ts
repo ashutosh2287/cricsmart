@@ -38,7 +38,7 @@ export function validateFeaturePayloadCompatibility(
   const missingFeatures = contract.featureNames.filter((name) => !(name in payload));
   const nonNumericFeatures = contract.featureNames.filter((name) => {
     const value = payload[name];
-    return Number.isFinite(value) === false;
+    return !Number.isFinite(value);
   });
 
   if (missingFeatures.length || nonNumericFeatures.length) {

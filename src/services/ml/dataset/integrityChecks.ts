@@ -49,13 +49,25 @@ export function validateDatasetIntegrity(events: BallEvent[]): DatasetIntegrityR
     issues.push("Invalid innings value detected");
   }
 
-  const targetsValid = true;
+  const targetsValid = events.every((event) => {
+    if ((event.runs ?? 0) < 0) return false;
+    return true;
+  });
+  if (!targetsValid) {
+    issues.push("Invalid target-related values detected in event stream");
+  }
+
   const replayParityValid = events.every((event) => Boolean(event.id && event.slug));
   if (!replayParityValid) {
     issues.push("Replay reconstruction key fields missing");
   }
 
-  const leakageRisk = false;
+  const observedFields = [...new Set(events.flatMap((event) => Object.keys(event)))];
+  const leakageFeatures = detectFeatureLeakage(observedFields);
+  const leakageRisk = leakageFeatures.length > 0;
+  if (leakageRisk) {
+    issues.push(`Potential leakage fields detected: ${leakageFeatures.join(", ")}`);
+  }
 
   return {
     ok: chronologyValid && inningsValid && targetsValid && replayParityValid && !leakageRisk,

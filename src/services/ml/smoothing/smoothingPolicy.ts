@@ -23,9 +23,11 @@ function clamp(value: number): number {
 export function isCriticalMoment(context: SmoothingContext): boolean {
   const innings = context.state.innings[context.state.currentInningsIndex];
   const over = innings?.over ?? 0;
+  const configOvers = context.state.configOvers ?? 20;
+  const deathOverStart = Math.max(1, Math.floor(configOvers * 0.8));
 
   const wicket = Boolean(context.ballEvent?.wicket);
-  const deathOver = over >= 16;
+  const deathOver = over >= deathOverStart;
   const superOver = context.state.configOvers === 1;
   const previous = context.previousProbability ?? context.currentProbability;
   const spike = Math.abs(context.currentProbability - previous) >= 12;
@@ -35,7 +37,7 @@ export function isCriticalMoment(context: SmoothingContext): boolean {
 
 export function smoothProbability(context: SmoothingContext): SmoothingResult {
   const previous = context.previousProbability;
-  if (previous === undefined || Number.isFinite(previous) === false) {
+  if (previous === undefined || !Number.isFinite(previous)) {
     return {
       smoothedProbability: clamp(context.currentProbability),
       applied: false,

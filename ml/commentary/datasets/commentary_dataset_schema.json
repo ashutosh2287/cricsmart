@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CommentaryDatasetRow",
+  "type": "object",
+  "required": [
+    "match_id",
+    "event_id",
+    "event_type",
+    "batter",
+    "bowler",
+    "innings",
+    "over",
+    "ball",
+    "wickets",
+    "pressure_index",
+    "momentum_score",
+    "phase",
+    "result",
+    "commentary_text",
+    "tags"
+  ],
+  "properties": {
+    "match_id": { "type": "string" },
+    "event_id": { "type": "string" },
+    "event_type": { "type": "string" },
+    "batter": { "type": "string" },
+    "bowler": { "type": "string" },
+    "innings": { "type": "integer", "minimum": 1 },
+    "over": { "type": "integer", "minimum": 0 },
+    "ball": { "type": "integer", "minimum": 0, "maximum": 6 },
+    "over_state": { "type": "string" },
+    "wickets": { "type": "integer", "minimum": 0, "maximum": 10 },
+    "pressure_index": { "type": "number", "minimum": 0, "maximum": 100 },
+    "momentum_score": { "type": "number", "minimum": -100, "maximum": 100 },
+    "phase": { "type": "string" },
+    "partnership_runs": { "type": "integer", "minimum": 0 },
+    "chase_difficulty": { "type": "string" },
+    "result": { "type": "string" },
+    "commentary_text": { "type": "string" },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}

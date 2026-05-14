@@ -4,7 +4,7 @@ import { getMatchConfig } from "./matchFormat";
 import { advanceClock } from "./timeEngine";
 import { processMatchIntelligence } from "./matchIntelligenceEngine";
 import { v4 as uuidv4 } from "uuid";
-import { generateAdvancedCommentary } from "./commentary/advancedCommentaryEngine";
+import { generateCommentaryForBall } from "./commentary/commentaryOrchestrator";
 import { emitCommentary } from "@/services/commentary/commentaryBus";
 import { emitCommand } from "./commandBus";
 import { setMatchState as setUIState } from "@/lib/eventStore";
@@ -1153,7 +1153,21 @@ export function dispatchBallEvent(
     });
   }
 
-  const commentaryText = generateAdvancedCommentary(ballEvent, next);
+  const generatedCommentary = (() => {
+    try {
+      return generateCommentaryForBall({
+        matchId,
+        branchId: next.activeBranchId,
+        event: ballEvent,
+        state: next,
+        events: eventStreams[matchId] ?? [],
+      });
+    } catch {
+      return null;
+    }
+  })();
+
+  const commentaryText = generatedCommentary?.text ?? "No significant update on that delivery.";
 
 emitCommentary({
   matchId,

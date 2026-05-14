@@ -23,6 +23,7 @@ import { updatePlayerRegistry } from "./playerRegistryEngine";
 import { broadcast } from "@/services/realtime/eventBus";
 import { appendEventTimeline, resetEventTimeline } from "@/services/replay/eventTimeline";
 import { appendCommentaryTimeline, resetCommentaryTimeline } from "@/services/commentary/commentaryTimelineStore";
+import { recordBallEvent } from "@/services/recording/eventRecorder";
 
 
 
@@ -1325,7 +1326,10 @@ if (updatedState.matchEnded) {
   
 
   getStorageModule()
-    .then(({ appendEvent }) => appendEvent(matchId, ballEvent))
+    .then(async ({ appendEvent }) => {
+      await appendEvent(matchId, ballEvent);
+      await recordBallEvent(matchId, ballEvent);
+    })
     .catch(console.error);
 
   /*

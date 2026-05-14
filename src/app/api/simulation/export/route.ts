@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getReplayExport } from "@/services/simulation/simulationReplayExport";
+import { exportRecordingDataset } from "@/services/recording/recordingExporter";
+import type { RecordingFormat } from "@/services/recording/recordingStore";
 
 export const runtime = "nodejs";
 
@@ -7,6 +8,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const matchId = body?.matchId;
+    const format = (body?.format ?? "json") as RecordingFormat;
 
     if (!matchId) {
       return NextResponse.json(
@@ -15,13 +17,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const exported = getReplayExport(matchId);
+    const exported = await exportRecordingDataset(matchId, format);
     return NextResponse.json({
       success: true,
       matchId,
-      exportedAt: new Date(exported.updatedAt).toISOString(),
-      eventCount: exported.events.length,
-      events: exported.events,
+      format: exported.format,
+      metadata: exported.metadata,
+      payload: exported.payload,
     });
   } catch (err) {
     return NextResponse.json(

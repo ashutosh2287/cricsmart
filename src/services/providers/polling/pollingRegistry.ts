@@ -16,6 +16,9 @@ export type PollingHealth = {
   totalPolls: number;
   pollsLastMinute: number;
   quotaEstimatePerHour: number;
+  priorityScore?: number;
+  retryBudget?: number;
+  dangerLevel?: "normal" | "warning" | "critical";
 };
 
 const POLL_WINDOW_MS = 60_000;
@@ -102,7 +105,12 @@ export function markPollFailure(matchId: string) {
 
 export function updatePollingContext(
   matchId: string,
-  patch: Partial<Pick<PollingHealth, "pollIntervalMs" | "activeViewers" | "status">>
+  patch: Partial<
+    Pick<
+      PollingHealth,
+      "pollIntervalMs" | "activeViewers" | "status" | "priorityScore" | "retryBudget" | "dangerLevel"
+    >
+  >
 ) {
   const health = registry.get(matchId);
   if (!health) return;
@@ -110,6 +118,9 @@ export function updatePollingContext(
   if (patch.pollIntervalMs !== undefined) health.pollIntervalMs = patch.pollIntervalMs;
   if (patch.activeViewers !== undefined) health.activeViewers = patch.activeViewers;
   if (patch.status !== undefined) health.status = patch.status;
+  if (patch.priorityScore !== undefined) health.priorityScore = patch.priorityScore;
+  if (patch.retryBudget !== undefined) health.retryBudget = patch.retryBudget;
+  if (patch.dangerLevel !== undefined) health.dangerLevel = patch.dangerLevel;
 }
 
 export function markPollingStopped(matchId: string) {
@@ -140,4 +151,37 @@ export function getActivePollerCount() {
     }
   }
   return count;
+}
+
+export function getQuotaSummary() {
+  const rows = listPollingHealth();
+  const projectedDailyUsage = rows.reduce(
+    (sum, row) => sum + Math.max(0, Math.round((row.quotaEstimatePerHour || 0) * 24)),
+    0
+  );
+
+  const criticalCount = rows.filter((row) => row.dangerLevel === "critical").length;
+  const warningCount = rows.filter((row) => row.dangerLevel === "warning").length;
+  const dangerLevel =
+    criticalCount > 0 ? "critical" : warningCount > 0 ? "warning" : "normal";
+
+  return {
+    projectedDailyUsage,
+    dangerLevel,
+    criticalPollers: criticalCount,
+    warningPollers: warningCount,
+    activeHighFrequencySessions: rows
+      .filter((row) => row.pollIntervalMs <= 12_000)
+      .map((row) => row.matchId),
+    byProvider: rows.reduce<Record<string, number>>((acc, row) => {
+      acc[row.providerName] = (acc[row.providerName] ?? 0) + row.totalPolls;
+      return acc;
+    }, {}),
+    perMatchPolls: rows.reduce<Record<string, number>>((acc, row) => {
+      acc[row.matchId] = row.totalPolls;
+      return acc;
+    }, {}),
+    totalFailedCalls: rows.reduce((sum, row) => sum + row.failedPolls, 0),
+    totalRetryUsage: rows.reduce((sum, row) => sum + row.retryAttempts, 0),
+  };
 }

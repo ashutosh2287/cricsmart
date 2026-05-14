@@ -7,6 +7,7 @@ import { redis } from "../queue/redisClient";
 import { registerPlayer } from "../player/playerRegistry";
 import { getMatchState, syncBattingOrder } from "../matchEngine";
 import {
+  getMatchRegistry,
   markMatchDisconnected,
   touchMatchHeartbeat,
 } from "@/services/match/matchRegistry";
@@ -21,6 +22,10 @@ import { getPollingHealth } from "@/services/providers/polling/pollingRegistry";
 import { getClientCount } from "@/services/realtime/clientStore";
 import { getReplayState } from "@/services/replay/replayEngine";
 import { logger } from "@/lib/logger";
+import {
+  markProviderOutageEnded,
+  markProviderOutageStarted,
+} from "@/services/runtime/snapshotCache";
 
 type MatchRuntime = {
   abortController: AbortController;
@@ -31,6 +36,8 @@ type MatchRuntime = {
   isFetching: boolean;
   failureCount: number;
   backoffUntil: number;
+  seriesName?: string;
+  format?: string;
 };
 
 const runtimes = new Map<string, MatchRuntime>();
@@ -84,6 +91,8 @@ function getOrCreateRuntime(matchId: string): MatchRuntime {
     isFetching: false,
     failureCount: 0,
     backoffUntil: 0,
+    seriesName: undefined,
+    format: undefined,
   };
   runtimes.set(matchId, created);
   return created;
@@ -136,8 +145,10 @@ async function pollAndIngest(matchId: string, externalMatchId: string) {
       );
 
       runtime.failureCount = 0;
+      markProviderOutageEnded(matchId);
     } catch (err) {
       runtime.failureCount += 1;
+      markProviderOutageStarted(matchId);
 
       if (runtime.failureCount >= 3) {
         const delay = Math.min(15000, runtime.failureCount * 3000);
@@ -269,6 +280,12 @@ export function startLiveMatchIngestor(matchId: string, externalMatchId: string)
   const runtime = getOrCreateRuntime(matchId);
   runtime.abortController.abort();
   runtime.abortController = new AbortController();
+  getMatchRegistry(matchId)
+    .then((row) => {
+      runtime.seriesName = row?.seriesName;
+      runtime.format = row?.format;
+    })
+    .catch(() => {});
 
   if (provider.mode === "mock") {
     logger.info("PROVIDER", "session_using_mock_provider", {
@@ -287,6 +304,7 @@ export function startLiveMatchIngestor(matchId: string, externalMatchId: string)
       const health = getPollingHealth(matchId);
 
       return {
+        matchId,
         providerMode: provider.mode,
         activeViewers: getClientCount(matchId),
         matchCompleted: Boolean(innings?.completed),
@@ -294,6 +312,10 @@ export function startLiveMatchIngestor(matchId: string, externalMatchId: string)
         isFixturesPage: false,
         failedPolls: runtime.failureCount,
         pollsLastMinute: health?.pollsLastMinute ?? 0,
+        teamA: state?.teamA?.name,
+        teamB: state?.teamB?.name,
+        seriesName: runtime.seriesName,
+        format: runtime.format,
       };
     },
     poll: () => pollAndIngest(matchId, externalMatchId),
@@ -323,4 +345,8 @@ export function stopLiveMatchIngestor(matchId: string) {
       error,
     });
   });
+}
+
+export function hasLiveRuntime(matchId: string) {
+  return runtimes.has(matchId);
 }

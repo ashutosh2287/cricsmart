@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 import { getMatchRegistry } from "@/services/match/matchRegistry";
+import {
+  cacheMatchSnapshot,
+  consumeStaleFallback,
+} from "@/services/runtime/snapshotCache";
 
 export async function GET(
   request: Request,
@@ -23,11 +27,34 @@ export async function GET(
     ]);
 
     if (!data) {
+      const stale = consumeStaleFallback(matchId);
+      if (stale) {
+        return NextResponse.json({
+          success: true,
+          match: stale.state,
+          runtime: {
+            isRunning: false,
+            isPaused: false,
+            speed: 1500,
+          },
+          registry,
+          staleSnapshot: true,
+          staleBadge: "STALE",
+          staleLastUpdatedAt: new Date(stale.cachedAt).toISOString(),
+        });
+      }
+
       return NextResponse.json(
         { success: false, message: "Match not found" },
         { status: 404 }
       );
     }
+
+    cacheMatchSnapshot(
+      matchId,
+      data.state,
+      registry?.sourceType ?? (registry?.type === "LIVE" ? "LIVE" : "SIMULATION")
+    );
 
     return NextResponse.json({
       success: true,

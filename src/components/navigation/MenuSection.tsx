@@ -27,7 +27,7 @@ export default function MenuSection({ title, items, pathname, onNavigate }: Menu
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
         className="mb-2 flex w-full items-center justify-between rounded-md px-2 py-1 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80"
-        aria-expanded={expanded}
+        aria-expanded={expanded ? "true" : "false"}
       >
         {title}
         <svg

@@ -81,11 +81,13 @@ export const cricApiLiveProvider: LiveProvider = {
 
 export function getLiveProvider(): LiveProvider {
   const mode = getProviderMode();
-  const provider = mode === "mock"
-    ? mockMatchProvider
-    : mode === "simulation"
-      ? simulationMatchProvider
-      : cricApiMatchProvider;
+  let provider = cricApiMatchProvider;
+
+  if (mode === "mock") {
+    provider = mockMatchProvider;
+  } else if (mode === "simulation") {
+    provider = simulationMatchProvider;
+  }
 
   return {
     name: provider.name,

@@ -39,7 +39,6 @@ export function resolvePollingIntervalMs(ctx: PollingContext): number {
   if (ctx.providerMode === "mock") return 1000;
   if (ctx.providerMode === "simulation") return 60_000;
 
-
   if (ctx.matchCompleted) return 300_000;
   if (ctx.activeViewers <= 0) return 180_000;
   if (ctx.isFixturesPage) return 60_000;

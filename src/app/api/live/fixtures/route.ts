@@ -278,7 +278,7 @@ export async function GET() {
     } else {
       const providerKey = key;
       if (!providerKey) {
-        throw new Error("missing_api_key");
+        throw new Error("Missing server-side CRICKET_API_KEY for cricketdata provider");
       }
 
       const endpointResults: ProviderEndpointResult[] = [];

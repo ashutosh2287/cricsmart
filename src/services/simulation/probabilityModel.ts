@@ -1,5 +1,6 @@
 import { SimulationState } from "./simulationState";
 import { getPlayer } from "./playerUtils";
+import { randomForMatch } from "./simulationRandom";
 
 type Outcome = {
   type:
@@ -29,7 +30,7 @@ function getRequiredRunRate(
   return (runsNeeded / ballsLeft) * 6;
 }
 
-export function getBallOutcome(state: SimulationState): Outcome {
+export function getBallOutcome(state: SimulationState, matchId?: string): Outcome {
   // ✅ ALWAYS use attribute-based access
   const bat = getPlayer(state.striker);
   const bowl = getPlayer(state.bowler);
@@ -67,10 +68,10 @@ export function getBallOutcome(state: SimulationState): Outcome {
   { type: "NB", runs: 1, prob: 0.015 },
 
   // 🔥 BYES (no batsman credit)
-  { type: "BYE", runs: Math.random() < 0.7 ? 1 : 2, prob: 0.02 },
+  { type: "BYE", runs: randomForMatch(matchId) < 0.7 ? 1 : 2, prob: 0.02 },
 
   // 🔥 LEG BYES
-  { type: "LB", runs: Math.random() < 0.7 ? 1 : 2, prob: 0.02 },
+  { type: "LB", runs: randomForMatch(matchId) < 0.7 ? 1 : 2, prob: 0.02 },
 ];
 
   // 🔥 NORMALIZE PROBABILITIES
@@ -81,11 +82,11 @@ const normalized = outcomes.map(o => ({
   prob: o.prob / totalProb
 }));
 
-return weightedRandom(normalized);
+return weightedRandom(normalized, matchId);
 }
 
-function weightedRandom(options: Outcome[]): Outcome {
-  const rand = Math.random();
+function weightedRandom(options: Outcome[], matchId?: string): Outcome {
+  const rand = randomForMatch(matchId);
   let sum = 0;
 
   for (const opt of options) {

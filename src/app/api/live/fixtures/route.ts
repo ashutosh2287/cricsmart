@@ -3,6 +3,8 @@ import { getRedis } from "@/services/storage/redisClient";
 import { logger } from "@/lib/logger";
 import { curateDiscovery } from "@/services/matches/curateMatches";
 import { CuratedDiscoveryPayload, CuratedMatch, MatchSections, ProviderMatch } from "@/services/matches/types";
+import { getProviderMode } from "@/config/providerMode";
+import { getMatchProvider } from "@/services/providers/providerFactory";
 
 const CACHE_KEY = "live:fixtures:cache";
 const CACHE_TTL_SECONDS = 60;
@@ -223,6 +225,8 @@ function isAbortError(err: unknown): boolean {
 }
 
 export async function GET() {
+  const mode = getProviderMode();
+  const provider = getMatchProvider(mode);
   const key = process.env.CRICKET_API_KEY;
 
   let redis;
@@ -249,7 +253,7 @@ export async function GET() {
     }
   }
 
-  if (!key) {
+  if (mode === "cricketdata" && !key) {
     logger.warn("MATCH_CURATION", "Missing server-side CRICKET_API_KEY in live fixtures route");
     if (cachedPayload) {
       return NextResponse.json({ ...cachedPayload, source: "stale", stale: true, error: "missing_api_key" });
@@ -261,43 +265,61 @@ export async function GET() {
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const endpointResults: ProviderEndpointResult[] = [];
+    let deduped: ProviderMatch[] = [];
 
-    const primary = await fetchProviderEndpoint(PRIMARY_PROVIDER_ENDPOINT, key, controller.signal);
-    endpointResults.push(primary);
+    if (mode !== "cricketdata") {
+      const providerMatches = await provider.getFixtures(controller.signal);
+      deduped = dedupeProviderMatches(providerMatches).deduped;
+      logger.info("PROVIDER", "provider_poll_success", {
+        providerMode: mode,
+        provider: provider.name,
+        fixtures: deduped.length,
+      });
+    } else {
+      const providerKey = key;
+      if (!providerKey) {
+        throw new Error("Missing server-side CRICKET_API_KEY for cricketdata provider");
+      }
 
-    const mergedMatches: ProviderMatch[] = [];
-    if (primary.ok && primary.payload) {
-      mergedMatches.push(...getProviderMatches(primary.payload));
-    }
+      const endpointResults: ProviderEndpointResult[] = [];
 
-    if (mergedMatches.length === 0) {
-      for (const endpoint of FALLBACK_PROVIDER_ENDPOINTS) {
-        const result = await fetchProviderEndpoint(endpoint, key, controller.signal);
-        endpointResults.push(result);
-        if (result.ok && result.payload) {
-          mergedMatches.push(...getProviderMatches(result.payload));
+      const primary = await fetchProviderEndpoint(PRIMARY_PROVIDER_ENDPOINT, providerKey, controller.signal);
+      endpointResults.push(primary);
+
+      const mergedMatches: ProviderMatch[] = [];
+      if (primary.ok && primary.payload) {
+        mergedMatches.push(...getProviderMatches(primary.payload));
+      }
+
+      if (mergedMatches.length === 0) {
+        for (const endpoint of FALLBACK_PROVIDER_ENDPOINTS) {
+          const result = await fetchProviderEndpoint(endpoint, providerKey, controller.signal);
+          endpointResults.push(result);
+          if (result.ok && result.payload) {
+            mergedMatches.push(...getProviderMatches(result.payload));
+          }
         }
       }
+
+      const { deduped: d, dedupeRemoved } = dedupeProviderMatches(mergedMatches);
+      deduped = d;
+
+      logger.debug("MATCH_CURATION", "Provider endpoint responses", {
+        endpoints: endpointResults.map((item) => ({
+          endpoint: item.endpoint,
+          ok: item.ok,
+          httpStatus: item.httpStatus,
+          returnedMatches: item.count,
+          message: item.message,
+        })),
+      });
+
+      logger.debug("MATCH_CURATION", "Provider merge summary", {
+        totalRawProviderMatches: mergedMatches.length,
+        totalAfterDedupe: deduped.length,
+        ...buildExclusionSummary(deduped, dedupeRemoved),
+      });
     }
-
-    const { deduped, dedupeRemoved } = dedupeProviderMatches(mergedMatches);
-
-    logger.debug("MATCH_CURATION", "Provider endpoint responses", {
-      endpoints: endpointResults.map((item) => ({
-        endpoint: item.endpoint,
-        ok: item.ok,
-        httpStatus: item.httpStatus,
-        returnedMatches: item.count,
-        message: item.message,
-      })),
-    });
-
-    logger.debug("MATCH_CURATION", "Provider merge summary", {
-      totalRawProviderMatches: mergedMatches.length,
-      totalAfterDedupe: deduped.length,
-      ...buildExclusionSummary(deduped, dedupeRemoved),
-    });
 
     if (deduped.length === 0) {
       if (cachedPayload) {
@@ -307,7 +329,7 @@ export async function GET() {
     }
 
     const providerPayload = { data: deduped };
-    const curated = curateDiscovery(providerPayload, "cricapi");
+    const curated = curateDiscovery(providerPayload, provider.name);
 
     const responsePayload: CuratedDiscoveryPayload = {
       success: curated.data.length > 0,
@@ -328,6 +350,8 @@ export async function GET() {
         seriesName: match.seriesName,
         priorityScore: match.priorityScore,
       })),
+      providerMode: mode,
+      providerName: provider.name,
     });
 
     if (redis) {

@@ -57,3 +57,15 @@ console.log("➖ REMOVE CLIENT", {
     matchClients.delete(matchId);
   }
 }
+
+export function getClientCount(matchId: string) {
+  const clients = matchClients.get(matchId);
+  return clients?.size ?? 0;
+}
+
+export function listClientCounts() {
+  return Array.from(matchClients.entries()).map(([matchId, clients]) => ({
+    matchId,
+    count: clients.size,
+  }));
+}

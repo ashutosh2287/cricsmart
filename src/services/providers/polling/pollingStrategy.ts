@@ -36,10 +36,10 @@ export function shouldDegradePolling(ctx: PollingContext): boolean {
 }
 
 export function resolvePollingIntervalMs(ctx: PollingContext): number {
+  if (ctx.providerMode === "mock") return 1000;
+  if (ctx.providerMode === "simulation") return 60_000;
+
   if (isMockProviderMode(ctx.providerMode) || isSimulationProviderMode(ctx.providerMode)) {
-    if (ctx.providerMode === "mock") {
-      return 1000;
-    }
     return 60_000;
   }
 

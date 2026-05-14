@@ -37,6 +37,7 @@ const runtimes = new Map<string, MatchRuntime>();
 
 const MAX_EVENT_CACHE = 300;
 const MAX_EVENT_BATCH = 50;
+const RECONCILE_POLL_FREQUENCY = 3;
 
 function buildEventKey(apiEvent: ApiBallEvent) {
   if (apiEvent.id) return apiEvent.id;
@@ -239,7 +240,7 @@ async function pollAndIngest(matchId: string, externalMatchId: string) {
       commentaryPreview: latestCommentary,
     });
 
-    if (provider.supportsLivePolling && runtime.pollCount % 3 === 0 && !runtime.isReconciling) {
+    if (provider.supportsLivePolling && runtime.pollCount % RECONCILE_POLL_FREQUENCY === 0 && !runtime.isReconciling) {
       try {
         runtime.isReconciling = true;
         await smartReconcileMatch(

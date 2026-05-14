@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { getMatchState, initMatch } from "@/services/matchEngine";
 import { startLiveMatchIngestor, stopLiveMatchIngestor, isLiveMatchIngestorRunning } from "@/services/ingestion/liveMatchIngestor";
 import { startWorker, stopWorker, isWorkerRunning } from "@/services/queue/eventWorker";
@@ -103,7 +104,7 @@ export async function bootstrapLiveSession(args: BootstrapArgs): Promise<Bootstr
     throw new Error("Missing server-side CRICKET_API_KEY for live provider integration");
   }
 
-  const lockOwner = `${LIVE_OWNER_PREFIX}:${args.matchId}:${crypto.randomUUID()}`;
+  const lockOwner = `${LIVE_OWNER_PREFIX}:${args.matchId}:${randomUUID()}`;
   const lockAcquired = await acquireLock(args.matchId, lockOwner);
 
   if (!lockAcquired) {
@@ -198,7 +199,7 @@ export async function bootstrapLiveSession(args: BootstrapArgs): Promise<Bootstr
 }
 
 export async function stopLiveSession(matchId: string) {
-  const lockOwner = `${LIVE_OWNER_PREFIX}:${matchId}:stop:${crypto.randomUUID()}`;
+  const lockOwner = `${LIVE_OWNER_PREFIX}:${matchId}:stop:${randomUUID()}`;
   const lockAcquired = await acquireLock(matchId, lockOwner);
   if (!lockAcquired) {
     return { matchId, stopped: false };

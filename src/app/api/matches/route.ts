@@ -20,10 +20,8 @@ function withDerivedFreshness(match: MatchRegistryRecord): MatchListRow {
     match.liveSessionStatus === "bootstrapping" ||
     match.liveSessionStatus === "recovering";
 
-  if (match.type === "LIVE") {
-    if (transitionalStatus) {
-      liveSessionStatus = match.liveSessionStatus;
-    } else if (ingestionRunning && workerRunning) {
+  if (match.type === "LIVE" && !transitionalStatus) {
+    if (ingestionRunning && workerRunning) {
       liveSessionStatus = "live";
     } else if (match.status === "LIVE") {
       liveSessionStatus = "degraded";

@@ -51,7 +51,7 @@ export default function ThemeToggle() {
       : "Switch to light theme"
     : "Toggle theme preference";
 
-  return ( <button type="button" aria-label={ariaLabel} aria-pressed={hasHydrated ? isLight : false} onClick={toggleTheme} className="theme-toggle" >
+  return ( <button type="button" aria-label={ariaLabel} aria-pressed={hasHydrated ? (isLight ? "true" : "false") : "false"} onClick={toggleTheme} className="theme-toggle" >
       <span className="theme-toggle__icon theme-toggle__icon--sun">
         <SunIcon />
       </span>

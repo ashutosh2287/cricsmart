@@ -7,9 +7,10 @@ import { teams } from "@/data/teams";
 import {
   getMatchState,
   hydrateMatchState,
-  MatchState,
 } from "@/services/matchEngine";
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
+import { getSimulationPreset } from "@/services/simulation/simulationPresets";
+import { setSimulationSeed } from "@/services/simulation/simulationRandom";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,8 @@ type StartSimulationBody = {
   teamBName?: string;
   tossWinner?: string;
   tossDecision?: "BAT" | "BOWL";
+  preset?: string;
+  seed?: string;
 };
 
 // ==============================
@@ -38,10 +41,12 @@ export async function POST(req: Request) {
     const body = (await req.json()) as StartSimulationBody;
 
     const matchId = body?.matchId?.trim();
-    const teamAName = body?.teamAName?.trim();
-    const teamBName = body?.teamBName?.trim();
-    const tossWinner = body?.tossWinner?.trim();
-    const tossDecision = body?.tossDecision;
+    const preset = getSimulationPreset(body?.preset);
+    const teamAName = (preset?.teamAName ?? body?.teamAName)?.trim();
+    const teamBName = (preset?.teamBName ?? body?.teamBName)?.trim();
+    const tossWinner = (preset?.tossWinner ?? body?.tossWinner)?.trim();
+    const tossDecision = preset?.tossDecision ?? body?.tossDecision;
+    const seed = body?.seed?.trim();
 
     // ==============================
     // ✅ VALIDATION
@@ -241,7 +246,11 @@ export async function POST(req: Request) {
     // ==============================
     // 🚀 START SIMULATION
     // ==============================
-    const result = await startSimulation(initialState, matchId, 1500);
+    if (seed) {
+      setSimulationSeed(matchId, seed);
+    }
+
+    const result = await startSimulation(initialState, matchId, preset?.startSpeedMs ?? 1500);
 
     if (!result.started && !result.alreadyRunning) {
       return Response.json(
@@ -254,6 +263,8 @@ export async function POST(req: Request) {
       success: true,
       alreadyRunning: result.alreadyRunning,
       matchId,
+      preset: preset?.key ?? null,
+      seed: seed ?? null,
     });
   } catch (err) {
     console.error("❌ Failed to start simulation", err);

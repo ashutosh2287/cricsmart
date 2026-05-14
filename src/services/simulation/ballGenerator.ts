@@ -3,8 +3,8 @@ import { SimulationState } from "./simulationState";
 import { BallEvent } from "@/types/ballEvent";
 import { v4 as uuidv4 } from "uuid";
 
-export function generateBallEvent(state: SimulationState): BallEvent {
-  const outcome = getBallOutcome(state);
+export function generateBallEvent(state: SimulationState, matchId?: string): BallEvent {
+  const outcome = getBallOutcome(state, matchId);
 
     const striker = state.striker?.trim();
   const nonStriker = state.nonStriker?.trim();

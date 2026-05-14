@@ -8,6 +8,8 @@ import { startLiveMatchIngestor } from "@/services/ingestion/liveMatchIngestor";
 import { startWorker } from "@/services/queue/eventWorker";
 import { initPlayerRegistry } from "@/services/player/playerRegistry";
 import { upsertMatchRegistry } from "@/services/match/matchRegistry";
+import { getProviderMode } from "@/config/providerMode";
+import { logger } from "@/lib/logger";
 
 const createTeam = (name: string) => ({
   name,
@@ -57,6 +59,7 @@ export async function POST(req: NextRequest) {
     }
 
     const matchType = type === "LIVE" ? "LIVE" : "SIMULATION";
+    const providerMode = getProviderMode();
 
     startMatch(matchId);
     initPlayerRegistry(matchId);
@@ -153,25 +156,74 @@ export async function POST(req: NextRequest) {
     }
 
     if (matchType === "LIVE") {
-      if (!externalMatchId) {
-        return NextResponse.json(
-          { success: false, message: "Missing externalMatchId for live match" },
-          { status: 400 }
-        );
-      }
-      if (!process.env.CRICKET_API_KEY) {
-        return NextResponse.json(
-          {
-            success: false,
-            message:
-              "Missing server-side CRICKET_API_KEY for live provider integration",
-          },
-          { status: 400 }
-        );
-      }
+      if (providerMode === "simulation" && !existing) {
+        const teamAObj = createTeam(teamA);
+        const teamBObj = createTeam(teamB);
+        const resolvedTossWinner = tossWinner ?? teamA;
+        const resolvedDecision = decision ?? "BAT";
 
-      startWorker(matchId);
-      startLiveMatchIngestor(matchId, externalMatchId);
+        const simState: SimulationState = {
+          teamA: teamAObj,
+          teamB: teamBObj,
+          tossWinner: resolvedTossWinner,
+          decision: resolvedDecision,
+          battingTeam:
+            resolvedDecision === "BAT"
+              ? resolvedTossWinner === teamA
+                ? teamAObj
+                : teamBObj
+              : resolvedTossWinner === teamA
+                ? teamBObj
+                : teamAObj,
+          bowlingTeam:
+            resolvedDecision === "BAT"
+              ? resolvedTossWinner === teamA
+                ? teamBObj
+                : teamAObj
+              : resolvedTossWinner === teamA
+                ? teamAObj
+                : teamBObj,
+          striker: "",
+          nonStriker: "",
+          bowler: "",
+          battingOrder: [],
+          bowlingOrder: [],
+          bowlingPlan: [],
+          nextBatsmanIndex: 2,
+          currentBowlerIndex: 0,
+          over: 0,
+          ball: 0,
+          totalRuns: 0,
+          wickets: 0,
+          currentInningsIndex: 0,
+          phase: "POWERPLAY",
+          matchEnded: false,
+          winner: null,
+          winBy: null,
+        };
+
+        await startSimulation(simState, matchId, 300);
+        logger.info("PROVIDER", "session_using_simulation_provider", {
+          matchId,
+          providerMode,
+        });
+      } else {
+        const resolvedExternalMatchId = externalMatchId ?? matchId;
+
+        if (providerMode === "cricketdata" && !process.env.CRICKET_API_KEY) {
+          return NextResponse.json(
+            {
+              success: false,
+              message:
+                "Missing server-side CRICKET_API_KEY for live provider integration",
+            },
+            { status: 400 }
+          );
+        }
+
+        startWorker(matchId);
+        startLiveMatchIngestor(matchId, resolvedExternalMatchId);
+      }
     }
 
     return NextResponse.json({

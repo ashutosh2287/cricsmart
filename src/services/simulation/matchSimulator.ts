@@ -18,6 +18,8 @@ import { setAnalytics } from "../analytics/liveAnalyticsStore";
 import { getWinProbabilityTimeline } from "../analytics/winProbabilityTimelineEngine";
 import { getMomentumTimeline } from "../analytics/momentumTimelineEngine";
 import { broadcast } from "@/services/realtime/eventBus";
+import { appendReplayEvent, clearReplayExport } from "./simulationReplayExport";
+import { clearSimulationSeed, randomForMatch } from "./simulationRandom";
 import {
   dispatchBallEvent,
   getMatchState,
@@ -632,7 +634,7 @@ const syncedState: SimulationState = {
 state.striker = syncedState.striker;
 state.nonStriker = syncedState.nonStriker;
 
-const event: BallEvent = generateBallEvent(syncedState);
+const event: BallEvent = generateBallEvent(syncedState, matchId);
 
 const currentBowlerName = getPlayerName(syncedState.bowler);
 if (!currentBowlerName) {
@@ -781,6 +783,8 @@ setAnalytics(matchId, {
   momentum,
 });
 
+appendReplayEvent(matchId, event);
+
 // 🔥🔥🔥 BROADCAST BALL EVENT (CRITICAL FIX)
       const latestMatchState = getMatchState(matchId);
       if (latestMatchState) {
@@ -831,7 +835,7 @@ setAnalytics(matchId, {
       }
 
       const jitter = control.speed * 0.1;
-      const delay = control.speed + (Math.random() * jitter - jitter / 2);
+      const delay = control.speed + (randomForMatch(matchId) * jitter - jitter / 2);
 
       control.timeoutRef = setTimeout(runBall, delay);
     } catch (error) {
@@ -867,6 +871,8 @@ export function stopSimulation(matchId?: string) {
       control.runBallRef = null;
       control.isTicking = false;
       emitSimulationState(id, control);
+      clearSimulationSeed(id);
+      clearReplayExport(id);
       simulationRegistry.delete(id);
     }
     return;
@@ -885,6 +891,8 @@ export function stopSimulation(matchId?: string) {
   control.isPaused = false;
   control.runBallRef = null;
   control.isTicking = false;
+  clearSimulationSeed(matchId);
+  clearReplayExport(matchId);
   simulationRegistry.delete(matchId);
 }
 

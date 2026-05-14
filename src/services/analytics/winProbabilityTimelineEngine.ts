@@ -1,6 +1,7 @@
 import { MatchState } from "../matchEngine";
 import { computeWinProbability } from "../winProbabilityEngine";
 import { BallEvent } from "@/types/ballEvent";
+import { runWinProbabilityExtension } from "@/services/ml/pipeline/winProbabilityExtension";
 
 export type WinProbabilityPoint = {
   over: number;
@@ -48,7 +49,16 @@ const last = timeline[timeline.length - 1];
 if (last && Math.abs(last.over - over) < 0.001) {
   return;
 }
-const batting = Math.max(5, Math.min(95, result.battingWinProbability));
+const previousBatting = last?.batting;
+const extension = runWinProbabilityExtension({
+  matchId,
+  state,
+  ballEvent,
+  rawBattingProbability: result.battingWinProbability,
+  previousBattingProbability: previousBatting
+});
+
+const batting = Math.max(5, Math.min(95, extension.battingProbability));
 const bowling = 100 - batting;
 timeline.push({
   over,

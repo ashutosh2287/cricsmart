@@ -1,0 +1,13 @@
+{
+  "modelVersion": "legacy-winprob-wrapper.v1",
+  "featureSchemaVersion": "win-probability.v1",
+  "strategy": {
+    "type": "identity"
+  },
+  "metrics": {
+    "brierScore": 0,
+    "reliabilityError": 0,
+    "confidenceStability": 0
+  },
+  "generatedAt": "1970-01-01T00:00:00.000Z"
+}

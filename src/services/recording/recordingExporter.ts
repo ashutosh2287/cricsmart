@@ -6,17 +6,23 @@ import {
 import { getReplayExport } from "@/services/simulation/simulationReplayExport";
 import { getSimulationSeed } from "@/services/simulation/simulationRandom";
 import type { BallEvent } from "@/types/ballEvent";
+import { validateDatasetIntegrity } from "@/services/ml/dataset/integrityChecks";
 
 type ExportResult = {
   matchId: string;
   format: RecordingFormat;
   metadata: {
     version: string;
+    featureSchemaVersion?: string;
     sourceType: string;
     provider?: string;
     seed?: string;
     exportedAt: string;
     eventCount: number;
+    integrity: {
+      ok: boolean;
+      issues: string[];
+    };
   };
   payload: unknown;
 };
@@ -50,9 +56,11 @@ export async function exportRecordingDataset(
   const replay = getReplayExport(matchId);
   const seed = getSimulationSeed(matchId);
   const events = recording?.events.map((entry) => entry.event) ?? replay.events;
+  const integrity = validateDatasetIntegrity(events);
 
   const metadata = {
     version: recording?.metadata.version ?? "v1",
+    featureSchemaVersion: recording?.metadata.featureSchemaVersion,
     sourceType:
       recording?.metadata.sourceType ??
       registry?.sourceType ??
@@ -61,6 +69,10 @@ export async function exportRecordingDataset(
     seed: recording?.metadata.seed ?? seed,
     exportedAt: new Date().toISOString(),
     eventCount: events.length,
+    integrity: {
+      ok: integrity.ok,
+      issues: integrity.issues,
+    },
   };
 
   if (format === "ndjson") {

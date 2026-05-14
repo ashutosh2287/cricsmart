@@ -6,6 +6,7 @@ import {
   appendRecordingEvent,
   patchRecordingMetadata,
 } from "@/services/recording/recordingStore";
+import { WIN_PROBABILITY_FEATURE_SCHEMA_VERSION } from "@/services/ml/schema/featureContracts";
 
 type SessionFallback = {
   sourceType: SessionSourceType;
@@ -32,6 +33,7 @@ export async function recordBallEvent(matchId: string, event: BallEvent) {
       sourceType: metadata.sourceType,
       provider: metadata.provider,
       seed,
+      featureSchemaVersion: WIN_PROBABILITY_FEATURE_SCHEMA_VERSION,
     });
     appendRecordingEvent(matchId, event);
   } catch (error) {

@@ -24,6 +24,8 @@ import { broadcast } from "@/services/realtime/eventBus";
 import { appendEventTimeline, resetEventTimeline } from "@/services/replay/eventTimeline";
 import { appendCommentaryTimeline, resetCommentaryTimeline } from "@/services/commentary/commentaryTimelineStore";
 import { recordBallEvent } from "@/services/recording/eventRecorder";
+import { resetPredictionStabilityMetrics } from "@/services/ml/smoothing/stabilityMetrics";
+import { clearPredictionSnapshots } from "@/services/ml/snapshots/featureSnapshotStore";
 
 
 
@@ -1535,6 +1537,8 @@ export function resetMatchState(matchId: string) {
   delete temporalIndex[matchId];
   resetEventTimeline(matchId);
   resetCommentaryTimeline(matchId);
+  resetPredictionStabilityMetrics(matchId);
+  clearPredictionSnapshots(matchId);
 
   // 🔥 CLEAR PLAYER REGISTRY (VERY IMPORTANT)
   clearPlayerRegistry(matchId);

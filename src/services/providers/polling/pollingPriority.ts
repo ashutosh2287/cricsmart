@@ -1,4 +1,5 @@
 export type PriorityBand = "highest" | "medium" | "low";
+const INTERNATIONAL_FORMATS = ["T20", "ODI", "TEST"] as const;
 
 type PriorityInput = {
   teamA?: string;
@@ -34,7 +35,10 @@ function isInternational(input: PriorityInput): boolean {
     series.includes("vs") ||
     series.includes("international") ||
     series.includes("bilateral") ||
-    Boolean(input.format && ["T20", "ODI", "TEST"].includes(input.format.toUpperCase()))
+    Boolean(
+      input.format &&
+        INTERNATIONAL_FORMATS.includes(input.format.toUpperCase() as (typeof INTERNATIONAL_FORMATS)[number])
+    )
   );
 }
 

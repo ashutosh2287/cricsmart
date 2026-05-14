@@ -74,7 +74,7 @@ async function rehydrateSingleSession(row: MatchRegistryRecord) {
       startWorker(row.matchId);
       logger.info("RECOVERY", "worker_rehydrated", { matchId: row.matchId });
     } else {
-      logger.info("RECOVERY", "recovery_skipped", {
+      logger.debug("RECOVERY", "recovery_skipped", {
         matchId: row.matchId,
         reason: "worker_already_running",
       });
@@ -84,7 +84,7 @@ async function rehydrateSingleSession(row: MatchRegistryRecord) {
       startLiveMatchIngestor(row.matchId, row.externalMatchId!);
       logger.info("RECOVERY", "poller_rehydrated", { matchId: row.matchId });
     } else {
-      logger.info("RECOVERY", "recovery_skipped", {
+      logger.debug("RECOVERY", "recovery_skipped", {
         matchId: row.matchId,
         reason: "poller_already_running",
       });

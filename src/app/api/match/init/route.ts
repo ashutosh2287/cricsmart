@@ -13,6 +13,8 @@ import { logger } from "@/lib/logger";
 import type { SessionSourceType } from "@/types/liveSession";
 import { ensureSessionRecoveryStarted } from "@/services/runtime/sessionRecoveryBootstrap";
 
+const DEFAULT_SIMULATION_SPEED_MS = 300;
+
 const createTeam = (name: string) => ({
   name,
   short: name.slice(0, 3).toUpperCase(),
@@ -154,7 +156,7 @@ export async function POST(req: NextRequest) {
         winBy: null,
       };
 
-      await startSimulation(simState, matchId, 300);
+      await startSimulation(simState, matchId, DEFAULT_SIMULATION_SPEED_MS);
 
       await upsertMatchRegistry({
         matchId,
@@ -216,7 +218,7 @@ export async function POST(req: NextRequest) {
           winBy: null,
         };
 
-        await startSimulation(simState, matchId, 300);
+        await startSimulation(simState, matchId, DEFAULT_SIMULATION_SPEED_MS);
         logger.info("PROVIDER", "session_using_simulation_provider", {
           matchId,
           providerMode,

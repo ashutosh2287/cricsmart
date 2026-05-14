@@ -41,10 +41,15 @@ type PollingSession = {
 const sessions = new Map<string, PollingSession>();
 const MIN_JITTER_MS = 2000;
 const MAX_JITTER_MS = 5000;
+const MIN_JITTER_FLOOR_MS = 500;
+const MAX_JITTER_FACTOR = 0.5;
 
 function applyJitter(delayMs: number): number {
   const baseSpan = MIN_JITTER_MS + Math.random() * (MAX_JITTER_MS - MIN_JITTER_MS);
-  const span = Math.min(baseSpan, Math.max(500, Math.floor(delayMs * 0.5)));
+  const span = Math.min(
+    baseSpan,
+    Math.max(MIN_JITTER_FLOOR_MS, Math.floor(delayMs * MAX_JITTER_FACTOR))
+  );
   const signed = Math.random() < 0.5 ? -span : span;
   return Math.max(1000, Math.round(delayMs + signed));
 }

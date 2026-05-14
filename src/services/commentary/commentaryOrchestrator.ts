@@ -108,6 +108,8 @@ export function generateCommentaryForBall(input: GenerateCommentaryInput): Comme
   }
 
   const categories = context.situationSignals;
+  const ballInOver = input.state.innings[input.state.currentInningsIndex]?.ball ?? 0;
+
   const inputSchema: CommentaryInputSchema = {
     matchId: input.matchId,
     branchId: input.branchId,
@@ -116,7 +118,7 @@ export function generateCommentaryForBall(input: GenerateCommentaryInput): Comme
     source: input.event.eventSource ?? "MANUAL",
     innings: input.state.currentInningsIndex + 1,
     over: input.event.over,
-    ball: input.state.innings[input.state.currentInningsIndex]?.ball ?? 0,
+    ball: ballInOver,
     context,
   };
 

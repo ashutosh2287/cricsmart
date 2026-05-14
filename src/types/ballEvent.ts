@@ -10,6 +10,13 @@ export type BallEventType =
 
 export type ExtraType = "WD" | "NB" | "BYE" | "LB";
 
+export type EventSourceType =
+  | "LIVE_INGESTION"
+  | "MOCK_INGESTION"
+  | "SIMULATION"
+  | "REPLAY"
+  | "MANUAL";
+
 type BallEventBase = {
   id: string;
   slug: string;
@@ -27,6 +34,12 @@ type BallEventBase = {
   isLegalDelivery: boolean;
   totalRuns: number;
   replacedBy?: string;
+
+  providerType?: string;
+  providerTimestamp?: number;
+  ingestionTimestamp?: number;
+  eventSource?: EventSourceType;
+  replaySourceId?: string;
 };
 
 export type RunBallEvent = BallEventBase & {

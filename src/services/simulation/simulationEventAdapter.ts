@@ -65,6 +65,12 @@ export function toEngineEvent(event: StrictBallEvent): EngineBallEvent {
   bowler,
   battingTeam,
   bowlingTeam,
+  timestamp: event.timestamp,
+  providerType: event.providerType,
+  providerTimestamp: event.providerTimestamp,
+  ingestionTimestamp: event.ingestionTimestamp,
+  eventSource: event.eventSource,
+  replaySourceId: event.replaySourceId,
 };
 
   console.log("ADAPTER EVENT CHECK", {

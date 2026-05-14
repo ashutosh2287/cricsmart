@@ -3,8 +3,17 @@ import { initMatch, getMatchState } from "@/services/matchEngine";
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 import { SimulationState } from "@/services/simulation/simulationState";
 import { startSimulation } from "@/services/simulation/matchSimulator";
+import { startMatch } from "@/services/match/matchManager";
+import { startLiveMatchIngestor } from "@/services/ingestion/liveMatchIngestor";
+import { startWorker } from "@/services/queue/eventWorker";
+import { initPlayerRegistry } from "@/services/player/playerRegistry";
 import { upsertMatchRegistry } from "@/services/match/matchRegistry";
-import { bootstrapLiveSession } from "@/services/live/liveSessionOrchestrator";
+import { getProviderMode } from "@/config/providerMode";
+import { logger } from "@/lib/logger";
+import type { SessionSourceType } from "@/types/liveSession";
+import { ensureSessionRecoveryStarted } from "@/services/runtime/sessionRecoveryBootstrap";
+
+const DEFAULT_SIMULATION_SPEED_MS = 300;
 
 const createTeam = (name: string) => ({
   name,
@@ -25,6 +34,8 @@ const createTeam = (name: string) => ({
 });
 
 export async function POST(req: NextRequest) {
+  ensureSessionRecoveryStarted();
+
   try {
     const body = await req.json();
 
@@ -36,7 +47,6 @@ export async function POST(req: NextRequest) {
       externalMatchId,
       tossWinner,
       decision,
-      idempotencyKey,
     } = body as {
       matchId?: string;
       teamA?: string;
@@ -45,7 +55,6 @@ export async function POST(req: NextRequest) {
       externalMatchId?: string;
       tossWinner?: string;
       decision?: "BAT" | "BOWL";
-      idempotencyKey?: string;
     };
 
     if (!matchId || !teamA || !teamB) {
@@ -56,35 +65,18 @@ export async function POST(req: NextRequest) {
     }
 
     const matchType = type === "LIVE" ? "LIVE" : "SIMULATION";
+    const providerMode = getProviderMode();
+    const sourceType: SessionSourceType =
+      matchType === "SIMULATION"
+        ? "SIMULATION"
+        : providerMode === "mock"
+          ? "MOCK"
+          : providerMode === "simulation"
+            ? "SIMULATION"
+            : "LIVE";
 
-    if (matchType === "LIVE") {
-      if (!externalMatchId) {
-        return NextResponse.json(
-          { success: false, message: "Missing externalMatchId for live match" },
-          { status: 400 }
-        );
-      }
-
-      const bootstrap = await bootstrapLiveSession({
-        matchId,
-        teamA,
-        teamB,
-        externalMatchId,
-        // Optional idempotency key: header takes precedence for gateway/retry compatibility.
-        // If omitted, bootstrap lock still prevents duplicate concurrent sessions.
-        idempotencyKey:
-          req.headers.get("x-idempotency-key") ??
-          idempotencyKey,
-      });
-
-      return NextResponse.json({
-        success: true,
-        matchId,
-        alreadyInitialized: bootstrap.alreadyActive,
-        liveSession: bootstrap,
-      });
-    }
-
+    startMatch(matchId);
+    initPlayerRegistry(matchId);
     initMatch(matchId);
 
     const state = getMatchState(matchId);
@@ -107,17 +99,16 @@ export async function POST(req: NextRequest) {
       matchId,
       teamA,
       teamB,
-      type: "SIMULATION",
-      status: existing?.control?.isRunning ? "LIVE" : "UPCOMING",
-      isLiveConnected: false,
+      type: matchType,
+      status: matchType === "LIVE" ? "LIVE" : "UPCOMING",
+      externalMatchId,
+      sourceType,
+      isLiveConnected: matchType === "LIVE",
       heartbeatFresh: false,
-      reconnectHealth: "disconnected",
-      liveSessionStatus: "stopped",
-      ingestionRunning: false,
-      workerRunning: false,
+      reconnectHealth: matchType === "LIVE" ? "stale" : "disconnected",
     });
 
-    if (!existing) {
+    if (matchType === "SIMULATION" && !existing) {
       const teamAObj = createTeam(teamA);
       const teamBObj = createTeam(teamB);
 
@@ -165,18 +156,90 @@ export async function POST(req: NextRequest) {
         winBy: null,
       };
 
-      await startSimulation(simState, matchId, 300);
+      await startSimulation(simState, matchId, DEFAULT_SIMULATION_SPEED_MS);
 
       await upsertMatchRegistry({
         matchId,
         teamA,
         teamB,
         type: "SIMULATION",
+        sourceType: "SIMULATION",
         status: "LIVE",
         isLiveConnected: true,
         heartbeatFresh: true,
         reconnectHealth: "healthy",
       });
+    }
+
+    if (matchType === "LIVE") {
+      if (providerMode === "simulation" && !existing) {
+        const teamAObj = createTeam(teamA);
+        const teamBObj = createTeam(teamB);
+        const resolvedTossWinner = tossWinner ?? teamA;
+        const resolvedDecision = decision ?? "BAT";
+
+        const simState: SimulationState = {
+          teamA: teamAObj,
+          teamB: teamBObj,
+          tossWinner: resolvedTossWinner,
+          decision: resolvedDecision,
+          battingTeam:
+            resolvedDecision === "BAT"
+              ? resolvedTossWinner === teamA
+                ? teamAObj
+                : teamBObj
+              : resolvedTossWinner === teamA
+                ? teamBObj
+                : teamAObj,
+          bowlingTeam:
+            resolvedDecision === "BAT"
+              ? resolvedTossWinner === teamA
+                ? teamBObj
+                : teamAObj
+              : resolvedTossWinner === teamA
+                ? teamAObj
+                : teamBObj,
+          striker: "",
+          nonStriker: "",
+          bowler: "",
+          battingOrder: [],
+          bowlingOrder: [],
+          bowlingPlan: [],
+          nextBatsmanIndex: 2,
+          currentBowlerIndex: 0,
+          over: 0,
+          ball: 0,
+          totalRuns: 0,
+          wickets: 0,
+          currentInningsIndex: 0,
+          phase: "POWERPLAY",
+          matchEnded: false,
+          winner: null,
+          winBy: null,
+        };
+
+        await startSimulation(simState, matchId, DEFAULT_SIMULATION_SPEED_MS);
+        logger.info("PROVIDER", "session_using_simulation_provider", {
+          matchId,
+          providerMode,
+        });
+      } else {
+        const resolvedExternalMatchId = externalMatchId ?? matchId;
+
+        if (providerMode === "cricketdata" && !process.env.CRICKET_API_KEY) {
+          return NextResponse.json(
+            {
+              success: false,
+              message:
+                "Missing server-side CRICKET_API_KEY for live provider integration",
+            },
+            { status: 400 }
+          );
+        }
+
+        startWorker(matchId);
+        startLiveMatchIngestor(matchId, resolvedExternalMatchId);
+      }
     }
 
     return NextResponse.json({

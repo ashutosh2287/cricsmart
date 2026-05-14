@@ -23,6 +23,7 @@ import { updatePlayerRegistry } from "./playerRegistryEngine";
 import { broadcast } from "@/services/realtime/eventBus";
 import { appendEventTimeline, resetEventTimeline } from "@/services/replay/eventTimeline";
 import { appendCommentaryTimeline, resetCommentaryTimeline } from "@/services/commentary/commentaryTimelineStore";
+import { recordBallEvent } from "@/services/recording/eventRecorder";
 
 
 
@@ -81,6 +82,11 @@ type BaseEvent = {
   over?: number;
   ball?: number;
   timestamp?: number;
+  providerType?: string;
+  providerTimestamp?: number;
+  ingestionTimestamp?: number;
+  eventSource?: "LIVE_INGESTION" | "MOCK_INGESTION" | "SIMULATION" | "REPLAY" | "MANUAL";
+  replaySourceId?: string;
 };
 
 export type EngineBallEvent =
@@ -507,6 +513,11 @@ const finalBowler = bowler || "Unknown Bowler";
     nonStriker,
     bowler: finalBowler,
     innings: inningsIndex,
+    providerType: event.providerType,
+    providerTimestamp: event.providerTimestamp ?? event.timestamp,
+    ingestionTimestamp: event.ingestionTimestamp ?? Date.now(),
+    eventSource: event.eventSource,
+    replaySourceId: event.replaySourceId,
   };
 
   switch (event.type) {
@@ -678,7 +689,17 @@ function assertValidActiveBatters(
   }
 }
 
-type ScoringEventWithId = ScoringEvent & { id?: string };
+type ScoringEventWithId = ScoringEvent &
+  Pick<
+    BaseEvent,
+    | "id"
+    | "timestamp"
+    | "providerType"
+    | "providerTimestamp"
+    | "ingestionTimestamp"
+    | "eventSource"
+    | "replaySourceId"
+  >;
 
 function reduce(
   state: MatchState,
@@ -1305,7 +1326,10 @@ if (updatedState.matchEnded) {
   
 
   getStorageModule()
-    .then(({ appendEvent }) => appendEvent(matchId, ballEvent))
+    .then(async ({ appendEvent }) => {
+      await appendEvent(matchId, ballEvent);
+      await recordBallEvent(matchId, ballEvent);
+    })
     .catch(console.error);
 
   /*

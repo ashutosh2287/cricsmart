@@ -94,6 +94,8 @@ export async function POST(req: NextRequest) {
       JSON.stringify({
         ...event,
         timestamp: Date.now(),
+        ingestionTimestamp: Date.now(),
+        eventSource: event?.eventSource ?? "MANUAL",
       })
     );
 

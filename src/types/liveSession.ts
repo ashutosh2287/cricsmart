@@ -1,5 +1,7 @@
 export type LiveSessionProvider = "cricapi";
 
+export type SessionSourceType = "LIVE" | "MOCK" | "SIMULATION" | "REPLAY";
+
 export type LiveSessionState =
   | "INITIALIZING"
   | "ACTIVE"

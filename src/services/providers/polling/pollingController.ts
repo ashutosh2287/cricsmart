@@ -12,12 +12,17 @@ import {
 } from "@/services/providers/polling/pollingRegistry";
 import {
   getPollingLimits,
+  getPriorityBand,
+  getProjectedRequestsPerDay,
+  getQuotaDangerLevel,
+  getRetryBudget,
   resolvePollingIntervalMs,
   shouldDegradePolling,
   shouldStopPolling,
   type PollingContext,
 } from "@/services/providers/polling/pollingStrategy";
 import type { ProviderMode } from "@/config/providerMode";
+import { getMatchPriorityScore } from "@/services/providers/polling/pollingPriority";
 
 type PollingSessionConfig = {
   matchId: string;
@@ -34,6 +39,20 @@ type PollingSession = {
 };
 
 const sessions = new Map<string, PollingSession>();
+const MIN_JITTER_MS = 2000;
+const MAX_JITTER_MS = 5000;
+const MIN_JITTER_FLOOR_MS = 500;
+const MAX_JITTER_FACTOR = 0.5;
+
+function applyJitter(delayMs: number): number {
+  const baseSpan = MIN_JITTER_MS + Math.random() * (MAX_JITTER_MS - MIN_JITTER_MS);
+  const span = Math.min(
+    baseSpan,
+    Math.max(MIN_JITTER_FLOOR_MS, Math.floor(delayMs * MAX_JITTER_FACTOR))
+  );
+  const signed = Math.random() < 0.5 ? -span : span;
+  return Math.max(1000, Math.round(delayMs + signed));
+}
 
 function scheduleNext(matchId: string, delayMs: number, run: () => Promise<void>) {
   const session = sessions.get(matchId);
@@ -85,7 +104,7 @@ export function startPollingSession(config: PollingSessionConfig) {
         pollerCount,
         max: limits.maxConcurrentLiveSessions,
       });
-      scheduleNext(config.matchId, 60_000, execute);
+      scheduleNext(config.matchId, applyJitter(60_000), execute);
       return;
     }
 
@@ -96,6 +115,16 @@ export function startPollingSession(config: PollingSessionConfig) {
     }
 
     const nextInterval = resolvePollingIntervalMs(context);
+    const priorityScore = getMatchPriorityScore({
+      teamA: context.teamA,
+      teamB: context.teamB,
+      seriesName: context.seriesName,
+      format: context.format,
+    });
+    const priorityBand = getPriorityBand(context);
+    const quotaDangerLevel = getQuotaDangerLevel(context);
+    const retryBudget = getRetryBudget(context);
+    const projectedDaily = getProjectedRequestsPerDay(context);
     const health = getPollingHealth(config.matchId);
 
     if (health && health.pollIntervalMs !== nextInterval) {
@@ -109,6 +138,9 @@ export function startPollingSession(config: PollingSessionConfig) {
     updatePollingContext(config.matchId, {
       pollIntervalMs: nextInterval,
       activeViewers: context.activeViewers,
+      priorityScore,
+      retryBudget,
+      dangerLevel: quotaDangerLevel,
     });
 
     if (shouldDegradePolling(context)) {
@@ -117,6 +149,9 @@ export function startPollingSession(config: PollingSessionConfig) {
         matchId: config.matchId,
         failedPolls: context.failedPolls,
         pollsLastMinute: context.pollsLastMinute,
+        priorityBand,
+        quotaDangerLevel,
+        projectedDaily,
       });
     }
 
@@ -129,12 +164,22 @@ export function startPollingSession(config: PollingSessionConfig) {
     });
 
     try {
-      await config.poll();
-      markPollSuccess(config.matchId, Date.now() - startedAt);
-      logger.debug("PROVIDER", "provider_poll_success", {
-        matchId: config.matchId,
-        latencyMs: Date.now() - startedAt,
-      });
+      if (context.failedPolls >= retryBudget) {
+        markPollFailure(config.matchId);
+        updatePollingContext(config.matchId, { status: "degraded" });
+        logger.warn("PROVIDER", "provider_retry_budget_exhausted", {
+          matchId: config.matchId,
+          failedPolls: context.failedPolls,
+          retryBudget,
+        });
+      } else {
+        await config.poll();
+        markPollSuccess(config.matchId, Date.now() - startedAt);
+        logger.debug("PROVIDER", "provider_poll_success", {
+          matchId: config.matchId,
+          latencyMs: Date.now() - startedAt,
+        });
+      }
     } catch (err) {
       markPollFailure(config.matchId);
       logger.warn("PROVIDER", "provider_poll_failed", {
@@ -143,7 +188,17 @@ export function startPollingSession(config: PollingSessionConfig) {
       });
     }
 
-    scheduleNext(config.matchId, nextInterval, execute);
+    if (quotaDangerLevel === "critical" && priorityBand === "low") {
+      updatePollingContext(config.matchId, { status: "degraded" });
+      logger.warn("PROVIDER", "provider_quota_safety_alert", {
+        matchId: config.matchId,
+        action: "downgrade_low_priority_match",
+        quotaDangerLevel,
+        projectedDaily,
+      });
+    }
+
+    scheduleNext(config.matchId, applyJitter(nextInterval), execute);
   };
 
   scheduleNext(config.matchId, 0, execute);

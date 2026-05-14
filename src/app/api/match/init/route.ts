@@ -119,6 +119,7 @@ export async function POST(req: NextRequest) {
       const teamAObj = createTeam(teamA);
       const teamBObj = createTeam(teamB);
 
+      // Default to teamA batting when toss data is not provided by caller.
       const resolvedTossWinner = tossWinner ?? teamA;
       const resolvedDecision = decision ?? "BAT";
 

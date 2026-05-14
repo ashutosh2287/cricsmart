@@ -15,14 +15,17 @@ function withDerivedFreshness(match: MatchRegistryRecord): MatchListRow {
   const heartbeatFresh = now - heartbeatTs <= 20_000;
   const ingestionRunning = match.type === "LIVE" ? isLiveMatchIngestorRunning(match.matchId) : false;
   const workerRunning = match.type === "LIVE" ? isWorkerRunning(match.matchId) : false;
-  const liveSessionStatus =
-    match.type !== "LIVE"
-      ? match.liveSessionStatus
-      : ingestionRunning && workerRunning
-        ? "live"
-        : match.status === "LIVE"
-          ? "degraded"
-          : "stopped";
+  let liveSessionStatus = match.liveSessionStatus;
+
+  if (match.type === "LIVE") {
+    if (ingestionRunning && workerRunning) {
+      liveSessionStatus = "live";
+    } else if (match.status === "LIVE") {
+      liveSessionStatus = "degraded";
+    } else {
+      liveSessionStatus = "stopped";
+    }
+  }
 
   return {
     ...match,

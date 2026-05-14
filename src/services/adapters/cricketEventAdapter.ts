@@ -13,13 +13,12 @@ function normalizeType(apiEvent: ApiBallEvent):
   | "SIX" {
   if (apiEvent.wicket) return "WICKET";
 
-  const raw = String(apiEvent.type ?? "RUN").toUpperCase();
+  const raw = String(apiEvent.type ?? "RUN").toUpperCase().replace(/\s+/g, "_");
 
   if (raw.includes("WD") || raw.includes("WIDE")) return "WD";
-  if (raw.includes("NB") || raw.includes("NOBALL") || raw.includes("NO_BALL")) return "NB";
-  if (raw.includes("BYE") && !raw.includes("LEG")) return "BYE";
-  if (raw.includes("LB") || raw.includes("LEG_BYE") || raw.includes("LEGBYE")) return "LB";
-
+  if (raw.includes("NB") || raw.includes("NO_BALL") || raw.includes("NOBALL")) return "NB";
+  if (raw.includes("LEG_BYE") || raw.includes("LEGBYE") || raw === "LB") return "LB";
+  if (raw.includes("BYE")) return "BYE";
   if (apiEvent.runs === 4) return "FOUR";
   if (apiEvent.runs === 6) return "SIX";
 
@@ -30,7 +29,7 @@ function normalizeDismissal(
   apiEvent: ApiBallEvent,
   striker: string
 ): "BOWLED" | "CAUGHT" | "RUN_OUT_STRIKER" | "RUN_OUT_NON_STRIKER" {
-  const text = String(apiEvent.dismissal ?? "").toLowerCase();
+  const text = String(apiEvent.dismissal ?? apiEvent.type ?? "").toLowerCase();
 
   if (text.includes("run")) {
     if (apiEvent.batsman?.trim().toLowerCase() === striker.trim().toLowerCase()) {
@@ -39,7 +38,7 @@ function normalizeDismissal(
     return "RUN_OUT_NON_STRIKER";
   }
 
-  if (text.includes("catch")) {
+  if (text.includes("catch") || text.includes("stump")) {
     return "CAUGHT";
   }
 
@@ -48,6 +47,18 @@ function normalizeDismissal(
 
 function isFiniteAndNonNegative(value: number) {
   return Number.isFinite(value) && value >= 0;
+}
+
+function resolveRuns(apiEvent: ApiBallEvent, eventType: ReturnType<typeof normalizeType>) {
+  const runs = Math.max(0, Number(apiEvent.runs ?? 0));
+
+  if (eventType === "WD" || eventType === "NB") {
+    return runs > 0 ? runs : 1;
+  }
+
+  if (eventType === "FOUR") return 4;
+  if (eventType === "SIX") return 6;
+  return runs;
 }
 
 export function adaptApiEventToEngineEvent(
@@ -83,7 +94,7 @@ export function adaptApiEventToEngineEvent(
   const other = providerNonStriker || engineNonStriker;
   const bowler = resolvePlayerName(matchId, apiEvent.bowler);
 
-  if (!batsman || !other || !bowler) {
+  if (!batsman || !other || !bowler || !battingTeam || !bowlingTeam) {
     return null;
   }
 
@@ -91,6 +102,7 @@ export function adaptApiEventToEngineEvent(
   const timestamp = Number.isFinite(apiEvent.timestamp)
     ? apiEvent.timestamp
     : Date.now();
+  const runs = resolveRuns(apiEvent, eventType);
 
   const common = {
     id: apiEvent.id,
@@ -109,50 +121,50 @@ export function adaptApiEventToEngineEvent(
       return {
         ...common,
         type: "WICKET",
-        runs: apiEvent.runs ?? 0,
+        runs,
         dismissalKind: normalizeDismissal(apiEvent, striker),
       };
     case "WD":
       return {
         ...common,
         type: "WD",
-        runs: apiEvent.runs > 0 ? apiEvent.runs : 1,
+        runs,
       };
     case "NB":
       return {
         ...common,
         type: "NB",
-        runs: apiEvent.runs > 0 ? apiEvent.runs : 1,
+        runs,
       };
     case "BYE":
       return {
         ...common,
         type: "BYE",
-        runs: apiEvent.runs,
+        runs,
       };
     case "LB":
       return {
         ...common,
         type: "LB",
-        runs: apiEvent.runs,
+        runs,
       };
     case "FOUR":
       return {
         ...common,
         type: "FOUR",
-        runs: 4,
+        runs,
       };
     case "SIX":
       return {
         ...common,
         type: "SIX",
-        runs: 6,
+        runs,
       };
     default:
       return {
         ...common,
         type: "RUN",
-        runs: apiEvent.runs,
+        runs,
       };
   }
 }

@@ -1,26 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/services/storage/redisClient";
 import { upsertMatchRegistry } from "@/services/match/matchRegistry";
+import { createMatchId } from "@/services/match/createLiveMatchId";
 
 const MATCH_LIST_KEY = "matches:list";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  const { teamA, teamB } = body;
+  const teamA = body?.teamA?.trim();
+  const teamB = body?.teamB?.trim();
 
   if (!teamA || !teamB) {
     return NextResponse.json({ error: "Teams required" }, { status: 400 });
   }
 
-  const matchId = `${teamA}-vs-${teamB}`
-    .toLowerCase()
-    .replace(/\s+/g, "-");
+  const matchId = createMatchId(teamA, teamB);
 
   const redis = getRedis();
 
   const match = {
     matchId,
+    slug: matchId,
     teamA,
     teamB,
     status: "UPCOMING",
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
 
   await upsertMatchRegistry({
     matchId,
+    slug: matchId,
     teamA,
     teamB,
     status: "UPCOMING",

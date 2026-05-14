@@ -2,6 +2,7 @@ import { initMatch, getMatchState } from "@/services/matchEngine";
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 import { getRedis } from "@/services/storage/redisClient";
 import { upsertMatchRegistry } from "@/services/match/matchRegistry";
+import { createMatchId } from "@/services/match/createLiveMatchId";
 
 export const runtime = "nodejs";
 
@@ -12,9 +13,6 @@ export async function POST(req: Request) {
     const teamA = body?.teamA?.trim();
     const teamB = body?.teamB?.trim();
 
-    // ====================================================
-    // ✅ VALIDATION
-    // ====================================================
     if (!teamA || !teamB) {
       return Response.json(
         { success: false, error: "teamA and teamB are required" },
@@ -22,25 +20,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // ====================================================
-    // ✅ GENERATE MATCH ID (CONSISTENT)
-    // ====================================================
-    const normalize = (name: string) =>
-      name.toLowerCase().replace(/\s+/g, "-");
+    const matchId = createMatchId(teamA, teamB);
 
-    const matchId = `${normalize(teamA)}-vs-${normalize(teamB)}-${Date.now()}`;
-
-    console.log("🆕 Creating match:", matchId);
-
-    // ====================================================
-    // 🔥 INIT MATCH ENGINE
-    // ====================================================
     initMatch(matchId);
 
     const state = getMatchState(matchId);
-
-    console.log("🧠 STATE AFTER INIT:", state ? "✅ exists" : "❌ null");
-
     if (!state) {
       return Response.json(
         { success: false, error: "Failed to initialize match state" },
@@ -48,23 +32,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // ====================================================
-    // 🔥 REDIS CONNECTION TEST
-    // ====================================================
     const redis = getRedis();
-
     await redis.set("health-check", "ok");
-    const test = await redis.get("health-check");
 
-    console.log("🧪 REDIS TEST:", test);
-
-    // ====================================================
-    // 🔥 SAVE TO REDIS (SINGLE SOURCE)
-    // ====================================================
     const storage = new RedisSimulationStorage();
-
-    console.log("💾 SAVING MATCH TO REDIS:", matchId);
-
     await storage.save(matchId, state, {
       isRunning: false,
       isPaused: false,
@@ -73,6 +44,7 @@ export async function POST(req: Request) {
 
     await upsertMatchRegistry({
       matchId,
+      slug: matchId,
       teamA,
       teamB,
       status: "UPCOMING",
@@ -82,18 +54,7 @@ export async function POST(req: Request) {
       reconnectHealth: "disconnected",
     });
 
-    // ====================================================
-    // 🔍 VERIFY SAVE (CRITICAL)
-    // ====================================================
-    console.log("🔍 VERIFYING REDIS SAVE...");
-
     const verify = await storage.load(matchId);
-
-    console.log(
-      "🔍 VERIFY RESULT:",
-      verify ? "✅ FOUND" : "❌ NOT FOUND"
-    );
-
     if (!verify) {
       return Response.json(
         { success: false, error: "Failed to persist match to Redis" },
@@ -101,14 +62,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // ====================================================
-    // ✅ SUCCESS RESPONSE
-    // ====================================================
     return Response.json({
       success: true,
       matchId,
+      slug: matchId,
     });
-
   } catch (err) {
     console.error("❌ CREATE MATCH ERROR:", err);
 

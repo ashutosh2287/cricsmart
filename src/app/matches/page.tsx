@@ -20,6 +20,7 @@ type SimMatch = {
   score?: string;
   overDisplay?: string;
   commentaryPreview?: string;
+  sessionState?: string;
 };
 
 const FIXTURE_POLL_INTERVAL_MS = 60_000;
@@ -228,6 +229,11 @@ export default function MatchesPage() {
                 <button
                   key={match.matchId}
                   onClick={async () => {
+                    if (match.type === "LIVE") {
+                      router.push(`/match/${match.matchId}`);
+                      return;
+                    }
+
                     await fetch("/api/match/init", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },

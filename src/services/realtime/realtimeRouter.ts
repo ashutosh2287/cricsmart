@@ -23,6 +23,11 @@ export type RealtimeEvent =
   | {
       type: "CONNECTED";
       matchId: string;
+      data?: {
+        sessionState?: string;
+        type?: string;
+        reconnectHealth?: string;
+      };
     }
   | {
       type: "INITIAL_STATE";
@@ -231,11 +236,15 @@ export function routeRealtimeEvent(event: RealtimeEvent) {
   emitCricUpdate({
     matchId: event.matchId,
     type: "CONNECTED",
+    session: event.data ?? null,
   });
   if (typeof window !== "undefined") {
     window.dispatchEvent(
       new CustomEvent("SSE_CONNECTED", {
-        detail: { matchId: event.matchId },
+        detail: {
+          matchId: event.matchId,
+          session: event.data ?? null,
+        },
       })
     );
   }

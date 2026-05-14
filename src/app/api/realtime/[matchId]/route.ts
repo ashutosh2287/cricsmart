@@ -4,6 +4,7 @@ import {
   addClient,
   removeClient,
 } from "@/services/realtime/realtimeController";
+import { getMatchRegistry } from "@/services/match/matchRegistry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,18 +16,16 @@ type RealtimeClient = {
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ matchId: string }> } // ✅ FIXED
+  context: { params: Promise<{ matchId: string }> }
 ) {
-  const { matchId } = await context.params; // ✅ FIXED
-
-  console.log("🧠 SSE ROUTE MATCH ID:", matchId);
+  const { matchId } = await context.params;
 
   if (!matchId) {
-    console.error("❌ matchId is undefined in SSE route");
     return new Response("Invalid matchId", { status: 400 });
   }
 
   initMatch(matchId);
+  const registry = await getMatchRegistry(matchId);
 
   const encoder = new TextEncoder();
   let closed = false;
@@ -51,8 +50,6 @@ export async function GET(
         try {
           controller.close();
         } catch {}
-
-        console.log("❌ SSE disconnected:", matchId, client?.id);
       };
 
       const safeEnqueue = (payload: string) => {
@@ -65,7 +62,6 @@ export async function GET(
         }
       };
 
-      // ✅ CREATE CLIENT
       client = {
         id: crypto.randomUUID(),
         send: (data: string) => {
@@ -73,23 +69,21 @@ export async function GET(
         },
       };
 
-      // ✅ ADD CLIENT
-      console.log("🧠 BEFORE ADD CLIENT:", matchId);
       addClient(matchId, client);
-      console.log("🧠 AFTER ADD CLIENT:", {
-        matchId,
-        totalClients: "check in controller log",
-      });
 
-      console.log("✅ SSE connected:", matchId, client.id);
-
-      // ✅ INITIAL EVENTS
       safeEnqueue(`retry: 2000\n\n`);
 
       safeEnqueue(
         `event: CONNECTED\ndata: ${JSON.stringify({
           type: "CONNECTED",
           matchId,
+          data: registry
+            ? {
+                sessionState: registry.sessionState,
+                type: registry.type,
+                reconnectHealth: registry.reconnectHealth,
+              }
+            : null,
         })}\n\n`
       );
 
@@ -104,14 +98,11 @@ export async function GET(
         );
       }
 
-      // ✅ KEEP ALIVE
       keepAlive = setInterval(() => {
         safeEnqueue(`: keepalive\n\n`);
       }, 15000);
 
-      // ✅ FIXED ABORT HANDLER
       req.signal.addEventListener("abort", () => {
-        console.log("⚠️ ABORT SIGNAL RECEIVED");
         cleanup();
       });
     },
@@ -127,7 +118,6 @@ export async function GET(
       }
 
       closed = true;
-      console.log("ℹ️ SSE stream cancelled:", matchId);
     },
   });
 

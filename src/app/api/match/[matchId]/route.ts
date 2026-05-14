@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
+import { getMatchRegistry } from "@/services/match/matchRegistry";
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ matchId: string }> } // ✅ use matchId consistently
+  context: { params: Promise<{ matchId: string }> }
 ) {
   try {
-    // ✅ unwrap params (IMPORTANT FIX)
     const { matchId } = await context.params;
 
-    console.log("📌 API LOAD MATCH:", matchId);
-
-    // ✅ Safety check
     if (!matchId) {
       return NextResponse.json(
         { success: false, message: "Invalid matchId" },
@@ -20,10 +17,10 @@ export async function GET(
     }
 
     const storage = new RedisSimulationStorage();
-
-    const data = await storage.load(matchId);
-
-    console.log("📦 REDIS RESPONSE:", data ? "✅ FOUND" : "❌ NULL");
+    const [data, registry] = await Promise.all([
+      storage.load(matchId),
+      getMatchRegistry(matchId),
+    ]);
 
     if (!data) {
       return NextResponse.json(
@@ -32,7 +29,6 @@ export async function GET(
       );
     }
 
-    // ✅ SUCCESS RESPONSE
     return NextResponse.json({
       success: true,
       match: data.state,
@@ -41,8 +37,8 @@ export async function GET(
         isPaused: false,
         speed: 1500,
       },
+      registry,
     });
-
   } catch (error) {
     console.error("❌ API ERROR:", error);
 

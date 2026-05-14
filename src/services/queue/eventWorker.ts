@@ -3,6 +3,7 @@ import { adaptApiEventToEngineEvent } from "../adapters/cricketEventAdapter";
 import { ApiBallEvent } from "../api/cricketApiService";
 import { redis } from "./redisClient";
 import { touchMatchHeartbeat } from "@/services/match/matchRegistry";
+import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 
 const workers: Record<string, boolean> = {};
 const workerLocks = new Set<string>();
@@ -51,16 +52,22 @@ function isStaleEvent(apiEvent: ApiBallEvent) {
   return Date.now() - apiEvent.timestamp > MAX_EVENT_AGE_MS;
 }
 
+export function isWorkerRunning(matchId: string) {
+  return workerLocks.has(matchId) && workers[matchId] === true;
+}
+
 export function startWorker(matchId: string) {
   if (workerLocks.has(matchId)) {
     console.log(`⚠️ Worker already running for ${matchId}`);
-    return;
+    return false;
   }
 
   workerLocks.add(matchId);
   workers[matchId] = true;
-  processedKeys[matchId] = new Set();
-  processedPointers[matchId] = "";
+  processedKeys[matchId] = processedKeys[matchId] ?? new Set();
+  processedPointers[matchId] = processedPointers[matchId] ?? "";
+
+  const storage = new RedisSimulationStorage();
 
   (async function loop() {
     while (workers[matchId]) {
@@ -126,6 +133,14 @@ export function startWorker(matchId: string) {
         const latest = getMatchState(matchId);
         const latestInnings = latest?.innings[latest.currentInningsIndex];
 
+        if (latest) {
+          await storage.save(matchId, latest, {
+            isRunning: true,
+            isPaused: false,
+            speed: 1500,
+          });
+        }
+
         await touchMatchHeartbeat(matchId, {
           currentRuns: latestInnings?.runs,
           currentWickets: latestInnings?.wickets,
@@ -145,9 +160,13 @@ export function startWorker(matchId: string) {
       }
     }
   })();
+
+  return true;
 }
 
 export function stopWorker(matchId: string) {
   workers[matchId] = false;
   workerLocks.delete(matchId);
+  delete processedPointers[matchId];
+  delete processedKeys[matchId];
 }

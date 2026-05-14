@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, use, useRef } from "react";
+import React, { useEffect, useMemo, useState, use } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AdminScoringPanel from "@/components/admin/AdminScoringPanel";
@@ -57,6 +57,8 @@ import {
 } from "@/services/analytics/scorecardEngine";
 import { getMatchBySlug } from "@/services/matchService";
 import { connectRealtime } from "@/services/realtime/connectRealtime";
+import type { MatchReconnectHealth } from "@/services/match/matchRegistry";
+import type { LiveSessionState } from "@/types/liveSession";
 import {
   getBattingOrder,
   getBowlingOrder,
@@ -108,6 +110,12 @@ type BroadcastInsight = {
     | "COLLAPSE_ALERT";
   message: string;
   severity: "LOW" | "MEDIUM" | "HIGH";
+};
+
+type MatchSessionMeta = {
+  type?: "LIVE" | "SIMULATION";
+  sessionState?: LiveSessionState;
+  reconnectHealth?: MatchReconnectHealth;
 };
 
 // ─────────────────────────────────────────────
@@ -201,7 +209,13 @@ function SectionHeader({
 // StickyInsightsRail — uses useMatch() ✅
 // ─────────────────────────────────────────────
 
-function StickyInsightsRail({ match }: { match: Match }) {
+function StickyInsightsRail({
+  match,
+  sessionMeta,
+}: {
+  match: Match;
+  sessionMeta?: MatchSessionMeta | null;
+}) {
   const score = useScore(match.slug);
   const batters = useCurrentBatters(match.slug);
   const currentInningsIndex = useMatchSelector(
@@ -310,7 +324,11 @@ function StickyInsightsRail({ match }: { match: Match }) {
       <GlassPanel>
         <SectionHeader eyebrow="Quick access" title="Control Deck" />
         <div className="space-y-3">
-          <LiveMatchStatus matchId={match.slug} />
+          <LiveMatchStatus
+            matchId={match.slug}
+            sessionState={sessionMeta?.sessionState}
+            reconnectHealth={sessionMeta?.reconnectHealth}
+          />
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
             <p className="text-sm font-medium text-white">Fixture</p>
             <p className="mt-1 text-sm text-white/70">
@@ -335,6 +353,7 @@ function TabsArea({
   match,
   analytics,
   insights,
+  sessionMeta,
 }: {
   match: Match;
   analytics: {
@@ -342,6 +361,7 @@ function TabsArea({
     momentum: { over: number; score: number }[];
   };
   insights: BroadcastInsight[];
+  sessionMeta?: MatchSessionMeta | null;
 }) {
   const isAdmin = true;
   const { state: currentEngineState } = useMatch();
@@ -610,7 +630,13 @@ function TabsArea({
               <SectionHeader
                 eyebrow="Match center"
                 title="Overview"
-                action={<LiveMatchStatus matchId={match.slug} />}
+                action={
+                  <LiveMatchStatus
+                    matchId={match.slug}
+                    sessionState={sessionMeta?.sessionState}
+                    reconnectHealth={sessionMeta?.reconnectHealth}
+                  />
+                }
               />
               <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-4">
                 {summaryCards.map((item) => (
@@ -627,7 +653,13 @@ function TabsArea({
             <div className="space-y-4">
               <GlassPanel>
                 <SectionHeader eyebrow="Control" title="Match Controls" />
-                <MatchControlPanel matchId={match.slug} />
+                {sessionMeta?.type === "LIVE" ? (
+                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4 text-sm text-white/70">
+                    Live sessions connect automatically. Simulation controls are hidden for provider-driven matches.
+                  </div>
+                ) : (
+                  <MatchControlPanel matchId={match.slug} />
+                )}
               </GlassPanel>
 
               <GlassPanel>
@@ -1342,7 +1374,7 @@ function TabsArea({
       {/* ── Right rail ── */}
       {activeTab !== "live" ? (
         <div className="hidden lg:block">
-          <StickyInsightsRail match={match} />
+          <StickyInsightsRail match={match} sessionMeta={sessionMeta} />
         </div>
       ) : null}
     </div>
@@ -1358,6 +1390,7 @@ function MatchInnerPage({
   match,
   analytics,
   insights,
+  sessionMeta,
 }: {
   match: Match;
   analytics: {
@@ -1365,6 +1398,7 @@ function MatchInnerPage({
     momentum: { over: number; score: number }[];
   };
   insights: BroadcastInsight[];
+  sessionMeta?: MatchSessionMeta | null;
 }) {
   // ✅ Single reactive source — no local engineState
   const { state: currentEngineState } = useMatch();
@@ -1602,7 +1636,7 @@ function MatchInnerPage({
                     <StatPill
                       label="Status"
                       value={
-                        getLiveMatchStatusLabel(currentEngineState.matchEnded)
+                        getLiveMatchStatusLabel(currentEngineState.matchEnded, sessionMeta?.sessionState)
                       }
                       tone="neutral"
                     />
@@ -1614,7 +1648,12 @@ function MatchInnerPage({
         </div>
 
         {/* ── Tabs ── */}
-        <TabsArea match={match} analytics={analytics} insights={insights} />
+        <TabsArea
+          match={match}
+          analytics={analytics}
+          insights={insights}
+          sessionMeta={sessionMeta}
+        />
       </div>
     </main>
   );
@@ -1642,6 +1681,7 @@ export default function MatchDetailPage({
 
   // ✅ Only non-reactive metadata lives here
   const [match, setMatch] = useState<Match | undefined>();
+  const [sessionMeta, setSessionMeta] = useState<MatchSessionMeta | null>(null);
   const [insights, setInsights] = useState<BroadcastInsight[]>([]);
 
   type WinPoint = { over: number; value: number };
@@ -1687,6 +1727,8 @@ export default function MatchDetailPage({
 
         // ✅ Hydrate matchEngine (for scorecard helpers etc.)
         hydrateMatchState(id, data.match);
+
+        setSessionMeta(data.registry ?? null);
 
         // ✅ CRITICAL: also push into eventStore so MatchProvider sees initial state
         setMatchState(id, data.match);
@@ -1736,7 +1778,9 @@ export default function MatchDetailPage({
         const isRunning = runtime?.isRunning === true && !data.match.matchEnded;
         if (!cancelled && isRunning) {
           // connectRealtime is safe to call if already connected — it's a no-op
-          connectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID);
+          connectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID, {
+            autoStartSimulation: data.registry?.type !== "LIVE",
+          });
         }
       } catch (err) {
         console.error("LOAD MATCH ERROR", err);
@@ -1745,25 +1789,6 @@ export default function MatchDetailPage({
 
     loadMatch();
     return () => { cancelled = true; };
-  }, [matchId]);
-
-  // Match init API (one-shot)
-  const hasInitialized = useRef(false);
-  useEffect(() => {
-    if (!matchId || hasInitialized.current) return;
-    hasInitialized.current = true;
-
-    fetch("/api/match/init", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        matchId,
-        teamA: match?.team1 ?? "Team A",
-        teamB: match?.team2 ?? "Team B",
-        type: "LIVE",
-        externalMatchId: matchId,
-      }),
-    });
   }, [matchId]);
 
   // Analytics / insights from window events

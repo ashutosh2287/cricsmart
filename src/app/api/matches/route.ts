@@ -21,6 +21,14 @@ function withDerivedFreshness(match: MatchRegistryRecord): MatchListRow {
           ? "healthy"
           : "stale"
         : match.reconnectHealth,
+    sessionState:
+      match.type === "LIVE"
+        ? heartbeatFresh
+          ? match.sessionState ?? "ACTIVE"
+          : match.sessionState === "COMPLETED" || match.sessionState === "FAILED"
+            ? match.sessionState
+            : "STALE"
+        : match.sessionState,
   };
 }
 

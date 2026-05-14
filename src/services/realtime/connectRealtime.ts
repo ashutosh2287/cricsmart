@@ -10,6 +10,10 @@ const MAX_BACKOFF_EXPONENT = 5;
 const BACKOFF_JITTER_MS = 250;
 const SIMULATION_START_DELAY_MS = 500;
 
+export type ConnectRealtimeOptions = {
+  autoStartSimulation?: boolean;
+};
+
 export type RealtimeConnectionState = {
   socket: EventSource | null;
   activeMatchId: string | null;
@@ -18,6 +22,7 @@ export type RealtimeConnectionState = {
   subscriberIds: Set<string>;
   reconnectTimer: number | null;
   reconnectAttempts: number;
+  autoStartSimulation: boolean;
 };
 
 const state: RealtimeConnectionState = {
@@ -28,6 +33,7 @@ const state: RealtimeConnectionState = {
   subscriberIds: new Set(),
   reconnectTimer: null,
   reconnectAttempts: 0,
+  autoStartSimulation: true,
 };
 
 function clearReconnectTimer() {
@@ -100,11 +106,6 @@ function openSocket(matchId: string) {
     window.location.origin
   );
 
-  // ─── Single clean handler ────────────────────────────────────────
-  // Server sends all events as NAMED SSE events:
-  //   event: BALL_EVENT\ndata: {...}\n\n
-  // Named addEventListener fires exactly once per event — no
-  // deduplication or message fallback needed.
   function handleEvent(event: MessageEvent) {
     if (!event?.data) {
       console.warn("⚠️ Empty SSE event");
@@ -120,9 +121,9 @@ function openSocket(matchId: string) {
   }
 
   const es = new EventSource(url.toString());
-  const shouldStartSimulation = state.reconnectAttempts === 0;
+  const shouldStartSimulation =
+    state.autoStartSimulation && state.reconnectAttempts === 0;
 
-  // Register one listener per named event type
   es.addEventListener("CONNECTED", handleEvent);
   es.addEventListener("INITIAL_STATE", handleEvent);
   es.addEventListener("BALL_EVENT", handleEvent);
@@ -140,35 +141,34 @@ function openSocket(matchId: string) {
     });
   };
 
-  // Start simulation after SSE opens
   if (shouldStartSimulation) {
     setTimeout(() => {
-    const matchMeta = getMatchMeta(matchId);
-    if (!matchMeta) {
-      console.error("ENGINE ERROR: missing match metadata");
-      return;
-    }
-    if (!matchMeta.toss?.winner || !matchMeta.toss?.decision) {
-      console.error("ENGINE ERROR: missing toss metadata");
-      return;
-    }
+      const matchMeta = getMatchMeta(matchId);
+      if (!matchMeta) {
+        console.error("ENGINE ERROR: missing match metadata");
+        return;
+      }
+      if (!matchMeta.toss?.winner || !matchMeta.toss?.decision) {
+        console.error("ENGINE ERROR: missing toss metadata");
+        return;
+      }
 
-    fetch("/api/start-simulation", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        matchId,
-        teamAName: matchMeta.teamA.name,
-        teamBName: matchMeta.teamB.name,
-        tossWinner: matchMeta.toss.winner,
-        tossDecision: matchMeta.toss.decision,
-      }),
-    })
-      .then((res) => res.json())
-      .then(() => {
-        console.log(`MATCH LIFECYCLE: simulation started for ${matchId}`);
+      fetch("/api/start-simulation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          matchId,
+          teamAName: matchMeta.teamA.name,
+          teamBName: matchMeta.teamB.name,
+          tossWinner: matchMeta.toss.winner,
+          tossDecision: matchMeta.toss.decision,
+        }),
       })
-      .catch((err) => console.error("ENGINE ERROR: simulation start failed", err));
+        .then((res) => res.json())
+        .then(() => {
+          console.log(`MATCH LIFECYCLE: simulation started for ${matchId}`);
+        })
+        .catch((err) => console.error("ENGINE ERROR: simulation start failed", err));
     }, SIMULATION_START_DELAY_MS);
   }
 
@@ -183,7 +183,11 @@ function openSocket(matchId: string) {
   };
 }
 
-export function connectRealtime(matchId: string, subscriberId: string) {
+export function connectRealtime(
+  matchId: string,
+  subscriberId: string,
+  options?: ConnectRealtimeOptions
+) {
   if (!matchId) {
     console.error("SSE ERROR: connectRealtime called without matchId");
     return;
@@ -192,6 +196,7 @@ export function connectRealtime(matchId: string, subscriberId: string) {
 
   state.subscriberIds.add(subscriberId);
   state.subscribers = state.subscriberIds.size;
+  state.autoStartSimulation = options?.autoStartSimulation ?? true;
 
   const isAlreadyConnectedToMatch =
     state.socket &&

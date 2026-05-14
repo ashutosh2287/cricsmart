@@ -8,9 +8,12 @@ import { registerPlayer } from "../player/playerRegistry";
 import { getMatchState, syncBattingOrder } from "../matchEngine";
 import { getLiveProvider } from "@/services/providers/cricapiLiveProvider";
 import {
+  markMatchActive,
   markMatchDisconnected,
+  markMatchStale,
   touchMatchHeartbeat,
 } from "@/services/match/matchRegistry";
+import { isWorkerRunning, startWorker } from "@/services/queue/eventWorker";
 
 const pollingIntervals: Record<string, ReturnType<typeof setInterval>> = {};
 const processedEvents: Record<string, Set<string>> = {};
@@ -54,15 +57,19 @@ function isValidIncomingEvent(event: ApiBallEvent): boolean {
   return true;
 }
 
+export function isLiveMatchSessionRunning(matchId: string) {
+  return Boolean(pollingIntervals[matchId]);
+}
+
 export function startLiveMatchIngestor(matchId: string, externalMatchId: string) {
   if (pollingIntervals[matchId]) {
     console.warn(`⚠️ Ingestor already running for match: ${matchId}`);
-    return;
+    return false;
   }
 
   const provider = getLiveProvider();
 
-  processedEvents[matchId] = new Set();
+  processedEvents[matchId] = processedEvents[matchId] ?? new Set();
   abortControllers[matchId]?.abort();
   abortControllers[matchId] = new AbortController();
 
@@ -93,9 +100,7 @@ export function startLiveMatchIngestor(matchId: string, externalMatchId: string)
       const state = getMatchState(matchId);
       if (!state) return;
 
-      const innings = state.innings[state.currentInningsIndex];
-
-      if (innings?.completed) {
+      if (state.matchEnded) {
         stopLiveMatchIngestor(matchId);
         await markMatchDisconnected(matchId);
         return;
@@ -110,6 +115,7 @@ export function startLiveMatchIngestor(matchId: string, externalMatchId: string)
         );
 
         failureCount = 0;
+        backoffUntil = 0;
       } catch (err) {
         failureCount += 1;
 
@@ -118,7 +124,9 @@ export function startLiveMatchIngestor(matchId: string, externalMatchId: string)
           backoffUntil = Date.now() + delay;
         }
 
-        await markMatchDisconnected(matchId);
+        await markMatchStale(matchId, {
+          commentaryPreview: `Provider polling failed (${failureCount})`,
+        });
         console.error(`❌ Live provider fetch failed (${failureCount})`, err);
         return;
       }
@@ -133,6 +141,7 @@ export function startLiveMatchIngestor(matchId: string, externalMatchId: string)
 
         events.forEach((e) => {
           if (e.batsman) playersSet.add(e.batsman);
+          if (e.nonStriker) playersSet.add(e.nonStriker);
           if (e.bowler) playersSet.add(e.bowler);
         });
 
@@ -161,6 +170,7 @@ export function startLiveMatchIngestor(matchId: string, externalMatchId: string)
       });
 
       let latestCommentary: string | undefined;
+      let queuedCount = 0;
 
       for (const apiEvent of sortedEvents) {
         if (!isValidIncomingEvent(apiEvent)) continue;
@@ -177,6 +187,7 @@ export function startLiveMatchIngestor(matchId: string, externalMatchId: string)
 
         await redis.lpush(`match:${matchId}:events`, JSON.stringify(apiEvent));
 
+        queuedCount += 1;
         lastProcessedPointer[matchId] = pointer;
         processedEvents[matchId].add(eventKey);
 
@@ -188,6 +199,14 @@ export function startLiveMatchIngestor(matchId: string, externalMatchId: string)
           const first = processedEvents[matchId].values().next().value;
           if (first) processedEvents[matchId].delete(first);
         }
+      }
+
+      if (queuedCount > 0) {
+        await markMatchActive(matchId);
+      } else {
+        await touchMatchHeartbeat(matchId, {
+          commentaryPreview: latestCommentary,
+        });
       }
 
       const latest = getMatchState(matchId);
@@ -224,10 +243,33 @@ export function startLiveMatchIngestor(matchId: string, externalMatchId: string)
     } catch (err: unknown) {
       if (err instanceof Error && err.name === "AbortError") return;
       console.error("❌ Live ingestion error:", err);
+      await markMatchStale(matchId, {
+        commentaryPreview:
+          err instanceof Error ? err.message : "Live ingestion error",
+      });
     } finally {
       isFetching = false;
     }
   }, POLL_INTERVAL);
+
+  return true;
+}
+
+export function startLiveMatchSession(matchId: string, externalMatchId: string) {
+  const workerStarted = isWorkerRunning(matchId) ? false : startWorker(matchId);
+  const ingestorStarted = isLiveMatchSessionRunning(matchId)
+    ? false
+    : startLiveMatchIngestor(matchId, externalMatchId);
+
+  void markMatchActive(matchId).catch((error) => {
+    console.error("❌ Failed to mark live session active", error);
+  });
+
+  return {
+    started: Boolean(workerStarted || ingestorStarted),
+    workerStarted: Boolean(workerStarted),
+    ingestorStarted: Boolean(ingestorStarted),
+  };
 }
 
 export function stopLiveMatchIngestor(matchId: string) {
@@ -242,7 +284,6 @@ export function stopLiveMatchIngestor(matchId: string) {
   delete processedEvents[matchId];
   delete lastProcessedPointer[matchId];
 
-  // Non-blocking on shutdown to avoid delaying interval teardown.
   markMatchDisconnected(matchId).catch((error) => {
     console.error("❌ Failed to mark match disconnected", error);
   });

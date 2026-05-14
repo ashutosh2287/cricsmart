@@ -1,6 +1,6 @@
 import { logger } from "@/lib/logger";
 import type { ApiBallEvent } from "@/services/api/cricketApiService";
-import { mockFixtures } from "@/services/providers/mock/mockFixtures";
+import { getMockFixtures } from "@/services/providers/mock/mockFixtures";
 import { getMockBallEvents } from "@/services/providers/mock/mockBallEvents";
 import { getMockMatchState } from "@/services/providers/mock/mockMatchStates";
 import type { MatchProvider } from "@/services/providers/types";
@@ -103,7 +103,7 @@ export const mockMatchProvider: MatchProvider = {
   name: "mock",
   mode: "mock",
   supportsLivePolling: false,
-  getFixtures: async () => mockFixtures,
+  getFixtures: async () => getMockFixtures(),
   getMatchState: async (externalMatchId) => getMockMatchState(externalMatchId),
   pollMatchEvents: async (externalMatchId) => {
     const batch = consumeMockEvents(externalMatchId);

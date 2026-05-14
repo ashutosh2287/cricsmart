@@ -45,6 +45,7 @@ function scheduleNext(matchId: string, delayMs: number, run: () => Promise<void>
 
   session.timer = setTimeout(() => {
     run().catch((err) => {
+      markPollFailure(matchId);
       logger.error("PROVIDER", "provider_poll_failed", {
         matchId,
         error: err instanceof Error ? err.message : String(err),

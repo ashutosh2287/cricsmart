@@ -1,6 +1,6 @@
 import type { ApiBallEvent } from "@/services/api/cricketApiService";
 import type { MockFixturePack } from "@/services/providers/mock/mockFixtures";
-import { mockFixturePacks } from "@/services/providers/mock/mockFixtures";
+import { getMockFixturePacks } from "@/services/providers/mock/mockFixtures";
 
 function buildEvents(
   matchId: string,
@@ -65,7 +65,7 @@ function byKey(key: MockFixturePack["key"], id: string): ApiBallEvent[] {
 }
 
 export const mockBallEvents: Record<string, ApiBallEvent[]> = Object.fromEntries(
-  mockFixturePacks.map((pack) => {
+  getMockFixturePacks().map((pack) => {
     const id = String(pack.match.id ?? pack.key);
     return [id, byKey(pack.key, id)];
   })

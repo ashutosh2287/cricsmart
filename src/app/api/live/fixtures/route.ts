@@ -253,7 +253,9 @@ export async function GET() {
     }
   }
 
-  if (mode === "cricketdata" && !key) {
+  const cricketDataKey = mode === "cricketdata" ? key : undefined;
+
+  if (mode === "cricketdata" && !cricketDataKey) {
     logger.warn("MATCH_CURATION", "Missing server-side CRICKET_API_KEY in live fixtures route");
     if (cachedPayload) {
       return NextResponse.json({ ...cachedPayload, source: "stale", stale: true, error: "missing_api_key" });
@@ -276,9 +278,14 @@ export async function GET() {
         fixtures: deduped.length,
       });
     } else {
+      const providerKey = cricketDataKey;
+      if (!providerKey) {
+        throw new Error("missing_api_key");
+      }
+
       const endpointResults: ProviderEndpointResult[] = [];
 
-      const primary = await fetchProviderEndpoint(PRIMARY_PROVIDER_ENDPOINT, key as string, controller.signal);
+      const primary = await fetchProviderEndpoint(PRIMARY_PROVIDER_ENDPOINT, providerKey, controller.signal);
       endpointResults.push(primary);
 
       const mergedMatches: ProviderMatch[] = [];
@@ -288,7 +295,7 @@ export async function GET() {
 
       if (mergedMatches.length === 0) {
         for (const endpoint of FALLBACK_PROVIDER_ENDPOINTS) {
-          const result = await fetchProviderEndpoint(endpoint, key as string, controller.signal);
+          const result = await fetchProviderEndpoint(endpoint, providerKey, controller.signal);
           endpointResults.push(result);
           if (result.ok && result.payload) {
             mergedMatches.push(...getProviderMatches(result.payload));

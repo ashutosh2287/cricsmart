@@ -11,13 +11,12 @@ export type MockFixturePack = {
   match: ProviderMatch;
 };
 
-const now = Date.now();
-
 function isoAfter(minutes: number) {
-  return new Date(now + minutes * 60_000).toISOString();
+  return new Date(Date.now() + minutes * 60_000).toISOString();
 }
 
-export const mockFixturePacks: MockFixturePack[] = [
+function buildMockFixturePacks(): MockFixturePack[] {
+  return [
   {
     key: "ipl-chase",
     match: {
@@ -126,6 +125,17 @@ export const mockFixturePacks: MockFixturePack[] = [
       matchEnded: false,
     },
   },
-];
+  ];
+}
 
-export const mockFixtures: ProviderMatch[] = mockFixturePacks.map((pack) => pack.match);
+export function getMockFixturePacks(): MockFixturePack[] {
+  return buildMockFixturePacks();
+}
+
+export const mockFixturePacks: MockFixturePack[] = buildMockFixturePacks();
+
+export function getMockFixtures(): ProviderMatch[] {
+  return buildMockFixturePacks().map((pack) => pack.match);
+}
+
+export const mockFixtures: ProviderMatch[] = getMockFixtures();

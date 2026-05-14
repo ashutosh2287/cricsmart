@@ -253,9 +253,7 @@ export async function GET() {
     }
   }
 
-  const cricketDataKey = mode === "cricketdata" ? key : undefined;
-
-  if (mode === "cricketdata" && !cricketDataKey) {
+  if (mode === "cricketdata" && !key) {
     logger.warn("MATCH_CURATION", "Missing server-side CRICKET_API_KEY in live fixtures route");
     if (cachedPayload) {
       return NextResponse.json({ ...cachedPayload, source: "stale", stale: true, error: "missing_api_key" });
@@ -278,7 +276,7 @@ export async function GET() {
         fixtures: deduped.length,
       });
     } else {
-      const providerKey = cricketDataKey;
+      const providerKey = key;
       if (!providerKey) {
         throw new Error("missing_api_key");
       }

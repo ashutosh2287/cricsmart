@@ -31,6 +31,12 @@ function pruneWindow(health: InternalHealth, now: number) {
   health.pollsLastMinute = health.pollTimestamps.length;
 }
 
+
+function toPublicHealth(health: InternalHealth): PollingHealth {
+  return Object.fromEntries(
+    Object.entries(health).filter(([key]) => key !== "pollTimestamps")
+  ) as PollingHealth;
+}
 export function ensurePollingHealth(
   matchId: string,
   providerName: string,
@@ -119,15 +125,11 @@ export function removePollingHealth(matchId: string) {
 export function getPollingHealth(matchId: string): PollingHealth | null {
   const health = registry.get(matchId);
   if (!health) return null;
-  const { pollTimestamps: _pollTimestamps, ...publicHealth } = health;
-  return publicHealth;
+  return toPublicHealth(health);
 }
 
 export function listPollingHealth(): PollingHealth[] {
-  return Array.from(registry.values()).map((health) => {
-    const { pollTimestamps: _pollTimestamps, ...publicHealth } = health;
-    return publicHealth;
-  });
+  return Array.from(registry.values()).map((health) => toPublicHealth(health));
 }
 
 export function getActivePollerCount() {

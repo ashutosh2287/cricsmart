@@ -54,8 +54,20 @@ async function rehydrateSingleSession(row: MatchRegistryRecord) {
     const storage = new RedisSimulationStorage();
     const stored = await storage.load(row.matchId);
     if (stored?.state) {
-      hydrateMatchState(row.matchId, stored.state);
-      logger.info("RECOVERY", "session_recovered", { matchId: row.matchId });
+      const isHydrationSafe =
+        (row.sessionState === "ACTIVE" || row.sessionState === "INITIALIZING") &&
+        stored.state.matchEnded !== true;
+
+      if (isHydrationSafe) {
+        hydrateMatchState(row.matchId, stored.state);
+        logger.info("RECOVERY", "session_recovered", { matchId: row.matchId });
+      } else {
+        diagnostics.skippedSessions += 1;
+        logger.warn("RECOVERY", "recovery_skipped", {
+          matchId: row.matchId,
+          reason: "stale_or_terminal_snapshot",
+        });
+      }
     }
 
     if (!isWorkerRunning(row.matchId)) {

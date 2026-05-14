@@ -43,7 +43,8 @@ const MIN_JITTER_MS = 2000;
 const MAX_JITTER_MS = 5000;
 
 function applyJitter(delayMs: number): number {
-  const span = MIN_JITTER_MS + Math.random() * (MAX_JITTER_MS - MIN_JITTER_MS);
+  const baseSpan = MIN_JITTER_MS + Math.random() * (MAX_JITTER_MS - MIN_JITTER_MS);
+  const span = Math.min(baseSpan, Math.max(500, Math.floor(delayMs * 0.5)));
   const signed = Math.random() < 0.5 ? -span : span;
   return Math.max(1000, Math.round(delayMs + signed));
 }
@@ -159,6 +160,8 @@ export function startPollingSession(config: PollingSessionConfig) {
 
     try {
       if (context.failedPolls >= retryBudget) {
+        markPollFailure(config.matchId);
+        updatePollingContext(config.matchId, { status: "degraded" });
         logger.warn("PROVIDER", "provider_retry_budget_exhausted", {
           matchId: config.matchId,
           failedPolls: context.failedPolls,

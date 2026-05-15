@@ -76,6 +76,17 @@ def resolve_feature_columns(metadata: dict) -> list[str]:
     return feature_columns
 
 
+def build_feature_row(payload: dict, feature_columns: list[str]) -> np.ndarray:
+    missing = [col for col in feature_columns if col not in payload]
+    if missing:
+        raise KeyError(
+            f"Payload is missing required feature columns: {missing}. "
+            f"Expected all of: {feature_columns}"
+        )
+    feature_values = [payload[col] for col in feature_columns]
+    return np.array([feature_values])
+
+
 def parse_payload_args() -> dict:
     parser = argparse.ArgumentParser(
         description="Predict batting team win probability from a match-state payload."
@@ -108,19 +119,17 @@ def parse_payload_args() -> dict:
 def predict(payload: dict) -> dict:
     model, metadata = load_model_and_metadata()
     feature_columns = resolve_feature_columns(metadata)
-
-    missing = [col for col in feature_columns if col not in payload]
-    if missing:
-        raise KeyError(
-            f"Payload is missing required feature columns: {missing}. "
-            f"Expected all of: {feature_columns}"
-        )
-    feature_values = [payload[col] for col in feature_columns]
-    row = np.array([feature_values])
-
-    prob = float(model.predict_proba(row)[0][POSITIVE_CLASS_INDEX])
+    row = build_feature_row(payload, feature_columns)
+    try:
+        prob = float(model.predict_proba(row)[0][POSITIVE_CLASS_INDEX])
+    except Exception as exc:
+        raise RuntimeError(
+            "Model prediction failed. Check payload numeric types and feature ordering "
+            "against FEATURE_COLUMNS."
+        ) from exc
     # Confidence: distance from the decision boundary (0.5), scaled to [0, 1].
     # A probability of 0 or 1 yields confidence 1.0; 0.5 yields 0.0.
+    # This provides a simple certainty measure for product UI around the 50-50 line.
     confidence = float(abs(prob - DECISION_BOUNDARY) * CONFIDENCE_SCALE_FACTOR)
 
     return {

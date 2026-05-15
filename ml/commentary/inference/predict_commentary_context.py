@@ -3,52 +3,40 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any
+from typing import Dict, List
 
 import joblib
-import numpy as np
 import pandas as pd
 
-if __package__ in {None, ""}:
-    import sys
-
-    sys.path.append(str(Path(__file__).resolve().parents[3]))
-
-from ml.commentary.preprocessing.feature_engineering import FEATURE_COLUMNS, build_model_features
-
-DEFAULT_MODEL_PATH = "ml/commentary/models/commentary_ranker.joblib"
+from ml.commentary.training.train_commentary_classifier import FEATURE_COLUMNS, TARGET_COLUMNS
 
 
-def predict_commentary_context(context: dict[str, Any], model_path: str = DEFAULT_MODEL_PATH) -> dict[str, Any]:
-    bundle = joblib.load(model_path)
-    feature_row = build_model_features(context)
-    matrix = pd.DataFrame([[feature_row[column] for column in FEATURE_COLUMNS]], columns=FEATURE_COLUMNS, dtype="float32")
+def predict_rows(model_path: Path, rows: List[Dict]) -> List[Dict]:
+    model = joblib.load(model_path)
+    frame = pd.DataFrame(rows)
+    frame = frame.reindex(columns=FEATURE_COLUMNS, fill_value=0)
+    predictions = model.predict(frame)
 
-    predictions: dict[str, Any] = {
-        "modelVersion": bundle["modelVersion"],
-        "features": feature_row,
-    }
-    for target, model in bundle["models"].items():
-        classes = bundle["labelEncodings"][target]
-        probabilities = model.predict_proba(matrix)[0]
-        best_index = int(np.argmax(probabilities))
-        predictions[target] = classes[best_index]
-        predictions[f"{target}_confidence"] = round(float(probabilities[best_index]), 4)
-    return predictions
+    out = []
+    for index, row in enumerate(rows):
+        payload = dict(row)
+        for target_index, target in enumerate(TARGET_COLUMNS):
+            payload[target] = predictions[index][target_index]
+        out.append(payload)
+    return out
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Predict commentary context labels from match state features.")
-    parser.add_argument("--model", default=DEFAULT_MODEL_PATH)
-    parser.add_argument("--input", help="Optional JSON file containing context payload")
+    parser = argparse.ArgumentParser(description="Predict commentary context labels")
+    parser.add_argument("--model", default="ml/commentary/models/classifier.joblib")
+    parser.add_argument("--input", required=True, help="JSON file with array of feature rows")
+    parser.add_argument("--out", required=True, help="Output JSON path")
     args = parser.parse_args()
 
-    if args.input:
-        payload = json.loads(Path(args.input).read_text(encoding="utf-8"))
-    else:
-        payload = json.loads(input())
-
-    print(json.dumps(predict_commentary_context(payload, args.model), indent=2))
+    rows = json.loads(Path(args.input).read_text(encoding="utf-8"))
+    predictions = predict_rows(Path(args.model), rows)
+    Path(args.out).write_text(json.dumps(predictions, indent=2), encoding="utf-8")
+    print(f"Wrote predictions to {args.out}")
 
 
 if __name__ == "__main__":

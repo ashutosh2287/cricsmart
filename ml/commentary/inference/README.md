@@ -13,3 +13,8 @@ The service supports:
 - event-level cache keys (matchId, innings, over/ball, narrative state)
 - deterministic fallback responses
 - latency budget instrumentation for live/replay/simulation
+
+Offline scripts:
+- `predict_commentary_context.py`
+- `predict_template.py`
+- `retrieve_examples.py`

@@ -1,74 +1,45 @@
-import {
-  predictCommentaryContext,
-  type CommentaryContextPrediction,
-  type CommentaryMlContext,
-} from "./commentary-predictor";
-import {
-  retrieveSimilarCommentary,
-  type CommentaryRetrievalExample,
-  type RetrievedCommentaryExample,
-} from "./commentary-retrieval";
+import type { CommentaryContext, CommentaryPlan } from "@/services/commentary/types/commentary.types";
 
-export type CommentaryTemplateCandidate = {
-  id: string;
-  templateCategory: string;
-  commentaryType: CommentaryContextPrediction["commentaryType"];
-  tone: CommentaryContextPrediction["tone"];
-  importance: CommentaryContextPrediction["importance"];
-  text: string;
-};
+const TEMPLATE_CANDIDATES = [
+  "boundary_pressure_release",
+  "collapse_warning",
+  "momentum_shift",
+  "wicket_turning_point",
+  "wicket_breakthrough",
+  "dot_ball_pressure",
+  "partnership_building",
+  "standard_boundary",
+  "single_rotation",
+  "over_summary_attack",
+  "over_summary_tight",
+  "over_summary_wicket",
+  "pressure_summary",
+  "momentum_shift_summary",
+  "turning_point_summary",
+];
 
-export type RankedCommentaryTemplate = {
-  candidate: CommentaryTemplateCandidate;
-  score: number;
-  retrievalMatches: RetrievedCommentaryExample[];
-};
-
-function scoreTemplate(
-  candidate: CommentaryTemplateCandidate,
-  prediction: CommentaryContextPrediction,
-  retrievalMatches: RetrievedCommentaryExample[]
-): number {
+function scoreTemplate(templateKey: string, context: CommentaryContext, plan: CommentaryPlan): number {
   let score = 0;
-  if (candidate.templateCategory === prediction.templateCategory) score += 5;
-  if (candidate.commentaryType === prediction.commentaryType) score += 3;
-  if (candidate.tone === prediction.tone) score += 2;
-  if (candidate.importance === prediction.importance) score += 1.5;
-  score += retrievalMatches
-    .filter((match) => match.commentaryType === candidate.commentaryType || match.tone === candidate.tone)
-    .reduce((total, match) => total + match.score * 0.4, 0);
-  return Number(score.toFixed(4));
+  if (templateKey === plan.templateKey) score += 4;
+  if (context.eventType === "WICKET" && templateKey.includes("wicket")) score += 6;
+  if (context.runsThisBall >= 4 && templateKey.includes("boundary")) score += 5;
+  if (context.dotBallStreak >= 3 && templateKey.includes("dot_ball")) score += 4;
+  if (context.currentPartnershipRuns >= 35 && templateKey.includes("partnership")) score += 4;
+  if (context.overPhase === "DEATH_OVERS" && (templateKey.includes("pressure") || templateKey.includes("turning"))) score += 3;
+  if (plan.momentumShift && templateKey.includes("momentum")) score += 3;
+  return score;
 }
 
-export function rankCommentaryTemplates(options: {
-  context: CommentaryMlContext;
-  templates: CommentaryTemplateCandidate[];
-  prediction?: CommentaryContextPrediction;
-  retrievalExamples?: CommentaryRetrievalExample[];
-  retrievalLimit?: number;
-}): RankedCommentaryTemplate[] {
-  const prediction = options.prediction ?? predictCommentaryContext(options.context);
-  const retrievalMatches = retrieveSimilarCommentary({
-    context: options.context,
-    prediction,
-    examples: options.retrievalExamples,
-    limit: options.retrievalLimit ?? 3,
-  });
+export function rankTemplateForContext(input: { context: CommentaryContext; plan: CommentaryPlan }) {
+  const { context, plan } = input;
+  const ranked = TEMPLATE_CANDIDATES.map((templateKey) => ({
+    templateKey,
+    score: scoreTemplate(templateKey, context, plan),
+  })).sort((a, b) => b.score - a.score);
 
-  return options.templates
-    .map((candidate) => ({
-      candidate,
-      score: scoreTemplate(candidate, prediction, retrievalMatches),
-      retrievalMatches,
-    }))
-    .sort((left, right) => right.score - left.score);
-}
-
-export function chooseBestCommentaryTemplate(options: {
-  context: CommentaryMlContext;
-  templates: CommentaryTemplateCandidate[];
-  prediction?: CommentaryContextPrediction;
-  retrievalExamples?: CommentaryRetrievalExample[];
-}): RankedCommentaryTemplate | null {
-  return rankCommentaryTemplates(options)[0] ?? null;
+  return {
+    topTemplateKey: ranked[0]?.templateKey ?? plan.templateKey,
+    score: ranked[0]?.score ?? 0,
+    ranked,
+  };
 }

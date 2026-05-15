@@ -9,9 +9,14 @@ import { buildCommentaryPlan } from "../narrative/commentary-planner";
 import { createInitialNarrativeState, updateNarrativeState } from "../narrative/narrative-state";
 import { determineTone } from "../narrative/tone-engine";
 import { generateCommentaryEvent } from "../generators/commentary-generator";
+import { getCommentaryMlAssistMode, isCommentaryMlAssistEnabled } from "@/config/commentaryMlMode";
+import { predictCommentaryContext } from "@/services/ml/commentary/commentary-classifier";
+import { rankTemplateForContext } from "@/services/ml/commentary/commentary-ranker";
+import { retrieveCommentaryExamples } from "@/services/ml/commentary/commentary-retrieval";
 import type {
   CommentaryContext,
   CommentaryEvent,
+  CommentaryPlan,
   CommentaryProbabilityState,
   NarrativeState,
   OverPhase,
@@ -166,6 +171,39 @@ function dedupeEvents(events: CommentaryEvent[]) {
   });
 }
 
+function applyMlAssistToPlan(input: { context: CommentaryContext; plan: CommentaryPlan }): CommentaryPlan {
+  const mode = getCommentaryMlAssistMode();
+  if (mode === "off") return input.plan;
+
+  try {
+    const prediction = predictCommentaryContext({ context: input.context });
+    const ranking = rankTemplateForContext({ context: input.context, plan: input.plan });
+    const retrieval = retrieveCommentaryExamples({ context: input.context, plan: input.plan });
+
+    if (!isCommentaryMlAssistEnabled(mode)) {
+      return input.plan;
+    }
+
+    const nextPlan = { ...input.plan };
+    if (prediction.confidence >= 0.72) {
+      nextPlan.tone = prediction.tone;
+      nextPlan.importance = prediction.importance;
+      if (nextPlan.commentaryType === "ball") {
+        nextPlan.commentaryType = prediction.commentaryType;
+      }
+    }
+    if (ranking.score >= 5) {
+      nextPlan.templateKey = ranking.topTemplateKey;
+    }
+    if (retrieval.length > 0 && nextPlan.narrativeType === "strike-rotation") {
+      nextPlan.narrativeType = "retrieval-assisted";
+    }
+    return nextPlan;
+  } catch {
+    return input.plan;
+  }
+}
+
 export function processCommentaryPipeline(input: PipelineInput): PipelineResult {
   const storeKey = getStoreKey(input.matchId, input.branchId);
   const previousState = narrativeStateStore.get(storeKey) ?? createInitialNarrativeState();
@@ -246,12 +284,13 @@ export function processCommentaryPipeline(input: PipelineInput): PipelineResult 
     momentumState: momentum.state,
     turningPointDetected,
   });
+  const finalPrimaryPlan = applyMlAssistToPlan({ context, plan: primaryPlan });
 
   const primaryEvent = generateCommentaryEvent({
     matchId: input.matchId,
     ballEvent: input.ballEvent,
     context,
-    plan: primaryPlan,
+    plan: finalPrimaryPlan,
     narrativeState,
   });
 

@@ -1,393 +1,263 @@
 from __future__ import annotations
 
 import argparse
-import json
-from collections import deque
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Dict, List
 
 import pandas as pd
 
-if __package__ in {None, ""}:
-    import sys
+from ml.commentary.preprocessing.feature_engineering import build_feature_matrix
+from ml.commentary.preprocessing.label_generators import apply_labels
 
-    sys.path.append(str(Path(__file__).resolve().parents[3]))
 
-from ml.commentary.preprocessing.feature_engineering import (
-    build_model_features,
-    collapse_risk_from_score,
-    compute_probability_swing,
-    compute_wicket_cluster_score,
-    derive_phase_of_match,
-    momentum_state_from_score,
-    pressure_level_from_score,
-    safe_float,
-)
-
-OUTPUT_COLUMNS = [
-    "match_id",
+REQUIRED_EVENT_COLUMNS = {
+    "matchId",
     "innings",
     "over",
     "ball",
+    "battingTeam",
+    "bowlingTeam",
+    "batsman",
+    "nonStriker",
+    "bowler",
     "runs",
     "wicket",
-    "extras",
-    "batting_team",
-    "bowling_team",
-    "striker",
-    "non_striker",
-    "bowler",
-    "current_score",
-    "wickets_lost",
-    "required_rr",
-    "current_rr",
+    "extra",
+    "scoreAfterBall",
+    "wicketsAfterBall",
     "target",
-    "recent_runs",
-    "recent_wickets",
-    "dot_ball_streak",
-    "partnership_runs",
-    "partnership_balls",
-    "momentum_state",
-    "pressure_level",
-    "collapse_risk",
-    "boundary",
-    "six",
-    "four",
-    "phase_of_match",
-    "win_probability",
-    "commentary_text",
-    "commentary_type",
-    "importance",
-    "tone",
-]
-
-EXTRA_EVENT_MAP = {
-    "wides": "WD",
-    "noballs": "NB",
-    "byes": "BYE",
-    "legbyes": "LB",
 }
 
 
-def parse_delivery_ball(ball_value: str) -> tuple[int, int]:
-    over_str, _, ball_str = str(ball_value).partition(".")
-    return int(over_str), int(ball_str or "0")
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        if pd.isna(value):
+            return default
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
-def normalize_key(payload: dict[str, Any]) -> tuple[str, int, int, int] | None:
-    match_id = str(payload.get("match_id") or payload.get("matchId") or "").strip()
-    if not match_id:
-        return None
-    innings = int(safe_float(payload.get("innings"), 1.0))
-    over = int(safe_float(payload.get("over")))
-    ball = int(safe_float(payload.get("ball")))
-    return match_id, innings, over, ball
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        if pd.isna(value):
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
-def load_records(path: Path) -> Iterable[dict[str, Any]]:
-    if path.suffix.lower() == ".csv":
-        dataframe = pd.read_csv(path)
-        return dataframe.to_dict(orient="records")
-    if path.suffix.lower() == ".jsonl":
-        return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if isinstance(payload, list):
-        return payload
-    if isinstance(payload, dict):
-        if isinstance(payload.get("rows"), list):
-            return payload["rows"]
-        return [payload]
-    return []
+def _phase_for_over(over: int) -> str:
+    if over < 6:
+        return "powerplay"
+    if over < 15:
+        return "middle_overs"
+    return "death_overs"
 
 
-def load_commentary_overrides(paths: list[Path]) -> dict[tuple[str, int, int, int], dict[str, Any]]:
-    overrides: dict[tuple[str, int, int, int], dict[str, Any]] = {}
-    for path in paths:
-        if not path.exists():
-            continue
-        for record in load_records(path):
-            key = normalize_key(record)
-            if key is None:
-                continue
-            overrides[key] = {
-                "commentary_text": record.get("commentary_text") or record.get("commentary") or record.get("text") or "",
-                "commentary_type": record.get("commentary_type") or record.get("type") or "",
-                "importance": record.get("importance") or "",
-                "tone": record.get("tone") or "",
+def _synthetic_commentary(row: Dict[str, Any]) -> str:
+    runs = _safe_int(row.get("runs", 0))
+    wicket = bool(row.get("wicket", False))
+    pressure = str(row.get("pressure_level", "MEDIUM"))
+    striker = str(row.get("striker", "batter"))
+    bowler = str(row.get("bowler", "bowler"))
+
+    if wicket:
+        if pressure in {"HIGH", "EXTREME"}:
+            return f"That could be a game-changing wicket by {bowler} under pressure."
+        return f"{bowler} picks up a wicket and shifts the balance."
+
+    if runs == 6:
+        return f"Massive six from {striker} to swing momentum."
+    if runs == 4 and pressure in {"HIGH", "EXTREME"}:
+        return f"Massive boundary under pressure from {striker}."
+    if runs == 4:
+        return f"{striker} finds the fence with authority."
+    if runs == 0 and pressure in {"HIGH", "EXTREME"}:
+        return f"Dot ball from {bowler}, pressure keeps mounting."
+    if runs == 0:
+        return f"Tight line from {bowler}, no run conceded."
+    if runs == 1:
+        return f"{striker} rotates strike with a single."
+    if runs == 2:
+        return f"{striker} works hard and comes back for two."
+    if runs == 3:
+        return f"{striker} pushes hard and they get three."
+    return f"{striker} adds {runs} run(s)."
+
+
+def _compute_contextual_rows(events: pd.DataFrame) -> pd.DataFrame:
+    frame = events.copy()
+    frame = frame.sort_values(["matchId", "innings", "over", "ball"]).reset_index(drop=True)
+
+    frame["ball_index"] = frame["over"] * 6 + frame["ball"]
+    frame["balls_remaining"] = ((20 * 6) - frame["ball_index"]).clip(lower=0)
+    frame["current_rr"] = (frame["scoreAfterBall"] * 6 / frame["ball_index"].clip(lower=1)).fillna(0.0)
+    frame["required_runs"] = (frame["target"].fillna(0) - frame["scoreAfterBall"]).clip(lower=0)
+    frame["required_rr"] = (
+        (frame["required_runs"] * 6 / frame["balls_remaining"].replace(0, pd.NA))
+        .fillna(0.0)
+        .astype(float)
+    )
+    frame["phase_of_match"] = frame["over"].map(_phase_for_over)
+
+    group = frame.groupby(["matchId", "innings"], dropna=False)
+    frame["recent_runs"] = group["runs"].rolling(window=6, min_periods=1).sum().reset_index(level=[0, 1], drop=True)
+    frame["recent_wickets"] = group["wicket"].rolling(window=6, min_periods=1).sum().reset_index(level=[0, 1], drop=True)
+
+    # dot-ball streak
+    streaks: List[int] = []
+    current_key = None
+    streak = 0
+    for row in frame.to_dict(orient="records"):
+        key = (row["matchId"], row["innings"])
+        if key != current_key:
+            current_key = key
+            streak = 0
+        if _safe_int(row.get("runs"), 0) == 0 and not bool(row.get("wicket", False)):
+            streak += 1
+        else:
+            streak = 0
+        streaks.append(streak)
+    frame["dot_ball_streak"] = streaks
+
+    # partnership
+    p_runs: List[int] = []
+    p_balls: List[int] = []
+    partnership_runs = 0
+    partnership_balls = 0
+    current_key = None
+    for row in frame.to_dict(orient="records"):
+        key = (row["matchId"], row["innings"])
+        if key != current_key:
+            current_key = key
+            partnership_runs = 0
+            partnership_balls = 0
+        if bool(row.get("wicket", False)):
+            partnership_runs = 0
+            partnership_balls = 0
+        else:
+            partnership_runs += _safe_int(row.get("runs"), 0)
+            partnership_balls += 1
+        p_runs.append(partnership_runs)
+        p_balls.append(partnership_balls)
+    frame["partnership_runs"] = p_runs
+    frame["partnership_balls"] = p_balls
+
+    frame["win_probability"] = (
+        0.5
+        + ((frame["current_rr"] - frame["required_rr"]) / 20.0).clip(lower=-0.35, upper=0.35)
+        + ((10 - frame["wicketsAfterBall"]) / 100.0)
+    ).clip(lower=0.02, upper=0.98)
+
+    frame["collapse_risk"] = (
+        frame["recent_wickets"] * 0.22
+        + frame["wicketsAfterBall"] * 0.04
+        + frame["dot_ball_streak"] * 0.05
+    ).clip(lower=0.0, upper=1.0)
+    return frame
+
+
+def build_dataset(events_df: pd.DataFrame, commentary_df: pd.DataFrame | None = None) -> pd.DataFrame:
+    missing = REQUIRED_EVENT_COLUMNS - set(events_df.columns)
+    if missing:
+        raise ValueError(f"Input events missing required columns: {sorted(missing)}")
+
+    context_df = _compute_contextual_rows(events_df)
+
+    rows: List[Dict[str, Any]] = []
+    for row in context_df.to_dict(orient="records"):
+        payload: Dict[str, Any] = {
+            "match_id": row.get("matchId", ""),
+            "innings": _safe_int(row.get("innings"), 1),
+            "over": _safe_int(row.get("over"), 0),
+            "ball": _safe_int(row.get("ball"), 0),
+            "batting_team": row.get("battingTeam", ""),
+            "bowling_team": row.get("bowlingTeam", ""),
+            "striker": row.get("batsman", ""),
+            "non_striker": row.get("nonStriker", ""),
+            "bowler": row.get("bowler", ""),
+            "runs": _safe_int(row.get("runs"), 0),
+            "wicket": bool(row.get("wicket", False)),
+            "extras": _safe_int(row.get("extra"), 0),
+            "current_score": _safe_int(row.get("scoreAfterBall"), 0),
+            "wickets_lost": _safe_int(row.get("wicketsAfterBall"), 0),
+            "required_rr": round(_safe_float(row.get("required_rr"), 0.0), 4),
+            "current_rr": round(_safe_float(row.get("current_rr"), 0.0), 4),
+            "target": _safe_int(row.get("target"), 0),
+            "balls_remaining": _safe_int(row.get("balls_remaining"), 0),
+            "recent_runs": _safe_int(row.get("recent_runs"), 0),
+            "recent_wickets": _safe_int(row.get("recent_wickets"), 0),
+            "dot_ball_streak": _safe_int(row.get("dot_ball_streak"), 0),
+            "partnership_runs": _safe_int(row.get("partnership_runs"), 0),
+            "partnership_balls": _safe_int(row.get("partnership_balls"), 0),
+            "phase_of_match": row.get("phase_of_match", "middle_overs"),
+            "win_probability": round(_safe_float(row.get("win_probability"), 0.5), 4),
+            "collapse_risk": round(_safe_float(row.get("collapse_risk"), 0.0), 4),
+        }
+        rows.append(payload)
+
+    dataset = pd.DataFrame(rows)
+    dataset = apply_labels(dataset)
+
+    if commentary_df is not None and not commentary_df.empty:
+        optional = commentary_df.rename(
+            columns={
+                "matchId": "match_id",
+                "rawCommentary": "raw_commentary",
+                "cleanedCommentary": "cleaned_commentary",
             }
-    return overrides
+        )
+        merge_cols = ["match_id", "innings", "over", "ball"]
+        useful_cols = [column for column in ["raw_commentary", "cleaned_commentary"] if column in optional.columns]
+        optional = optional[merge_cols + useful_cols].drop_duplicates(subset=merge_cols)
+        dataset = dataset.merge(optional, how="left", on=merge_cols)
+        dataset["commentary_text"] = dataset["cleaned_commentary"].fillna(dataset["raw_commentary"])
+    else:
+        dataset["commentary_text"] = pd.NA
 
+    dataset["commentary_text"] = dataset.apply(
+        lambda row: row["commentary_text"] if isinstance(row["commentary_text"], str) and row["commentary_text"].strip() else _synthetic_commentary(row.to_dict()),
+        axis=1,
+    )
 
-def iter_match_files(input_dir: Path) -> list[Path]:
-    if not input_dir.exists():
-        return []
-    return sorted(path for path in input_dir.rglob("*.json") if path.is_file())
-
-
-def extract_innings_payload(innings: dict[str, Any]) -> tuple[str, list[tuple[int, int, dict[str, Any]]]]:
-    if "overs" in innings:
-        deliveries: list[tuple[int, int, dict[str, Any]]] = []
-        for over_block in innings.get("overs", []):
-            over_number = int(over_block.get("over", 0))
-            for ball_index, ball_data in enumerate(over_block.get("deliveries", []), start=1):
-                deliveries.append((over_number, ball_index, ball_data))
-        return str(innings.get("team", "")), deliveries
-
-    innings_key = next(iter(innings.keys()), "")
-    innings_data = innings.get(innings_key, {})
-    deliveries = []
-    for delivery in innings_data.get("deliveries", []):
-        ball_key = next(iter(delivery.keys()))
-        ball_data = delivery[ball_key]
-        over, ball = parse_delivery_ball(ball_key)
-        deliveries.append((over, ball, ball_data))
-    return str(innings_data.get("team", "")), deliveries
-
-
-def first_innings_target(innings_list: list[dict[str, Any]]) -> int | None:
-    total = 0
-    found = False
-    for innings in innings_list[:1]:
-        _, deliveries = extract_innings_payload(innings)
-        for _, _, ball_data in deliveries:
-            total += int(ball_data.get("runs", {}).get("total", 0))
-            found = True
-    return total + 1 if found else None
-
-
-def select_commentary_type(row: dict[str, Any], feature_row: dict[str, float]) -> str:
-    probability_swing = feature_row["probability_swing"]
-    if row["wicket"] and (probability_swing >= 45 or row["pressure_level"] in {"HIGH", "EXTREME"}):
-        return "turning_point"
-    if row["recent_wickets"] >= 2 and row["collapse_risk"] == "HIGH":
-        return "collapse"
-    if row["wicket"]:
-        return "wicket"
-    if row["boundary"]:
-        return "boundary"
-    if row["partnership_runs"] >= 40 and row["recent_wickets"] == 0:
-        return "partnership"
-    if row["pressure_level"] in {"HIGH", "EXTREME"}:
-        return "pressure"
-    if abs(feature_row["momentum_score"]) >= 35:
-        return "momentum"
-    return "ball"
-
-
-def select_tone(row: dict[str, Any], commentary_type: str) -> str:
-    if commentary_type in {"turning_point", "wicket"} or row["pressure_level"] == "EXTREME":
-        return "dramatic"
-    if commentary_type == "boundary" or row["six"]:
-        return "energetic"
-    if commentary_type in {"pressure", "partnership", "collapse"}:
-        return "analytical"
-    return "neutral"
-
-
-def select_importance(row: dict[str, Any], commentary_type: str) -> str:
-    if commentary_type in {"turning_point", "wicket", "collapse"} or row["pressure_level"] == "EXTREME":
-        return "high"
-    if commentary_type in {"boundary", "pressure", "partnership", "momentum"}:
-        return "medium"
-    return "low"
-
-
-def generate_commentary_text(row: dict[str, Any], commentary_type: str, tone: str) -> str:
-    striker = row["striker"] or "the batter"
-    bowler = row["bowler"] or "the bowler"
-    if commentary_type == "turning_point":
-        return f"Huge twist in the contest as {bowler} breaks through with the pressure peaking around {striker}."
-    if commentary_type == "collapse":
-        return f"Another blow for {row['batting_team']}; the innings is wobbling and the pressure keeps climbing."
-    if commentary_type == "wicket":
-        return f"{bowler} strikes and removes {striker}, a timely wicket for {row['bowling_team']}."
-    if commentary_type == "boundary":
-        shot = "maximum" if row["six"] else "boundary"
-        return f"{striker} finds the {shot}, injecting fresh momentum into the innings."
-    if commentary_type == "partnership":
-        return f"This stand is taking shape for {row['batting_team']} as the pair steadily rebuilds momentum."
-    if commentary_type == "pressure":
-        return f"The pressure is {row['pressure_level'].lower()} right now as {row['batting_team']} tries to manage the rate."
-    if commentary_type == "momentum":
-        direction = "swinging towards the batters" if row["momentum_state"] == "BATTING" else "shifting back to the bowling side"
-        return f"Momentum is {direction}, and every delivery is nudging the contest further."
-    suffix = "with calm control" if tone == "neutral" else "with the contest tightening"
-    return f"{striker} takes {int(row['runs'])} from the ball {suffix}."
-
-
-def estimate_win_probability(row: dict[str, Any], feature_row: dict[str, float]) -> float:
-    batting_dominance = feature_row["batting_dominance"]
-    pressure_score = feature_row["pressure_score"]
-    base = 50.0 + (batting_dominance - pressure_score) * 0.35 + feature_row["momentum_score"] * 0.18
-    if row["wicket"]:
-        base -= 14.0
-    if row["boundary"]:
-        base += 8.0
-    if safe_float(row["innings"]) >= 2 and safe_float(row["target"]) > 0:
-        chase_gap = safe_float(row["current_rr"]) - safe_float(row["required_rr"])
-        base += chase_gap * 4.5
-    return round(max(1.0, min(99.0, base)), 4)
-
-
-def normalize_match(path: Path, overrides: dict[tuple[str, int, int, int], dict[str, Any]], total_overs: int) -> list[dict[str, Any]]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    info = payload.get("info", {})
-    innings_list = payload.get("innings", [])
-    teams = info.get("teams") or []
-    target = first_innings_target(innings_list)
-    match_id = path.stem
-    rows: list[dict[str, Any]] = []
-
-    for innings_index, innings in enumerate(innings_list, start=1):
-        batting_team, deliveries = extract_innings_payload(innings)
-        bowling_team = next((team for team in teams if team != batting_team), "")
-
-        current_score = 0
-        wickets_lost = 0
-        legal_balls = 0
-        dot_ball_streak = 0
-        partnership_runs = 0
-        partnership_balls = 0
-        recent_legal: deque[dict[str, int]] = deque(maxlen=6)
-
-        for over, ball, ball_data in deliveries:
-            runs_data = ball_data.get("runs", {})
-            extras_data = ball_data.get("extras", {})
-            total_runs = int(runs_data.get("total", 0))
-            extras = int(sum(int(value) for value in extras_data.values())) if extras_data else 0
-            wicket = 1 if bool(ball_data.get("wickets")) else 0
-            current_score += total_runs
-            wickets_lost += wicket
-
-            extra_type = next((label for key, label in EXTRA_EVENT_MAP.items() if extras_data.get(key, 0)), "")
-            boundary = 1 if total_runs in {4, 6} else 0
-            four = 1 if total_runs == 4 else 0
-            six = 1 if total_runs == 6 else 0
-            is_legal = extra_type not in {"WD", "NB"}
-
-            if is_legal:
-                legal_balls += 1
-                partnership_balls += 1
-                recent_legal.append({"runs": total_runs, "wicket": wicket})
-                if total_runs == 0:
-                    dot_ball_streak += 1
-                else:
-                    dot_ball_streak = 0
-            partnership_runs += total_runs
-
-            over_progress = legal_balls / 6 if legal_balls else 0.0
-            current_rr = round((current_score / over_progress) if over_progress else 0.0, 4)
-            balls_remaining = max(total_overs * 6 - legal_balls, 0)
-            required_rr = 0.0
-            innings_target = target if innings_index == 2 else None
-            if innings_target and balls_remaining > 0:
-                required_rr = round(max(innings_target - current_score, 0) / balls_remaining * 6, 4)
-
-            recent_runs = sum(item["runs"] for item in recent_legal)
-            recent_wickets = sum(item["wicket"] for item in recent_legal)
-            phase_of_match = derive_phase_of_match(float(over))
-
-            row = {
-                "match_id": match_id,
-                "innings": innings_index,
-                "over": over,
-                "ball": ball,
-                "runs": total_runs,
-                "wicket": wicket,
-                "extras": extras,
-                "batting_team": batting_team,
-                "bowling_team": bowling_team,
-                "striker": ball_data.get("batter", ""),
-                "non_striker": ball_data.get("non_striker", ""),
-                "bowler": ball_data.get("bowler", ""),
-                "current_score": current_score,
-                "wickets_lost": wickets_lost,
-                "required_rr": required_rr,
-                "current_rr": current_rr,
-                "target": innings_target or 0,
-                "recent_runs": recent_runs,
-                "recent_wickets": recent_wickets,
-                "dot_ball_streak": dot_ball_streak,
-                "partnership_runs": partnership_runs,
-                "partnership_balls": partnership_balls,
-                "boundary": boundary,
-                "six": six,
-                "four": four,
-                "phase_of_match": phase_of_match,
-            }
-            feature_row = build_model_features(row)
-            probability_swing = compute_probability_swing(
-                pressure_score=feature_row["pressure_score"],
-                momentum_score=feature_row["momentum_score"],
-                wicket=float(wicket),
-                boundary=float(boundary),
-                recent_wickets=float(recent_wickets),
-            )
-            row["momentum_state"] = momentum_state_from_score(feature_row["momentum_score"])
-            row["pressure_level"] = pressure_level_from_score(feature_row["pressure_score"])
-            row["collapse_risk"] = collapse_risk_from_score(
-                compute_wicket_cluster_score(float(recent_wickets), float(wickets_lost))
-            )
-            row["win_probability"] = estimate_win_probability(row, feature_row)
-
-            override = overrides.get((match_id, innings_index, over, ball), {})
-            commentary_type = override.get("commentary_type") or select_commentary_type(row, feature_row | {"probability_swing": probability_swing})
-            tone = override.get("tone") or select_tone(row, commentary_type)
-            importance = override.get("importance") or select_importance(row, commentary_type)
-            row["commentary_text"] = override.get("commentary_text") or generate_commentary_text(row, commentary_type, tone)
-            row["commentary_type"] = commentary_type
-            row["importance"] = importance
-            row["tone"] = tone
-            rows.append({column: row[column] for column in OUTPUT_COLUMNS})
-
-            if wicket:
-                partnership_runs = 0
-                partnership_balls = 0
-
-    return rows
-
-
-def write_manifest(output_path: Path, rows: list[dict[str, Any]], source_match_count: int) -> None:
-    manifest = {
-        "dataset": output_path.name,
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "rowCount": len(rows),
-        "matchCount": source_match_count,
-        "columns": OUTPUT_COLUMNS,
-    }
-    output_path.with_suffix(".manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    dataset = build_feature_matrix(dataset)
+    dataset["momentum_state"] = dataset["momentum_state"].fillna("NEUTRAL")
+    dataset["pressure_level"] = dataset["pressure_level"].fillna("MEDIUM")
+    return dataset
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build CricSmart commentary dataset with one row per ball.")
-    parser.add_argument("--cricsheet-dir", default="ml/datasets/raw/cricsheet", help="Directory with Cricsheet JSON files")
-    parser.add_argument("--commentary-source", action="append", default=[], help="Optional commentary CSV/JSON/JSONL source")
-    parser.add_argument("--synthetic-source", action="append", default=[], help="Optional synthetic commentary source")
-    parser.add_argument("--live-source", action="append", default=[], help="Optional live commentary source")
-    parser.add_argument("--out", default="ml/commentary/datasets/commentary_dataset.csv", help="Output dataset path")
-    parser.add_argument("--max-matches", type=int, default=0, help="Optional cap for number of matches to process")
-    parser.add_argument("--overs", type=int, default=20, help="Expected overs for target/rr calculations")
+    parser = argparse.ArgumentParser(description="Build canonical one-row-per-ball commentary dataset")
+    parser.add_argument("--events", required=True, help="Path to normalized deliveries CSV")
+    parser.add_argument("--commentary", required=False, help="Optional cleaned commentary CSV")
+    parser.add_argument(
+        "--out",
+        default="ml/commentary/datasets/commentary_dataset.csv",
+        help="Output canonical dataset CSV path",
+    )
+    parser.add_argument(
+        "--processed-out",
+        default="ml/commentary/datasets/processed/commentary_feature_matrix.csv",
+        help="Output processed feature matrix CSV path",
+    )
     args = parser.parse_args()
 
-    output_path = Path(args.out)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    events_df = pd.read_csv(Path(args.events))
+    commentary_df = pd.read_csv(Path(args.commentary)) if args.commentary else None
 
-    override_paths = [Path(item) for item in [*args.commentary_source, *args.synthetic_source, *args.live_source]]
-    overrides = load_commentary_overrides(override_paths)
+    dataset = build_dataset(events_df, commentary_df)
 
-    match_files = iter_match_files(Path(args.cricsheet_dir))
-    if args.max_matches > 0:
-        match_files = match_files[: args.max_matches]
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    dataset.to_csv(out_path, index=False)
 
-    all_rows: list[dict[str, Any]] = []
-    for match_path in match_files:
-        all_rows.extend(normalize_match(match_path, overrides, args.overs))
+    processed_path = Path(args.processed_out)
+    processed_path.parent.mkdir(parents=True, exist_ok=True)
+    dataset.to_csv(processed_path, index=False)
 
-    dataframe = pd.DataFrame(all_rows, columns=OUTPUT_COLUMNS)
-    dataframe.to_csv(output_path, index=False)
-    write_manifest(output_path, all_rows, len(match_files))
-    print(f"Wrote {len(all_rows)} commentary rows to {output_path}")
+    print(f"Wrote commentary dataset rows: {len(dataset)} to {out_path}")
+    print(f"Wrote feature matrix rows: {len(dataset)} to {processed_path}")
 
 
 if __name__ == "__main__":

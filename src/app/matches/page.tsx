@@ -25,6 +25,7 @@ type SimMatch = {
 
 const FIXTURE_POLL_INTERVAL_MS = 60_000;
 const SIM_POLL_INTERVAL_MS = 5_000;
+const SIM_CARD_ACTION_PADDING_CLASS = "pr-11";
 
 const EMPTY_DISCOVERY: CuratedDiscoveryPayload = {
   success: false,
@@ -145,8 +146,12 @@ export default function MatchesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ matchId }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        throw new Error(`Failed to delete simulation ${matchId}`);
+      }
       setSimMatches((prev) => prev.filter((match) => match.matchId !== matchId));
+    } catch (error) {
+      console.error("Failed to delete simulation from /matches", error);
     } finally {
       setDeletingMatchId(null);
     }
@@ -264,7 +269,7 @@ export default function MatchesPage() {
                       });
                       router.push(`/match/${match.matchId}`);
                     }}
-                    className="w-full rounded-lg p-3 pr-11 text-left transition-colors"
+                    className={`w-full rounded-lg p-3 ${SIM_CARD_ACTION_PADDING_CLASS} text-left transition-colors`}
                     style={{
                       border: "1px solid var(--border-subtle)",
                       background: "color-mix(in srgb, var(--bg-surface) 92%, transparent)",

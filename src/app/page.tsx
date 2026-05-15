@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 // ─────────────────────────────────────────────
 // Types
@@ -382,20 +383,22 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link
-              href="/matches"
-              className="text-sm px-4 py-2 rounded-lg transition-colors"
-              style={{
-                background: "var(--bg-surface)",
-                color: "var(--text-secondary)",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              All Matches
-            </Link>
+          <div className="flex items-center gap-3">
+  <ThemeToggle />
 
-            <div className="relative" ref={formRef}>
+  <Link
+    href="/matches"
+    className="text-sm px-4 py-2 rounded-lg transition-colors"
+    style={{
+      background: "var(--bg-surface)",
+      color: "var(--text-secondary)",
+      border: "1px solid var(--border-subtle)",
+    }}
+  >
+    All Matches
+  </Link>
+
+  <div className="relative" ref={formRef}>
               <button
                 onClick={() => setShowCreateForm((v) => !v)}
                 className="text-sm px-4 py-2 rounded-lg font-medium transition-colors"

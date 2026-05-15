@@ -1,4 +1,6 @@
 import type { SimulationState } from "@/services/simulation/simulationState";
+import { emitCommentary } from "@/services/commentary/commentaryBus";
+import type { CommentaryEvent } from "@/services/commentary/types/commentary.types";
 import { patchMatchRuntime } from "@/store/matchStore";
 import { hydrateMatchState }
 from "@/services/matchEngine";
@@ -69,6 +71,11 @@ analytics?: Record<string, unknown>;
         isPaused: boolean;
         speed: number;
       };
+    }
+  | {
+      type: "commentary.generated";
+      matchId: string;
+      data: CommentaryEvent;
     }
   | {
       type: "MATCH_ENDED";
@@ -370,6 +377,23 @@ patchMatchRuntime(event.matchId, {
           isPaused: event.data.isPaused,
           speed: event.data.speed,
         },
+      });
+      return;
+    }
+
+    case "commentary.generated": {
+      emitCommentary({
+        matchId: event.matchId,
+        text: event.data.text,
+        eventId: event.data.eventId,
+        category: event.data.commentaryType === "ball" ? "BALL" : "SUMMARY",
+        generatedEvent: event.data,
+      });
+
+      emitCricUpdate({
+        matchId: event.matchId,
+        type: "commentary.generated",
+        commentaryEvent: event.data,
       });
       return;
     }

@@ -4,7 +4,6 @@ import { getMatchConfig } from "./matchFormat";
 import { advanceClock } from "./timeEngine";
 import { processMatchIntelligence } from "./matchIntelligenceEngine";
 import { v4 as uuidv4 } from "uuid";
-import { generateCommentaryForBall } from "./commentary/commentaryOrchestrator";
 import { emitCommentary } from "@/services/commentary/commentaryBus";
 import { emitCommand } from "./commandBus";
 import { setMatchState as setUIState } from "@/lib/eventStore";
@@ -26,7 +25,7 @@ import { appendCommentaryTimeline, resetCommentaryTimeline } from "@/services/co
 import { recordBallEvent } from "@/services/recording/eventRecorder";
 import { resetPredictionStabilityMetrics } from "@/services/ml/smoothing/stabilityMetrics";
 import { clearPredictionSnapshots } from "@/services/ml/snapshots/featureSnapshotStore";
-import { getCommentarySummariesForEvent } from "@/services/commentary/commentarySummaryEngine";
+import { processCommentaryPipeline, resetCommentaryPipelineState } from "@/services/commentary/orchestration/commentary-pipeline";
 
 
 
@@ -1163,38 +1162,51 @@ export function dispatchBallEvent(
 
   const generatedCommentary = (() => {
     try {
-      return generateCommentaryForBall({
+      return processCommentaryPipeline({
         matchId,
         branchId: next.activeBranchId,
-        event: ballEvent,
+        ballEvent,
         state: next,
+        probabilityState: {
+          previousWinProbability: computeWinProbability(current)?.battingWinProbability,
+          currentWinProbability: computeWinProbability(next)?.battingWinProbability,
+        },
       });
     } catch {
       return null;
     }
   })();
 
-  const commentaryText = generatedCommentary?.text ?? "No significant update on that delivery.";
-  const commentaryMetadata = generatedCommentary?.metadata;
+  const commentaryEvents = generatedCommentary?.emittedEvents ?? [];
+  const primaryCommentaryEvent =
+    generatedCommentary?.primaryEvent ??
+    ({
+      type: "commentary.generated",
+      matchId,
+      eventId: `${ballEvent.id}:ball`,
+      commentaryType: "ball",
+      narrativeType: "fallback",
+      text: "No significant update on that delivery.",
+      tone: "neutral",
+      importance: "low",
+      over: next.innings[next.currentInningsIndex]?.over ?? 0,
+      ball: next.innings[next.currentInningsIndex]?.ball ?? 0,
+      innings: next.currentInningsIndex + 1,
+      timestamp: ballEvent.timestamp,
+      templateKey: "single_rotation",
+    } as const);
 
-emitCommentary({
-  matchId,
-  text: commentaryText,
-  eventId: ballEvent.id,
-  category: "BALL",
-  metadata: commentaryMetadata,
-});
+  const commentaryText = primaryCommentaryEvent.text;
 
-const eventSummaries = getCommentarySummariesForEvent(matchId, ballEvent.id);
-for (const summary of eventSummaries) {
-  emitCommentary({
-    matchId,
-    text: summary.text,
-    eventId: `${ballEvent.id}:${summary.summaryType}`,
-    category: "SUMMARY",
-    metadata: commentaryMetadata,
-  });
-}
+  for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent]) {
+    emitCommentary({
+      matchId,
+      text: commentaryEvent.text,
+      eventId: commentaryEvent.eventId,
+      category: commentaryEvent.commentaryType === "ball" ? "BALL" : "SUMMARY",
+      generatedEvent: commentaryEvent,
+    });
+  }
 
 // ✅ ADD THIS (MOVE HERE)
 if (!eventStreams[matchId]) {
@@ -1234,7 +1246,9 @@ const ballIndex =
 processMomentumEvent(matchId, ballEvent, ballIndex);
 
 // 📝 COMMENTARY STORE
-addCommentary(matchId, commentaryText);
+for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent]) {
+  addCommentary(matchId, commentaryEvent.text);
+}
 
 // 🧠 INSIGHTS
 generateBroadcastInsights(matchId);
@@ -1301,15 +1315,22 @@ const eventMeta = {
 } as const;
 
 appendEventTimeline(matchId, eventMeta);
-appendCommentaryTimeline({
-  matchId,
-  eventId: ballEvent.id,
-  sequence,
-  timestamp: ballEvent.timestamp,
-  text: commentaryText,
-  source: "ENGINE",
-  metadata: commentaryMetadata,
-});
+for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent]) {
+  appendCommentaryTimeline({
+    matchId,
+    eventId: commentaryEvent.eventId,
+    sequence,
+    timestamp: commentaryEvent.timestamp,
+    text: commentaryEvent.text,
+    source: "ENGINE",
+  });
+
+  broadcast(matchId, {
+    type: "commentary.generated",
+    matchId,
+    data: commentaryEvent,
+  });
+}
 
 // 📡 BROADCAST BALL EVENT
 broadcast(matchId, {
@@ -1460,6 +1481,8 @@ export function hydrateMatchState(matchId: string, state: MatchState) {
     eventStreams[matchId] = [];
   }
 
+  resetCommentaryPipelineState(matchId);
+
   emit(matchId);
 }
 export function reduceStateOnly(state: MatchState, event: BallEvent): MatchState {
@@ -1572,6 +1595,7 @@ export function resetMatchState(matchId: string) {
   delete temporalIndex[matchId];
   resetEventTimeline(matchId);
   resetCommentaryTimeline(matchId);
+  resetCommentaryPipelineState(matchId);
   resetPredictionStabilityMetrics(matchId);
   clearPredictionSnapshots(matchId);
 

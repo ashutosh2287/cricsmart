@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -59,17 +60,57 @@ def load_model_and_metadata():
     return model, metadata
 
 
+def resolve_feature_columns(metadata: dict) -> list[str]:
+    feature_columns = metadata.get("featureColumns", FEATURE_COLUMNS)
+    if feature_columns != FEATURE_COLUMNS:
+        raise ValueError(
+            "Feature column contract mismatch between script and model metadata. "
+            f"Script columns: {FEATURE_COLUMNS}; metadata columns: {feature_columns}"
+        )
+    return feature_columns
+
+
+def parse_payload_args() -> dict:
+    parser = argparse.ArgumentParser(
+        description="Predict batting team win probability from a match-state payload."
+    )
+    parser.add_argument(
+        "--payload-json",
+        help="JSON object payload string (example: '{\"innings\":2,...}')",
+    )
+    parser.add_argument(
+        "--payload-file",
+        help="Path to a JSON file containing the payload object",
+    )
+    args = parser.parse_args()
+
+    if args.payload_json and args.payload_file:
+        raise ValueError("Provide only one of --payload-json or --payload-file")
+    if args.payload_json:
+        payload = json.loads(args.payload_json)
+        if not isinstance(payload, dict):
+            raise ValueError("--payload-json must decode to a JSON object")
+        return payload
+    if args.payload_file:
+        payload = json.loads(Path(args.payload_file).read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("--payload-file must contain a JSON object")
+        return payload
+    return SAMPLE_PAYLOAD
+
+
 def predict(payload: dict) -> dict:
     model, metadata = load_model_and_metadata()
+    feature_columns = resolve_feature_columns(metadata)
 
-    missing = [col for col in FEATURE_COLUMNS if col not in payload]
+    missing = [col for col in feature_columns if col not in payload]
     if missing:
         raise KeyError(
             f"Payload is missing required feature columns: {missing}. "
-            f"Expected all of: {FEATURE_COLUMNS}"
+            f"Expected all of: {feature_columns}"
         )
 
-    feature_values = [payload[col] for col in FEATURE_COLUMNS]
+    feature_values = [payload[col] for col in feature_columns]
     row = np.array([feature_values])
 
     prob = float(model.predict_proba(row)[0][1])
@@ -81,14 +122,15 @@ def predict(payload: dict) -> dict:
         "battingWinProbability": round(prob * 100, 4),
         "confidence": round(confidence, 4),
         "modelVersion": metadata.get("modelVersion", "unknown"),
-        "featureColumns": metadata.get("featureColumns", FEATURE_COLUMNS),
+        "featureColumns": feature_columns,
         "trainedAt": metadata.get("trainedAt"),
         "metrics": metadata.get("metrics"),
     }
 
 
 def main() -> None:
-    result = predict(SAMPLE_PAYLOAD)
+    payload = parse_payload_args()
+    result = predict(payload)
     print(json.dumps(result, indent=2))
 
 

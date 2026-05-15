@@ -25,7 +25,6 @@ type SimMatch = {
 
 const FIXTURE_POLL_INTERVAL_MS = 60_000;
 const SIM_POLL_INTERVAL_MS = 5_000;
-const SIM_CARD_ACTION_PADDING_CLASS = "pr-11";
 
 const EMPTY_DISCOVERY: CuratedDiscoveryPayload = {
   success: false,
@@ -147,7 +146,10 @@ export default function MatchesPage() {
         body: JSON.stringify({ matchId }),
       });
       if (!res.ok) {
-        throw new Error(`Failed to delete simulation ${matchId}`);
+        const details = await res.text().catch(() => "");
+        throw new Error(
+          `Failed to delete simulation ${matchId}. status=${res.status} details=${details}`
+        );
       }
       setSimMatches((prev) => prev.filter((match) => match.matchId !== matchId));
     } catch (error) {
@@ -248,7 +250,14 @@ export default function MatchesPage() {
               const isDeleting = deletingMatchId === match.matchId;
 
               return (
-                <div key={match.matchId} className="relative">
+                <div
+                  key={match.matchId}
+                  className="grid grid-cols-[1fr_auto] items-start rounded-lg"
+                  style={{
+                    border: "1px solid var(--border-subtle)",
+                    background: "color-mix(in srgb, var(--bg-surface) 92%, transparent)",
+                  }}
+                >
                   <button
                     onClick={async () => {
                       if (match.type === "LIVE") {
@@ -269,11 +278,7 @@ export default function MatchesPage() {
                       });
                       router.push(`/match/${match.matchId}`);
                     }}
-                    className={`w-full rounded-lg p-3 ${SIM_CARD_ACTION_PADDING_CLASS} text-left transition-colors`}
-                    style={{
-                      border: "1px solid var(--border-subtle)",
-                      background: "color-mix(in srgb, var(--bg-surface) 92%, transparent)",
-                    }}
+                    className="w-full p-3 text-left transition-colors"
                   >
                     <p className="text-sm font-semibold text-[var(--text-primary)]">
                       {match.teamA} vs {match.teamB}
@@ -300,21 +305,23 @@ export default function MatchesPage() {
                       </p>
                     ) : null}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleDeleteSimulation(match.matchId)}
-                    disabled={isDeleting}
-                    aria-label={`Delete simulation ${match.teamA} vs ${match.teamB}`}
-                    className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors disabled:opacity-50"
-                    style={{
-                      border: "1px solid var(--border-subtle)",
-                      background: "var(--bg-overlay)",
-                      color: "var(--text-muted)",
-                    }}
-                    title="Delete simulation"
-                  >
-                    {isDeleting ? "…" : "✕"}
-                  </button>
+                  <div className="p-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteSimulation(match.matchId)}
+                      disabled={isDeleting}
+                      aria-label={`Delete simulation ${match.teamA} vs ${match.teamB}`}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors disabled:opacity-50"
+                      style={{
+                        border: "1px solid var(--border-subtle)",
+                        background: "var(--bg-overlay)",
+                        color: "var(--text-muted)",
+                      }}
+                      title="Delete simulation"
+                    >
+                      {isDeleting ? "…" : "✕"}
+                    </button>
+                  </div>
                 </div>
                );
             })}

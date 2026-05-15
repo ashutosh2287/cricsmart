@@ -27,6 +27,9 @@ FEATURE_COLUMNS = [
 
 MODEL_PATH = Path(__file__).parent.parent / "models" / "win_probability_model.joblib"
 METADATA_PATH = Path(__file__).parent.parent / "models" / "model_metadata.json"
+POSITIVE_CLASS_INDEX = 1
+DECISION_BOUNDARY = 0.5
+CONFIDENCE_SCALE_FACTOR = 2.0
 
 SAMPLE_PAYLOAD = {
     "innings": 2,
@@ -113,10 +116,12 @@ def predict(payload: dict) -> dict:
     feature_values = [payload[col] for col in feature_columns]
     row = np.array([feature_values])
 
-    prob = float(model.predict_proba(row)[0][1])
+    prob = float(model.predict_proba(row)[0][POSITIVE_CLASS_INDEX])
     # Confidence: distance from the decision boundary (0.5), scaled to [0, 1].
     # A probability of 0 or 1 yields confidence 1.0; 0.5 yields 0.0.
-    confidence = float(min(1.0, abs(prob - 0.5) * 2))
+    confidence = float(
+        min(1.0, abs(prob - DECISION_BOUNDARY) * CONFIDENCE_SCALE_FACTOR)
+    )
 
     return {
         "battingWinProbability": round(prob * 100, 4),

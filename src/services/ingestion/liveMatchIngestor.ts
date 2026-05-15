@@ -350,3 +350,7 @@ export function stopLiveMatchIngestor(matchId: string) {
 export function hasLiveRuntime(matchId: string) {
   return runtimes.has(matchId);
 }
+
+export function isLiveMatchIngestorRunning(matchId: string) {
+  return hasPollingSession(matchId);
+}

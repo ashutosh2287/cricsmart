@@ -11,6 +11,12 @@ export const getMatchMetaKey = (matchId: string) => `match:${matchId}:meta`;
 export type MatchRegistryStatus = "LIVE" | "UPCOMING" | "COMPLETED";
 export type MatchRegistryType = "LIVE" | "SIMULATION";
 export type MatchReconnectHealth = "healthy" | "stale" | "disconnected";
+export type LiveSessionStatus =
+  | "bootstrapping"
+  | "live"
+  | "recovering"
+  | "degraded"
+  | "stopped";
 
 export type MatchRegistryRecord = {
   matchId: string;
@@ -23,6 +29,16 @@ export type MatchRegistryRecord = {
   provider?: LiveSessionProvider;
   sourceType?: SessionSourceType;
   externalMatchId?: string;
+  providerExternalMatchId?: string;
+  providerName?: string;
+  providerRetryPolicy?: string;
+  liveSessionStatus?: LiveSessionStatus;
+  sessionOwner?: string;
+  sessionOwnerAcquiredAt?: number;
+  sessionIdempotencyKey?: string;
+  ingestionRunning?: boolean;
+  workerRunning?: boolean;
+  lastRecoveryAt?: number;
   seriesName?: string;
   format?: string;
   scheduledStart?: string;
@@ -96,6 +112,16 @@ function decodeRecord(
     provider: toOptionalString(raw.provider) as LiveSessionProvider | undefined,
     sourceType: toOptionalString(raw.sourceType) as SessionSourceType | undefined,
     externalMatchId: toOptionalString(raw.externalMatchId),
+    providerExternalMatchId: toOptionalString(raw.providerExternalMatchId),
+    providerName: toOptionalString(raw.providerName),
+    providerRetryPolicy: toOptionalString(raw.providerRetryPolicy),
+    liveSessionStatus: toOptionalString(raw.liveSessionStatus) as LiveSessionStatus | undefined,
+    sessionOwner: toOptionalString(raw.sessionOwner),
+    sessionOwnerAcquiredAt: toOptionalNumber(raw.sessionOwnerAcquiredAt),
+    sessionIdempotencyKey: toOptionalString(raw.sessionIdempotencyKey),
+    ingestionRunning: toBool(raw.ingestionRunning),
+    workerRunning: toBool(raw.workerRunning),
+    lastRecoveryAt: toOptionalNumber(raw.lastRecoveryAt),
     seriesName: toOptionalString(raw.seriesName),
     format: toOptionalString(raw.format),
     scheduledStart: toOptionalString(raw.scheduledStart),
@@ -130,6 +156,16 @@ function encodeRecord(record: MatchRegistryRecord): Record<string, string> {
   if (record.provider) encoded.provider = record.provider;
   if (record.sourceType) encoded.sourceType = record.sourceType;
   if (record.externalMatchId) encoded.externalMatchId = record.externalMatchId;
+  if (record.providerExternalMatchId) encoded.providerExternalMatchId = record.providerExternalMatchId;
+  if (record.providerName) encoded.providerName = record.providerName;
+  if (record.providerRetryPolicy) encoded.providerRetryPolicy = record.providerRetryPolicy;
+  if (record.liveSessionStatus) encoded.liveSessionStatus = record.liveSessionStatus;
+  if (record.sessionOwner) encoded.sessionOwner = record.sessionOwner;
+  if (record.sessionOwnerAcquiredAt !== undefined) encoded.sessionOwnerAcquiredAt = String(record.sessionOwnerAcquiredAt);
+  if (record.sessionIdempotencyKey) encoded.sessionIdempotencyKey = record.sessionIdempotencyKey;
+  if (record.ingestionRunning !== undefined) encoded.ingestionRunning = String(record.ingestionRunning);
+  if (record.workerRunning !== undefined) encoded.workerRunning = String(record.workerRunning);
+  if (record.lastRecoveryAt !== undefined) encoded.lastRecoveryAt = String(record.lastRecoveryAt);
   if (record.seriesName) encoded.seriesName = record.seriesName;
   if (record.format) encoded.format = record.format;
   if (record.scheduledStart) encoded.scheduledStart = record.scheduledStart;

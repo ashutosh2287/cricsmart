@@ -1,3 +1,5 @@
+import type { CommentaryIntelligenceMetadata } from "./commentaryIntelligenceContract";
+
 export type CommentaryTimelineItem = {
   matchId: string;
   eventId: string;
@@ -5,13 +7,14 @@ export type CommentaryTimelineItem = {
   timestamp: number;
   text: string;
   source: "ENGINE" | "PROVIDER";
+  metadata?: CommentaryIntelligenceMetadata;
 };
 
 const timelineStore: Record<string, CommentaryTimelineItem[]> = {};
 const dedupeStore: Record<string, Set<string>> = {};
 
 function getDedupeKey(item: CommentaryTimelineItem) {
-  return `${item.eventId}:${item.text}`;
+  return `${item.eventId}:${item.text}:${item.metadata?.strategy.path ?? "none"}`;
 }
 
 export function appendCommentaryTimeline(item: CommentaryTimelineItem) {

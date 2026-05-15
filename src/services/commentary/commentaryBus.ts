@@ -1,44 +1,50 @@
+import type { CommentaryIntelligenceMetadata } from "./commentaryIntelligenceContract";
+
 export type Commentary = {
   matchId: string;
   text: string;
   eventId: string;
-  category: "BALL" | "INSIGHT";
+  category: "BALL" | "INSIGHT" | "SUMMARY";
+  metadata?: CommentaryIntelligenceMetadata;
 };
 
 type Listener = (c: Commentary) => void;
 
 const listeners = new Set<Listener>();
 const commentaryStore: Record<string, Commentary[]> = {};
+const dedupeStore: Record<string, Set<string>> = {};
 
+function dedupeKey(c: Commentary) {
+  return `${c.eventId}:${c.category}:${c.text}`;
+}
 
-
-// ✅ EMIT COMMENTARY (THIS WAS MISSING)
 export function emitCommentary(c: Commentary) {
-
-  // ✅ store permanently
   if (!commentaryStore[c.matchId]) {
     commentaryStore[c.matchId] = [];
   }
+  if (!dedupeStore[c.matchId]) {
+    dedupeStore[c.matchId] = new Set();
+  }
 
-  const exists = commentaryStore[c.matchId]?.some(
-  (item) => item.eventId === c.eventId
-);
+  const key = dedupeKey(c);
+  if (dedupeStore[c.matchId].has(key)) {
+    return;
+  }
 
-if (!exists) {
+  dedupeStore[c.matchId].add(key);
   commentaryStore[c.matchId].push(c);
-}
 
-  // existing listeners
-  listeners.forEach(cb => cb(c));
+  listeners.forEach((cb) => cb(c));
 }
 
 export function subscribeCommentary(cb: Listener) {
   listeners.add(cb);
 
   return () => {
-    listeners.delete(cb); // ✅ now returns void
+    listeners.delete(cb);
   };
 }
+
 export function getCommentary(matchId: string): Commentary[] {
   return commentaryStore[matchId] ?? [];
 }

@@ -26,6 +26,7 @@ import { appendCommentaryTimeline, resetCommentaryTimeline } from "@/services/co
 import { recordBallEvent } from "@/services/recording/eventRecorder";
 import { resetPredictionStabilityMetrics } from "@/services/ml/smoothing/stabilityMetrics";
 import { clearPredictionSnapshots } from "@/services/ml/snapshots/featureSnapshotStore";
+import { getCommentarySummariesForEvent } from "@/services/commentary/commentarySummaryEngine";
 
 
 
@@ -1168,13 +1169,26 @@ export function dispatchBallEvent(
   })();
 
   const commentaryText = generatedCommentary?.text ?? "No significant update on that delivery.";
+  const commentaryMetadata = generatedCommentary?.metadata;
 
 emitCommentary({
   matchId,
   text: commentaryText,
   eventId: ballEvent.id,
   category: "BALL",
+  metadata: commentaryMetadata,
 });
+
+const eventSummaries = getCommentarySummariesForEvent(matchId, ballEvent.id);
+for (const summary of eventSummaries) {
+  emitCommentary({
+    matchId,
+    text: summary.text,
+    eventId: `${ballEvent.id}:${summary.summaryType}`,
+    category: "SUMMARY",
+    metadata: commentaryMetadata,
+  });
+}
 
 // ✅ ADD THIS (MOVE HERE)
 if (!eventStreams[matchId]) {
@@ -1288,6 +1302,7 @@ appendCommentaryTimeline({
   timestamp: ballEvent.timestamp,
   text: commentaryText,
   source: "ENGINE",
+  metadata: commentaryMetadata,
 });
 
 // 📡 BROADCAST BALL EVENT

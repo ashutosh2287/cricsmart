@@ -741,6 +741,13 @@ if (!bowlerName) {
 
   ensureCurrentInningsTeams(next, inningsIndex, event);
 
+  const resolveTeamByName = (teamName?: string) => {
+    if (!teamName) return null;
+    if (next.teamA?.name === teamName) return next.teamA;
+    if (next.teamB?.name === teamName) return next.teamB;
+    return null;
+  };
+
   if (!innings.bowlingStats) innings.bowlingStats = {};
 
   const totalBallsBefore = innings.over * 6 + innings.ball;
@@ -834,7 +841,7 @@ const engineNonStriker = innings.nonStriker?.trim() ?? "";
 // ✅ ENGINE IS SOURCE OF TRUTH
 
 if (!engineStriker && !engineNonStriker) {
-  const team = getTeamByName(next, innings.battingTeam);
+  const team = resolveTeamByName(innings.battingTeam);
 
   const squad = innings.battingOrder?.length
     ? innings.battingOrder.map(name => ({ name }))
@@ -973,7 +980,7 @@ console.log("📊 SCORE UPDATE", {
 // =======================
 
 const getNextBatsman = () => {
-  const team = getTeamByName(next, innings.battingTeam);
+  const team = resolveTeamByName(innings.battingTeam);
   const squad = innings.battingOrder?.length
   ? innings.battingOrder.map((name) => ({ name }))
   : team?.squad ?? [];

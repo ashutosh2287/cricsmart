@@ -115,6 +115,12 @@ def predict(payload: dict) -> dict:
             f"Payload is missing required feature columns: {missing}. "
             f"Expected all of: {feature_columns}"
         )
+    unexpected = [key for key in payload if key not in feature_columns]
+    if unexpected:
+        raise KeyError(
+            f"Payload has unexpected feature columns: {unexpected}. "
+            f"Expected only: {feature_columns}"
+        )
 
     feature_values = [payload[col] for col in feature_columns]
     row = np.array([feature_values])
@@ -122,12 +128,10 @@ def predict(payload: dict) -> dict:
     prob = float(model.predict_proba(row)[0][POSITIVE_CLASS_INDEX])
     # Confidence: distance from the decision boundary (0.5), scaled to [0, 1].
     # A probability of 0 or 1 yields confidence 1.0; 0.5 yields 0.0.
-    confidence = float(
-        min(1.0, abs(prob - DECISION_BOUNDARY) * CONFIDENCE_SCALE_FACTOR)
-    )
+    confidence = float(abs(prob - DECISION_BOUNDARY) * CONFIDENCE_SCALE_FACTOR)
 
     return {
-        "battingWinProbability": round(prob * 100, 4),
+        "battingTeamWinProbabilityPercent": round(prob * 100, 4),
         "confidence": round(confidence, 4),
         "modelVersion": metadata.get("modelVersion", "unknown"),
         "featureColumns": feature_columns,

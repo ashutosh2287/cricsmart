@@ -14,7 +14,13 @@ export type RealtimeEvent = {
   };
 };
 
+<<<<<<< HEAD
 export function routeRealtimeEvent(payload: RealtimeEvent) {
+=======
+export type RealtimeEvent = RealtimePayload;
+
+export function routeRealtimeEvent(payload: RealtimePayload) {
+>>>>>>> origin/copilot/fix-module-not-found-errors
   const { type, matchId, data } = payload;
 
   console.log("📥 ROUTER:", type);

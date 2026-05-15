@@ -1,5 +1,5 @@
-import { routeRealtimeEvent } from "@/services/realtimeRouter";
-import type { RealtimeEvent } from "@/services/realtimeRouter";
+import { routeRealtimeEvent } from "../realtimeRouter";
+import type { RealtimeEvent } from "../realtimeRouter";
 import { getMatchMeta } from "@/store/matchStore";
 import { hydrateMatchState } from "@/services/matchEngine";
 import { setMatchState } from "@/lib/eventStore";

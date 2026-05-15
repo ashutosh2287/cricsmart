@@ -8,6 +8,7 @@ import { selectCommentaryTone } from "./commentaryToneEngine";
 import { validateCommentaryContext } from "./commentaryContextValidator";
 import { appendCommentaryContextSnapshot, getCommentaryContextSnapshots } from "./commentaryContextSnapshotStore";
 import { generateAdvancedCommentary } from "./advancedCommentaryEngine";
+import type { CommentaryIntelligenceMetadata } from "./commentaryIntelligenceContract";
 
 export function runCommentaryOrchestration(
   matchId: string,
@@ -50,7 +51,7 @@ export function generateCommentaryForBall(input: {
   branchId: string;
   event: BallEvent;
   state: MatchState;
-}): { text: string } {
+}): { text: string; metadata?: CommentaryIntelligenceMetadata } {
   const { matchId, branchId, event, state } = input;
   runCommentaryOrchestration(matchId, branchId, event);
   const text = generateAdvancedCommentary(event, state);

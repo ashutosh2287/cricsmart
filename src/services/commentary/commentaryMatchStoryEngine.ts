@@ -11,7 +11,7 @@ type StoryState = {
   history: StoryEntry[];
 };
 
-const storyStore: Record<string, StoryState> = {};
+const storyStore = new Map<string, StoryState>();
 
 function deriveStoryline(context: CommentaryContext, narrative: CommentaryNarrativeState, situation: CommentarySituationClassification) {
   if (situation.tags.includes("collapse")) return "batting-collapse-pressure";
@@ -30,7 +30,7 @@ export function updateMatchStory(input: {
   narrative: CommentaryNarrativeState;
   situation: CommentarySituationClassification;
 }) {
-  const current = storyStore[input.matchId] ?? { activeStoryline: "balanced-contest", history: [] };
+  const current = storyStore.get(input.matchId) ?? { activeStoryline: "balanced-contest", history: [] };
   const nextStory = deriveStoryline(input.context, input.narrative, input.situation);
 
   if (current.activeStoryline !== nextStory) {
@@ -42,10 +42,10 @@ export function updateMatchStory(input: {
   }
 
   current.activeStoryline = nextStory;
-  storyStore[input.matchId] = current;
+  storyStore.set(input.matchId, current);
   return current;
 }
 
 export function getMatchStoryState(matchId: string) {
-  return storyStore[matchId] ?? null;
+  return storyStore.get(matchId) ?? null;
 }

@@ -153,7 +153,7 @@ export default function MatchesPage() {
       }
       setSimMatches((prev) => prev.filter((match) => match.matchId !== matchId));
     } catch (error) {
-      console.error("Failed to delete simulation from /matches", error);
+      console.error("Failed to delete simulation from /matches", { matchId, error });
     } finally {
       setDeletingMatchId(null);
     }
@@ -308,9 +308,14 @@ export default function MatchesPage() {
                   <div className="p-2">
                     <button
                       type="button"
-                      onClick={() => void handleDeleteSimulation(match.matchId)}
+                      onClick={() => handleDeleteSimulation(match.matchId)}
                       disabled={isDeleting}
-                      aria-label={`Delete simulation ${match.teamA} vs ${match.teamB}`}
+                      aria-busy={isDeleting}
+                      aria-label={
+                        isDeleting
+                          ? `Deleting simulation ${match.teamA} vs ${match.teamB}`
+                          : `Delete simulation ${match.teamA} vs ${match.teamB}`
+                      }
                       className="inline-flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors disabled:opacity-50"
                       style={{
                         border: "1px solid var(--border-subtle)",
@@ -319,7 +324,14 @@ export default function MatchesPage() {
                       }}
                       title="Delete simulation"
                     >
-                      {isDeleting ? "…" : "✕"}
+                      {isDeleting ? (
+                        <>
+                          <span aria-hidden="true">…</span>
+                          <span className="sr-only">Deleting</span>
+                        </>
+                      ) : (
+                        "✕"
+                      )}
                     </button>
                   </div>
                 </div>

@@ -50,7 +50,6 @@ export function generateCommentaryForBall(input: {
   branchId: string;
   event: BallEvent;
   state: MatchState;
-  events: BallEvent[];
 }): { text: string } {
   const { matchId, branchId, event, state } = input;
   runCommentaryOrchestration(matchId, branchId, event);

@@ -1160,7 +1160,6 @@ export function dispatchBallEvent(
         branchId: next.activeBranchId,
         event: ballEvent,
         state: next,
-        events: eventStreams[matchId] ?? [],
       });
     } catch {
       return null;

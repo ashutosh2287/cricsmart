@@ -115,13 +115,6 @@ def predict(payload: dict) -> dict:
             f"Payload is missing required feature columns: {missing}. "
             f"Expected all of: {feature_columns}"
         )
-    unexpected = [key for key in payload if key not in feature_columns]
-    if unexpected:
-        raise KeyError(
-            f"Payload has unexpected feature columns: {unexpected}. "
-            f"Expected only: {feature_columns}"
-        )
-
     feature_values = [payload[col] for col in feature_columns]
     row = np.array([feature_values])
 
@@ -131,7 +124,7 @@ def predict(payload: dict) -> dict:
     confidence = float(abs(prob - DECISION_BOUNDARY) * CONFIDENCE_SCALE_FACTOR)
 
     return {
-        "battingTeamWinProbabilityPercent": round(prob * 100, 4),
+        "winProbabilityPercent": round(prob * 100, 4),
         "confidence": round(confidence, 4),
         "modelVersion": metadata.get("modelVersion", "unknown"),
         "featureColumns": feature_columns,

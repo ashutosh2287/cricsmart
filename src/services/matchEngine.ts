@@ -12,6 +12,7 @@ import { addCommentary } from "@/services/commentary/commentaryStore";
 import { setAnalytics } from "@/services/analytics/liveAnalyticsStore";
 import { getMomentumTimeline } from "@/services/analytics/momentumTimelineEngine";
 import { generateBroadcastInsights } from "./broadcast/broadcastInsightEngine";
+import { getWinProbabilityTimeline } from "@/services/analytics/winProbabilityTimelineEngine";
 import { processMomentumEvent } from "@/services/analytics/momentumTimelineEngine";
 import { computeWinProbability } from "@/services/winProbabilityEngine";
 import { getAnalytics } from "@/services/analytics/liveAnalyticsStore";
@@ -318,6 +319,9 @@ function decideWinner(next: MatchState) {
 
   if (!first || !second) return;
 
+  const teamA = next.teamA.name;
+  const teamB = next.teamB.name;
+
   const firstRuns = first.runs;
   const secondRuns = second.runs;
 
@@ -383,6 +387,20 @@ function checkChaseCompleted(next: MatchState) {
   }
 }
 
+function getTeamByName(
+  next: MatchState,
+  teamName?: string
+): MatchState["teamA"] | MatchState["teamB"] | null {
+  if (!teamName) return null;
+  if (next.teamA?.name === teamName) return next.teamA;
+  if (next.teamB?.name === teamName) return next.teamB;
+  return null;
+}
+
+function getSquadNames(team?: { squad: { name: string; role: string }[] }) {
+  return new Set((team?.squad ?? []).map((player) => player.name));
+}
+
 function ensureCurrentInningsTeams(
   next: MatchState,
   inningsIndex: number,
@@ -399,6 +417,49 @@ function ensureCurrentInningsTeams(
 
   if (!innings.battingTeam || !innings.bowlingTeam) {
     throw new Error(`❌ Incomplete innings team state in innings ${inningsIndex}`);
+  }
+}
+
+function validatePlayersForInnings(
+  next: MatchState,
+  innings: InningsState,
+  event: ScoringEventWithId
+) {
+  const battingTeam = getTeamByName(next, innings.battingTeam);
+  const bowlingTeam = getTeamByName(next, innings.bowlingTeam);
+
+  if (!battingTeam || !bowlingTeam) return;
+
+  const battingNames = getSquadNames(battingTeam);
+  const bowlingNames = getSquadNames(bowlingTeam);
+
+  const engineStriker = innings.striker?.trim();
+  const engineNonStriker = innings.nonStriker?.trim();
+  const incomingBatsman = event.batsman?.trim();
+  const incomingNonStriker = event.nonStriker?.trim();
+  const incomingBowler = event.bowler?.trim();
+
+  if (battingTeam.squad.length > 0) {
+    if (engineStriker && !battingNames.has(engineStriker)) {
+      throw new Error(
+        `❌ Invalid engine striker ${engineStriker} for batting team ${innings.battingTeam}`
+      );
+    }
+
+    if (engineNonStriker && !battingNames.has(engineNonStriker)) {
+      throw new Error(
+        `❌ Invalid engine non-striker ${engineNonStriker} for batting team ${innings.battingTeam}`
+      );
+    }
+
+    // Engine owns the batting pair after bootstrap.
+// Do not validate incoming batsman/non-striker here; they are adapter inputs only.
+  }
+
+  if (bowlingTeam.squad.length > 0 && incomingBowler && !bowlingNames.has(incomingBowler)) {
+    throw new Error(
+      `❌ Invalid bowler ${incomingBowler} for bowling team ${innings.bowlingTeam}`
+    );
   }
 }
 
@@ -680,6 +741,13 @@ if (!bowlerName) {
 
   ensureCurrentInningsTeams(next, inningsIndex, event);
 
+  const resolveTeamByName = (teamName?: string) => {
+    if (!teamName) return null;
+    if (next.teamA?.name === teamName) return next.teamA;
+    if (next.teamB?.name === teamName) return next.teamB;
+    return null;
+  };
+
   if (!innings.bowlingStats) innings.bowlingStats = {};
 
   const totalBallsBefore = innings.over * 6 + innings.ball;
@@ -773,7 +841,7 @@ const engineNonStriker = innings.nonStriker?.trim() ?? "";
 // ✅ ENGINE IS SOURCE OF TRUTH
 
 if (!engineStriker && !engineNonStriker) {
-  const team = getTeamByName(next, innings.battingTeam);
+  const team = resolveTeamByName(innings.battingTeam);
 
   const squad = innings.battingOrder?.length
     ? innings.battingOrder.map(name => ({ name }))
@@ -912,7 +980,7 @@ console.log("📊 SCORE UPDATE", {
 // =======================
 
 const getNextBatsman = () => {
-  const team = getTeamByName(next, innings.battingTeam);
+  const team = resolveTeamByName(innings.battingTeam);
   const squad = innings.battingOrder?.length
   ? innings.battingOrder.map((name) => ({ name }))
   : team?.squad ?? [];

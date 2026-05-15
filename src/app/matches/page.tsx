@@ -73,6 +73,7 @@ export default function MatchesPage() {
 
   const [simMatches, setSimMatches] = useState<SimMatch[]>([]);
   const [simLoading, setSimLoading] = useState(true);
+  const [deletingMatchId, setDeletingMatchId] = useState<string | null>(null);
 
   const discoverySnapshotRef = useRef<CuratedDiscoveryPayload>(EMPTY_DISCOVERY);
   const router = useRouter();
@@ -135,6 +136,21 @@ export default function MatchesPage() {
   }, []);
 
   const sections = useMemo(() => discovery.sections, [discovery]);
+
+  const handleDeleteSimulation = async (matchId: string) => {
+    setDeletingMatchId(matchId);
+    try {
+      const res = await fetch("/api/matches/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId }),
+      });
+      if (!res.ok) return;
+      setSimMatches((prev) => prev.filter((match) => match.matchId !== matchId));
+    } finally {
+      setDeletingMatchId(null);
+    }
+  };
 
   useEffect(() => {
     console.debug("MATCHES_CURATED_SECTIONS", {
@@ -224,30 +240,31 @@ export default function MatchesPage() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {simMatches.map((match) => {
               const isLive = match.status === "LIVE";
+              const isDeleting = deletingMatchId === match.matchId;
 
               return (
-                <button
-                  key={match.matchId}
-                  onClick={async () => {
-                    if (match.type === "LIVE") {
-                      router.push(`/match/${match.matchId}`);
-                      return;
-                    }
+                <div key={match.matchId} className="relative">
+                  <button
+                    onClick={async () => {
+                      if (match.type === "LIVE") {
+                        router.push(`/match/${match.matchId}`);
+                        return;
+                      }
 
-                    await fetch("/api/match/init", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        matchId: match.matchId,
-                        teamA: match.teamA,
-                        teamB: match.teamB,
-                        type: match.type,
-                        externalMatchId: match.externalMatchId ?? match.matchId,
-                      }),
-                    });
-                    router.push(`/match/${match.matchId}`);
-                  }}
-                    className="rounded-lg p-3 text-left transition-colors"
+                      await fetch("/api/match/init", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          matchId: match.matchId,
+                          teamA: match.teamA,
+                          teamB: match.teamB,
+                          type: match.type,
+                          externalMatchId: match.externalMatchId ?? match.matchId,
+                        }),
+                      });
+                      router.push(`/match/${match.matchId}`);
+                    }}
+                    className="w-full rounded-lg p-3 pr-11 text-left transition-colors"
                     style={{
                       border: "1px solid var(--border-subtle)",
                       background: "color-mix(in srgb, var(--bg-surface) 92%, transparent)",
@@ -278,7 +295,23 @@ export default function MatchesPage() {
                       </p>
                     ) : null}
                   </button>
-              );
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteSimulation(match.matchId)}
+                    disabled={isDeleting}
+                    aria-label={`Delete simulation ${match.teamA} vs ${match.teamB}`}
+                    className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors disabled:opacity-50"
+                    style={{
+                      border: "1px solid var(--border-subtle)",
+                      background: "var(--bg-overlay)",
+                      color: "var(--text-muted)",
+                    }}
+                    title="Delete simulation"
+                  >
+                    {isDeleting ? "…" : "✕"}
+                  </button>
+                </div>
+               );
             })}
           </div>
         )}

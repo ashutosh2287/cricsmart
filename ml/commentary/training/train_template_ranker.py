@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import joblib
 import pandas as pd
@@ -13,6 +14,14 @@ from sklearn.metrics import ndcg_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
+from ml.commentary.training.training_utils import (
+    hash_schema_file,
+    set_deterministic_seeds,
+    validate_schema_hash,
+)
+
+DEFAULT_CONTRACT_PATH = Path("ml/commentary/models/feature_contract.json")
+DEFAULT_SCHEMA_PATH = Path("ml/commentary/datasets/commentary_dataset_schema.json")
 
 FEATURE_COLUMNS = [
     "pressure_score",
@@ -53,7 +62,23 @@ def _expand_ranking_rows(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def train_ranker(df: pd.DataFrame) -> tuple[Pipeline, float]:
+def train_ranker(
+    df: pd.DataFrame,
+    schema_path: Path = DEFAULT_SCHEMA_PATH,
+    contract_path: Path = DEFAULT_CONTRACT_PATH,
+) -> tuple[Pipeline, float]:
+    """Train the LightGBM template ranking model.
+
+    Validates the schema contract before training.  Returns the fitted
+    pipeline and an NDCG score.
+    """
+    set_deterministic_seeds()
+
+    # Schema contract validation
+    if contract_path.exists() and schema_path.exists():
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
+        validate_schema_hash(schema_path, contract["schemaHash"])
+
     ranking_df = _expand_ranking_rows(df)
 
     categorical = ["phase_of_match", "commentary_type", "tone", "template_key"]
@@ -74,6 +99,7 @@ def train_ranker(df: pd.DataFrame) -> tuple[Pipeline, float]:
         n_estimators=200,
         learning_rate=0.05,
         random_state=42,
+        verbose=-1,
     )
 
     transformed = preprocessor.fit_transform(features)
@@ -95,37 +121,48 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Train commentary template ranker")
     parser.add_argument("--data", default="ml/commentary/datasets/processed/commentary_feature_matrix.csv")
     parser.add_argument("--out-dir", default="ml/commentary/models")
+    parser.add_argument("--schema", default=str(DEFAULT_SCHEMA_PATH))
+    parser.add_argument("--contract", default=str(DEFAULT_CONTRACT_PATH))
     args = parser.parse_args()
 
     data_path = Path(args.data)
     out_dir = Path(args.out_dir)
+    schema_path = Path(args.schema)
+    contract_path = Path(args.contract)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(data_path)
-    model, ndcg = train_ranker(df)
+    model, ndcg = train_ranker(df, schema_path=schema_path, contract_path=contract_path)
 
     model_path = out_dir / "template_ranker.joblib"
     metrics_path = out_dir / "template_ranker_metrics.json"
-    metadata_path = out_dir / "template_ranker_metadata.json"
+    metadata_path = out_dir / "ranker_metadata.json"
+
+    schema_hash = hash_schema_file(schema_path) if schema_path.exists() else ""
+    contract: Dict[str, Any] = (
+        json.loads(contract_path.read_text(encoding="utf-8")) if contract_path.exists() else {}
+    )
 
     joblib.dump(model, model_path)
     metrics_path.write_text(json.dumps({"ndcg": ndcg}, indent=2), encoding="utf-8")
-    metadata_path.write_text(
-        json.dumps(
-            {
-                "model": "lightgbm_ranker",
-                "features": FEATURE_COLUMNS + ["template_key"],
-                "rows": int(len(df)),
-                "artifacts": {
-                    "model": str(model_path),
-                    "metrics": str(metrics_path),
-                },
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
+    metadata: Dict[str, Any] = {
+        "model": "lightgbm_ranker",
+        "schemaVersion": contract.get("schemaVersion", ""),
+        "featureContractHash": schema_hash,
+        "datasetVersion": contract.get("datasetVersion", ""),
+        "trainedAt": datetime.now(timezone.utc).isoformat(),
+        "featureOrdering": FEATURE_COLUMNS + ["template_key"],
+        "templatesByType": TEMPLATE_BY_TYPE,
+        "rows": int(len(df)),
+        "evaluationMetrics": {"ndcg": ndcg},
+        "artifacts": {
+            "model": str(model_path),
+            "metrics": str(metrics_path),
+        },
+    }
+    metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     print(f"Saved template ranker to {model_path}")
+    print(f"Saved ranker metadata to {metadata_path}")
 
 
 if __name__ == "__main__":

@@ -35,11 +35,18 @@ export function rankTemplateForContext(input: { context: CommentaryContext; plan
   const ranked = TEMPLATE_CANDIDATES.map((templateKey) => ({
     templateKey,
     score: scoreTemplate(templateKey, context, plan),
-  })).sort((a, b) => b.score - a.score);
+  })).sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return a.templateKey.localeCompare(b.templateKey);
+  });
+
+  const maxScore = 12;
+  const topScore = ranked[0]?.score ?? 0;
 
   return {
     topTemplateKey: ranked[0]?.templateKey ?? plan.templateKey,
-    score: ranked[0]?.score ?? 0,
+    score: topScore,
+    confidence: Math.max(0, Math.min(1, topScore / maxScore)),
     ranked,
   };
 }

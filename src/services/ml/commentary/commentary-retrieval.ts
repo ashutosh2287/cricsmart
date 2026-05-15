@@ -4,7 +4,10 @@ type RetrievalExample = {
   id: string;
   text: string;
   phase: CommentaryContext["overPhase"];
-  minPressure: CommentaryContext["overPhase"];
+  pressureBand: "LOW" | "MEDIUM" | "HIGH" | "EXTREME";
+  wicketsLostBand: "0-2" | "3-5" | "6-8" | "9-10";
+  overBand: "0-5" | "6-15" | "16-20";
+  commentaryType: CommentaryPlan["commentaryType"];
   tag: "wicket" | "boundary" | "pressure" | "partnership" | "momentum";
 };
 
@@ -13,28 +16,40 @@ const RETRIEVAL_EXAMPLES: RetrievalExample[] = [
     id: "wicket_death",
     text: "Huge wicket at the death and the match narrative flips.",
     phase: "DEATH_OVERS",
-    minPressure: "DEATH_OVERS",
+    pressureBand: "HIGH",
+    wicketsLostBand: "3-5",
+    overBand: "16-20",
+    commentaryType: "turning-point",
     tag: "wicket",
   },
   {
     id: "boundary_release",
     text: "That boundary relieves sustained scoreboard pressure.",
     phase: "DEATH_OVERS",
-    minPressure: "MIDDLE_OVERS",
+    pressureBand: "HIGH",
+    wicketsLostBand: "3-5",
+    overBand: "16-20",
+    commentaryType: "pressure-summary",
     tag: "boundary",
   },
   {
     id: "partnership_rebuild",
     text: "The partnership is quietly rebuilding this innings.",
     phase: "MIDDLE_OVERS",
-    minPressure: "POWERPLAY",
+    pressureBand: "MEDIUM",
+    wicketsLostBand: "3-5",
+    overBand: "6-15",
+    commentaryType: "momentum-summary",
     tag: "partnership",
   },
   {
     id: "momentum_shift",
     text: "Momentum has shifted sharply after this passage.",
     phase: "MIDDLE_OVERS",
-    minPressure: "POWERPLAY",
+    pressureBand: "MEDIUM",
+    wicketsLostBand: "0-2",
+    overBand: "6-15",
+    commentaryType: "momentum-summary",
     tag: "momentum",
   },
 ];
@@ -47,11 +62,65 @@ function tagForPlan(plan: CommentaryPlan): RetrievalExample["tag"] {
   return "pressure";
 }
 
+function pressureBandForContext(context: CommentaryContext): RetrievalExample["pressureBand"] {
+  if (context.chaseComplexity >= 85) return "EXTREME";
+  if (context.chaseComplexity >= 65) return "HIGH";
+  if (context.chaseComplexity >= 35) return "MEDIUM";
+  return "LOW";
+}
+
+function wicketsBand(wicketsLost: number): RetrievalExample["wicketsLostBand"] {
+  if (wicketsLost <= 2) return "0-2";
+  if (wicketsLost <= 5) return "3-5";
+  if (wicketsLost <= 8) return "6-8";
+  return "9-10";
+}
+
+function overBand(over: number): RetrievalExample["overBand"] {
+  if (over < 6) return "0-5";
+  if (over < 16) return "6-15";
+  return "16-20";
+}
+
 export function retrieveCommentaryExamples(input: { context: CommentaryContext; plan: CommentaryPlan }) {
-  const tag = tagForPlan(input.plan);
-  const candidates = RETRIEVAL_EXAMPLES.filter((example) => example.tag === tag);
-  return candidates.slice(0, 2).map((example) => ({
-    id: example.id,
-    text: example.text,
-  }));
+  const { context, plan } = input;
+  const tag = tagForPlan(plan);
+  const pressureBand = pressureBandForContext(context);
+  const wicketsLostBand = wicketsBand(context.wickets);
+  const currentOverBand = overBand(context.over);
+
+  const scored = RETRIEVAL_EXAMPLES.map((example) => {
+    let score = 0;
+    if (example.tag === tag) score += 0.35;
+    if (example.phase === context.overPhase) score += 0.2;
+    if (example.pressureBand === pressureBand) score += 0.15;
+    if (example.wicketsLostBand === wicketsLostBand) score += 0.15;
+    if (example.overBand === currentOverBand) score += 0.1;
+    if (example.commentaryType === plan.commentaryType) score += 0.05;
+    return { example, score: Number(score.toFixed(4)) };
+  })
+    .filter((item) => item.score > 0)
+    .sort((left, right) => {
+      if (right.score !== left.score) return right.score - left.score;
+      return left.example.id.localeCompare(right.example.id);
+    });
+
+  const selected = scored.slice(0, 3);
+  const confidence = selected[0]?.score ?? 0;
+
+  return {
+    confidence,
+    appliedFilters: {
+      phase_of_match: context.overPhase,
+      pressure_level: pressureBand,
+      wickets_lost_band: wicketsLostBand,
+      over_band: currentOverBand,
+      commentary_type: plan.commentaryType,
+    },
+    candidates: selected.map((item) => ({
+      id: item.example.id,
+      text: item.example.text,
+      score: item.score,
+    })),
+  };
 }

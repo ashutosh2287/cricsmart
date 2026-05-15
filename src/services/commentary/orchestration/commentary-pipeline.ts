@@ -10,9 +10,18 @@ import { createInitialNarrativeState, updateNarrativeState } from "../narrative/
 import { determineTone } from "../narrative/tone-engine";
 import { generateCommentaryEvent } from "../generators/commentary-generator";
 import { getCommentaryMlAssistMode, isCommentaryMlAssistEnabled } from "@/config/commentaryMlMode";
+import {
+  COMMENTARY_ML_LATENCY_BUDGET_MS,
+  isCommentaryClassifierEnabled,
+  isCommentaryRetrievalEnabled,
+  isCommentaryTemplateRankerEnabled,
+} from "@/config/commentaryMlRuntimeFlags";
 import { predictCommentaryContext } from "@/services/ml/commentary/commentary-classifier";
 import { rankTemplateForContext } from "@/services/ml/commentary/commentary-ranker";
 import { retrieveCommentaryExamples } from "@/services/ml/commentary/commentary-retrieval";
+import { getRuntimeThresholds, validateRuntimeFeatureContract } from "@/services/ml/commentary/commentary-runtime-contract";
+import { appendCommentaryAudit } from "../audit/commentaryAuditLog";
+import { persistCommentaryContextSnapshot } from "../audit/contextSnapshotPersistence";
 import type {
   CommentaryContext,
   CommentaryEvent,
@@ -34,6 +43,18 @@ type PipelineResult = {
   primaryEvent: CommentaryEvent;
   emittedEvents: CommentaryEvent[];
   narrativeState: NarrativeState;
+};
+
+type MlAssistDiagnostics = {
+  fallbackReasons: string[];
+  confidence: {
+    classifier: number;
+    ranker: number;
+    retrieval: number;
+  };
+  retrievalCandidates: Array<{ id: string; text: string; score: number }>;
+  selectedTemplate: string;
+  schemaHash: string | null;
 };
 
 const narrativeStateStore = new Map<string, NarrativeState>();
@@ -161,46 +182,113 @@ function buildCommentaryContext(input: PipelineInput): CommentaryContext {
   };
 }
 
-function dedupeEvents(events: CommentaryEvent[]) {
+function dedupeEventPlans(pairs: Array<{ event: CommentaryEvent; plan: CommentaryPlan }>) {
   const seen = new Set<string>();
-  return events.filter((event) => {
-    const key = `${event.eventId}:${event.text}`;
+  return pairs.filter((pair) => {
+    const key = `${pair.event.eventId}:${pair.event.text}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
 }
 
-function applyMlAssistToPlan(input: { context: CommentaryContext; plan: CommentaryPlan }): CommentaryPlan {
+function applyMlAssistToPlan(input: { context: CommentaryContext; plan: CommentaryPlan }): {
+  plan: CommentaryPlan;
+  diagnostics: MlAssistDiagnostics;
+} {
   const mode = getCommentaryMlAssistMode();
-  if (mode === "off") return input.plan;
+  const diagnostics: MlAssistDiagnostics = {
+    fallbackReasons: [],
+    confidence: { classifier: 0, ranker: 0, retrieval: 0 },
+    retrievalCandidates: [],
+    selectedTemplate: input.plan.templateKey,
+    schemaHash: null,
+  };
+
+  if (mode === "off") {
+    diagnostics.fallbackReasons.push("ml_assist_disabled");
+    return { plan: input.plan, diagnostics };
+  }
+
+  const featureValidation = validateRuntimeFeatureContract(input.context);
+  diagnostics.schemaHash = featureValidation.schemaHash;
+  if (!featureValidation.valid) {
+    diagnostics.fallbackReasons.push(`feature_validation_failed:${featureValidation.errors.join(",")}`);
+    return { plan: input.plan, diagnostics };
+  }
+
+  if (!isCommentaryMlAssistEnabled(mode)) {
+    diagnostics.fallbackReasons.push("shadow_mode");
+    return { plan: input.plan, diagnostics };
+  }
+
+  const thresholds = getRuntimeThresholds();
+  const nextPlan = { ...input.plan };
 
   try {
-    const prediction = predictCommentaryContext({ context: input.context });
-    const ranking = rankTemplateForContext({ context: input.context, plan: input.plan });
-    const retrieval = retrieveCommentaryExamples({ context: input.context, plan: input.plan });
+    if (isCommentaryClassifierEnabled()) {
+      const classifierStart = Date.now();
+      const prediction = predictCommentaryContext({ context: input.context });
+      const classifierLatency = Date.now() - classifierStart;
 
-    if (!isCommentaryMlAssistEnabled(mode)) {
-      return input.plan;
-    }
-
-    const nextPlan = { ...input.plan };
-    if (prediction.confidence >= 0.72) {
-      nextPlan.tone = prediction.tone;
-      nextPlan.importance = prediction.importance;
-      if (nextPlan.commentaryType === "ball") {
-        nextPlan.commentaryType = prediction.commentaryType;
+      diagnostics.confidence.classifier = prediction.confidence;
+      if (classifierLatency > COMMENTARY_ML_LATENCY_BUDGET_MS.classifier) {
+        diagnostics.fallbackReasons.push("classifier_latency_budget_exceeded");
+      } else if (
+        prediction.confidence >= thresholds.commentary_type_threshold &&
+        prediction.confidence >= thresholds.tone_threshold
+      ) {
+        nextPlan.tone = prediction.tone;
+        nextPlan.importance = prediction.importance;
+        if (nextPlan.commentaryType === "ball") {
+          nextPlan.commentaryType = prediction.commentaryType;
+        }
+      } else {
+        diagnostics.fallbackReasons.push("classifier_confidence_below_threshold");
       }
+    } else {
+      diagnostics.fallbackReasons.push("classifier_flag_disabled");
     }
-    if (ranking.score >= 5) {
-      nextPlan.templateKey = ranking.topTemplateKey;
+
+    if (isCommentaryTemplateRankerEnabled()) {
+      const rankerStart = Date.now();
+      const ranking = rankTemplateForContext({ context: input.context, plan: nextPlan });
+      const rankerLatency = Date.now() - rankerStart;
+      diagnostics.confidence.ranker = ranking.confidence;
+
+      if (rankerLatency > COMMENTARY_ML_LATENCY_BUDGET_MS.ranking) {
+        diagnostics.fallbackReasons.push("ranker_latency_budget_exceeded");
+      } else if (ranking.confidence >= thresholds.template_threshold) {
+        nextPlan.templateKey = ranking.topTemplateKey;
+      } else {
+        diagnostics.fallbackReasons.push("ranker_confidence_below_threshold");
+      }
+    } else {
+      diagnostics.fallbackReasons.push("template_ranker_flag_disabled");
     }
-    if (retrieval.length > 0 && nextPlan.narrativeType === "strike-rotation") {
-      nextPlan.narrativeType = "retrieval-assisted";
+
+    if (isCommentaryRetrievalEnabled()) {
+      const retrievalStart = Date.now();
+      const retrieval = retrieveCommentaryExamples({ context: input.context, plan: nextPlan });
+      const retrievalLatency = Date.now() - retrievalStart;
+      diagnostics.confidence.retrieval = retrieval.confidence;
+      diagnostics.retrievalCandidates = retrieval.candidates;
+
+      if (retrievalLatency > COMMENTARY_ML_LATENCY_BUDGET_MS.retrieval) {
+        diagnostics.fallbackReasons.push("retrieval_latency_budget_exceeded");
+      } else if (retrieval.confidence < (thresholds.retrieval_threshold ?? 0.5)) {
+        diagnostics.fallbackReasons.push("retrieval_confidence_below_threshold");
+      }
+    } else {
+      diagnostics.fallbackReasons.push("retrieval_flag_disabled");
     }
-    return nextPlan;
+
+    diagnostics.selectedTemplate = nextPlan.templateKey;
+    return { plan: nextPlan, diagnostics };
   } catch {
-    return input.plan;
+    diagnostics.fallbackReasons.push("ml_runtime_exception");
+    diagnostics.selectedTemplate = input.plan.templateKey;
+    return { plan: input.plan, diagnostics };
   }
 }
 
@@ -284,7 +372,8 @@ export function processCommentaryPipeline(input: PipelineInput): PipelineResult 
     momentumState: momentum.state,
     turningPointDetected,
   });
-  const finalPrimaryPlan = applyMlAssistToPlan({ context, plan: primaryPlan });
+  const mlAssist = applyMlAssistToPlan({ context, plan: primaryPlan });
+  const finalPrimaryPlan = mlAssist.plan;
 
   const primaryEvent = generateCommentaryEvent({
     matchId: input.matchId,
@@ -294,7 +383,7 @@ export function processCommentaryPipeline(input: PipelineInput): PipelineResult 
     narrativeState,
   });
 
-  const emittedEvents: CommentaryEvent[] = [primaryEvent];
+  const eventPlanPairs: Array<{ event: CommentaryEvent; plan: CommentaryPlan }> = [{ event: primaryEvent, plan: finalPrimaryPlan }];
 
   if (context.isOverComplete) {
     const overPlan = buildCommentaryPlan({
@@ -318,15 +407,16 @@ export function processCommentaryPipeline(input: PipelineInput): PipelineResult 
       momentumState: momentum.state,
       turningPointDetected,
     });
-    emittedEvents.push(
-      generateCommentaryEvent({
+    eventPlanPairs.push({
+      event: generateCommentaryEvent({
         matchId: input.matchId,
         ballEvent: input.ballEvent,
         context,
         plan: overPlan,
         narrativeState,
       }),
-    );
+      plan: overPlan,
+    });
   }
 
   if (
@@ -355,15 +445,16 @@ export function processCommentaryPipeline(input: PipelineInput): PipelineResult 
       momentumState: momentum.state,
       turningPointDetected,
     });
-    emittedEvents.push(
-      generateCommentaryEvent({
+    eventPlanPairs.push({
+      event: generateCommentaryEvent({
         matchId: input.matchId,
         ballEvent: input.ballEvent,
         context,
         plan: pressurePlan,
         narrativeState,
       }),
-    );
+      plan: pressurePlan,
+    });
   }
 
   if (momentum.swingDetected || (context.isOverComplete && momentum.state !== "NEUTRAL")) {
@@ -388,15 +479,16 @@ export function processCommentaryPipeline(input: PipelineInput): PipelineResult 
       momentumState: momentum.state,
       turningPointDetected,
     });
-    emittedEvents.push(
-      generateCommentaryEvent({
+    eventPlanPairs.push({
+      event: generateCommentaryEvent({
         matchId: input.matchId,
         ballEvent: input.ballEvent,
         context,
         plan: momentumPlan,
         narrativeState,
       }),
-    );
+      plan: momentumPlan,
+    });
   }
 
   if (turningPointDetected) {
@@ -421,20 +513,55 @@ export function processCommentaryPipeline(input: PipelineInput): PipelineResult 
       momentumState: momentum.state,
       turningPointDetected,
     });
-    emittedEvents.push(
-      generateCommentaryEvent({
+    eventPlanPairs.push({
+      event: generateCommentaryEvent({
         matchId: input.matchId,
         ballEvent: input.ballEvent,
         context,
         plan: turningPlan,
         narrativeState,
       }),
-    );
+      plan: turningPlan,
+    });
   }
+
+  const deduped = dedupeEventPlans(eventPlanPairs);
+
+  for (const pair of deduped) {
+    persistCommentaryContextSnapshot({
+      matchId: input.matchId,
+      branchId: input.branchId,
+      context,
+      narrativeState,
+      plan: pair.plan,
+      retrievalCandidates: mlAssist.diagnostics.retrievalCandidates,
+      event: pair.event,
+    });
+  }
+
+  appendCommentaryAudit({
+    timestamp: Date.now(),
+    matchId: input.matchId,
+    branchId: input.branchId,
+    eventId: input.ballEvent.id,
+    modelDecisions: {
+      plannerTemplate: primaryPlan.templateKey,
+      selectedTemplate: mlAssist.diagnostics.selectedTemplate,
+      finalCommentaryType: finalPrimaryPlan.commentaryType,
+    },
+    confidenceScores: {
+      classifier: mlAssist.diagnostics.confidence.classifier,
+      ranker: mlAssist.diagnostics.confidence.ranker,
+      retrieval: mlAssist.diagnostics.confidence.retrieval,
+    },
+    retrievalMatches: mlAssist.diagnostics.retrievalCandidates,
+    selectedTemplate: finalPrimaryPlan.templateKey,
+    fallbackTriggers: mlAssist.diagnostics.fallbackReasons,
+  });
 
   return {
     primaryEvent,
-    emittedEvents: dedupeEvents(emittedEvents),
+    emittedEvents: deduped.map((item) => item.event),
     narrativeState,
   };
 }

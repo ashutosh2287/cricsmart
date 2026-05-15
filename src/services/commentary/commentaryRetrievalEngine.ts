@@ -74,7 +74,7 @@ export function retrieveSimilarCommentary(input: {
       return { candidate, score };
     })
     .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => (b.score !== a.score ? b.score - a.score : a.candidate.id.localeCompare(b.candidate.id)));
 
   const best = ranked[0];
   if (!best) {

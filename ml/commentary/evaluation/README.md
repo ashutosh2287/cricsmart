@@ -8,3 +8,9 @@ Tracked gates:
 - tone accuracy
 - narrative alignment
 - commentary diversity
+- retrieval relevance
+
+Utilities:
+- `dataset_validation.py` (fails training on quality issues)
+- `replay_validation.py` (deterministic replay parity)
+- `generate_eval_report.py` (offline JSON + markdown report)

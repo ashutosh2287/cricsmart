@@ -49,10 +49,15 @@ ml/datasets/processed/
 # python
 __pycache__/
 *.py[cod]
+*.pyc
 
 # commentary ml artifacts
 ml/commentary/embeddings/artifacts/
 ml/commentary/retrieval/*.joblib
 ml/commentary/models/*.joblib
 ml/commentary/models/*.json
+!ml/commentary/models/feature_contract.json
+!ml/commentary/models/runtime_thresholds.json
+ml/commentary/datasets/processed/
 ml/commentary/evaluation/*.json
+ml/commentary/evaluation/*.md

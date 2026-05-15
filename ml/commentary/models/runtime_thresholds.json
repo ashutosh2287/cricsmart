@@ -1,0 +1,8 @@
+{
+  "commentary_type_threshold": 0.75,
+  "tone_threshold": 0.70,
+  "importance_threshold": 0.65,
+  "template_rank_threshold": 0.60,
+  "fallback_strategy": "deterministic_planner",
+  "description": "Minimum confidence for ML predictions. Below threshold, the deterministic planner default is used instead."
+}

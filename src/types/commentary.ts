@@ -61,7 +61,7 @@ export type CommentaryInputSchema = {
 };
 
 export type CommentaryMetadata = {
-  generator: "template" | "hybrid" | "fallback";
+  generator: "template" | "hybrid" | "retrieval" | "fallback";
   model: string;
   latencyMs: number;
   cacheHit: boolean;

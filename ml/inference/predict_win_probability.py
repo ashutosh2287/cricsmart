@@ -27,8 +27,11 @@ FEATURE_COLUMNS = [
 
 MODEL_PATH = Path(__file__).parent.parent / "models" / "win_probability_model.joblib"
 METADATA_PATH = Path(__file__).parent.parent / "models" / "model_metadata.json"
+# LightGBM binary predict_proba output index 1 is the positive class:
+# batting team wins this match state.
 POSITIVE_CLASS_INDEX = 1
 DECISION_BOUNDARY = 0.5
+# The max distance from 0.5 is 0.5, so scale by 2.0 to normalize confidence to [0, 1].
 CONFIDENCE_SCALE_FACTOR = 2.0
 
 SAMPLE_PAYLOAD = {

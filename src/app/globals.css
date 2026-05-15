@@ -39,6 +39,11 @@
   --nav-bg-scrolled: color-mix(in srgb, var(--bg-base) 84%, transparent);
   --nav-border-soft: color-mix(in srgb, var(--text-primary) 8%, transparent);
   --nav-border-strong: color-mix(in srgb, var(--text-primary) 16%, transparent);
+  --page-hero-gradient: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent-brand) 8%, var(--bg-base)),
+    var(--bg-base) 280px
+  );
   --modal-backdrop: color-mix(in srgb, var(--bg-base) 86%, transparent);
 
   /* Chart tokens */
@@ -166,6 +171,11 @@
   --nav-bg-scrolled: color-mix(in srgb, var(--bg-base) 92%, transparent);
   --nav-border-soft: color-mix(in srgb, var(--text-primary) 10%, transparent);
   --nav-border-strong: color-mix(in srgb, var(--text-primary) 14%, transparent);
+  --page-hero-gradient: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent-brand) 5%, var(--bg-base)),
+    var(--bg-base) 280px
+  );
   --modal-backdrop: color-mix(in srgb, var(--bg-base) 72%, transparent);
 
   --chart-positive: var(--accent-success);
@@ -240,6 +250,29 @@ body {
     color 220ms ease,
     border-color 220ms ease,
     box-shadow 220ms ease;
+}
+
+.matches-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  max-height: 480px;
+  overflow-y: auto;
+  transform: translateY(-8px);
+  opacity: 0;
+  transition:
+    transform 220ms ease,
+    opacity 220ms ease;
+  pointer-events: none;
+}
+
+.matches-panel.open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .cinematic-background {

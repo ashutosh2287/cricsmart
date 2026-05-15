@@ -84,15 +84,13 @@ export default function RootLayout({
           {/* ========================================
              NAVBAR (UPGRADED)
           ======================================== */}
-          <div className="sticky top-0 z-50">
-            <Navbar />
-          </div>
+          <Navbar />
 
           {/* ========================================
              MAIN CONTENT (ANIMATED)
           ======================================== */}
-          <main className="min-h-screen">
-            <div className="mx-auto max-w-7xl px-6 py-8">
+          <main className="min-h-screen bg-[var(--bg-base)]">
+            <div className="mx-auto w-full max-w-[1100px] px-4 py-8 md:px-6">
               <PageTransition>{children}</PageTransition>
             </div>
           </main>

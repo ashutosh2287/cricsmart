@@ -94,7 +94,7 @@ function LiveMatchCard({ match }: { match: RealMatch }) {
         className="rounded-xl p-4 transition-colors cursor-pointer group"
         style={{
           background: "var(--bg-surface)",
-          border: "1px solid rgba(239,68,68,0.2)",
+          border: "1px solid var(--border-subtle)",
         }}
       >
         {/* Top row */}
@@ -362,9 +362,13 @@ export default function HomePage() {
   return (
     <div
       className="min-h-screen"
-      style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}
+      style={{
+        backgroundColor: "var(--bg-base)",
+        backgroundImage: "var(--page-hero-gradient)",
+        color: "var(--text-primary)",
+      }}
     >
-      <div className="max-w-5xl mx-auto px-4 py-8 md:px-6">
+      <div className="mx-auto w-full max-w-[1100px] px-4 py-8 md:px-6">
 
         {/* ── Top bar ──────────────────────────────────── */}
         <div className="flex items-center justify-between mb-10">
@@ -483,7 +487,13 @@ export default function HomePage() {
         </div>
 
         {/* ── Live Now ─────────────────────────────────── */}
-        <section className="mb-10">
+        <section
+          className="mb-10 rounded-2xl p-5 md:p-6"
+          style={{
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border-subtle)",
+          }}
+        >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
@@ -544,13 +554,16 @@ export default function HomePage() {
         </section>
 
         {/* Divider */}
-        <div
-          className="mb-10"
-          style={{ borderTop: "1px solid var(--border-subtle)" }}
-        />
+        <div className="mb-10" />
 
         {/* ── Your Simulations ─────────────────────────── */}
-        <section>
+        <section
+          className="rounded-2xl p-5 md:p-6"
+          style={{
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border-subtle)",
+          }}
+        >
           <div className="flex items-center justify-between mb-4">
             <h2
               className="text-sm font-semibold uppercase tracking-[0.18em]"

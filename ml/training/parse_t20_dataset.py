@@ -142,10 +142,12 @@ for file_path in DATASET_PATH.glob("*.json"):
 
                 # =========================================
                 # PARTNERSHIP TRACKING
-                # Accumulate batter runs; reset to 0 after a wicket
+                # Accumulate batter runs (excluding the delivery on which a
+                # wicket falls); reset to 0 after a wicket.
                 # =========================================
 
-                partnership_runs += batter_runs
+                if not is_wicket:
+                    partnership_runs += batter_runs
                 row_partnership = partnership_runs
                 if is_wicket:
                     partnership_runs = 0
@@ -171,7 +173,7 @@ for file_path in DATASET_PATH.glob("*.json"):
                     target_value = 0
 
                 recent_runs = sum(r for r, _ in recent_window)
-                recent_wickets_val = sum(w for _, w in recent_window)
+                recent_wickets = sum(w for _, w in recent_window)
 
                 # =========================================
                 # SAVE TRAINING ROW
@@ -190,7 +192,7 @@ for file_path in DATASET_PATH.glob("*.json"):
                     "requiredRunRate": round(required_rr, 4),
                     "currentRunRate": round(current_rr, 4),
                     "recentRuns": recent_runs,
-                    "recentWickets": recent_wickets_val,
+                    "recentWickets": recent_wickets,
                     "phaseOfMatch": phase_of_match(over_number),
                     "battingFirst": batting_first,
                     "partnershipRuns": row_partnership,

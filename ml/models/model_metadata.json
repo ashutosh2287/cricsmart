@@ -1,0 +1,30 @@
+{
+  "modelVersion": "win-probability-lgbm-v1",
+  "trainedAt": "2026-05-15T07:30:54.396335+00:00",
+  "featureColumns": [
+    "innings",
+    "over",
+    "ball",
+    "currentScore",
+    "wicketsLost",
+    "oversCompleted",
+    "ballsRemaining",
+    "targetValue",
+    "requiredRunRate",
+    "currentRunRate",
+    "recentRuns",
+    "recentWickets",
+    "phaseOfMatch",
+    "battingFirst",
+    "partnershipRuns"
+  ],
+  "labelColumn": "labelBattingTeamWon",
+  "framework": "lightgbm",
+  "metrics": {
+    "accuracy": 0.8026918671248569,
+    "log_loss": 0.38328889077162326,
+    "calibration_mean": 0.4795561623114188,
+    "prediction_stability_std": 0.31698538659546444
+  },
+  "artifact": "ml\\models\\win_probability_model.joblib"
+}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
@@ -12,6 +13,9 @@ from sklearn.compose import ColumnTransformer
 from sklearn.metrics import ndcg_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
+
+from ml.commentary.evaluation.dataset_validation import validate_dataset
+from ml.commentary.models.feature_contract import feature_order, load_feature_contract, validate_feature_frame
 
 
 FEATURE_COLUMNS = [
@@ -95,6 +99,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Train commentary template ranker")
     parser.add_argument("--data", default="ml/commentary/datasets/processed/commentary_feature_matrix.csv")
     parser.add_argument("--out-dir", default="ml/commentary/models")
+    parser.add_argument("--feature-contract", default="ml/commentary/models/feature_contract.json")
+    parser.add_argument("--validation-report", default="ml/commentary/evaluation/dataset_validation_report.json")
     args = parser.parse_args()
 
     data_path = Path(args.data)
@@ -102,6 +108,27 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(data_path)
+
+    dataset_report = validate_dataset(df)
+    validation_path = Path(args.validation_report)
+    validation_path.parent.mkdir(parents=True, exist_ok=True)
+    validation_path.write_text(json.dumps(dataset_report, indent=2), encoding="utf-8")
+    if not dataset_report["passed"]:
+        raise ValueError(f"Dataset validation failed: {dataset_report['errors']}")
+
+    contract = load_feature_contract(Path(args.feature_contract))
+    contract_features = set(feature_order(contract))
+    required = [feature for feature in FEATURE_COLUMNS if feature in contract_features or feature in {"commentary_type", "tone"}]
+
+    missing = [column for column in FEATURE_COLUMNS if column not in df.columns]
+    if missing:
+        raise ValueError(f"Missing ranker features: {missing}")
+
+    contract_view = pd.DataFrame({feature: df[feature] for feature in feature_order(contract) if feature in df.columns})
+    valid, errors = validate_feature_frame(contract_view, contract)
+    if not valid:
+        raise ValueError(f"Feature contract validation failed: {errors}")
+
     model, ndcg = train_ranker(df)
 
     model_path = out_dir / "template_ranker.joblib"
@@ -114,11 +141,16 @@ def main() -> None:
         json.dumps(
             {
                 "model": "lightgbm_ranker",
+                "schemaVersion": contract.get("schemaVersion", "v1"),
+                "schemaHash": contract.get("schemaHash"),
                 "features": FEATURE_COLUMNS + ["template_key"],
+                "contractBackedFeatures": required,
                 "rows": int(len(df)),
+                "trainedAt": datetime.now(timezone.utc).isoformat(),
                 "artifacts": {
                     "model": str(model_path),
                     "metrics": str(metrics_path),
+                    "datasetValidation": str(validation_path),
                 },
             },
             indent=2,
@@ -130,4 +162,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

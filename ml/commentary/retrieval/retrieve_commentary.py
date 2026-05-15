@@ -3,85 +3,50 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any
 
 import joblib
 import numpy as np
+from sentence_transformers import SentenceTransformer
 
-if __package__ in {None, ""}:
-    import sys
-
-    sys.path.append(str(Path(__file__).resolve().parents[3]))
-
-from ml.commentary.preprocessing.feature_engineering import (
-    RETRIEVAL_FEATURE_COLUMNS,
-    build_retrieval_query_features,
-)
-
-
-def normalize_rows(matrix: np.ndarray) -> np.ndarray:
-    norms = np.linalg.norm(matrix, axis=1, keepdims=True)
-    norms[norms == 0] = 1.0
-    return matrix / norms
-
-
-def retrieve_similar_commentary(
-    *,
-    pressure: str = "MEDIUM",
-    momentum: str = "NEUTRAL",
-    wickets: int = 0,
-    over_phase: str = "MIDDLE_OVERS",
-    probability_swing: float = 0.0,
-    top_k: int = 5,
-    index_path: str = "ml/commentary/retrieval/commentary_index.joblib",
-    **extra_context: Any,
-) -> list[dict[str, Any]]:
-    bundle = joblib.load(index_path)
-    query_features = build_retrieval_query_features(
-        {
-            "pressure": pressure,
-            "momentum": momentum,
-            "wickets": wickets,
-            "over_phase": over_phase,
-            "probability_swing": probability_swing,
-            **extra_context,
-        }
-    )
-    context_vector = np.asarray([[query_features[name] for name in RETRIEVAL_FEATURE_COLUMNS]], dtype="float32")
-    context_vector = normalize_rows(context_vector) * float(bundle["context_weight"])
-    embedding_vector = np.zeros((1, int(bundle["embedding_dim"])), dtype="float32") * float(bundle["embedding_weight"])
-    query_vector = np.hstack([embedding_vector, context_vector]).astype("float32")
-
-    distances, indices = bundle["model"].kneighbors(query_vector, n_neighbors=min(top_k, len(bundle["metadata"])))
-    results: list[dict[str, Any]] = []
-    for distance, idx in zip(distances[0], indices[0], strict=False):
-        row = dict(bundle["metadata"][int(idx)])
-        row["score"] = round(1.0 - float(distance), 4)
-        results.append(row)
-    return results
+from ml.commentary.retrieval.build_index import retrieve_similar_commentary
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Retrieve similar commentary examples.")
-    parser.add_argument("--pressure", default="MEDIUM")
-    parser.add_argument("--momentum", default="NEUTRAL")
-    parser.add_argument("--wickets", type=int, default=0)
-    parser.add_argument("--over-phase", default="MIDDLE_OVERS")
-    parser.add_argument("--probability-swing", type=float, default=0.0)
+    parser = argparse.ArgumentParser(description="Retrieve similar commentary examples")
+    parser.add_argument("--query", required=True, help="Query text")
+    parser.add_argument("--index", default="ml/commentary/models/commentary_retrieval_index.joblib")
+    parser.add_argument("--metadata", default="ml/commentary/models/commentary_retrieval_index.json")
+    parser.add_argument("--phase", default=None)
+    parser.add_argument("--pressure", default=None)
+    parser.add_argument("--wickets-lost-band", default=None)
+    parser.add_argument("--over-band", default=None)
+    parser.add_argument("--commentary-type", default=None)
     parser.add_argument("--top-k", type=int, default=5)
-    parser.add_argument("--index", default="ml/commentary/retrieval/commentary_index.joblib")
+    parser.add_argument("--out", required=True)
     args = parser.parse_args()
 
+    model = SentenceTransformer("all-MiniLM-L6-v2")
+    query_vector = np.asarray(model.encode([args.query], normalize_embeddings=True), dtype=np.float32)[0]
+
+    nn_model = joblib.load(Path(args.index))
+    metadata = json.loads(Path(args.metadata).read_text(encoding="utf-8"))
+
+    index = {
+        "nn_model": nn_model,
+        "records": metadata.get("records", []),
+    }
     results = retrieve_similar_commentary(
-        pressure=args.pressure,
-        momentum=args.momentum,
-        wickets=args.wickets,
-        over_phase=args.over_phase,
-        probability_swing=args.probability_swing,
+        index,
+        query_vector,
         top_k=args.top_k,
-        index_path=args.index,
+        phase_of_match=args.phase,
+        pressure_level=args.pressure,
+        wickets_lost_band=args.wickets_lost_band,
+        over_band=args.over_band,
+        commentary_type=args.commentary_type,
     )
-    print(json.dumps(results, indent=2))
+    Path(args.out).write_text(json.dumps(results, indent=2), encoding="utf-8")
+    print(f"Wrote retrieval examples to {args.out}")
 
 
 if __name__ == "__main__":

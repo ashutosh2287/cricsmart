@@ -82,8 +82,12 @@ export function generateAdvancedCommentary(
   /* =============================
      🎲 RANDOM PICK
   ============================= */
-  function pick(arr: string[]) {
-    return arr[Math.floor(Math.random() * arr.length)];
+  const deterministicSeedBase = `${event.id}:${inningsIndex}:${over}:${innings.ball ?? 0}:${runs}:${wickets}:${batsman}:${bowler}`;
+
+  function pick(arr: string[], contextTag = "") {
+    if (arr.length === 0) return "";
+    const index = stablePairHash(`${deterministicSeedBase}:${contextTag}:${arr.length}`) % arr.length;
+    return arr[index];
   }
 
   /* =============================

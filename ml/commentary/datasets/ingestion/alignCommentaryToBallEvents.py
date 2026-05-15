@@ -8,7 +8,10 @@ from typing import Dict
 
 import pandas as pd
 
-from ml.commentary.datasets.schema import TONE_TAGS, SITUATION_TAGS, to_dataset_row
+from ml.commentary.datasets.schema import to_dataset_row
+
+TONE_TAGS = {"neutral", "dramatic", "energetic", "analytical", "celebratory", "tense"}
+SITUATION_TAGS = {"boundary", "wicket", "pressure", "momentum", "partnership", "collapse", "turning_point", "summary"}
 
 PREPROCESSING_VERSION = "commentary-c2-v1"
 DATASET_VERSION = "c2.0.0"
@@ -20,14 +23,14 @@ def infer_tone(cleaned_commentary: str, wicket: bool, runs: int, pressure_level:
     if wicket:
         return "dramatic"
     if runs >= 6 or "massive" in text or "huge" in text:
-        return "aggressive"
+        return "energetic"
     if "milestone" in text or "fifty" in text or "hundred" in text:
         return "celebratory"
     if pressure_level in {"high", "extreme"}:
         return "tense"
     if "analysis" in text or "required rate" in text:
         return "analytical"
-    return "calm"
+    return "neutral"
 
 
 def infer_category(cleaned_commentary: str, wicket: bool, collapse_risk: float, partnership_runs: int, phase: str) -> str:
@@ -40,24 +43,24 @@ def infer_category(cleaned_commentary: str, wicket: bool, collapse_risk: float, 
     if partnership_runs >= 35:
         return "partnership"
     if "milestone" in text or "fifty" in text:
-        return "milestone"
+        return "summary"
     if phase == "deathOvers":
-        return "deathOvers"
+        return "pressure"
     if phase == "powerplay":
-        return "powerplay"
+        return "summary"
     if "acceleration" in text:
-        return "acceleration"
+        return "momentum"
     if "rebuild" in text or "recovery" in text:
-        return "recovery"
+        return "momentum"
     if "turning" in text:
-        return "turningPoint"
+        return "turning_point"
     if "clutch" in text:
-        return "clutchMoment"
+        return "turning_point"
     if "momentum" in text:
-        return "momentumReversal"
+        return "momentum"
     if "pressure" in text:
-        return "chasePressure"
-    return "general"
+        return "pressure"
+    return "summary"
 
 
 def confidence_score(commentary_row: pd.Series, event_row: pd.Series) -> float:
@@ -153,42 +156,35 @@ def align_rows(commentary_df: pd.DataFrame, events_df: pd.DataFrame) -> pd.DataF
 
         canonical_row = to_dataset_row(
             {
-                "matchId": row.get("matchId", ""),
-                "tournament": row.get("tournament", "unknown"),
-                "format": row.get("format", "T20"),
+                "match_id": row.get("matchId", ""),
                 "innings": int(row.get("innings", 1)),
                 "over": int(row.get("over", 0)),
                 "ball": int(row.get("ball", 0)),
-                "phaseOfMatch": phase,
-                "batter": row.get("batter", event_data.get("batsman", "")),
+                "batting_team": row.get("battingTeam", event_data.get("battingTeam", "")),
+                "bowling_team": row.get("bowlingTeam", event_data.get("bowlingTeam", "")),
+                "striker": row.get("batter", event_data.get("batsman", "")),
+                "non_striker": row.get("nonStriker", event_data.get("nonStriker", "")),
                 "bowler": row.get("bowler", event_data.get("bowler", "")),
                 "runs": runs,
                 "extras": extras,
                 "wicket": wicket,
-                "dismissalType": row.get("dismissalType") or event_data.get("dismissalKind"),
-                "boundaryType": "SIX" if runs == 6 else "FOUR" if runs == 4 else None,
-                "currentScore": int(event_data.get("scoreAfterBall", 0) if pd.notna(event_data.get("scoreAfterBall")) else 0),
-                "wickets": int(event_data.get("wicketsAfterBall", 0) if pd.notna(event_data.get("wicketsAfterBall")) else 0),
-                "target": None if pd.isna(event_data.get("target")) else int(event_data.get("target")),
-                "requiredRunRate": float(row.get("requiredRunRate", 0) if not pd.isna(row.get("requiredRunRate")) else 0),
-                "currentRunRate": float(row.get("currentRunRate", 0) if not pd.isna(row.get("currentRunRate")) else 0),
-                "pressureLevel": pressure_level,
-                "momentumState": row.get("momentumState", "stable") if row.get("momentumState") in {"surging", "stable", "stalling", "collapsing"} else "stable",
-                "partnershipRuns": int(row.get("partnershipRuns", 0) if not pd.isna(row.get("partnershipRuns")) else 0),
-                "recentBoundaries": int(row.get("recentBoundaries", 0) if not pd.isna(row.get("recentBoundaries")) else 0),
-                "collapseRisk": float(row.get("collapseRisk", 0) if not pd.isna(row.get("collapseRisk")) else 0),
-                "inningsNarrative": row.get("inningsNarrative", "balanced innings"),
-                "partnershipNarrative": row.get("partnershipNarrative", "partnership in progress"),
-                "chaseNarrative": row.get("chaseNarrative", "chase context unavailable"),
-                "momentumNarrative": row.get("momentumNarrative", "momentum stable"),
-                "rawCommentary": row.get("rawCommentary", ""),
-                "cleanedCommentary": cleaned_commentary,
-                "commentaryTone": tone,
-                "commentaryCategory": category,
-                "source": row.get("source", "cricsheet"),
-                "preprocessingVersion": PREPROCESSING_VERSION,
-                "datasetVersion": DATASET_VERSION,
-                "generatedAt": generated_at,
+                "current_score": int(event_data.get("scoreAfterBall", 0) if pd.notna(event_data.get("scoreAfterBall")) else 0),
+                "wickets_lost": int(event_data.get("wicketsAfterBall", 0) if pd.notna(event_data.get("wicketsAfterBall")) else 0),
+                "target": 0 if pd.isna(event_data.get("target")) else int(event_data.get("target")),
+                "required_rr": float(row.get("requiredRunRate", 0) if not pd.isna(row.get("requiredRunRate")) else 0),
+                "current_rr": float(row.get("currentRunRate", 0) if not pd.isna(row.get("currentRunRate")) else 0),
+                "pressure_level": pressure_level.upper(),
+                "momentum_state": "NEUTRAL",
+                "partnership_runs": int(row.get("partnershipRuns", 0) if not pd.isna(row.get("partnershipRuns")) else 0),
+                "partnership_balls": 0,
+                "phase_of_match": phase,
+                "win_probability": 0.5,
+                "collapse_risk": float(row.get("collapseRisk", 0) if not pd.isna(row.get("collapseRisk")) else 0),
+                "commentary_text": cleaned_commentary or row.get("rawCommentary", ""),
+                "commentary_type": category,
+                "tone": tone,
+                "importance": "medium",
+                "generated_at": generated_at,
             }
         ).model_dump()
 

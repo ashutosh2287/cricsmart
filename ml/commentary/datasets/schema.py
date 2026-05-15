@@ -1,108 +1,65 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Literal, Optional
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
-TONE_TAGS = (
-    "dramatic",
-    "aggressive",
-    "analytical",
-    "celebratory",
-    "tense",
-    "calm",
-)
 
-SITUATION_TAGS = (
-    "wicket",
-    "collapse",
-    "partnership",
-    "milestone",
-    "chasePressure",
-    "deathOvers",
-    "powerplay",
-    "recovery",
-    "acceleration",
-    "turningPoint",
-    "clutchMoment",
-    "momentumReversal",
-)
-
-PhaseOfMatch = Literal["powerplay", "middleOvers", "deathOvers", "superOver", "chaseClimax"]
-PressureLevel = Literal["low", "medium", "high", "extreme"]
-MomentumState = Literal["surging", "stable", "stalling", "collapsing"]
-CommentaryTone = Literal[*TONE_TAGS]
-CommentaryCategory = Literal[*SITUATION_TAGS, "general"]
+PressureLevel = Literal["LOW", "MEDIUM", "HIGH", "EXTREME"]
+MomentumState = Literal["BATTING", "BOWLING", "NEUTRAL"]
+CommentaryType = Literal["boundary", "wicket", "pressure", "momentum", "partnership", "collapse", "turning_point", "summary"]
+Tone = Literal["neutral", "dramatic", "energetic", "analytical", "celebratory", "tense"]
+Importance = Literal["low", "medium", "high"]
 
 
 class CommentaryDatasetVersion(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     source: str
-    preprocessingVersion: str
-    datasetVersion: str
-    generatedAt: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    rowCount: int = Field(ge=0)
+    preprocessing_version: str
+    dataset_version: str
+    generated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    row_count: int = Field(ge=0)
 
 
 class CommentaryDatasetRow(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
+    model_config = ConfigDict(extra="allow")
 
-    # Match metadata
-    matchId: str
-    tournament: str
-    format: str
+    match_id: str
     innings: int = Field(ge=1)
     over: int = Field(ge=0)
     ball: int = Field(ge=0, le=5)
-    phaseOfMatch: PhaseOfMatch
-
-    # Ball event metadata
-    batter: str
+    batting_team: str
+    bowling_team: str
+    striker: str
+    non_striker: str
     bowler: str
     runs: int = Field(ge=0)
-    extras: int = Field(ge=0)
     wicket: bool
-    dismissalType: Optional[str] = None
-    boundaryType: Optional[Literal["FOUR", "SIX"]] = None
-
-    # Match context signals
-    currentScore: int = Field(ge=0)
-    wickets: int = Field(ge=0, le=10)
-    target: Optional[int] = Field(default=None, ge=0)
-    requiredRunRate: float = Field(ge=0)
-    currentRunRate: float = Field(ge=0)
-    pressureLevel: PressureLevel
-    momentumState: MomentumState
-    partnershipRuns: int = Field(ge=0)
-    recentBoundaries: int = Field(ge=0)
-    collapseRisk: float = Field(ge=0, le=1)
-
-    # Narrative signals
-    inningsNarrative: str
-    partnershipNarrative: str
-    chaseNarrative: str
-    momentumNarrative: str
-
-    # Commentary data
-    rawCommentary: str
-    cleanedCommentary: str
-    commentaryTone: CommentaryTone
-    commentaryCategory: CommentaryCategory
-
-    # Dataset lineage
-    source: str
-    preprocessingVersion: str
-    datasetVersion: str
-    generatedAt: str
-
-    @field_validator("generatedAt")
-    @classmethod
-    def validate_datetime(cls, value: str) -> str:
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
-        return value
+    extras: int = Field(ge=0)
+    current_score: int = Field(ge=0)
+    wickets_lost: int = Field(ge=0, le=10)
+    required_rr: float = Field(ge=0)
+    current_rr: float = Field(ge=0)
+    target: int = Field(ge=0)
+    balls_remaining: int = Field(ge=0)
+    recent_runs: int = Field(ge=0)
+    recent_wickets: int = Field(ge=0)
+    dot_ball_streak: int = Field(ge=0)
+    partnership_runs: int = Field(ge=0)
+    partnership_balls: int = Field(ge=0)
+    phase_of_match: str
+    win_probability: float = Field(ge=0, le=1)
+    momentum_state: MomentumState
+    pressure_level: PressureLevel
+    collapse_risk: float = Field(ge=0, le=1)
+    commentary_text: str
+    commentary_type: CommentaryType
+    tone: Tone
+    importance: Importance
 
 
 def to_dataset_row(payload: dict) -> CommentaryDatasetRow:
     return CommentaryDatasetRow.model_validate(payload)
+

@@ -62,10 +62,19 @@ def load_model_and_metadata():
 def predict(payload: dict) -> dict:
     model, metadata = load_model_and_metadata()
 
+    missing = [col for col in FEATURE_COLUMNS if col not in payload]
+    if missing:
+        raise KeyError(
+            f"Payload is missing required feature columns: {missing}. "
+            f"Expected all of: {FEATURE_COLUMNS}"
+        )
+
     feature_values = [payload[col] for col in FEATURE_COLUMNS]
     row = np.array([feature_values])
 
     prob = float(model.predict_proba(row)[0][1])
+    # Confidence: distance from the decision boundary (0.5), scaled to [0, 1].
+    # A probability of 0 or 1 yields confidence 1.0; 0.5 yields 0.0.
     confidence = float(min(1.0, abs(prob - 0.5) * 2))
 
     return {

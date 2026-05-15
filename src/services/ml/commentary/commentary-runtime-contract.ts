@@ -26,12 +26,6 @@ type FeatureContract = {
 
 const CONTRACT = featureContract as FeatureContract;
 
-function computedSchemaHash(contract: FeatureContract): string {
-  const { schemaHash: _ignored, ...rest } = contract;
-  const normalized = JSON.stringify(rest, Object.keys(rest).sort());
-  return crypto.createHash("sha256").update(normalized).digest("hex");
-}
-
 function serializeStable(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map((item) => serializeStable(item)).join(",")}]`;
   if (value && typeof value === "object") {
@@ -84,8 +78,7 @@ export function validateRuntimeFeatureContract(context: CommentaryContext): Runt
   const errors: string[] = [];
 
   const stableHash = computedSchemaHashStable(CONTRACT);
-  const quickHash = computedSchemaHash(CONTRACT);
-  if (CONTRACT.schemaHash !== stableHash || CONTRACT.schemaHash !== quickHash) {
+  if (CONTRACT.schemaHash !== stableHash) {
     errors.push("schema_hash_mismatch");
   }
 

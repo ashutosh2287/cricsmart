@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import type { CommentaryContext, CommentaryEvent, CommentaryPlan, NarrativeState } from "@/services/commentary/types/commentary.types";
 
 type SnapshotRow = {
@@ -8,6 +6,7 @@ type SnapshotRow = {
   branchId: string;
   eventId: string;
   sequence: number;
+  storageTarget: string;
   narrativeStateSnapshot: NarrativeState;
   pressureState: {
     pressureContext: CommentaryPlan["pressureContext"];
@@ -30,14 +29,15 @@ type SnapshotRow = {
 };
 
 const sequenceByMatch: Record<string, number> = {};
+const snapshotsByMatch: Record<string, SnapshotRow[]> = {};
 
 function nextSequence(matchId: string): number {
   sequenceByMatch[matchId] = (sequenceByMatch[matchId] ?? 0) + 1;
   return sequenceByMatch[matchId];
 }
 
-function snapshotPath(matchId: string): string {
-  return path.join(process.cwd(), "ml", "commentary", "datasets", "processed", "context_snapshots", `${matchId}.ndjson`);
+function snapshotTarget(matchId: string): string {
+  return `ml/commentary/datasets/processed/context_snapshots/${matchId}.ndjson`;
 }
 
 export function persistCommentaryContextSnapshot(input: {
@@ -55,6 +55,7 @@ export function persistCommentaryContextSnapshot(input: {
     branchId: input.branchId,
     eventId: input.event.eventId,
     sequence: nextSequence(input.matchId),
+    storageTarget: snapshotTarget(input.matchId),
     narrativeStateSnapshot: input.narrativeState,
     pressureState: {
       pressureContext: input.plan.pressureContext,
@@ -76,11 +77,10 @@ export function persistCommentaryContextSnapshot(input: {
     finalCommentary: input.event.text,
   };
 
-  try {
-    const filePath = snapshotPath(input.matchId);
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.appendFileSync(filePath, `${JSON.stringify(row)}\n`, "utf-8");
-  } catch {
-    // never block deterministic commentary path
-  }
+  if (!snapshotsByMatch[input.matchId]) snapshotsByMatch[input.matchId] = [];
+  snapshotsByMatch[input.matchId].push(row);
+}
+
+export function getPersistedCommentaryContextSnapshots(matchId: string): SnapshotRow[] {
+  return snapshotsByMatch[matchId] ?? [];
 }

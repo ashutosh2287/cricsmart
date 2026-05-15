@@ -38,7 +38,7 @@ export function maybeGenerateCommentarySummaries(input: {
       matchId: input.matchId,
       eventId: input.event.id,
       summaryType: "over",
-      text: `Over ${input.context.over} recap: ${commentaryText}`,
+      text: `Over ${input.context.over} recap: ${input.commentaryText}`,
       over: input.context.over,
       ball: input.context.ball,
       timestamp: input.event.timestamp,

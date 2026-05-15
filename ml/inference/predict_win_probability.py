@@ -67,7 +67,11 @@ def load_model_and_metadata():
 
 
 def resolve_feature_columns(metadata: dict) -> list[str]:
-    feature_columns = metadata.get("featureColumns", FEATURE_COLUMNS)
+    if not metadata:
+        return FEATURE_COLUMNS
+    if "featureColumns" not in metadata:
+        raise ValueError("Model metadata is missing required key: featureColumns")
+    feature_columns = metadata["featureColumns"]
     if feature_columns != FEATURE_COLUMNS:
         raise ValueError(
             "Feature column contract mismatch between script and model metadata. "

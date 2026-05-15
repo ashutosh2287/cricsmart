@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List
+from collections.abc import Hashable, Iterable, Mapping
+from typing import Any, Dict, List
 
 import pandas as pd
+
+__all__ = ["build_feature_row", "build_feature_rows", "build_feature_matrix"]
 
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
@@ -27,7 +30,7 @@ def _clip(value: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, value))
 
 
-def build_feature_row(row: Dict[str, Any]) -> Dict[str, Any]:
+def build_feature_row(row: Mapping[Hashable, Any]) -> Dict[str, Any]:
     required_rr = _safe_float(row.get("required_rr", 0.0))
     current_rr = _safe_float(row.get("current_rr", 0.0))
     wickets_lost = _safe_int(row.get("wickets_lost", 0))
@@ -50,7 +53,7 @@ def build_feature_row(row: Dict[str, Any]) -> Dict[str, Any]:
     probability_swing = _clip(abs(win_probability - 0.5) * 2.0, 0.0, 1.0)
     death_over_intensity = _clip((max(over - 14, 0) / 6.0) + ((required_rr - current_rr) / 12.0), 0.0, 1.0)
 
-    output = dict(row)
+    output = {str(key): value for key, value in row.items()}
     output["pressure_score"] = round(pressure_score, 4)
     output["momentum_score"] = round(momentum_score, 4)
     output["collapse_score"] = round(collapse_score, 4)
@@ -65,7 +68,7 @@ def build_feature_row(row: Dict[str, Any]) -> Dict[str, Any]:
     return output
 
 
-def build_feature_rows(rows: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def build_feature_rows(rows: Iterable[Mapping[Hashable, Any]]) -> List[Dict[str, Any]]:
     return [build_feature_row(row) for row in rows]
 
 

@@ -8,6 +8,15 @@ type WinPoint = {
   marker?: "WICKET" | "SIX" | "FOUR" | "SWING" | "TURNING_POINT";
 };
 
+type ProbabilityTimelinePoint = {
+  matchId: string;
+  innings: number;
+  over: number;
+  ball: number;
+  probability: number;
+  timestamp: number;
+};
+
 type MomentumPoint = {
   over: number;
   score: number;
@@ -16,6 +25,10 @@ type MomentumPoint = {
 type AnalyticsState = {
   winProbability: WinPoint[];
   momentum: MomentumPoint[];
+  currentWinProbability?: number;
+  previousWinProbability?: number;
+  probabilityDelta?: number;
+  probabilityTimeline?: ProbabilityTimelinePoint[];
   prediction?: {
     currentProbability: number;
     previousProbability: number;
@@ -36,6 +49,10 @@ export function getAnalytics(matchId: string): AnalyticsState {
     store[matchId] = {
       winProbability: [],
       momentum: [],
+      currentWinProbability: 50,
+      previousWinProbability: 50,
+      probabilityDelta: 0,
+      probabilityTimeline: [],
     };
   }
 

@@ -27,6 +27,11 @@ import { recordBallEvent } from "@/services/recording/eventRecorder";
 import { resetPredictionStabilityMetrics } from "@/services/ml/smoothing/stabilityMetrics";
 import { clearPredictionSnapshots } from "@/services/ml/snapshots/featureSnapshotStore";
 import { getCommentarySummariesForEvent } from "@/services/commentary/commentarySummaryEngine";
+import {
+  createProbabilityHistoryPoint,
+  predictRuntimeWinProbability,
+} from "@/services/ml/prediction/winProbabilityRuntime";
+import type { PredictionSource } from "@/services/ml/contracts/winProbability";
 
 
 
@@ -262,6 +267,13 @@ function emit(matchId: string) {
   const state = matches.get(matchId);
   if (!state) return;
   matchListeners[matchId]?.forEach((listener) => listener(cloneState(state)));
+}
+
+function resolvePredictionSource(eventSource?: BallEvent["eventSource"]): PredictionSource {
+  if (eventSource === "LIVE_INGESTION") return "LIVE";
+  if (eventSource === "MOCK_INGESTION") return "MOCK";
+  if (eventSource === "REPLAY") return "REPLAY";
+  return "SIMULATION";
 }
 
 function getInitialBattingBowlingTeams(state: MatchState): {
@@ -1239,9 +1251,6 @@ addCommentary(matchId, commentaryText);
 // 🧠 INSIGHTS
 generateBroadcastInsights(matchId);
 const insights = getBroadcastInsights(matchId) || [];
-// 🔥 WIN PROBABILITY (REAL ENGINE)
-const win = computeWinProbability(state);
-
 // 📊 MOMENTUM TIMELINE
 const momentumTimeline = getMomentumTimeline(matchId);
 
@@ -1253,15 +1262,94 @@ const prevAnalytics = getAnalytics(matchId) || {
 };
 
 // 🔥 APPEND (DO NOT REPLACE)
-const updatedWinProbability = win
-  ? [
-      ...prevAnalytics.winProbability,
-      {
-        over: currentInningsState.over + currentInningsState.ball / 10,
-        value: win.battingWinProbability,
-      },
-    ]
-  : prevAnalytics.winProbability;
+const overValue = currentInningsState.over + currentInningsState.ball / 10;
+
+const previousWinProbability =
+  typeof prevAnalytics.currentWinProbability === "number"
+    ? prevAnalytics.currentWinProbability
+    : prevAnalytics.winProbability[prevAnalytics.winProbability.length - 1]?.value ?? 50;
+
+const runtimePrediction = (() => {
+  try {
+    return predictRuntimeWinProbability({
+      matchId,
+      state,
+      eventStream: eventStreams[matchId] ?? [],
+      source: resolvePredictionSource(ballEvent.eventSource),
+      previousProbability: previousWinProbability,
+      timestamp: ballEvent.timestamp,
+    });
+  } catch (error) {
+    console.warn("⚠️ Runtime win probability prediction failed", error);
+    return null;
+  }
+})();
+
+const fallbackWin = computeWinProbability(state);
+const probabilityValue = runtimePrediction?.probability ?? fallbackWin?.battingWinProbability ?? previousWinProbability;
+const probabilityDelta = runtimePrediction?.probabilityDelta ?? probabilityValue - previousWinProbability;
+const modelVersion = runtimePrediction?.metadata.modelVersion ?? "legacy-rule-engine";
+const confidence = runtimePrediction?.confidence;
+
+const marker: "WICKET" | "SIX" | "FOUR" | "SWING" | undefined =
+  ballEvent.type === "WICKET"
+    ? "WICKET"
+    : ballEvent.type === "SIX"
+      ? "SIX"
+      : ballEvent.type === "FOUR"
+        ? "FOUR"
+        : Math.abs(probabilityDelta) >= 8
+          ? "SWING"
+          : undefined;
+
+const latestWinPoint = {
+  over: overValue,
+  value: probabilityValue,
+  confidence,
+  delta: probabilityDelta,
+  modelVersion,
+  timestamp: ballEvent.timestamp,
+  marker,
+};
+
+const lastWinPoint = prevAnalytics.winProbability[prevAnalytics.winProbability.length - 1];
+const updatedWinProbability =
+  lastWinPoint && Math.abs(lastWinPoint.over - overValue) < 0.001
+    ? [...prevAnalytics.winProbability.slice(0, -1), latestWinPoint]
+    : [...prevAnalytics.winProbability, latestWinPoint];
+
+const probabilityTimeline = prevAnalytics.probabilityTimeline ?? [];
+const runtimeTimelinePoint = createProbabilityHistoryPoint({
+  matchId,
+  features: runtimePrediction?.features ?? {
+    innings: state.currentInningsIndex + 1,
+    over: currentInningsState.over,
+    ball: currentInningsState.ball,
+    currentScore: currentInningsState.runs,
+    wicketsLost: currentInningsState.wickets,
+    oversCompleted: currentInningsState.over + currentInningsState.ball / 6,
+    ballsRemaining: Math.max(0, (state.configOvers ?? 20) * 6 - (currentInningsState.over * 6 + currentInningsState.ball)),
+    targetValue: state.currentInningsIndex === 1 ? Math.max(0, (state.innings[0]?.runs ?? 0) + 1) : 0,
+    requiredRunRate: 0,
+    currentRunRate: 0,
+    recentRuns: 0,
+    recentWickets: 0,
+    phaseOfMatch: currentInningsState.over < 6 ? 0 : currentInningsState.over < 15 ? 1 : 2,
+    battingFirst: state.currentInningsIndex === 0 ? 1 : 0,
+    partnershipRuns: 0,
+  },
+  probability: probabilityValue,
+  timestamp: ballEvent.timestamp,
+});
+
+const lastTimelinePoint = probabilityTimeline[probabilityTimeline.length - 1];
+const updatedProbabilityTimeline =
+  lastTimelinePoint &&
+  lastTimelinePoint.innings === runtimeTimelinePoint.innings &&
+  lastTimelinePoint.over === runtimeTimelinePoint.over &&
+  lastTimelinePoint.ball === runtimeTimelinePoint.ball
+    ? [...probabilityTimeline.slice(0, -1), runtimeTimelinePoint]
+    : [...probabilityTimeline, runtimeTimelinePoint];
 
 // 📦 STORE ANALYTICS
 setAnalytics(matchId, {
@@ -1270,6 +1358,23 @@ setAnalytics(matchId, {
     over: Math.floor(p.ballIndex / 6),
     score: p.momentum,
   })),
+  currentWinProbability: probabilityValue,
+  previousWinProbability,
+  probabilityDelta,
+  probabilityTimeline: updatedProbabilityTimeline,
+  prediction: runtimePrediction
+    ? {
+        currentProbability: probabilityValue,
+        previousProbability: previousWinProbability,
+        probabilityDelta,
+        confidence: runtimePrediction.confidence,
+        modelVersion: runtimePrediction.metadata.modelVersion,
+        predictionTimestamp: runtimePrediction.metadata.timestamp,
+        latencyMs: runtimePrediction.metadata.latencyMs,
+        cacheHit: false,
+        debounced: false,
+      }
+    : prevAnalytics.prediction,
 });
 // ========================================
 // 🔥 FINAL BROADCAST (CLEAN & SINGLE)
@@ -1324,6 +1429,19 @@ broadcast(matchId, {
     commentary: commentaryList ?? [],
     insights: insights ?? [],
     analytics: analytics ?? null,
+  },
+});
+
+broadcast(matchId, {
+  type: "WIN_PROBABILITY_UPDATE",
+  matchId,
+  data: {
+    probability: probabilityValue,
+    delta: probabilityDelta,
+    over: currentInningsState.over,
+    ball: currentInningsState.ball,
+    timestamp: ballEvent.timestamp,
+    modelVersion,
   },
 });
 

@@ -1,7 +1,8 @@
 import { MatchState } from "../matchEngine";
-import { computeWinProbability } from "../winProbabilityEngine";
 import { BallEvent } from "@/types/ballEvent";
-import { runWinProbabilityExtension } from "@/services/ml/pipeline/winProbabilityExtension";
+import { getEventStream } from "../matchEngine";
+import { predictRuntimeWinProbability } from "@/services/ml/prediction/winProbabilityRuntime";
+import type { PredictionSource } from "@/services/ml/contracts/winProbability";
 
 export type WinProbabilityPoint = {
   over: number;
@@ -27,9 +28,7 @@ export function updateWinProbability(
   state: MatchState,
   ballEvent?: BallEvent
 ) {
-
-  const result = computeWinProbability(state);
-  if (!result) return;
+  const eventStream = getEventStream(matchId);
 
   if (!winProbStore[matchId]) {
     initWinProbability(matchId);
@@ -50,15 +49,25 @@ if (last && Math.abs(last.over - over) < 0.001) {
   return;
 }
 const previousBatting = last?.batting;
-const extension = runWinProbabilityExtension({
+const source: PredictionSource =
+  ballEvent?.eventSource === "LIVE_INGESTION"
+    ? "LIVE"
+    : ballEvent?.eventSource === "MOCK_INGESTION"
+      ? "MOCK"
+      : ballEvent?.eventSource === "REPLAY"
+        ? "REPLAY"
+        : "SIMULATION";
+const runtimePrediction = predictRuntimeWinProbability({
   matchId,
   state,
-  ballEvent,
-  rawBattingProbability: result.battingWinProbability,
-  previousBattingProbability: previousBatting
+  eventStream,
+  source,
+  previousProbability: previousBatting ?? null,
+  timestamp: ballEvent?.timestamp ?? Date.now(),
 });
+if (!runtimePrediction) return;
 
-const batting = Math.max(5, Math.min(95, extension.battingProbability));
+const batting = Math.max(5, Math.min(95, runtimePrediction.probability));
 const bowling = 100 - batting;
 timeline.push({
   over,

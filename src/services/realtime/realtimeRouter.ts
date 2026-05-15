@@ -62,6 +62,18 @@ analytics?: Record<string, unknown>;
 };
     }
   | {
+      type: "WIN_PROBABILITY_UPDATE";
+      matchId: string;
+      data: {
+        probability: number;
+        delta: number;
+        over: number;
+        ball: number;
+        timestamp: number;
+        modelVersion: string;
+      };
+    }
+  | {
       type: "SIMULATION_STATE_UPDATE";
       matchId: string;
       data: {
@@ -370,6 +382,15 @@ patchMatchRuntime(event.matchId, {
           isPaused: event.data.isPaused,
           speed: event.data.speed,
         },
+      });
+      return;
+    }
+
+    case "WIN_PROBABILITY_UPDATE": {
+      emitCricUpdate({
+        matchId: event.matchId,
+        type: "WIN_PROBABILITY_UPDATE",
+        winProbabilityUpdate: event.data,
       });
       return;
     }

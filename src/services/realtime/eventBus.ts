@@ -41,6 +41,18 @@ type RealtimeEvent =
       };
     }
   | {
+      type: "WIN_PROBABILITY_UPDATE";
+      matchId: string;
+      data: {
+        probability: number;
+        delta: number;
+        over: number;
+        ball: number;
+        timestamp: number;
+        modelVersion: string;
+      };
+    }
+  | {
       type: "CONNECTED";
       matchId: string;
       data?: null;

@@ -380,7 +380,7 @@ function TabsArea({
     setTimeout(() => setActiveTab(tab), 0);
   }, [searchParams]);
 
-  const [analysisFilter, setAnalysisFilter] = useState<AnalysisFilter>("ALL");
+  const [showExpandedAnalytics, setShowExpandedAnalytics] = useState(false);
   const [tossData, setTossData] = useState<{
     winner: Team;
     decision: "BAT" | "BOWL";
@@ -407,6 +407,9 @@ function TabsArea({
     () => calculateWinProbability(analytics.winProbability),
     [analytics.winProbability]
   );
+  const latestWinPoint = winProbabilityData.length
+    ? winProbabilityData[winProbabilityData.length - 1]
+    : null;
 
   useEffect(() => {
     if (!hasLiveMatchState) return;
@@ -695,191 +698,128 @@ function TabsArea({
 
         {/* ── Live ── */}
         {activeTab === "live" && (
-          <div className="space-y-4">
-            <GlassPanel>
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <GlassPanel className="p-3">
               <SectionHeader eyebrow="Ball by ball" title="Live Commentary" />
               <CommentaryPanel matchId={match.slug} insights={insights} />
             </GlassPanel>
 
-            <GlassPanel>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-sky-300/80">
-                    Replay
-                  </p>
-                  <p className="text-sm text-white/65">
-                    Timeline appears only when replay mode is opened.
-                  </p>
+            <div className="space-y-3">
+              <GlassPanel className="p-3">
+                <SectionHeader eyebrow="Live pulse" title="Session Status" />
+                <LiveMatchStatus
+                  matchId={match.slug}
+                  sessionState={sessionMeta?.sessionState}
+                  reconnectHealth={sessionMeta?.reconnectHealth}
+                />
+              </GlassPanel>
+
+              <GlassPanel className="p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-sky-300/80">
+                      Replay
+                    </p>
+                    <p className="text-xs text-white/65">
+                      Open compact replay controls only when needed.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowReplayTimeline((prev) => !prev)}
+                    className="rounded-lg border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs text-white/85 transition hover:bg-white/[0.08]"
+                  >
+                    {showReplayTimeline ? "Hide Replay" : "Open Replay"}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowReplayTimeline((prev) => !prev)}
-                  className="rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-white/85 transition hover:bg-white/[0.08]"
-                >
-                  {showReplayTimeline ? "Hide Replay Timeline" : "Open Replay Timeline"}
-                </button>
-              </div>
-              {showReplayTimeline ? (
-                <div className="mt-3">
-                  <ReplaySlider matchId={match.slug} />
-                </div>
-              ) : null}
-            </GlassPanel>
+                {showReplayTimeline ? (
+                  <div className="mt-2.5">
+                    <ReplaySlider matchId={match.slug} />
+                  </div>
+                ) : null}
+              </GlassPanel>
+            </div>
           </div>
         )}
 
         {/* ── Analysis ── */}
         {activeTab === "analysis" && (
-          <div className="space-y-6">
-            <GlassPanel>
-              <SectionHeader eyebrow="Filters" title="Analysis View" />
-              <div className="flex flex-wrap gap-3">
-                {[
-                  {
-                    key: "ALL",
-                    label: "All",
-                    active:
-                      "border border-sky-400/35 bg-sky-400/20 text-[var(--text-primary)]",
-                  },
-                  {
-                    key: "BATTING",
-                    label: "Batting",
-                    active:
-                      "border border-emerald-400/35 bg-emerald-400/20 text-[var(--text-primary)]",
-                  },
-                  {
-                    key: "BOWLING",
-                    label: "Bowling",
-                    active:
-                      "border border-rose-400/40 bg-rose-400/20 text-[var(--text-primary)]",
-                  },
-                  {
-                    key: "PRESSURE",
-                    label: "Pressure",
-                    active:
-                      "border border-amber-400/40 bg-amber-400/20 text-[var(--text-primary)]",
-                  },
-                ].map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() =>
-                      setAnalysisFilter(f.key as AnalysisFilter)
-                    }
-                    className={cls(
-                      "rounded-xl border px-4 py-2 text-sm transition",
-                      analysisFilter === f.key
-                        ? f.active
-                        : "border-[var(--border-subtle)] bg-[var(--bg-raised)]/60 text-[var(--text-secondary)] hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
-                    )}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+          <div className="space-y-3">
+            <GlassPanel className="p-3">
+              <SectionHeader eyebrow="Unified module" title="Match Analytics" />
+              <div className="space-y-3">
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[11px] uppercase tracking-[0.18em] text-sky-300/80">
+                      Probability · Pressure · Momentum
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowExpandedAnalytics((prev) => !prev)}
+                      className="rounded-md border border-white/15 bg-white/[0.05] px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-white/85"
+                    >
+                      {showExpandedAnalytics ? "Collapse Analytics" : "Expand Analytics"}
+                    </button>
+                  </div>
+                  <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
+                    <div className="rounded-lg border border-emerald-400/25 bg-emerald-500/10 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-emerald-200/85">Batting Win</p>
+                      <p className="text-sm font-semibold text-emerald-100">{(latestWinPoint?.batting ?? 50).toFixed(0)}%</p>
+                    </div>
+                    <div className="rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-red-200/85">Bowling Win</p>
+                      <p className="text-sm font-semibold text-red-100">{(latestWinPoint?.bowling ?? 50).toFixed(0)}%</p>
+                    </div>
+                    <div className="rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-amber-200/85">Pressure</p>
+                      <p className="text-sm font-semibold text-amber-100">
+                        {(latestWinPoint?.batting ?? 50) > 60 ? "Batting control" : (latestWinPoint?.batting ?? 50) < 40 ? "Bowling control" : "Balanced"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {showExpandedAnalytics ? (
+                  <div className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                    <div className="space-y-3">
+                      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                        <SectionHeader eyebrow="Charts" title="Win Probability & Trend" />
+                        <MatchGraphExplorer
+                          currentBattingTeam={overviewBattingTeam}
+                          currentBowlingTeam={overviewBowlingTeam}
+                          currentOver={displayOver}
+                          currentRunRate={inningsRunRate}
+                          innings={currentEngineState?.innings ?? []}
+                          momentumData={analytics.momentum}
+                          winProbabilityData={winProbabilityData}
+                        />
+                      </div>
+                      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                        <SectionHeader eyebrow="Momentum" title="Compact Heatmap" />
+                        <MomentumHeatmap data={analytics.momentum} />
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                        <SectionHeader eyebrow="Signals" title="Insights Feed" />
+                        <MatchInsightsPanel matchId={match.slug} />
+                      </div>
+                      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                        <SectionHeader eyebrow="Narrative" title="Storyline" />
+                        <MatchNarrativePanel matchId={match.slug} />
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </GlassPanel>
 
-            <GlassPanel>
-              <SectionHeader eyebrow="Shot Analysis" title="Wagon Wheel" />
-              <div className="flex h-[300px] items-center justify-center text-white/60">
+            <GlassPanel className="p-3">
+              <SectionHeader eyebrow="Shot analysis" title="Wagon Wheel" />
+              <div className="flex h-[260px] items-center justify-center text-white/60">
                 <WagonWheel matchId={match.slug} />
               </div>
             </GlassPanel>
-
-            {analysisFilter === "ALL" && (
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
-                <div className="space-y-6">
-                  <GlassPanel>
-                    <SectionHeader
-                      eyebrow="Energy"
-                      title="Momentum Heatmap"
-                    />
-                    <MomentumHeatmap data={analytics.momentum} />
-                  </GlassPanel>
-                </div>
-                <div className="space-y-6">
-                  <GlassPanel>
-                    <SectionHeader eyebrow="Signals" title="Match Insights" />
-                    <MatchInsightsPanel matchId={match.slug} />
-                  </GlassPanel>
-                  <GlassPanel>
-                    <SectionHeader eyebrow="Narrative" title="Storyline" />
-                    <MatchNarrativePanel matchId={match.slug} />
-                  </GlassPanel>
-                  <GlassPanel>
-                    <SectionHeader eyebrow="Stand" title="Partnerships" />
-                    <PartnershipPanel matchId={match.slug} />
-                  </GlassPanel>
-                </div>
-              </div>
-            )}
-
-            {analysisFilter === "BATTING" && (
-              <div className="space-y-6">
-                <GlassPanel>
-                  <SectionHeader
-                    eyebrow="Batting"
-                    title="Momentum Pressure"
-                  />
-                  <MomentumHeatmap data={analytics.momentum} />
-                </GlassPanel>
-                <GlassPanel>
-                  <SectionHeader
-                    eyebrow="Pairs"
-                    title="Partnership Strength"
-                  />
-                  <PartnershipPanel matchId={match.slug} />
-                </GlassPanel>
-                <GlassPanel>
-                  <SectionHeader eyebrow="Narrative" title="Batting Story" />
-                  <MatchNarrativePanel matchId={match.slug} />
-                </GlassPanel>
-              </div>
-            )}
-
-            {analysisFilter === "BOWLING" && (
-              <div className="space-y-6">
-                <GlassPanel>
-                  <SectionHeader
-                    eyebrow="Bowling"
-                    title="Momentum Swing"
-                  />
-                  <MomentumHeatmap data={analytics.momentum} />
-                </GlassPanel>
-                <GlassPanel>
-                  <SectionHeader
-                    eyebrow="Insights"
-                    title="Pressure Signals"
-                  />
-                  <MatchInsightsPanel matchId={match.slug} />
-                </GlassPanel>
-                <GlassPanel>
-                  <SectionHeader
-                    eyebrow="Moments"
-                    title="Bowling Highlights"
-                  />
-                  <HighlightTimeline matchId={match.slug} />
-                </GlassPanel>
-              </div>
-            )}
-
-            {analysisFilter === "PRESSURE" && (
-              <div className="space-y-6">
-                <GlassPanel>
-                  <SectionHeader
-                    eyebrow="Pressure"
-                    title="Momentum Zones"
-                  />
-                  <MomentumHeatmap data={analytics.momentum} />
-                </GlassPanel>
-                <GlassPanel>
-                  <SectionHeader
-                    eyebrow="Pressure"
-                    title="Decision Insights"
-                  />
-                  <MatchInsightsPanel matchId={match.slug} />
-                </GlassPanel>
-              </div>
-            )}
           </div>
         )}
 
@@ -1534,25 +1474,24 @@ function MatchInnerPage({
 
   return (
     <main className="relative overflow-hidden">
-      <div className="mx-auto max-w-7xl px-4 py-5 md:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1500px] px-3 py-3 md:px-5 lg:px-6">
         {/* ── Hero ── */}
-        <div className="mb-6">
+        <div className="mb-3">
           {currentInnings ? (
-            <div className="space-y-4">
+            <div className="space-y-2.5">
               <GlassPanel>
-                <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-3">
                   {/* Header row */}
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-1.5">
                       <p className="text-[11px] uppercase tracking-[0.22em] text-sky-300/80">
                         CricSmart Match Center
                       </p>
-                      <h1 className="text-2xl font-semibold text-white md:text-3xl">
+                      <h1 className="text-xl font-semibold text-white md:text-2xl">
                         {team1Name} vs {team2Name}
                       </h1>
-                      <p className="text-sm text-white/60">
-                        Live simulation, analytics, commentary, and
-                        innings-aware scorecard.
+                      <p className="text-xs text-white/60">
+                        Live command center with realtime commentary, analytics, and replay.
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -1593,7 +1532,7 @@ function MatchInnerPage({
 />
 
                   {/* Stats pills */}
-                  <div className="grid auto-rows-fr gap-2.5 md:grid-cols-2 xl:grid-cols-5">
+                  <div className="grid auto-rows-fr gap-2 md:grid-cols-3 xl:grid-cols-8">
                     <StatPill
                       label={innings1?.battingTeam ?? "Team 1"}
                       value={`${innings1?.runs ?? 0}/${innings1?.wickets ?? 0}`}

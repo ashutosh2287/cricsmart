@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useMatchSelector } from "@/services/matchSelectors";
 import type { BallEvent } from "@/types/ballEvent";
+import { initReplay, seekNextSix, seekNextWicket, seekToOver } from "@/services/replay/replayController";
 
 type Props = {
   slug: string;
@@ -30,12 +32,21 @@ function getOutcomeTone(outcome: string) {
   return "bg-emerald-500/15 border-emerald-400/25 text-emerald-300";
 }
 
+function getPressureTag(runs: number, wickets: number) {
+  if (wickets >= 2) return { label: "Pressure ++", cls: "border-red-400/40 bg-red-500/15 text-red-200" };
+  if (wickets === 1 || runs <= 3) return { label: "Pressure +", cls: "border-amber-400/35 bg-amber-500/12 text-amber-200" };
+  if (runs >= 12) return { label: "Release", cls: "border-emerald-400/35 bg-emerald-500/12 text-emerald-200" };
+  return { label: "Stable", cls: "border-white/15 bg-white/[0.04] text-white/70" };
+}
+
 function InningsRow({
   innings,
   title,
+  onJumpOver,
 }: {
   innings?: InningsSlice;
   title: string;
+  onJumpOver: (overIndex: number) => void;
 }) {
   const overs = !innings?.overs
     ? []
@@ -70,18 +81,33 @@ function InningsRow({
               (sum, ball) => sum + (ball.totalRuns ?? ball.runs ?? 0),
               0
             );
+            const wickets = balls.filter((ball) => ball.type === "WICKET" || ball.wicket).length;
+            const boundaries = balls.filter((ball) => (ball.runs ?? 0) === 4 || (ball.runs ?? 0) === 6).length;
+            const pressure = getPressureTag(runs, wickets);
 
             return (
               <div
                 key={`${title}-${overNumber}`}
-                className="w-[152px] shrink-0 snap-start rounded-xl border border-white/10 bg-white/[0.03] p-3"
+                className="w-[180px] shrink-0 snap-start rounded-xl border border-white/10 bg-white/[0.03] p-3"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="text-xs font-semibold text-white">
-                    Over {overNumber + 1}
-                  </span>
-                  <span className="text-xs text-white/55">{runs} runs</span>
+                  <span className="text-xs font-semibold text-white">Over {overNumber + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => onJumpOver(overNumber)}
+                    className="rounded-md border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-sky-200"
+                  >
+                    Jump
+                  </button>
                 </div>
+
+                <div className="mb-2 flex flex-wrap gap-1.5 text-[10px]">
+                  <span className="rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-white/80">{runs} runs</span>
+                  {!!wickets && <span className="rounded-md border border-red-400/35 bg-red-500/12 px-1.5 py-0.5 text-red-200">{wickets} wk</span>}
+                  {!!boundaries && <span className="rounded-md border border-amber-400/35 bg-amber-500/12 px-1.5 py-0.5 text-amber-200">{boundaries} bdy</span>}
+                </div>
+
+                <div className={`mb-2 rounded-md border px-2 py-1 text-[10px] ${pressure.cls}`}>{pressure.label}</div>
 
                 <div className="flex flex-wrap gap-1.5">
                   {tokens.map((token, index) => (
@@ -109,11 +135,60 @@ export default function OversTimeline({ slug }: Props) {
     slug,
     (m) => m?.innings
   );
+  const [currentReplayIndex, setCurrentReplayIndex] = useState(0);
+
+  const hasOvers = useMemo(
+    () => Boolean((innings?.[0]?.overs && Object.keys(innings[0].overs).length) || (innings?.[1]?.overs && Object.keys(innings[1].overs).length)),
+    [innings]
+  );
+
+  const jumpOver = async (overIndex: number) => {
+    await initReplay(slug);
+    await seekToOver(slug, overIndex);
+    setCurrentReplayIndex(overIndex * 6);
+  };
+
+  const jumpNextWicket = async () => {
+    await initReplay(slug);
+    await seekNextWicket(slug, currentReplayIndex);
+  };
+
+  const jumpNextSix = async () => {
+    await initReplay(slug);
+    await seekNextSix(slug, currentReplayIndex);
+  };
 
   return (
     <div className="space-y-4">
-      <InningsRow innings={innings?.[0]} title="1st Innings" />
-      <InningsRow innings={innings?.[1]} title="2nd Innings" />
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-sky-300/80">Replay Navigation</p>
+            <p className="text-xs text-white/60">Jump to over, wicket, or boundary milestones.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={jumpNextWicket}
+              disabled={!hasOvers}
+              className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-100 disabled:opacity-40"
+            >
+              Next Wicket
+            </button>
+            <button
+              type="button"
+              onClick={jumpNextSix}
+              disabled={!hasOvers}
+              className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-100 disabled:opacity-40"
+            >
+              Next Six
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <InningsRow innings={innings?.[0]} title="1st Innings" onJumpOver={jumpOver} />
+      <InningsRow innings={innings?.[1]} title="2nd Innings" onJumpOver={jumpOver} />
 
       <div className="flex flex-wrap items-center gap-2 text-xs text-white/60">
         {[

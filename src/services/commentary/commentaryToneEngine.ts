@@ -1,25 +1,32 @@
-import type { BallEvent } from "@/types/ballEvent";
-import type { CommentaryContextSignals, CommentaryToneType } from "@/types/commentary";
+import type {
+  CommentaryContext,
+  CommentarySituationClassification,
+  CommentaryToneTag,
+} from "./commentaryContextTypes";
 
-export function resolveCommentaryTone(
-  event: BallEvent,
-  context: CommentaryContextSignals
-): CommentaryToneType {
-  if (event.wicket) {
-    return context.collapseRisk === "high" ? "dramatic" : "tense";
+export function selectCommentaryTone(
+  context: CommentaryContext,
+  situation: CommentarySituationClassification,
+): CommentaryToneTag {
+  const tags = situation.tags;
+
+  if (tags.includes("collapse") || tags.includes("turningPoint") || tags.includes("clutchMoment")) {
+    return "dramatic";
   }
 
-  if (event.runs === 4 || event.runs === 6) {
-    if (context.pressureState === "high") return "dramatic";
-    if (context.batterForm === "hot") return "celebratory";
+  if (tags.includes("wicket") || tags.includes("acceleration") || tags.includes("deathOvers")) {
     return "aggressive";
   }
 
-  if (context.pressureState === "high" || context.chaseDifficulty === "extreme") {
+  if (tags.includes("milestone") || context.momentumState === "surging") {
+    return "celebratory";
+  }
+
+  if (context.pressureLevel === "high" || context.pressureLevel === "extreme") {
     return "tense";
   }
 
-  if (context.momentumState === "collapse") {
+  if (context.phaseOfMatch === "middleOvers" || tags.includes("partnership") || tags.includes("recovery")) {
     return "analytical";
   }
 

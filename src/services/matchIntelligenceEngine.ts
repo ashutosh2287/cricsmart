@@ -4,7 +4,7 @@ import { MatchState, getEventStream } from "./matchEngine";
 import { processAnalyticsEvent } from "./analytics/analyticsEngine";
 import { processHighlightEvent } from "./highlights/highlightEngine";
 import { processNarrativeEvent } from "./narrative/narrativeEngine";
-import { processCommentaryEvent } from "./commentary/commentaryEngine";
+import { runCommentaryOrchestration } from "./commentary/commentaryOrchestrator";
 
 import { runTacticalEngine } from "./tacticalEngine";
 import { analyzeHighlightTimeline } from "./highlightTimelineEngine";
@@ -180,7 +180,7 @@ generateMatchInsights(matchId);
   ========================================
   */
 
-  processCommentaryEvent(
+  runCommentaryOrchestration(
     matchId,
     branchId,
     ballEvent

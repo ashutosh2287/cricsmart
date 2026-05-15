@@ -1,4 +1,5 @@
 import type { BallEvent } from "@/types/ballEvent";
+import type { MatchState } from "@/services/matchEngine";
 import { processCommentaryEvent } from "./commentaryEngine";
 import { buildCommentaryContext } from "./commentaryContextBuilder";
 import { evolveCommentaryNarrative } from "./commentaryNarrativeEngine";
@@ -6,6 +7,7 @@ import { classifyCommentarySituation } from "./commentarySituationClassifier";
 import { selectCommentaryTone } from "./commentaryToneEngine";
 import { validateCommentaryContext } from "./commentaryContextValidator";
 import { appendCommentaryContextSnapshot, getCommentaryContextSnapshots } from "./commentaryContextSnapshotStore";
+import { generateAdvancedCommentary } from "./advancedCommentaryEngine";
 
 export function runCommentaryOrchestration(
   matchId: string,
@@ -41,4 +43,17 @@ export function runCommentaryOrchestration(
   }
 
   processCommentaryEvent(matchId, branchId, event);
+}
+
+export function generateCommentaryForBall(input: {
+  matchId: string;
+  branchId: string;
+  event: BallEvent;
+  state: MatchState;
+  events: BallEvent[];
+}): { text: string } {
+  const { matchId, branchId, event, state } = input;
+  runCommentaryOrchestration(matchId, branchId, event);
+  const text = generateAdvancedCommentary(event, state);
+  return { text };
 }

@@ -4,7 +4,6 @@ import { getMatchConfig } from "./matchFormat";
 import { advanceClock } from "./timeEngine";
 import { processMatchIntelligence } from "./matchIntelligenceEngine";
 import { v4 as uuidv4 } from "uuid";
-import { generateCommentaryForBall } from "./commentary/commentaryOrchestrator";
 import { emitCommentary } from "@/services/commentary/commentaryBus";
 import { emitCommand } from "./commandBus";
 import { setMatchState as setUIState } from "@/lib/eventStore";
@@ -26,12 +25,7 @@ import { appendCommentaryTimeline, resetCommentaryTimeline } from "@/services/co
 import { recordBallEvent } from "@/services/recording/eventRecorder";
 import { resetPredictionStabilityMetrics } from "@/services/ml/smoothing/stabilityMetrics";
 import { clearPredictionSnapshots } from "@/services/ml/snapshots/featureSnapshotStore";
-import { getCommentarySummariesForEvent } from "@/services/commentary/commentarySummaryEngine";
-import {
-  createProbabilityHistoryPoint,
-  predictRuntimeWinProbability,
-} from "@/services/ml/prediction/winProbabilityRuntime";
-import type { PredictionSource } from "@/services/ml/contracts/winProbability";
+import { processCommentaryPipeline, resetCommentaryPipelineState } from "@/services/commentary/orchestration/commentary-pipeline";
 
 
 
@@ -267,13 +261,6 @@ function emit(matchId: string) {
   const state = matches.get(matchId);
   if (!state) return;
   matchListeners[matchId]?.forEach((listener) => listener(cloneState(state)));
-}
-
-function resolvePredictionSource(eventSource?: BallEvent["eventSource"]): PredictionSource {
-  if (eventSource === "LIVE_INGESTION") return "LIVE";
-  if (eventSource === "MOCK_INGESTION") return "MOCK";
-  if (eventSource === "REPLAY") return "REPLAY";
-  return "SIMULATION";
 }
 
 function getInitialBattingBowlingTeams(state: MatchState): {
@@ -1175,38 +1162,51 @@ export function dispatchBallEvent(
 
   const generatedCommentary = (() => {
     try {
-      return generateCommentaryForBall({
+      return processCommentaryPipeline({
         matchId,
         branchId: next.activeBranchId,
-        event: ballEvent,
+        ballEvent,
         state: next,
+        probabilityState: {
+          previousWinProbability: computeWinProbability(current)?.battingWinProbability,
+          currentWinProbability: computeWinProbability(next)?.battingWinProbability,
+        },
       });
     } catch {
       return null;
     }
   })();
 
-  const commentaryText = generatedCommentary?.text ?? "No significant update on that delivery.";
-  const commentaryMetadata = generatedCommentary?.metadata;
+  const commentaryEvents = generatedCommentary?.emittedEvents ?? [];
+  const primaryCommentaryEvent =
+    generatedCommentary?.primaryEvent ??
+    ({
+      type: "commentary.generated",
+      matchId,
+      eventId: `${ballEvent.id}:ball`,
+      commentaryType: "ball",
+      narrativeType: "fallback",
+      text: "No significant update on that delivery.",
+      tone: "neutral",
+      importance: "low",
+      over: next.innings[next.currentInningsIndex]?.over ?? 0,
+      ball: next.innings[next.currentInningsIndex]?.ball ?? 0,
+      innings: next.currentInningsIndex + 1,
+      timestamp: ballEvent.timestamp,
+      templateKey: "single_rotation",
+    } as const);
 
-emitCommentary({
-  matchId,
-  text: commentaryText,
-  eventId: ballEvent.id,
-  category: "BALL",
-  metadata: commentaryMetadata,
-});
+  const commentaryText = primaryCommentaryEvent.text;
 
-const eventSummaries = getCommentarySummariesForEvent(matchId, ballEvent.id);
-for (const summary of eventSummaries) {
-  emitCommentary({
-    matchId,
-    text: summary.text,
-    eventId: `${ballEvent.id}:${summary.summaryType}`,
-    category: "SUMMARY",
-    metadata: commentaryMetadata,
-  });
-}
+  for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent]) {
+    emitCommentary({
+      matchId,
+      text: commentaryEvent.text,
+      eventId: commentaryEvent.eventId,
+      category: commentaryEvent.commentaryType === "ball" ? "BALL" : "SUMMARY",
+      generatedEvent: commentaryEvent,
+    });
+  }
 
 // ✅ ADD THIS (MOVE HERE)
 if (!eventStreams[matchId]) {
@@ -1246,11 +1246,16 @@ const ballIndex =
 processMomentumEvent(matchId, ballEvent, ballIndex);
 
 // 📝 COMMENTARY STORE
-addCommentary(matchId, commentaryText);
+for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent]) {
+  addCommentary(matchId, commentaryEvent.text);
+}
 
 // 🧠 INSIGHTS
 generateBroadcastInsights(matchId);
 const insights = getBroadcastInsights(matchId) || [];
+// 🔥 WIN PROBABILITY (REAL ENGINE)
+const win = computeWinProbability(state);
+
 // 📊 MOMENTUM TIMELINE
 const momentumTimeline = getMomentumTimeline(matchId);
 
@@ -1262,94 +1267,15 @@ const prevAnalytics = getAnalytics(matchId) || {
 };
 
 // 🔥 APPEND (DO NOT REPLACE)
-const overValue = currentInningsState.over + currentInningsState.ball / 10;
-
-const previousWinProbability =
-  typeof prevAnalytics.currentWinProbability === "number"
-    ? prevAnalytics.currentWinProbability
-    : prevAnalytics.winProbability[prevAnalytics.winProbability.length - 1]?.value ?? 50;
-
-const runtimePrediction = (() => {
-  try {
-    return predictRuntimeWinProbability({
-      matchId,
-      state,
-      eventStream: eventStreams[matchId] ?? [],
-      source: resolvePredictionSource(ballEvent.eventSource),
-      previousProbability: previousWinProbability,
-      timestamp: ballEvent.timestamp,
-    });
-  } catch (error) {
-    console.warn("⚠️ Runtime win probability prediction failed", error);
-    return null;
-  }
-})();
-
-const fallbackWin = computeWinProbability(state);
-const probabilityValue = runtimePrediction?.probability ?? fallbackWin?.battingWinProbability ?? previousWinProbability;
-const probabilityDelta = runtimePrediction?.probabilityDelta ?? probabilityValue - previousWinProbability;
-const modelVersion = runtimePrediction?.metadata.modelVersion ?? "legacy-rule-engine";
-const confidence = runtimePrediction?.confidence;
-
-const marker: "WICKET" | "SIX" | "FOUR" | "SWING" | undefined =
-  ballEvent.type === "WICKET"
-    ? "WICKET"
-    : ballEvent.type === "SIX"
-      ? "SIX"
-      : ballEvent.type === "FOUR"
-        ? "FOUR"
-        : Math.abs(probabilityDelta) >= 8
-          ? "SWING"
-          : undefined;
-
-const latestWinPoint = {
-  over: overValue,
-  value: probabilityValue,
-  confidence,
-  delta: probabilityDelta,
-  modelVersion,
-  timestamp: ballEvent.timestamp,
-  marker,
-};
-
-const lastWinPoint = prevAnalytics.winProbability[prevAnalytics.winProbability.length - 1];
-const updatedWinProbability =
-  lastWinPoint && Math.abs(lastWinPoint.over - overValue) < 0.001
-    ? [...prevAnalytics.winProbability.slice(0, -1), latestWinPoint]
-    : [...prevAnalytics.winProbability, latestWinPoint];
-
-const probabilityTimeline = prevAnalytics.probabilityTimeline ?? [];
-const runtimeTimelinePoint = createProbabilityHistoryPoint({
-  matchId,
-  features: runtimePrediction?.features ?? {
-    innings: state.currentInningsIndex + 1,
-    over: currentInningsState.over,
-    ball: currentInningsState.ball,
-    currentScore: currentInningsState.runs,
-    wicketsLost: currentInningsState.wickets,
-    oversCompleted: currentInningsState.over + currentInningsState.ball / 6,
-    ballsRemaining: Math.max(0, (state.configOvers ?? 20) * 6 - (currentInningsState.over * 6 + currentInningsState.ball)),
-    targetValue: state.currentInningsIndex === 1 ? Math.max(0, (state.innings[0]?.runs ?? 0) + 1) : 0,
-    requiredRunRate: 0,
-    currentRunRate: 0,
-    recentRuns: 0,
-    recentWickets: 0,
-    phaseOfMatch: currentInningsState.over < 6 ? 0 : currentInningsState.over < 15 ? 1 : 2,
-    battingFirst: state.currentInningsIndex === 0 ? 1 : 0,
-    partnershipRuns: 0,
-  },
-  probability: probabilityValue,
-  timestamp: ballEvent.timestamp,
-});
-
-const lastTimelinePoint = probabilityTimeline[probabilityTimeline.length - 1];
-const updatedProbabilityTimeline =
-  lastTimelinePoint &&
-  lastTimelinePoint.innings === runtimeTimelinePoint.innings &&
-  lastTimelinePoint.over === runtimeTimelinePoint.over &&
-  lastTimelinePoint.ball === runtimeTimelinePoint.ball
-    ? [...probabilityTimeline.slice(0, -1), runtimeTimelinePoint]
-    : [...probabilityTimeline, runtimeTimelinePoint];
+const updatedWinProbability = win
+  ? [
+      ...prevAnalytics.winProbability,
+      {
+        over: currentInningsState.over + currentInningsState.ball / 10,
+        value: win.battingWinProbability,
+      },
+    ]
+  : prevAnalytics.winProbability;
 
 // 📦 STORE ANALYTICS
 setAnalytics(matchId, {
@@ -1358,23 +1284,6 @@ setAnalytics(matchId, {
     over: Math.floor(p.ballIndex / 6),
     score: p.momentum,
   })),
-  currentWinProbability: probabilityValue,
-  previousWinProbability,
-  probabilityDelta,
-  probabilityTimeline: updatedProbabilityTimeline,
-  prediction: runtimePrediction
-    ? {
-        currentProbability: probabilityValue,
-        previousProbability: previousWinProbability,
-        probabilityDelta,
-        confidence: runtimePrediction.confidence,
-        modelVersion: runtimePrediction.metadata.modelVersion,
-        predictionTimestamp: runtimePrediction.metadata.timestamp,
-        latencyMs: runtimePrediction.metadata.latencyMs,
-        cacheHit: false,
-        debounced: false,
-      }
-    : prevAnalytics.prediction,
 });
 // ========================================
 // 🔥 FINAL BROADCAST (CLEAN & SINGLE)
@@ -1406,15 +1315,22 @@ const eventMeta = {
 } as const;
 
 appendEventTimeline(matchId, eventMeta);
-appendCommentaryTimeline({
-  matchId,
-  eventId: ballEvent.id,
-  sequence,
-  timestamp: ballEvent.timestamp,
-  text: commentaryText,
-  source: "ENGINE",
-  metadata: commentaryMetadata,
-});
+for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent]) {
+  appendCommentaryTimeline({
+    matchId,
+    eventId: commentaryEvent.eventId,
+    sequence,
+    timestamp: commentaryEvent.timestamp,
+    text: commentaryEvent.text,
+    source: "ENGINE",
+  });
+
+  broadcast(matchId, {
+    type: "commentary.generated",
+    matchId,
+    data: commentaryEvent,
+  });
+}
 
 // 📡 BROADCAST BALL EVENT
 broadcast(matchId, {
@@ -1429,19 +1345,6 @@ broadcast(matchId, {
     commentary: commentaryList ?? [],
     insights: insights ?? [],
     analytics: analytics ?? null,
-  },
-});
-
-broadcast(matchId, {
-  type: "WIN_PROBABILITY_UPDATE",
-  matchId,
-  data: {
-    probability: probabilityValue,
-    delta: probabilityDelta,
-    over: currentInningsState.over,
-    ball: currentInningsState.ball,
-    timestamp: ballEvent.timestamp,
-    modelVersion,
   },
 });
 
@@ -1578,6 +1481,8 @@ export function hydrateMatchState(matchId: string, state: MatchState) {
     eventStreams[matchId] = [];
   }
 
+  resetCommentaryPipelineState(matchId);
+
   emit(matchId);
 }
 export function reduceStateOnly(state: MatchState, event: BallEvent): MatchState {
@@ -1690,6 +1595,7 @@ export function resetMatchState(matchId: string) {
   delete temporalIndex[matchId];
   resetEventTimeline(matchId);
   resetCommentaryTimeline(matchId);
+  resetCommentaryPipelineState(matchId);
   resetPredictionStabilityMetrics(matchId);
   clearPredictionSnapshots(matchId);
 

@@ -1,4 +1,5 @@
 import type { MatchState } from "@/services/matchEngine";
+import type { CommentaryEvent } from "@/services/commentary/types/commentary.types";
 
 // ✅ Use the SAME client registry that the SSE route writes to
 // (SSE route → realtimeController → clientStore → getClients)
@@ -64,6 +65,11 @@ type RealtimeEvent =
         winner: string | null;
         winBy: string | null;
       };
+    }
+  | {
+      type: "commentary.generated";
+      matchId: string;
+      data: CommentaryEvent;
     };
 
 type Client = {

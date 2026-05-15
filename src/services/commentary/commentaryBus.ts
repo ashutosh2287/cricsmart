@@ -1,4 +1,5 @@
 import type { CommentaryIntelligenceMetadata } from "./commentaryIntelligenceContract";
+import type { CommentaryEvent as GeneratedCommentaryEvent } from "./types/commentary.types";
 
 export type Commentary = {
   matchId: string;
@@ -6,6 +7,7 @@ export type Commentary = {
   eventId: string;
   category: "BALL" | "INSIGHT" | "SUMMARY";
   metadata?: CommentaryIntelligenceMetadata;
+  generatedEvent?: GeneratedCommentaryEvent;
 };
 
 type Listener = (c: Commentary) => void;

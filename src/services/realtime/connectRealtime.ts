@@ -127,7 +127,7 @@ function openSocket(matchId: string) {
   es.addEventListener("CONNECTED", handleEvent);
   es.addEventListener("INITIAL_STATE", handleEvent);
   es.addEventListener("BALL_EVENT", handleEvent);
-  es.addEventListener("WIN_PROBABILITY_UPDATE", handleEvent);
+  es.addEventListener("commentary.generated", handleEvent);
   es.addEventListener("MATCH_ENDED", handleEvent);
   es.addEventListener("SIMULATION_STATE_UPDATE", handleEvent);
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 TONE_TAGS = (
     "dramatic",
@@ -37,6 +37,8 @@ CommentaryCategory = Literal[*SITUATION_TAGS, "general"]
 
 
 class CommentaryDatasetVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
     source: str
     preprocessingVersion: str
     datasetVersion: str
@@ -45,6 +47,8 @@ class CommentaryDatasetVersion(BaseModel):
 
 
 class CommentaryDatasetRow(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
     # Match metadata
     matchId: str
     tournament: str

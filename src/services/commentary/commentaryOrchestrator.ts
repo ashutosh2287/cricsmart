@@ -12,6 +12,10 @@ export function runCommentaryOrchestration(
   branchId: string,
   event: BallEvent,
 ) {
+  if (!event.valid) {
+    return;
+  }
+
   const context = buildCommentaryContext(matchId, branchId, event);
 
   if (context) {

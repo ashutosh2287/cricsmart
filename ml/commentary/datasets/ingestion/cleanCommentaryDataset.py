@@ -33,6 +33,7 @@ class CleaningStats:
     dropped_ads: int = 0
     dropped_irrelevant: int = 0
     dropped_malformed: int = 0
+    dropped_corrupt: int = 0
     normalized_player_names: int = 0
     punctuation_fixed: int = 0
 
@@ -75,6 +76,13 @@ def should_drop_as_irrelevant(value: str) -> bool:
     return any(re.search(pattern, text) for pattern in IRRELEVANT_PATTERNS)
 
 
+def appears_corrupt(value: str) -> bool:
+    if "�" in value:
+        return True
+    printable_ratio = sum(1 for char in value if char.isprintable()) / max(len(value), 1)
+    return printable_ratio < 0.9
+
+
 def clean_dataframe(df: pd.DataFrame) -> tuple[pd.DataFrame, CleaningStats]:
     stats = CleaningStats(input_rows=len(df))
 
@@ -96,6 +104,10 @@ def clean_dataframe(df: pd.DataFrame) -> tuple[pd.DataFrame, CleaningStats]:
     irrelevant_mask = df["rawCommentary"].map(should_drop_as_irrelevant)
     stats.dropped_irrelevant = int(irrelevant_mask.sum())
     df = df[~irrelevant_mask].copy()
+
+    corrupt_mask = df["rawCommentary"].map(appears_corrupt)
+    stats.dropped_corrupt = int(corrupt_mask.sum())
+    df = df[~corrupt_mask].copy()
 
     df["batter"] = df["batter"].astype(str).map(lambda value: normalize_player_name(value, stats))
     df["bowler"] = df["bowler"].astype(str).map(lambda value: normalize_player_name(value, stats))

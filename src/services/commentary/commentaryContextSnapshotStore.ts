@@ -9,15 +9,15 @@ const snapshotsByMatch: Record<string, CommentaryContextSnapshot[]> = {};
 const dedupe: Record<string, Set<string>> = {};
 const latestByMatch: Record<string, CommentaryContextSnapshot> = {};
 
-function dedupeKey(matchId: string, eventId: string) {
-  return `${matchId}:${eventId}`;
+function dedupeKey(matchId: string, branchId: string, eventId: string) {
+  return `${matchId}:${branchId}:${eventId}`;
 }
 
 export function appendCommentaryContextSnapshot(snapshot: CommentaryContextSnapshot) {
   if (!snapshotsByMatch[snapshot.matchId]) snapshotsByMatch[snapshot.matchId] = [];
   if (!dedupe[snapshot.matchId]) dedupe[snapshot.matchId] = new Set();
 
-  const key = dedupeKey(snapshot.matchId, snapshot.eventId);
+  const key = dedupeKey(snapshot.matchId, snapshot.branchId, snapshot.eventId);
   if (dedupe[snapshot.matchId].has(key)) return;
 
   dedupe[snapshot.matchId].add(key);

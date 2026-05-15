@@ -71,7 +71,9 @@ export function buildCommentaryContext(
   const inningsState = matchState.innings[inningsIndex];
   if (!inningsState) return null;
 
-  const events = getEventStream(matchId).filter((item) => item.valid);
+  const events = getEventStream(matchId).filter(
+    (item) => item.valid && (!item.branchId || item.branchId === branchId),
+  );
   const legalEvents = events.filter((item) => item.isLegalDelivery);
   const recentLegal = legalEvents.slice(-6);
 
@@ -81,11 +83,18 @@ export function buildCommentaryContext(
 
   const currentScore = inningsState.runs ?? 0;
   const wickets = inningsState.wickets ?? 0;
-  const target = chase?.target ?? (inningsIndex === 1 ? (matchState.innings[0]?.runs ?? 0) + 1 : null);
+  const target =
+    chase?.target ??
+    (inningsIndex >= 1 ? (matchState.innings[0]?.runs ?? 0) + 1 : null);
   const requiredRunRate = chase?.requiredRunRate ?? 0;
-  const currentRunRate = chase?.currentRunRate ?? (inningsState.over > 0 ? (currentScore / (inningsState.over + inningsState.ball / 6)) * 6 : 0);
+  const ballsBowled = inningsState.over * 6 + inningsState.ball;
+  const currentRunRate =
+    chase?.currentRunRate ??
+    (ballsBowled > 0 ? (currentScore / ballsBowled) * 6 : 0);
 
-  const ballsRemaining = chase?.ballsRemaining ?? Math.max(0, (matchState.configOvers ?? 20) * 6 - (inningsState.over * 6 + inningsState.ball));
+  const ballsRemaining =
+    chase?.ballsRemaining ??
+    Math.max(0, (matchState.configOvers ?? 20) * 6 - ballsBowled);
   const requiredRuns = target ? Math.max(0, target - currentScore) : 0;
 
   const recentRuns = recentLegal.reduce((sum, item) => sum + (item.runs ?? 0), 0);
@@ -108,7 +117,11 @@ export function buildCommentaryContext(
   const rebuildStatus: CommentaryContext["rebuildStatus"] =
     wickets >= 4 && partnershipRuns < 25 ? "rebuilding" : partnershipRuns >= 40 ? "rebuilt" : "none";
   const accelerationStatus: CommentaryContext["accelerationStatus"] =
-    recentRuns >= 8 ? "building" : recentRuns >= 12 || recentBoundaries >= 2 ? "accelerating" : "none";
+    recentRuns >= 12 || recentBoundaries >= 2
+      ? "accelerating"
+      : recentRuns >= 8
+        ? "building"
+        : "none";
 
   const wicketClusterRisk = clamp(recentWickets / 3, 0, 1);
   const battingFragility = clamp(wickets / 10, 0, 1);

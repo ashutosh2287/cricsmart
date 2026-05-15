@@ -4,11 +4,11 @@ import argparse
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict
 
 import pandas as pd
 
-from ml.commentary.datasets.schema import TONE_TAGS, SITUATION_TAGS
+from ml.commentary.datasets.schema import TONE_TAGS, SITUATION_TAGS, to_dataset_row
 
 PREPROCESSING_VERSION = "commentary-c2-v1"
 DATASET_VERSION = "c2.0.0"
@@ -83,27 +83,50 @@ def alignment_status(confidence: float) -> str:
     return "low_confidence"
 
 
+def choose_best_event(commentary_row: pd.Series, candidates: pd.DataFrame) -> tuple[pd.Series | None, float, str]:
+    if candidates.empty:
+        return None, 0.0, "missing_event"
+
+    scored = [
+        (index, confidence_score(commentary_row, candidate))
+        for index, candidate in candidates.iterrows()
+    ]
+    scored.sort(key=lambda item: item[1], reverse=True)
+
+    best_index, best_confidence = scored[0]
+    top_matches = [item for item in scored if abs(item[1] - best_confidence) < 1e-9]
+
+    if len(top_matches) > 1 and best_confidence < 0.95:
+        return candidates.loc[best_index], best_confidence, "ambiguous_match"
+
+    return candidates.loc[best_index], best_confidence, alignment_status(best_confidence)
+
+
 def align_rows(commentary_df: pd.DataFrame, events_df: pd.DataFrame) -> pd.DataFrame:
-    merged = commentary_df.merge(
-        events_df,
-        left_on=["matchId", "innings", "over", "ball"],
-        right_on=["matchId", "innings", "over", "ball"],
-        how="left",
-        suffixes=("", "_event"),
-    )
+    indexed_events = events_df.groupby(["matchId", "innings", "over", "ball"], dropna=False)
 
     generated_at = datetime.now(timezone.utc).isoformat()
 
     rows = []
-    for _, row in merged.iterrows():
-        missing_event = pd.isna(row.get("eventType"))
+    for _, row in commentary_df.iterrows():
+        key = (
+            row.get("matchId", ""),
+            row.get("innings", 1),
+            row.get("over", 0),
+            row.get("ball", 0),
+        )
+
+        try:
+            candidates = indexed_events.get_group(key)
+        except KeyError:
+            candidates = pd.DataFrame(columns=events_df.columns)
+
+        matched_event, confidence, status = choose_best_event(row, candidates)
+        event_data = matched_event.to_dict() if matched_event is not None else {}
 
         runs = int(row.get("runs", 0) if not pd.isna(row.get("runs")) else 0)
-        extras = int(row.get("extraRuns", 0) if not pd.isna(row.get("extraRuns")) else 0)
+        extras = int(event_data.get("extraRuns", 0) if pd.notna(event_data.get("extraRuns")) else row.get("extras", 0))
         wicket = bool(row.get("wicket", False))
-
-        confidence = 0.0 if missing_event else confidence_score(row, row)
-        status = "missing_event" if missing_event else alignment_status(confidence)
 
         pressure_level = row.get("pressureLevel", "medium") if isinstance(row.get("pressureLevel"), str) else "medium"
         if pressure_level not in {"low", "medium", "high", "extreme"}:
@@ -128,10 +151,8 @@ def align_rows(commentary_df: pd.DataFrame, events_df: pd.DataFrame) -> pd.DataF
         if category not in SITUATION_TAGS:
             category = "general"
 
-        rows.append(
+        canonical_row = to_dataset_row(
             {
-                "alignmentStatus": status,
-                "alignmentConfidence": confidence,
                 "matchId": row.get("matchId", ""),
                 "tournament": row.get("tournament", "unknown"),
                 "format": row.get("format", "T20"),
@@ -139,16 +160,16 @@ def align_rows(commentary_df: pd.DataFrame, events_df: pd.DataFrame) -> pd.DataF
                 "over": int(row.get("over", 0)),
                 "ball": int(row.get("ball", 0)),
                 "phaseOfMatch": phase,
-                "batter": row.get("batter", row.get("batsman", "")),
-                "bowler": row.get("bowler", ""),
+                "batter": row.get("batter", event_data.get("batsman", "")),
+                "bowler": row.get("bowler", event_data.get("bowler", "")),
                 "runs": runs,
                 "extras": extras,
                 "wicket": wicket,
-                "dismissalType": row.get("dismissalKind"),
+                "dismissalType": row.get("dismissalType") or event_data.get("dismissalKind"),
                 "boundaryType": "SIX" if runs == 6 else "FOUR" if runs == 4 else None,
-                "currentScore": int(row.get("scoreAfterBall", 0) if not pd.isna(row.get("scoreAfterBall")) else 0),
-                "wickets": int(row.get("wicketsAfterBall", 0) if not pd.isna(row.get("wicketsAfterBall")) else 0),
-                "target": None if pd.isna(row.get("target")) else int(row.get("target")),
+                "currentScore": int(event_data.get("scoreAfterBall", 0) if pd.notna(event_data.get("scoreAfterBall")) else 0),
+                "wickets": int(event_data.get("wicketsAfterBall", 0) if pd.notna(event_data.get("wicketsAfterBall")) else 0),
+                "target": None if pd.isna(event_data.get("target")) else int(event_data.get("target")),
                 "requiredRunRate": float(row.get("requiredRunRate", 0) if not pd.isna(row.get("requiredRunRate")) else 0),
                 "currentRunRate": float(row.get("currentRunRate", 0) if not pd.isna(row.get("currentRunRate")) else 0),
                 "pressureLevel": pressure_level,
@@ -169,7 +190,11 @@ def align_rows(commentary_df: pd.DataFrame, events_df: pd.DataFrame) -> pd.DataF
                 "datasetVersion": DATASET_VERSION,
                 "generatedAt": generated_at,
             }
-        )
+        ).model_dump()
+
+        canonical_row["alignmentStatus"] = status
+        canonical_row["alignmentConfidence"] = confidence
+        rows.append(canonical_row)
 
     return pd.DataFrame(rows)
 

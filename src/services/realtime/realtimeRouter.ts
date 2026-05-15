@@ -1,24 +1,23 @@
 import { BallEvent } from "@/types/ballEvent";
-import { pushToTimeline } from "./broadcastTimeline";
-import { getMatchConfig } from "./matchFormat";
-import { advanceClock } from "./timeEngine";
-import { processMatchIntelligence } from "./matchIntelligenceEngine";
+import { pushToTimeline } from "../broadcastTimeline";
+import { getMatchConfig } from "../matchFormat";
+import { advanceClock } from "../timeEngine";
+import { processMatchIntelligence } from "../matchIntelligenceEngine";
 import { v4 as uuidv4 } from "uuid";
 import { emitCommentary } from "@/services/commentary/commentaryBus";
-import { emitCommand } from "./commandBus";
+import { emitCommand } from "../commandBus";
 import { setMatchState as setUIState } from "@/lib/eventStore";
 import { addCommentary } from "@/services/commentary/commentaryStore";
 import { setAnalytics } from "@/services/analytics/liveAnalyticsStore";
 import { getMomentumTimeline } from "@/services/analytics/momentumTimelineEngine";
-import { generateBroadcastInsights } from "./broadcast/broadcastInsightEngine";
-import { getWinProbabilityTimeline } from "@/services/analytics/winProbabilityTimelineEngine";
+import { generateBroadcastInsights } from "../broadcast/broadcastInsightEngine";
 import { processMomentumEvent } from "@/services/analytics/momentumTimelineEngine";
 import { computeWinProbability } from "@/services/winProbabilityEngine";
 import { getAnalytics } from "@/services/analytics/liveAnalyticsStore";
-import { getBroadcastInsights } from "./broadcast/broadcastInsightEngine";
+import { getBroadcastInsights } from "../broadcast/broadcastInsightEngine";
 import { getCommentary } from "@/services/commentary/commentaryStore";
-import { clearPlayerRegistry } from "./player/playerRegistry";
-import { updatePlayerRegistry } from "./playerRegistryEngine";
+import { clearPlayerRegistry } from "../player/playerRegistry";
+import { updatePlayerRegistry } from "../playerRegistryEngine";
 import { broadcast } from "@/services/realtime/eventBus";
 import { appendEventTimeline, resetEventTimeline } from "@/services/replay/eventTimeline";
 import { appendCommentaryTimeline, resetCommentaryTimeline } from "@/services/commentary/commentaryTimelineStore";
@@ -318,9 +317,6 @@ function decideWinner(next: MatchState) {
 
   if (!first || !second) return;
 
-  const teamA = next.teamA.name;
-  const teamB = next.teamB.name;
-
   const firstRuns = first.runs;
   const secondRuns = second.runs;
 
@@ -434,8 +430,6 @@ function validatePlayersForInnings(
 
   const engineStriker = innings.striker?.trim();
   const engineNonStriker = innings.nonStriker?.trim();
-  const incomingBatsman = event.batsman?.trim();
-  const incomingNonStriker = event.nonStriker?.trim();
   const incomingBowler = event.bowler?.trim();
 
   if (battingTeam.squad.length > 0) {
@@ -739,6 +733,7 @@ if (!bowlerName) {
   }
 
   ensureCurrentInningsTeams(next, inningsIndex, event);
+  validatePlayersForInnings(next, innings, event);
 
   const resolveTeamByName = (teamName?: string) => {
     if (!teamName) return null;

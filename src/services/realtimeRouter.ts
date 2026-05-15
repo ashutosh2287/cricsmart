@@ -14,6 +14,8 @@ type RealtimePayload = {
   };
 };
 
+export type RealtimeEvent = RealtimePayload;
+
 export function routeRealtimeEvent(payload: RealtimePayload) {
   const { type, matchId, data } = payload;
 

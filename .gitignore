@@ -46,3 +46,13 @@ ml/.venv/
 ml/models/*.joblib
 ml/models/*.pkl
 ml/datasets/processed/
+# python
+__pycache__/
+*.py[cod]
+
+# commentary ml artifacts
+ml/commentary/embeddings/artifacts/
+ml/commentary/retrieval/*.joblib
+ml/commentary/models/*.joblib
+ml/commentary/models/*.json
+ml/commentary/evaluation/*.json

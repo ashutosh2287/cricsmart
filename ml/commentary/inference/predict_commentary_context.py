@@ -7,6 +7,7 @@ from typing import Any
 
 import joblib
 import numpy as np
+import pandas as pd
 
 if __package__ in {None, ""}:
     import sys
@@ -21,7 +22,7 @@ DEFAULT_MODEL_PATH = "ml/commentary/models/commentary_ranker.joblib"
 def predict_commentary_context(context: dict[str, Any], model_path: str = DEFAULT_MODEL_PATH) -> dict[str, Any]:
     bundle = joblib.load(model_path)
     feature_row = build_model_features(context)
-    matrix = np.asarray([[feature_row[column] for column in FEATURE_COLUMNS]], dtype="float32")
+    matrix = pd.DataFrame([[feature_row[column] for column in FEATURE_COLUMNS]], columns=FEATURE_COLUMNS, dtype="float32")
 
     predictions: dict[str, Any] = {
         "modelVersion": bundle["modelVersion"],

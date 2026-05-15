@@ -1,1 +1,1 @@
-# Commentary ML package.
+"""CricSmart commentary ML workspace."""

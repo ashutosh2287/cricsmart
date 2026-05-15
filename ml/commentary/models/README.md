@@ -1,3 +1,3 @@
-# Commentary Models
+# Commentary model artifacts
 
-Versioned model artifacts and metadata.
+This directory stores commentary ranker artifacts, metadata manifests, and future retrieval-aware model bundles.

@@ -1,3 +1,3 @@
-# Commentary Evaluation
+# Commentary evaluation
 
-Quality, tone, continuity and fallback reliability reports.
+Evaluation outputs should track narrative quality, repetition, contextual accuracy, pressure alignment, tone accuracy, and commentary diversity.

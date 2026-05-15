@@ -1,3 +1,4 @@
-# Commentary Prompts
+# Commentary prompts
 
-Prompt templates for hybrid retrieval/generation commentary.
+Reserved for future prompt templates used by optional commentary refinement and enrichment layers.
+The deterministic commentary planner remains authoritative.

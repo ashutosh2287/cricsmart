@@ -26,3 +26,13 @@ pip install -r ml/requirements.txt
 3. Train model: `python ml/training/train_win_probability.py --data ml/datasets/processed/training_snapshots.csv --out-dir ml/models`
 4. Evaluate model: `python ml/training/evaluate_model.py --data ml/datasets/processed/training_snapshots.csv --model ml/models/win_probability_model.joblib --metadata ml/models/model_metadata.json --out ml/models/evaluation_report.json`
 5. Run inference service: `uvicorn ml.inference.main:app --host 0.0.0.0 --port 8080`
+
+
+## Commentary intelligence flow
+
+1. Build dataset: `python ml/commentary/preprocessing/build_commentary_dataset.py --out ml/commentary/datasets/commentary_dataset.csv`
+2. Generate embeddings: `python ml/commentary/embeddings/generate_embeddings.py --data ml/commentary/datasets/commentary_dataset.csv`
+3. Build retrieval index: `python ml/commentary/retrieval/commentary_index.py`
+4. Train ranker: `python ml/commentary/training/train_commentary_ranker.py --data ml/commentary/datasets/commentary_dataset.csv`
+5. Run inference: `python ml/commentary/inference/predict_commentary_context.py --model ml/commentary/models/commentary_ranker.joblib`
+6. Evaluate outputs: `python ml/commentary/evaluation/commentary_metrics.py --data ml/commentary/datasets/commentary_dataset.csv`

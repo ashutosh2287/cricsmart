@@ -22,7 +22,7 @@ export * from "./engines/turning-point-engine";
 export * from "./narrative/narrative-state";
 export * from "./narrative/commentary-planner";
 export * from "./narrative/tone-engine";
-export * from "./generators/template-generator";
 export * from "./generators/commentary-generator";
 export * from "./orchestration/commentary-pipeline";
 export * from "./types/commentary.types";
+export { generateTemplateCommentary as generateDeterministicTemplateCommentary } from "./generators/template-generator";

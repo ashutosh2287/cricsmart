@@ -2,7 +2,7 @@ import { setMatchState } from "@/lib/eventStore";
 import type { MatchState } from "@/services/matchEngine";
 import type { BallEvent } from "@/types/ballEvent";
 
-type RealtimePayload = {
+export type RealtimeEvent = {
   type: string;
   matchId: string;
   data?: MatchState | {
@@ -14,7 +14,7 @@ type RealtimePayload = {
   };
 };
 
-export function routeRealtimeEvent(payload: RealtimePayload) {
+export function routeRealtimeEvent(payload: RealtimeEvent) {
   const { type, matchId, data } = payload;
 
   console.log("📥 ROUTER:", type);

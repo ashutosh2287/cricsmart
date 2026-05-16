@@ -203,7 +203,7 @@ export default function OversTimeline({ slug }: Props) {
                     className="truncate text-sm"
                     style={{ color: "var(--text-muted)" }}
                   >
-                    {over.bowler} to {over.batter1} &amp; {over.batter2}
+                    {over.bowler} to {over.batter1} & {over.batter2}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {over.outcomes.map((outcome, index) => (

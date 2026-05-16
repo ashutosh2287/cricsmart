@@ -931,7 +931,9 @@ function TabsArea({
                               Projected batting order
                             </p>
                             <p className="mt-2 text-sm text-white/75">
-                              {team.battingOrder.join(" · ")}
+                              {team.battingOrder.length
+                                ? team.battingOrder.join(" · ")
+                                : "Not available"}
                             </p>
                           </div>
                           <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
@@ -939,7 +941,9 @@ function TabsArea({
                               Projected bowling order
                             </p>
                             <p className="mt-2 text-sm text-white/75">
-                              {team.bowlingOrder.join(" · ")}
+                              {team.bowlingOrder.length
+                                ? team.bowlingOrder.join(" · ")
+                                : "Not available"}
                             </p>
                           </div>
                         </div>

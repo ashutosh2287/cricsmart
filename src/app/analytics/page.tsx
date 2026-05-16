@@ -41,6 +41,9 @@ export default function AnalyticsPage() {
               <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--text-secondary)]">
                 Realtime intelligence · momentum · pressure
               </p>
+              <p className="mt-2 text-xs text-[var(--text-muted)]">
+                Single active match context · replay synchronized
+              </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <span className="rounded-md border border-emerald-400/30 bg-emerald-500/10 px-2 py-1 text-emerald-200">Batting edge +18%</span>

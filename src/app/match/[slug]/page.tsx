@@ -34,14 +34,13 @@ import {
   useMatchSelector,
   useScore,
 } from "@/services/matchSelectors";
-import { Team } from "@/data/teams";
+import { Team, teams } from "@/data/teams";
 import { Match } from "@/types/match";
 import { motion } from "framer-motion";
 
 // ✅ Only keep what's needed from matchEngine
 import {
   hydrateMatchState,
-  MatchState,
 } from "@/services/matchEngine";
 
 // ✅ Import setMatchState so hydration feeds into eventStore (MatchProvider's source)
@@ -59,16 +58,10 @@ import { getMatchBySlug } from "@/services/matchService";
 import { connectRealtime } from "@/services/realtime/connectRealtime";
 import type { MatchReconnectHealth } from "@/services/match/matchRegistry";
 import type { LiveSessionState } from "@/types/liveSession";
-import {
-  getBattingOrder,
-  getBowlingOrder,
-} from "@/services/simulation/lineup";
 import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
 import WagonWheel from "@/components/analytics/WagonWheel";
 import { calculateWinProbability } from "@/services/analytics/calculateWinProbability";
 import { setMatchMeta } from "@/store/matchStore";
-import { v4 as uuidv4 } from "uuid";
-import { useRouter } from "next/navigation";
 import AnimatedScore from "@/components/ui/AnimatedScore";
 import ConnectionStatus from "@/components/ui/ConnectionStatus";
 
@@ -81,21 +74,31 @@ type MainTab =
   | "overview"
   | "live"
   | "analysis"
-  | "timeline"
+  | "overs"
+  | "squads"
   | "scorecard"
   | "admin";
 
 const AUTO_RECONNECT_SUBSCRIBER_ID = "match-detail-page-auto";
-const MATCH_LOAD_MAX_ATTEMPTS = 5;
-const MATCH_LOAD_RETRY_DELAY_MS = 450;
 const MAIN_TABS: MainTab[] = [
   "overview",
   "live",
   "analysis",
-  "timeline",
+  "overs",
+  "squads",
   "scorecard",
   "admin",
 ];
+
+const TAB_LABELS: Record<MainTab, string> = {
+  overview: "Overview",
+  live: "Live",
+  analysis: "Analytics",
+  overs: "Overs",
+  squads: "Squads",
+  scorecard: "Scorecard",
+  admin: "Admin",
+};
 
 type PlayerStat = {
   runs: number;
@@ -173,11 +176,11 @@ function StatPill({
   tone?: "neutral" | "green" | "blue" | "amber" | "red";
 }) {
   const toneMap = {
-    neutral: "border-white/10 bg-white/[0.03] text-white",
-    green: "border-white/10 bg-white/[0.03] text-white",
-    blue: "border-white/10 bg-white/[0.03] text-white",
-    amber: "border-white/10 bg-white/[0.03] text-white",
-    red: "border-white/10 bg-white/[0.03] text-white",
+    neutral: "tier-1-border tier-1-commentary text-white",
+    green: "tier-2-border tier-2-commentary state-partnership",
+    blue: "tier-2-border tier-2-commentary state-boundary",
+    amber: "tier-2-border tier-2-commentary state-pressure",
+    red: "tier-3-border tier-3-commentary state-required-rr-danger",
   };
 
   return (
@@ -264,6 +267,21 @@ function StickyInsightsRail({
       ? overs[lastOverKey].slice(0, 6)
       : [];
 
+  const lastOverRuns = lastOverBalls.reduce(
+    (sum, ball: { runs?: number }) => sum + Number(ball?.runs ?? 0),
+    0
+  );
+  const lastOverWickets = lastOverBalls.filter(
+    (ball) => (ball as { type?: string })?.type === "WICKET"
+  ).length;
+  const momentumSignal =
+    lastOverWickets > 0 ? "Bowling surge" : lastOverRuns >= 10 ? "Batting surge" : "Balanced";
+  const probabilitySnapshot = Math.max(
+    5,
+    Math.min(95, Math.round(50 + score.runs * 0.15 - score.wickets * 4 + lastOverRuns * 0.9))
+  );
+  const recentEvent = lastOverWickets > 0 ? "Wicket impact" : lastOverRuns >= 8 ? "Boundary burst" : "Steady over";
+
   return (
     <div className="space-y-4 lg:sticky lg:top-28">
       <GlassPanel>
@@ -305,6 +323,24 @@ function StickyInsightsRail({
             tone="blue"
           />
           <StatPill label="Bowler" value={"—"} tone="amber" />
+        </div>
+      </GlassPanel>
+
+      <GlassPanel level="secondary">
+        <SectionHeader eyebrow="Telemetry" title="Live Console" />
+        <div className="grid grid-cols-1 gap-2.5">
+          <div className="tier-2-border rounded-xl border bg-white/[0.03] px-3 py-2">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-secondary)]">Momentum</p>
+            <p className="mt-1 text-sm font-semibold state-momentum">{momentumSignal}</p>
+          </div>
+          <div className="tier-2-border rounded-xl border bg-white/[0.03] px-3 py-2">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-secondary)]">Mini Probability</p>
+            <p className="mt-1 text-sm font-semibold state-boundary">{probabilitySnapshot}% batting edge</p>
+          </div>
+          <div className="tier-3-border rounded-xl border bg-white/[0.03] px-3 py-2">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-secondary)]">Recent Event</p>
+            <p className="mt-1 text-sm font-semibold state-wicket">{recentEvent}</p>
+          </div>
         </div>
       </GlassPanel>
 
@@ -383,13 +419,16 @@ function TabsArea({
   const [matchMeta, setLocalMatchMeta] = useState(() =>
     getMatchMeta(match.slug)
   );
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<MainTab>("overview");
 
   useEffect(() => {
     const tab = searchParams.get("tab");
+    if (tab === "timeline") {
+      setTimeout(() => setActiveTab("overs"), 0);
+      return;
+    }
     if (!tab || !isMainTab(tab)) return;
     setTimeout(() => setActiveTab(tab), 0);
   }, [searchParams]);
@@ -562,6 +601,25 @@ function TabsArea({
 
   const tabs: MainTab[] = MAIN_TABS;
 
+  const fallbackTeamA = teams.find(
+    (team) => team.name.toLowerCase() === (matchMeta?.teamA?.name ?? match.team1).toLowerCase()
+  );
+  const fallbackTeamB = teams.find(
+    (team) => team.name.toLowerCase() === (matchMeta?.teamB?.name ?? match.team2).toLowerCase()
+  );
+
+  const squadA = currentEngineState?.teamA?.squad?.length
+    ? currentEngineState.teamA.squad
+    : fallbackTeamA?.squad ?? [];
+  const squadB = currentEngineState?.teamB?.squad?.length
+    ? currentEngineState.teamB.squad
+    : fallbackTeamB?.squad ?? [];
+
+  const playingXIA = squadA.slice(0, 11);
+  const playingXIB = squadB.slice(0, 11);
+  const benchA = squadA.slice(11);
+  const benchB = squadB.slice(11);
+
   const summaryCards = [
     {
       label: "Batting",
@@ -624,9 +682,9 @@ function TabsArea({
               : "2px solid transparent",
             marginBottom: "-1px",
           }}
-          className="relative px-4 py-3 text-sm font-medium capitalize whitespace-nowrap transition-colors hover:text-[var(--text-primary)]"
+          className="interactive-sports relative px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors hover:text-[var(--text-primary)]"
         >
-          {tab}
+          {TAB_LABELS[tab]}
           {isActive ? (
             <motion.span
               layoutId="match-tabs-active-indicator"
@@ -837,17 +895,76 @@ function TabsArea({
           </div>
         )}
 
-        {/* ── Timeline ── */}
-        {activeTab === "timeline" && (
+        {/* ── Overs ── */}
+        {activeTab === "overs" && (
           <div className="animate-fade-in space-y-5">
             <GlassPanel>
               <SectionHeader eyebrow="Moments" title="Highlight Timeline" />
               <HighlightTimeline matchId={match.slug} />
             </GlassPanel>
             <GlassPanel>
-              <SectionHeader eyebrow="Over view" title="Overs Timeline" />
+              <SectionHeader eyebrow="Over view" title="Overs Console" />
               <OversTimeline slug={match.slug} />
             </GlassPanel>
+          </div>
+        )}
+
+        {/* ── Squads ── */}
+        {activeTab === "squads" && (
+          <div className="animate-fade-in space-y-4">
+            {[
+              { team: matchMeta?.teamA?.name ?? match.team1, xi: playingXIA, bench: benchA },
+              { team: matchMeta?.teamB?.name ?? match.team2, xi: playingXIB, bench: benchB },
+            ].map((entry) => (
+              <GlassPanel key={entry.team} level="secondary" className="p-3">
+                <SectionHeader eyebrow="Squads" title={entry.team} />
+                <div className="space-y-3">
+                  <div>
+                    <p className="mb-2 text-[11px] uppercase tracking-[0.16em] text-[var(--text-secondary)]">Playing XI</p>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      {entry.xi.map((player, index) => {
+                        const isCaptain = index === 0;
+                        const isWk = player.role === "WK";
+                        return (
+                          <div
+                            key={`${entry.team}-xi-${player.name}`}
+                            className="tier-2-border rounded-lg border bg-white/[0.03] px-3 py-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold text-white">{player.name}</span>
+                              <span className="text-[10px] uppercase tracking-[0.14em] text-[var(--text-secondary)]">{player.role}</span>
+                            </div>
+                            <div className="mt-1 flex gap-2 text-[10px] uppercase tracking-[0.12em]">
+                              {isCaptain ? <span className="state-boundary">Captain</span> : null}
+                              {isWk ? <span className="state-partnership">WK</span> : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-[11px] uppercase tracking-[0.16em] text-[var(--text-secondary)]">Bench</p>
+                    {entry.bench.length ? (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {entry.bench.map((player) => (
+                          <div
+                            key={`${entry.team}-bench-${player.name}`}
+                            className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm text-white/85"
+                          >
+                            <span>{player.name}</span>
+                            <span className="ml-2 text-xs text-white/50">({player.role})</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-white/60">Bench not available yet.</p>
+                    )}
+                  </div>
+                </div>
+              </GlassPanel>
+            ))}
           </div>
         )}
 
@@ -1358,21 +1475,9 @@ function MatchInnerPage({
   const { state: currentEngineState } = useMatch();
 
   if (!currentEngineState) {
-    // ✅ FIX: show a visible loading skeleton rather than minimal text that blends
-    //    into the dark background and looks like a blank page.
     return (
-      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 p-10 text-center">
-        <div className="flex gap-1.5">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="h-2 w-2 animate-pulse rounded-full bg-sky-400/70"
-              style={{ animationDelay: `${i * 120}ms` }}
-            />
-          ))}
-        </div>
-        <p className="text-sm text-white/70">Initialising match engine…</p>
-        <p className="text-xs text-white/40">{match.team1} vs {match.team2}</p>
+      <div className="p-10 text-center text-white">
+        Loading match engine...
       </div>
     );
   }
@@ -1499,51 +1604,45 @@ function MatchInnerPage({
   }
 
   return (
-    // ✅ FIX: removed overflow-hidden — it breaks sticky tab bar and can clip motion-animated content
-    <main className="relative">
+    <main className="relative overflow-hidden">
       <div className="mx-auto max-w-[1500px] px-3 py-3 md:px-5 lg:px-6">
         {/* ── Hero ── */}
-        {/* ✅ FIX: hero always renders regardless of innings state.
-            Previously gated on `currentInnings` — this caused a blank/black match page
-            for any simulation match before innings started (innings: []).
-            Safe defaults ensure all values fall back gracefully. */}
         <div className="mb-3">
-          <div className="space-y-2.5">
-            <GlassPanel>
-              <div className="flex flex-col gap-3">
-                {/* Header row */}
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="space-y-1.5">
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-sky-300/80">
-                      CricSmart Match Center
-                    </p>
-                    <h1 className="text-xl font-semibold text-white md:text-2xl">
-                      {team1Name} vs {team2Name}
-                    </h1>
-                    <p className="text-xs text-white/60">
-                      {currentInnings
-                        ? "Live command center with realtime commentary, analytics, and replay."
-                        : "Simulation ready · select teams and toss to begin."}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <ConnectionStatus hideWhenConnected={false} />
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Link
-                        href="/"
-                        className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-md transition"
+          {currentInnings ? (
+            <div className="space-y-2.5">
+              <GlassPanel>
+                <div className="flex flex-col gap-3">
+                  {/* Header row */}
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] uppercase tracking-[0.22em] text-sky-300/80">
+                        CricSmart Match Center
+                      </p>
+                      <h1 className="text-xl font-semibold text-white md:text-2xl">
+                        {team1Name} vs {team2Name}
+                      </h1>
+                      <p className="text-xs text-white/60">
+                        Live command center with realtime commentary, analytics, and replay.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <ConnectionStatus hideWhenConnected={false} />
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                       >
-                        ← Back to Home
-                      </Link>
-                    </motion.div>
+                        <Link
+                          href="/"
+                          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-md transition"
+                        >
+                          ← Back to Home
+                        </Link>
+                      </motion.div>
+                    </div>
                   </div>
-                </div>
 
-                {/* Match header (scoreboard) — always rendered with safe defaults */}
-                <MatchHeader
+                  {/* Match header (scoreboard) */}
+                  <MatchHeader
   team1={team1Name}
   team2={team2Name}
   runs={runs}
@@ -1563,58 +1662,59 @@ function MatchInnerPage({
   crr={crr}
 />
 
-                {/* Stats pills */}
-                <div className="grid auto-rows-fr gap-2 md:grid-cols-3 xl:grid-cols-8">
-                  <StatPill
-                    label={innings1?.battingTeam ?? "Team 1"}
-                    value={`${innings1?.runs ?? 0}/${innings1?.wickets ?? 0}`}
-                    tone="green"
-                  />
-                  <StatPill
-                    label={innings2?.battingTeam ?? "Team 2"}
-                    value={
-                      innings2
-                        ? `${innings2.runs}/${innings2.wickets}`
-                        : "Yet to bat"
-                    }
-                    tone="blue"
-                  />
-                  <StatPill
-                    label="Current innings"
-                    value={`Innings ${(currentEngineState.currentInningsIndex ?? 0) + 1}`}
-                    tone="neutral"
-                  />
-                  <StatPill
-                    label="Current over"
-                    value={displayOver}
-                    tone="amber"
-                  />
-                  {innings2 && !currentEngineState.matchEnded && (
-                    <StatPill label="Target" value={target} tone="neutral" />
-                  )}
-                  {innings2 && !currentEngineState.matchEnded && (
+                  {/* Stats pills */}
+                  <div className="grid auto-rows-fr gap-2 md:grid-cols-3 xl:grid-cols-8">
                     <StatPill
-                      label="RRR"
-                      value={rrr ? rrr.toFixed(2) : "0.00"}
-                      tone="red"
+                      label={innings1?.battingTeam ?? "Team 1"}
+                      value={`${innings1?.runs ?? 0}/${innings1?.wickets ?? 0}`}
+                      tone="green"
                     />
-                  )}
-                  <StatPill
-                    label="CRR"
-                    value={crr ? crr.toFixed(2) : "0.00"}
-                    tone="blue"
-                  />
-                  <StatPill
-                    label="Status"
-                    value={
-                      getLiveMatchStatusLabel(currentEngineState.matchEnded, sessionMeta?.sessionState)
-                    }
-                    tone="neutral"
-                  />
+                    <StatPill
+                      label={innings2?.battingTeam ?? "Team 2"}
+                      value={
+                        innings2
+                          ? `${innings2.runs}/${innings2.wickets}`
+                          : "Yet to bat"
+                      }
+                      tone="blue"
+                    />
+                    <StatPill
+                      label="Current innings"
+                      value={`Innings ${(currentEngineState.currentInningsIndex ?? 0) + 1}`}
+                      tone="neutral"
+                    />
+                    <StatPill
+                      label="Current over"
+                      value={displayOver}
+                      tone="amber"
+                    />
+                    {innings2 && !currentEngineState.matchEnded && (
+                      <StatPill label="Target" value={target} tone="neutral" />
+                    )}
+                    {innings2 && !currentEngineState.matchEnded && (
+                      <StatPill
+                        label="RRR"
+                        value={rrr ? rrr.toFixed(2) : "0.00"}
+                        tone="red"
+                      />
+                    )}
+                    <StatPill
+                      label="CRR"
+                      value={crr ? crr.toFixed(2) : "0.00"}
+                      tone="blue"
+                    />
+                    <StatPill
+                      label="Status"
+                      value={
+                        getLiveMatchStatusLabel(currentEngineState.matchEnded, sessionMeta?.sessionState)
+                      }
+                      tone="neutral"
+                    />
+                  </div>
                 </div>
-              </div>
-            </GlassPanel>
-          </div>
+              </GlassPanel>
+            </div>
+          ) : null}
         </div>
 
         {/* ── Tabs ── */}
@@ -1687,137 +1787,82 @@ export default function MatchDetailPage({
     if (!matchId) return;
     const id = matchId;
     let cancelled = false;
-    const wait = (ms: number) =>
-      new Promise((resolve) => setTimeout(resolve, ms));
-    const createMatchSummary = (
-      team1: string,
-      team2: string,
-      status: "Live" | "Completed" = "Live"
-    ): Match => ({
-      id,
-      slug: id,
-      team1,
-      team2,
-      currentOver: 0,
-      currentBall: 0,
-      status,
-    });
 
     async function loadMatch() {
-      let loaded = false;
-
       try {
-        for (
-          let attemptNumber = 0;
-          attemptNumber < MATCH_LOAD_MAX_ATTEMPTS;
-          attemptNumber += 1
-        ) {
-          if (cancelled) return;
+        const res = await fetch(`/api/match/${id}`, { cache: "no-store" });
 
-          const res = await fetch(`/api/match/${id}`, { cache: "no-store" });
-
-          if (!res.ok) {
-            console.error("MATCH API ERROR", await res.text());
-
-            if (attemptNumber < MATCH_LOAD_MAX_ATTEMPTS - 1) {
-              await wait(MATCH_LOAD_RETRY_DELAY_MS);
-              continue;
-            }
-            break;
-          }
-
-          const data = await res.json();
-
-          if (!data?.success || !data?.match) {
-            console.error("Match not found in Redis for", id);
-
-            if (attemptNumber < MATCH_LOAD_MAX_ATTEMPTS - 1) {
-              await wait(MATCH_LOAD_RETRY_DELAY_MS);
-              continue;
-            }
-            break;
-          }
-
-          if (!cancelled) setLoadError(null);
-
-          // ✅ Hydrate matchEngine (for scorecard helpers etc.)
-          hydrateMatchState(id, data.match);
-
-          setSessionMeta(data.registry ?? null);
-
-          // ✅ CRITICAL: also push into eventStore so MatchProvider sees initial state
-          setMatchState(id, data.match);
-
-          // ✅ Restore in-memory matchMeta from persisted engine state so the
-          //    match page renders correct team names after a page reload/return.
-          const teamAName = data.match.teamA?.name;
-          const teamBName = data.match.teamB?.name;
-          const getTeamIdOrSlug = (existingId: unknown, name: string) => {
-            if (typeof existingId === "string" && existingId.trim()) {
-              return existingId;
-            }
-            return name.toLowerCase().trim().replace(/\s+/g, "-");
-          };
-          if (teamAName && teamBName) {
-            setMatchMeta({
-              matchId: id,
-              teamA: {
-                id: getTeamIdOrSlug(data.match.teamA?.id, teamAName),
-                name: teamAName,
-              },
-              teamB: {
-                id: getTeamIdOrSlug(data.match.teamB?.id, teamBName),
-                name: teamBName,
-              },
-              ...(data.match.tossWinner && data.match.tossDecision
-                ? {
-                    toss: {
-                      winner: data.match.tossWinner,
-                      decision: data.match.tossDecision,
-                    },
-                  }
-                : {}),
-            });
-          }
-
-          if (!cancelled) {
-            setMatch(
-              createMatchSummary(
-                teamAName ?? "Team A",
-                teamBName ?? "Team B",
-                data.match.matchEnded ? "Completed" : "Live"
-              )
-            );
-          }
-
-          // ✅ Auto-connect SSE so live updates flow when returning to the page
-          //    while a simulation is still running in the backend.
-          const runtime = data.runtime;
-          const isRunning =
-            runtime?.isRunning === true && !data.match.matchEnded;
-          if (!cancelled && isRunning) {
-            // connectRealtime is safe to call if already connected — it's a no-op
-            connectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID, {
-              autoStartSimulation: data.registry?.type !== "LIVE",
-            });
-          }
-
-          loaded = true;
-          break;
+        if (!res.ok) {
+          console.error("MATCH API ERROR", await res.text());
+          if (!cancelled) setLoadError("Unable to load this match right now.");
+          return;
         }
 
-        if (!loaded && !cancelled) {
-          const meta = getMatchMeta(id);
-          setMatch((prev) =>
-            prev ??
-            createMatchSummary(
-              meta?.teamA?.name ?? "Team A",
-              meta?.teamB?.name ?? "Team B",
-              "Live"
-            )
-          );
+        const data = await res.json();
+
+        if (!data?.success || !data?.match) {
+          console.error("Match not found in Redis for", id);
+          if (!cancelled) setLoadError("Match data not found. Please refresh the page.");
+          return;
+        }
+
+        if (!cancelled) setLoadError(null);
+
+        // ✅ Hydrate matchEngine (for scorecard helpers etc.)
+        hydrateMatchState(id, data.match);
+
+        setSessionMeta(data.registry ?? null);
+
+        // ✅ CRITICAL: also push into eventStore so MatchProvider sees initial state
+        setMatchState(id, data.match);
+
+        // ✅ Restore in-memory matchMeta from persisted engine state so the
+        //    match page renders correct team names after a page reload/return.
+        const teamAName = data.match.teamA?.name;
+        const teamBName = data.match.teamB?.name;
+        const getTeamIdOrSlug = (existingId: unknown, name: string) => {
+          if (typeof existingId === "string" && existingId.trim()) {
+            return existingId;
+          }
+          return name.toLowerCase().trim().replace(/\s+/g, "-");
+        };
+        if (teamAName && teamBName) {
+          setMatchMeta({
+            matchId: id,
+            teamA: {
+              id: getTeamIdOrSlug(data.match.teamA?.id, teamAName),
+              name: teamAName,
+            },
+            teamB: {
+              id: getTeamIdOrSlug(data.match.teamB?.id, teamBName),
+              name: teamBName,
+            },
+            ...(data.match.tossWinner && data.match.tossDecision
+              ? { toss: { winner: data.match.tossWinner, decision: data.match.tossDecision } }
+              : {}),
+          });
+        }
+
+        if (!cancelled) {
+          setMatch({
+            id,
+            slug: id,
+            team1: teamAName ?? "Team A",
+            team2: teamBName ?? "Team B",
+            currentOver: 0,
+            currentBall: 0,
+            status: data.match.matchEnded ? "Completed" : "Live",
+          });
+        }
+
+        // ✅ Auto-connect SSE so live updates flow when returning to the page
+        //    while a simulation is still running in the backend.
+        const runtime = data.runtime;
+        const isRunning = runtime?.isRunning === true && !data.match.matchEnded;
+        if (!cancelled && isRunning) {
+          // connectRealtime is safe to call if already connected — it's a no-op
           connectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID, {
-            autoStartSimulation: false,
+            autoStartSimulation: data.registry?.type !== "LIVE",
           });
         }
       } catch (err) {
@@ -1868,61 +1913,50 @@ export default function MatchDetailPage({
 
   if (!matchId) {
     return (
-      // ✅ No PageMotion here — layout's PageTransition already handles page animation.
-      // min-h-screen ensures the dark gradient always fills the viewport.
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,#020617_0%,#071120_35%,#0b1220_65%,#020617_100%)]">
-        <div className="p-10 text-center text-white">
-          Invalid match URL.
+      <PageMotion>
+        <div
+          style={{
+            backgroundColor: "var(--bg-base)",
+            backgroundImage: "var(--page-hero-gradient)",
+          }}
+        >
+          <div className="p-10 text-center text-[var(--text-primary)]">
+            Invalid match URL.
+          </div>
         </div>
-      </div>
+      </PageMotion>
     );
   }
 
   return (
     // ✅ FIX: matchId prop — NOT value prop
-    // ✅ FIX: removed PageMotion wrapper — layout's PageTransition already wraps all pages
-    //    with an opacity: 0 → 1 entrance animation. Adding PageMotion here created a
-    //    double opacity:0 stack that could leave content invisible on first paint.
-    // ✅ FIX: min-h-screen on the gradient div ensures the dark background always fills
-    //    the viewport, preventing a collapsed container when content is loading.
     <MatchProvider matchId={matchId}>
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,#020617_0%,#071120_35%,#0b1220_65%,#020617_100%)]">
-        {match ? (
-          <MatchInnerPage
-            match={match}
-            analytics={analytics}
-            insights={insights}
-            sessionMeta={sessionMeta}
-          />
-        ) : loadError ? (
-          <div className="flex min-h-[50vh] flex-col items-center justify-center space-y-3 p-10 text-center">
-            <p className="text-sm text-rose-300">{loadError}</p>
-            <p className="text-xs text-white/60">Match ID: {matchId}</p>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="mt-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white/80 transition hover:bg-white/[0.09]"
-            >
-              Retry
-            </button>
-          </div>
-        ) : (
-          <div className="flex min-h-[50vh] items-center justify-center p-10 text-center text-white">
-            <div className="space-y-3">
-              <div className="flex justify-center gap-1.5">
-                {[0, 1, 2].map((i) => (
-                  <span
-                    key={i}
-                    className="h-2 w-2 animate-pulse rounded-full bg-sky-400/70"
-                    style={{ animationDelay: `${i * 120}ms` }}
-                  />
-                ))}
-              </div>
-              <p className="text-sm text-white/70">Loading match…</p>
+      <PageMotion>
+        <div
+          style={{
+            backgroundColor: "var(--bg-base)",
+            backgroundImage: "var(--page-hero-gradient)",
+          }}
+        >
+          {match ? (
+            <MatchInnerPage
+              match={match}
+              analytics={analytics}
+              insights={insights}
+              sessionMeta={sessionMeta}
+            />
+          ) : loadError ? (
+            <div className="space-y-3 p-10 text-center">
+              <p className="text-sm text-rose-300">{loadError}</p>
+              <p className="text-xs text-white/60">Match ID: {matchId}</p>
             </div>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="p-10 text-center text-white">
+              Loading match...
+            </div>
+          )}
+        </div>
+      </PageMotion>
     </MatchProvider>
   );
 }

@@ -40,13 +40,13 @@ type Props = {
 };
 
 function getBallChipStyle(ball: string): string {
-  if (ball === "W")  return "bg-[#ef4444]/15 text-[#ef4444] font-bold";
-  if (ball === "4")  return "bg-[#3b82f6]/15 text-[#3b82f6] font-semibold";
-  if (ball === "6")  return "bg-[#f59e0b]/15 text-[#f59e0b] font-bold";
-  if (ball === "Wd") return "bg-[#f59e0b]/10 text-[#f59e0b]";
+  if (ball === "W")  return "tier-3-border tier-3-commentary state-wicket font-bold";
+  if (ball === "4")  return "tier-2-border tier-2-commentary state-boundary font-semibold";
+  if (ball === "6")  return "tier-2-border tier-2-commentary state-boundary font-bold";
+  if (ball === "Wd") return "tier-2-border tier-2-commentary state-pressure";
   if (ball === "Nb") return "bg-orange-500/10 text-orange-400";
   if (ball === "0")  return "bg-white/[0.04] text-[var(--text-muted)]";
-  return "bg-[#22c55e]/10 text-[#22c55e]";
+  return "tier-2-border tier-2-commentary state-partnership";
 }
 
 export default function MatchHeader({
@@ -69,8 +69,6 @@ export default function MatchHeader({
   winner,
   winBy,
 }: Props) {
-  console.log("🏏 MATCH HEADER RENDER");
-
   const finalTeam1 = team1 || "Team A";
   const finalTeam2 = team2 || "Team B";
 
@@ -407,8 +405,8 @@ export default function MatchHeader({
                 style={{
                   color:
                     rrr > 12
-                      ? "var(--accent-danger)"
-                      : "var(--accent-amber)",
+                      ? "var(--state-required-rr-danger)"
+                      : "var(--state-pressure)",
                 }}
               >
                 {rrr.toFixed(2)}

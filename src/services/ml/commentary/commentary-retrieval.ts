@@ -1,4 +1,5 @@
 import type { CommentaryContext, CommentaryPlan } from "@/services/commentary/types/commentary.types";
+import { getRuntimeThresholds } from "./commentary-runtime-contract";
 
 type RetrievalExample = {
   id: string;
@@ -11,7 +12,7 @@ type RetrievalExample = {
   tag: "wicket" | "boundary" | "pressure" | "partnership" | "momentum";
 };
 
-const RETRIEVAL_EXAMPLES: RetrievalExample[] = [
+const RETRIEVAL_INDEX: RetrievalExample[] = [
   {
     id: "wicket_death",
     text: "Huge wicket at the death and the match narrative flips.",
@@ -54,13 +55,20 @@ const RETRIEVAL_EXAMPLES: RetrievalExample[] = [
   },
 ];
 
-function tagForPlan(plan: CommentaryPlan): RetrievalExample["tag"] {
-  if (plan.templateKey.includes("wicket")) return "wicket";
-  if (plan.templateKey.includes("boundary")) return "boundary";
-  if (plan.templateKey.includes("partnership")) return "partnership";
-  if (plan.templateKey.includes("momentum")) return "momentum";
-  return "pressure";
-}
+export type CommentaryRetrievalResult = {
+  confidence: number;
+  candidates: Array<{ id: string; text: string; score: number }>;
+  appliedFilters: {
+    phase_of_match: CommentaryContext["overPhase"];
+    pressure_level: "LOW" | "MEDIUM" | "HIGH" | "EXTREME";
+    wickets_lost_band: "0-2" | "3-5" | "6-8" | "9-10";
+    over_band: "0-5" | "6-15" | "16-20";
+    commentary_type: CommentaryPlan["commentaryType"];
+  };
+  applied: boolean;
+  fallbackReasons: string[];
+  latencyMs: number;
+};
 
 function pressureBandForContext(context: CommentaryContext): RetrievalExample["pressureBand"] {
   if (context.chaseComplexity >= 85) return "EXTREME";
@@ -82,45 +90,91 @@ function overBand(over: number): RetrievalExample["overBand"] {
   return "16-20";
 }
 
-export function retrieveCommentaryExamples(input: { context: CommentaryContext; plan: CommentaryPlan }) {
-  const { context, plan } = input;
-  const tag = tagForPlan(plan);
-  const pressureBand = pressureBandForContext(context);
-  const wicketsLostBand = wicketsBand(context.wickets);
-  const currentOverBand = overBand(context.over);
+function tagForPlan(plan: CommentaryPlan): RetrievalExample["tag"] {
+  if (plan.templateKey.includes("wicket")) return "wicket";
+  if (plan.templateKey.includes("boundary")) return "boundary";
+  if (plan.templateKey.includes("partnership")) return "partnership";
+  if (plan.templateKey.includes("momentum")) return "momentum";
+  return "pressure";
+}
 
-  const scored = RETRIEVAL_EXAMPLES.map((example) => {
-    let score = 0;
-    if (example.tag === tag) score += 0.35;
-    if (example.phase === context.overPhase) score += 0.2;
-    if (example.pressureBand === pressureBand) score += 0.15;
-    if (example.wicketsLostBand === wicketsLostBand) score += 0.15;
-    if (example.overBand === currentOverBand) score += 0.1;
-    if (example.commentaryType === plan.commentaryType) score += 0.05;
-    return { example, score: Number(score.toFixed(4)) };
-  })
+export function runCommentaryRetrieval(input: {
+  context: CommentaryContext;
+  plan: CommentaryPlan;
+  timeoutMs?: number;
+}): CommentaryRetrievalResult {
+  const startedAt = Date.now();
+  const thresholds = getRuntimeThresholds();
+  const fallbackReasons: string[] = [];
+
+  if (RETRIEVAL_INDEX.length === 0) {
+    return {
+      confidence: 0,
+      candidates: [],
+      appliedFilters: {
+        phase_of_match: input.context.overPhase,
+        pressure_level: pressureBandForContext(input.context),
+        wickets_lost_band: wicketsBand(input.context.wickets),
+        over_band: overBand(input.context.over),
+        commentary_type: input.plan.commentaryType,
+      },
+      applied: false,
+      fallbackReasons: ["retrieval_index_load_failed"],
+      latencyMs: Date.now() - startedAt,
+    };
+  }
+
+  const phase = input.context.overPhase;
+  const pressure = pressureBandForContext(input.context);
+  const wickets = wicketsBand(input.context.wickets);
+  const over = overBand(input.context.over);
+  const tag = tagForPlan(input.plan);
+
+  const filtered = RETRIEVAL_INDEX.filter((example) => example.phase === phase || example.tag === tag);
+
+  const scored = filtered
+    .map((example) => {
+      let score = 0;
+      if (example.tag === tag) score += 0.35;
+      if (example.phase === phase) score += 0.2;
+      if (example.pressureBand === pressure) score += 0.15;
+      if (example.wicketsLostBand === wickets) score += 0.15;
+      if (example.overBand === over) score += 0.1;
+      if (example.commentaryType === input.plan.commentaryType) score += 0.05;
+      return { example, score: Number(score.toFixed(4)) };
+    })
     .filter((item) => item.score > 0)
     .sort((left, right) => {
       if (right.score !== left.score) return right.score - left.score;
       return left.example.id.localeCompare(right.example.id);
     });
 
-  const selected = scored.slice(0, 3);
-  const confidence = selected[0]?.score ?? 0;
+  const deduped = Array.from(new Map(scored.map((item) => [item.example.id, item])).values());
+  const candidates = deduped.slice(0, 3).map((item) => ({
+    id: item.example.id,
+    text: item.example.text,
+    score: item.score,
+  }));
+
+  const confidence = candidates[0]?.score ?? 0;
+  const timedOut = input.timeoutMs != null && Date.now() - startedAt > input.timeoutMs;
+  const weakSimilarity = confidence < thresholds.retrieval_threshold;
+
+  if (timedOut) fallbackReasons.push("retrieval_timeout");
+  if (weakSimilarity) fallbackReasons.push("retrieval_confidence_below_threshold");
 
   return {
     confidence,
+    candidates: timedOut || weakSimilarity ? [] : candidates,
     appliedFilters: {
-      phase_of_match: context.overPhase,
-      pressure_level: pressureBand,
-      wickets_lost_band: wicketsLostBand,
-      over_band: currentOverBand,
-      commentary_type: plan.commentaryType,
+      phase_of_match: phase,
+      pressure_level: pressure,
+      wickets_lost_band: wickets,
+      over_band: over,
+      commentary_type: input.plan.commentaryType,
     },
-    candidates: selected.map((item) => ({
-      id: item.example.id,
-      text: item.example.text,
-      score: item.score,
-    })),
+    applied: !timedOut && !weakSimilarity,
+    fallbackReasons,
+    latencyMs: Date.now() - startedAt,
   };
 }

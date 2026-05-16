@@ -9,17 +9,7 @@ import { buildCommentaryPlan } from "../narrative/commentary-planner";
 import { createInitialNarrativeState, updateNarrativeState } from "../narrative/narrative-state";
 import { determineTone } from "../narrative/tone-engine";
 import { generateCommentaryEvent } from "../generators/commentary-generator";
-import { getCommentaryMlAssistMode, isCommentaryMlAssistEnabled } from "@/config/commentaryMlMode";
-import {
-  COMMENTARY_ML_LATENCY_BUDGET_MS,
-  isCommentaryClassifierEnabled,
-  isCommentaryRetrievalEnabled,
-  isCommentaryTemplateRankerEnabled,
-} from "@/config/commentaryMlRuntimeFlags";
-import { predictCommentaryContext } from "@/services/ml/commentary/commentary-classifier";
-import { rankTemplateForContext } from "@/services/ml/commentary/commentary-ranker";
-import { retrieveCommentaryExamples } from "@/services/ml/commentary/commentary-retrieval";
-import { getRuntimeThresholds, validateRuntimeFeatureContract } from "@/services/ml/commentary/commentary-runtime-contract";
+import { orchestrateCommentaryMl } from "@/services/ml/commentary/commentary-ml-orchestrator";
 import { appendCommentaryAudit } from "../audit/commentaryAuditLog";
 import { persistCommentaryContextSnapshot } from "../audit/contextSnapshotPersistence";
 import type {
@@ -52,9 +42,16 @@ type MlAssistDiagnostics = {
     ranker: number;
     retrieval: number;
   };
+  latencyMs: {
+    classifier: number;
+    ranker: number;
+    retrieval: number;
+  };
   retrievalCandidates: Array<{ id: string; text: string; score: number }>;
+  retrievalFilters: Record<string, unknown>;
   selectedTemplate: string;
   schemaHash: string | null;
+  schemaVersion: string | null;
 };
 
 const narrativeStateStore = new Map<string, NarrativeState>();
@@ -196,99 +193,39 @@ function applyMlAssistToPlan(input: { context: CommentaryContext; plan: Commenta
   plan: CommentaryPlan;
   diagnostics: MlAssistDiagnostics;
 } {
-  const mode = getCommentaryMlAssistMode();
-  const diagnostics: MlAssistDiagnostics = {
-    fallbackReasons: [],
-    confidence: { classifier: 0, ranker: 0, retrieval: 0 },
-    retrievalCandidates: [],
-    selectedTemplate: input.plan.templateKey,
-    schemaHash: null,
-  };
-
-  if (mode === "off") {
-    diagnostics.fallbackReasons.push("ml_assist_disabled");
-    return { plan: input.plan, diagnostics };
-  }
-
-  const featureValidation = validateRuntimeFeatureContract(input.context);
-  diagnostics.schemaHash = featureValidation.schemaHash;
-  if (!featureValidation.valid) {
-    diagnostics.fallbackReasons.push(`feature_validation_failed:${featureValidation.errors.join(",")}`);
-    return { plan: input.plan, diagnostics };
-  }
-
-  if (!isCommentaryMlAssistEnabled(mode)) {
-    diagnostics.fallbackReasons.push("shadow_mode");
-    return { plan: input.plan, diagnostics };
-  }
-
-  const thresholds = getRuntimeThresholds();
-  const nextPlan = { ...input.plan };
-
   try {
-    if (isCommentaryClassifierEnabled()) {
-      const classifierStart = Date.now();
-      const prediction = predictCommentaryContext({ context: input.context });
-      const classifierLatency = Date.now() - classifierStart;
+    const result = orchestrateCommentaryMl({
+      context: input.context,
+      plannerPlan: input.plan,
+    });
 
-      diagnostics.confidence.classifier = prediction.confidence;
-      if (classifierLatency > COMMENTARY_ML_LATENCY_BUDGET_MS.classifier) {
-        diagnostics.fallbackReasons.push("classifier_latency_budget_exceeded");
-      } else if (
-        prediction.confidence >= thresholds.commentary_type_threshold &&
-        prediction.confidence >= thresholds.tone_threshold
-      ) {
-        nextPlan.tone = prediction.tone;
-        nextPlan.importance = prediction.importance;
-        if (nextPlan.commentaryType === "ball") {
-          nextPlan.commentaryType = prediction.commentaryType;
-        }
-      } else {
-        diagnostics.fallbackReasons.push("classifier_confidence_below_threshold");
-      }
-    } else {
-      diagnostics.fallbackReasons.push("classifier_flag_disabled");
-    }
-
-    if (isCommentaryTemplateRankerEnabled()) {
-      const rankerStart = Date.now();
-      const ranking = rankTemplateForContext({ context: input.context, plan: nextPlan });
-      const rankerLatency = Date.now() - rankerStart;
-      diagnostics.confidence.ranker = ranking.confidence;
-
-      if (rankerLatency > COMMENTARY_ML_LATENCY_BUDGET_MS.ranking) {
-        diagnostics.fallbackReasons.push("ranker_latency_budget_exceeded");
-      } else if (ranking.confidence >= thresholds.template_threshold) {
-        nextPlan.templateKey = ranking.topTemplateKey;
-      } else {
-        diagnostics.fallbackReasons.push("ranker_confidence_below_threshold");
-      }
-    } else {
-      diagnostics.fallbackReasons.push("template_ranker_flag_disabled");
-    }
-
-    if (isCommentaryRetrievalEnabled()) {
-      const retrievalStart = Date.now();
-      const retrieval = retrieveCommentaryExamples({ context: input.context, plan: nextPlan });
-      const retrievalLatency = Date.now() - retrievalStart;
-      diagnostics.confidence.retrieval = retrieval.confidence;
-      diagnostics.retrievalCandidates = retrieval.candidates;
-
-      if (retrievalLatency > COMMENTARY_ML_LATENCY_BUDGET_MS.retrieval) {
-        diagnostics.fallbackReasons.push("retrieval_latency_budget_exceeded");
-      } else if (retrieval.confidence < (thresholds.retrieval_threshold ?? 0.5)) {
-        diagnostics.fallbackReasons.push("retrieval_confidence_below_threshold");
-      }
-    } else {
-      diagnostics.fallbackReasons.push("retrieval_flag_disabled");
-    }
-
-    diagnostics.selectedTemplate = nextPlan.templateKey;
-    return { plan: nextPlan, diagnostics };
+    return {
+      plan: result.plan,
+      diagnostics: {
+        fallbackReasons: result.diagnostics.fallbackReasons,
+        confidence: result.diagnostics.confidence,
+        latencyMs: result.diagnostics.latencyMs,
+        retrievalCandidates: result.diagnostics.retrieval.candidates,
+        retrievalFilters: result.diagnostics.retrieval.appliedFilters,
+        selectedTemplate: result.diagnostics.selectedTemplate,
+        schemaHash: result.diagnostics.schemaHash,
+        schemaVersion: result.diagnostics.schemaVersion,
+      },
+    };
   } catch {
-    diagnostics.fallbackReasons.push("ml_runtime_exception");
-    diagnostics.selectedTemplate = input.plan.templateKey;
-    return { plan: input.plan, diagnostics };
+    return {
+      plan: input.plan,
+      diagnostics: {
+        fallbackReasons: ["ml_runtime_exception"],
+        confidence: { classifier: 0, ranker: 0, retrieval: 0 },
+        latencyMs: { classifier: 0, ranker: 0, retrieval: 0 },
+        retrievalCandidates: [],
+        retrievalFilters: {},
+        selectedTemplate: input.plan.templateKey,
+        schemaHash: null,
+        schemaVersion: null,
+      },
+    };
   }
 }
 
@@ -381,6 +318,17 @@ export function processCommentaryPipeline(input: PipelineInput): PipelineResult 
     context,
     plan: finalPrimaryPlan,
     narrativeState,
+    mlMetadata: {
+      retrieval: {
+        candidates: mlAssist.diagnostics.retrievalCandidates,
+        appliedFilters: mlAssist.diagnostics.retrievalFilters,
+      },
+      confidence: mlAssist.diagnostics.confidence,
+      fallbackReasons: mlAssist.diagnostics.fallbackReasons,
+      latencyMs: mlAssist.diagnostics.latencyMs,
+      schemaHash: mlAssist.diagnostics.schemaHash,
+      schemaVersion: mlAssist.diagnostics.schemaVersion,
+    },
   });
 
   const eventPlanPairs: Array<{ event: CommentaryEvent; plan: CommentaryPlan }> = [{ event: primaryEvent, plan: finalPrimaryPlan }];
@@ -414,6 +362,17 @@ export function processCommentaryPipeline(input: PipelineInput): PipelineResult 
         context,
         plan: overPlan,
         narrativeState,
+        mlMetadata: {
+          retrieval: {
+            candidates: mlAssist.diagnostics.retrievalCandidates,
+            appliedFilters: mlAssist.diagnostics.retrievalFilters,
+          },
+          confidence: mlAssist.diagnostics.confidence,
+          fallbackReasons: mlAssist.diagnostics.fallbackReasons,
+          latencyMs: mlAssist.diagnostics.latencyMs,
+          schemaHash: mlAssist.diagnostics.schemaHash,
+          schemaVersion: mlAssist.diagnostics.schemaVersion,
+        },
       }),
       plan: overPlan,
     });
@@ -452,6 +411,17 @@ export function processCommentaryPipeline(input: PipelineInput): PipelineResult 
         context,
         plan: pressurePlan,
         narrativeState,
+        mlMetadata: {
+          retrieval: {
+            candidates: mlAssist.diagnostics.retrievalCandidates,
+            appliedFilters: mlAssist.diagnostics.retrievalFilters,
+          },
+          confidence: mlAssist.diagnostics.confidence,
+          fallbackReasons: mlAssist.diagnostics.fallbackReasons,
+          latencyMs: mlAssist.diagnostics.latencyMs,
+          schemaHash: mlAssist.diagnostics.schemaHash,
+          schemaVersion: mlAssist.diagnostics.schemaVersion,
+        },
       }),
       plan: pressurePlan,
     });
@@ -486,6 +456,17 @@ export function processCommentaryPipeline(input: PipelineInput): PipelineResult 
         context,
         plan: momentumPlan,
         narrativeState,
+        mlMetadata: {
+          retrieval: {
+            candidates: mlAssist.diagnostics.retrievalCandidates,
+            appliedFilters: mlAssist.diagnostics.retrievalFilters,
+          },
+          confidence: mlAssist.diagnostics.confidence,
+          fallbackReasons: mlAssist.diagnostics.fallbackReasons,
+          latencyMs: mlAssist.diagnostics.latencyMs,
+          schemaHash: mlAssist.diagnostics.schemaHash,
+          schemaVersion: mlAssist.diagnostics.schemaVersion,
+        },
       }),
       plan: momentumPlan,
     });
@@ -520,6 +501,17 @@ export function processCommentaryPipeline(input: PipelineInput): PipelineResult 
         context,
         plan: turningPlan,
         narrativeState,
+        mlMetadata: {
+          retrieval: {
+            candidates: mlAssist.diagnostics.retrievalCandidates,
+            appliedFilters: mlAssist.diagnostics.retrievalFilters,
+          },
+          confidence: mlAssist.diagnostics.confidence,
+          fallbackReasons: mlAssist.diagnostics.fallbackReasons,
+          latencyMs: mlAssist.diagnostics.latencyMs,
+          schemaHash: mlAssist.diagnostics.schemaHash,
+          schemaVersion: mlAssist.diagnostics.schemaVersion,
+        },
       }),
       plan: turningPlan,
     });
@@ -554,9 +546,14 @@ export function processCommentaryPipeline(input: PipelineInput): PipelineResult 
       ranker: mlAssist.diagnostics.confidence.ranker,
       retrieval: mlAssist.diagnostics.confidence.retrieval,
     },
+    latencyMs: mlAssist.diagnostics.latencyMs,
     retrievalMatches: mlAssist.diagnostics.retrievalCandidates,
+    retrievalFilters: mlAssist.diagnostics.retrievalFilters,
     selectedTemplate: finalPrimaryPlan.templateKey,
     fallbackTriggers: mlAssist.diagnostics.fallbackReasons,
+    schemaHash: mlAssist.diagnostics.schemaHash,
+    schemaVersion: mlAssist.diagnostics.schemaVersion,
+    source: input.ballEvent.eventSource ?? "MANUAL",
   });
 
   return {

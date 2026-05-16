@@ -1,4 +1,5 @@
 import type { CommentaryContext, CommentaryPlan } from "@/services/commentary/types/commentary.types";
+import { getRuntimeThresholds } from "./commentary-runtime-contract";
 
 const TEMPLATE_CANDIDATES = [
   "boundary_pressure_release",
@@ -18,6 +19,15 @@ const TEMPLATE_CANDIDATES = [
   "turning_point_summary",
 ];
 
+export type CommentaryRankerResult = {
+  selectedTemplate: string;
+  confidence: number;
+  ranked: Array<{ templateKey: string; score: number }>;
+  applied: boolean;
+  fallbackReasons: string[];
+  latencyMs: number;
+};
+
 function scoreTemplate(templateKey: string, context: CommentaryContext, plan: CommentaryPlan): number {
   let score = 0;
   if (templateKey === plan.templateKey) score += 4;
@@ -30,23 +40,30 @@ function scoreTemplate(templateKey: string, context: CommentaryContext, plan: Co
   return score;
 }
 
-export function rankTemplateForContext(input: { context: CommentaryContext; plan: CommentaryPlan }) {
-  const { context, plan } = input;
+export function runCommentaryTemplateRanker(input: {
+  context: CommentaryContext;
+  plan: CommentaryPlan;
+}): CommentaryRankerResult {
+  const start = Date.now();
+  const thresholds = getRuntimeThresholds();
+
   const ranked = TEMPLATE_CANDIDATES.map((templateKey) => ({
     templateKey,
-    score: scoreTemplate(templateKey, context, plan),
-  })).sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return a.templateKey.localeCompare(b.templateKey);
+    score: scoreTemplate(templateKey, input.context, input.plan),
+  })).sort((left, right) => {
+    if (right.score !== left.score) return right.score - left.score;
+    return left.templateKey.localeCompare(right.templateKey);
   });
 
-  const maxScore = 12;
-  const topScore = ranked[0]?.score ?? 0;
+  const confidence = Math.max(0, Math.min(1, (ranked[0]?.score ?? 0) / 12));
+  const applied = confidence >= thresholds.template_rank_threshold;
 
   return {
-    topTemplateKey: ranked[0]?.templateKey ?? plan.templateKey,
-    score: topScore,
-    confidence: Math.max(0, Math.min(1, topScore / maxScore)),
+    selectedTemplate: applied ? (ranked[0]?.templateKey ?? input.plan.templateKey) : input.plan.templateKey,
+    confidence,
     ranked,
+    applied,
+    fallbackReasons: applied ? [] : ["ranker_confidence_below_threshold"],
+    latencyMs: Date.now() - start,
   };
 }

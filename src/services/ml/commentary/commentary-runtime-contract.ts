@@ -1,30 +1,34 @@
 import crypto from "crypto";
 import featureContract from "../../../../ml/commentary/models/feature_contract.json";
 import runtimeThresholds from "../../../../ml/commentary/models/runtime_thresholds.json";
-import type { CommentaryContext } from "@/services/commentary/types/commentary.types";
+import type { CommentaryContext, CommentaryImportance, CommentaryTone, CommentaryType } from "@/services/commentary/types/commentary.types";
 
-export type RuntimeFeatureValidationResult = {
+export type RuntimeFeatureContract = typeof featureContract;
+
+export type RuntimeThresholds = {
+  commentary_type_threshold: number;
+  tone_threshold: number;
+  importance_threshold: number;
+  template_rank_threshold: number;
+  retrieval_threshold: number;
+  fallback_strategy?: string;
+  description?: string;
+};
+
+export type RuntimeContractValidationResult = {
   valid: boolean;
   errors: string[];
-  orderedFeatures: number[];
-  featureMap: Record<string, string | number>;
-  schemaHash: string;
-  schemaVersion: string;
-};
-
-type FeatureSpec = {
-  name: string;
-  type: "int" | "float" | "categorical";
-  categories?: string[];
-};
-
-type FeatureContract = {
   schemaVersion: string;
   schemaHash: string;
-  features: FeatureSpec[];
 };
 
-const CONTRACT = featureContract as FeatureContract;
+const CONTRACT = featureContract as RuntimeFeatureContract;
+
+const REQUIRED_LABELS = {
+  commentary_type: ["boundary", "collapse", "momentum", "partnership", "pressure", "summary", "turning_point", "wicket"],
+  tone: ["analytical", "celebratory", "dramatic", "energetic", "neutral", "tense"],
+  importance: ["high", "low", "medium"],
+} as const;
 
 function serializeStable(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map((item) => serializeStable(item)).join(",")}]`;
@@ -36,12 +40,88 @@ function serializeStable(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function computedSchemaHashStable(contract: FeatureContract): string {
-  const { schemaHash: _ignored, ...rest } = contract;
+function computeContractHash(contract: RuntimeFeatureContract): string {
+  const { schemaHash, ...rest } = contract;
+  void schemaHash;
   return crypto.createHash("sha256").update(serializeStable(rest)).digest("hex");
 }
 
-function mapContextToFeatureMap(context: CommentaryContext): Record<string, string | number> {
+function includesAll<T extends string>(actual: readonly string[] | undefined, required: readonly T[], key: string): string[] {
+  if (!actual) return [`missing_label_mapping:${key}`];
+  return required.filter((label) => !actual.includes(label)).map((label) => `missing_label:${key}:${label}`);
+}
+
+function validateSchema() {
+  const errors: string[] = [];
+
+  if (!CONTRACT.schemaVersion) errors.push("missing_schema_version");
+  if (!CONTRACT.schemaHash) errors.push("missing_schema_hash");
+
+  if (!Array.isArray(CONTRACT.classifierFeatures) || CONTRACT.classifierFeatures.length === 0) {
+    errors.push("missing_classifier_features");
+  }
+
+  if (!Array.isArray(CONTRACT.rankerFeatures) || CONTRACT.rankerFeatures.length === 0) {
+    errors.push("missing_ranker_features");
+  }
+
+  if (!Array.isArray(CONTRACT.targetColumns) || CONTRACT.targetColumns.length === 0) {
+    errors.push("missing_target_columns");
+  }
+
+  const classifierDuplicates = CONTRACT.classifierFeatures.filter(
+    (name, index) => CONTRACT.classifierFeatures.indexOf(name) !== index,
+  );
+  if (classifierDuplicates.length > 0) {
+    errors.push(...classifierDuplicates.map((name) => `duplicate_classifier_feature:${name}`));
+  }
+
+  const rankerDuplicates = CONTRACT.rankerFeatures.filter(
+    (name, index) => CONTRACT.rankerFeatures.indexOf(name) !== index,
+  );
+  if (rankerDuplicates.length > 0) {
+    errors.push(...rankerDuplicates.map((name) => `duplicate_ranker_feature:${name}`));
+  }
+
+  const numericSet = new Set(CONTRACT.numericFeatures);
+  const categoricalSet = new Set(CONTRACT.categoricalFeatures);
+  for (const feature of CONTRACT.classifierFeatures) {
+    if (!numericSet.has(feature) && !categoricalSet.has(feature)) {
+      errors.push(`classifier_feature_not_declared:${feature}`);
+    }
+  }
+
+  if (CONTRACT.schemaHash !== computeContractHash(CONTRACT)) {
+    errors.push("schema_hash_mismatch");
+  }
+
+  errors.push(...includesAll(CONTRACT.labelMappings.commentary_type, REQUIRED_LABELS.commentary_type, "commentary_type"));
+  errors.push(...includesAll(CONTRACT.labelMappings.tone, REQUIRED_LABELS.tone, "tone"));
+  errors.push(...includesAll(CONTRACT.labelMappings.importance, REQUIRED_LABELS.importance, "importance"));
+
+  return errors;
+}
+
+const CONTRACT_ERRORS = validateSchema();
+
+export function getRuntimeFeatureContract(): RuntimeFeatureContract {
+  return CONTRACT;
+}
+
+export function getRuntimeThresholds(): RuntimeThresholds {
+  const typed = runtimeThresholds as Partial<RuntimeThresholds>;
+  return {
+    commentary_type_threshold: typed.commentary_type_threshold ?? 0.75,
+    tone_threshold: typed.tone_threshold ?? 0.7,
+    importance_threshold: typed.importance_threshold ?? 0.65,
+    template_rank_threshold: typed.template_rank_threshold ?? 0.6,
+    retrieval_threshold: typed.retrieval_threshold ?? 0.5,
+    fallback_strategy: typed.fallback_strategy,
+    description: typed.description,
+  };
+}
+
+export function buildRuntimeFeatureMap(context: CommentaryContext): Record<string, string | number> {
   return {
     innings: context.innings,
     over: context.over,
@@ -73,56 +153,43 @@ function mapContextToFeatureMap(context: CommentaryContext): Record<string, stri
   };
 }
 
-export function validateRuntimeFeatureContract(context: CommentaryContext): RuntimeFeatureValidationResult {
-  const featureMap = mapContextToFeatureMap(context);
-  const errors: string[] = [];
+export function getExpectedFeatureOrder(mode: "classifier" | "ranker") {
+  return mode === "classifier" ? [...CONTRACT.classifierFeatures] : [...CONTRACT.rankerFeatures];
+}
 
-  const stableHash = computedSchemaHashStable(CONTRACT);
-  if (CONTRACT.schemaHash !== stableHash) {
-    errors.push("schema_hash_mismatch");
-  }
-
-  const orderedFeatures = CONTRACT.features.map((feature) => {
-    const value = featureMap[feature.name];
-    if (value === undefined || value === null) {
-      errors.push(`missing_feature:${feature.name}`);
-      return 0;
-    }
-
-    if (feature.type === "categorical") {
-      const normalized = String(value);
-      if (feature.categories && !feature.categories.includes(normalized)) {
-        errors.push(`invalid_category:${feature.name}:${normalized}`);
-      }
-      return 0;
-    }
-
-    const numeric = Number(value);
-    if (Number.isNaN(numeric)) {
-      errors.push(`nan_feature:${feature.name}`);
-      return 0;
-    }
-    if (feature.type === "int" && !Number.isInteger(numeric)) {
-      errors.push(`invalid_int_feature:${feature.name}`);
-    }
-    return numeric;
-  });
-
-  return {
-    valid: errors.length === 0,
-    errors,
-    orderedFeatures,
-    featureMap,
-    schemaHash: CONTRACT.schemaHash,
-    schemaVersion: CONTRACT.schemaVersion,
+export function getRuntimeLabelMappings() {
+  return CONTRACT.labelMappings as {
+    commentary_type: string[];
+    tone: string[];
+    importance: string[];
   };
 }
 
-export function getRuntimeThresholds() {
-  return runtimeThresholds as {
-    commentary_type_threshold: number;
-    tone_threshold: number;
-    template_threshold: number;
-    retrieval_threshold?: number;
+export function normalizeCommentaryTypeLabel(label: string): CommentaryType {
+  if (label === "pressure") return "pressure-summary";
+  if (label === "momentum") return "momentum-summary";
+  if (label === "turning_point") return "turning-point";
+  if (label === "summary") return "over-summary";
+  return "ball";
+}
+
+export function normalizeToneLabel(label: string): CommentaryTone {
+  if (label === "analytical" || label === "celebratory" || label === "dramatic" || label === "energetic" || label === "neutral" || label === "tense") {
+    return label;
+  }
+  return "neutral";
+}
+
+export function normalizeImportanceLabel(label: string): CommentaryImportance {
+  if (label === "high" || label === "medium" || label === "low") return label;
+  return "medium";
+}
+
+export function validateRuntimeContract(): RuntimeContractValidationResult {
+  return {
+    valid: CONTRACT_ERRORS.length === 0,
+    errors: [...CONTRACT_ERRORS],
+    schemaVersion: CONTRACT.schemaVersion,
+    schemaHash: CONTRACT.schemaHash,
   };
 }

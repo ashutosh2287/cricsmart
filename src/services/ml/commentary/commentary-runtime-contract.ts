@@ -21,7 +21,15 @@ type FeatureSpec = {
 type FeatureContract = {
   schemaVersion: string;
   schemaHash: string;
-  features: FeatureSpec[];
+  schemaFile: string;
+  classifierFeatures: string[];
+  rankerFeatures: string[];
+  targetColumns: string[];
+  categoricalFeatures: string[];
+  numericFeatures: string[];
+  labelMappings: Record<string, string[]>;
+  templatesByType: Record<string, string[]>;
+  datasetVersion: string;
 };
 
 const CONTRACT = featureContract as FeatureContract;
@@ -37,7 +45,8 @@ function serializeStable(value: unknown): string {
 }
 
 function computedSchemaHashStable(contract: FeatureContract): string {
-  const { schemaHash: _ignored, ...rest } = contract;
+  const { schemaHash, ...rest } = contract;
+  void schemaHash;
   return crypto.createHash("sha256").update(serializeStable(rest)).digest("hex");
 }
 
@@ -82,7 +91,13 @@ export function validateRuntimeFeatureContract(context: CommentaryContext): Runt
     errors.push("schema_hash_mismatch");
   }
 
-  const orderedFeatures = CONTRACT.features.map((feature) => {
+  const categoricalSet = new Set(CONTRACT.categoricalFeatures);
+  const featureSpecs: FeatureSpec[] = CONTRACT.classifierFeatures.map((name) => ({
+    name,
+    type: categoricalSet.has(name) ? "categorical" : "float",
+  }));
+
+  const orderedFeatures = featureSpecs.map((feature) => {
     const value = featureMap[feature.name];
     if (value === undefined || value === null) {
       errors.push(`missing_feature:${feature.name}`);
@@ -119,10 +134,19 @@ export function validateRuntimeFeatureContract(context: CommentaryContext): Runt
 }
 
 export function getRuntimeThresholds() {
-  return runtimeThresholds as {
+  const thresholds = runtimeThresholds as {
     commentary_type_threshold: number;
     tone_threshold: number;
-    template_threshold: number;
+    importance_threshold?: number;
+    template_rank_threshold: number;
     retrieval_threshold?: number;
+    fallback_strategy?: string;
+    description?: string;
+  };
+  return {
+    commentary_type_threshold: thresholds.commentary_type_threshold,
+    tone_threshold: thresholds.tone_threshold,
+    template_threshold: thresholds.template_rank_threshold,
+    retrieval_threshold: thresholds.retrieval_threshold,
   };
 }

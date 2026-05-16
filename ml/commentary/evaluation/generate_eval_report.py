@@ -131,7 +131,16 @@ def evaluate_ranker(
         score_lists.extend(chunk_scores.tolist())
         idx += len(candidates)
 
-    ndcg = float(ndcg_score([relevances], [score_lists])) if relevances else 0.0
+    ndcg = (
+        float(
+            ndcg_score(
+                np.asarray([relevances], dtype=float),
+                np.asarray([score_lists], dtype=float),
+            )
+        )
+        if relevances
+        else 0.0
+    )
     top1_accuracy = correct / total if total else 0.0
 
     return {

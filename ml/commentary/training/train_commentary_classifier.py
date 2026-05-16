@@ -4,12 +4,13 @@ import argparse
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 import joblib
 import numpy as np
 import pandas as pd
 from lightgbm import LGBMClassifier
+from sklearn.base import BaseEstimator
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
 from sklearn.multioutput import MultiOutputClassifier
@@ -119,16 +120,16 @@ def train_classifier(
     model = Pipeline(
         steps=[
             ("preprocessor", preprocessor),
-            ("classifier", MultiOutputClassifier(base)),
+            ("classifier", MultiOutputClassifier(cast(BaseEstimator, base))),
         ]
     )
     model.fit(x_train, y_train)
 
-    predictions = model.predict(x_test)
+    predictions = np.asarray(model.predict(x_test))
     metrics: Dict[str, Any] = {}
     for index, target in enumerate(TARGET_COLUMNS):
         y_true = y_test[target].tolist()
-        y_pred = list(predictions[:, index])
+        y_pred = predictions[:, index].tolist()
         label_names = sorted(set(y_true) | set(y_pred))
         metrics[target] = {
             **compute_classification_metrics(y_true, y_pred),

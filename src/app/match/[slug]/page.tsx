@@ -86,6 +86,14 @@ type MainTab =
   | "admin";
 
 const AUTO_RECONNECT_SUBSCRIBER_ID = "match-detail-page-auto";
+const MAIN_TABS: MainTab[] = [
+  "overview",
+  "live",
+  "analysis",
+  "timeline",
+  "scorecard",
+  "admin",
+];
 
 type PlayerStat = {
   runs: number;
@@ -124,6 +132,10 @@ type MatchSessionMeta = {
 
 function cls(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+function isMainTab(value: string): value is MainTab {
+  return MAIN_TABS.includes(value as MainTab);
 }
 
 function formatOverDisplay(overs?: Record<string, unknown>) {
@@ -375,8 +387,8 @@ function TabsArea({
   const [activeTab, setActiveTab] = useState<MainTab>("overview");
 
   useEffect(() => {
-    const tab = searchParams.get("tab") as MainTab;
-    if (!tab) return;
+    const tab = searchParams.get("tab");
+    if (!tab || !isMainTab(tab)) return;
     setTimeout(() => setActiveTab(tab), 0);
   }, [searchParams]);
 
@@ -546,14 +558,7 @@ function TabsArea({
       ? [{ players: `${strikerName} & ${nonStrikerName}`, runs: 0 }]
       : [];
 
-  const tabs: MainTab[] = [
-    "overview",
-    "live",
-    "analysis",
-    "timeline",
-    "scorecard",
-    "admin",
-  ];
+  const tabs: MainTab[] = MAIN_TABS;
 
   const summaryCards = [
     {
@@ -1629,6 +1634,7 @@ export default function MatchDetailPage({
   const [match, setMatch] = useState<Match | undefined>();
   const [sessionMeta, setSessionMeta] = useState<MatchSessionMeta | null>(null);
   const [insights, setInsights] = useState<BroadcastInsight[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   type WinPoint = {
     over: number;
@@ -1665,10 +1671,12 @@ export default function MatchDetailPage({
 
     async function loadMatch() {
       try {
+        if (!cancelled) setLoadError(null);
         const res = await fetch(`/api/match/${id}`, { cache: "no-store" });
 
         if (!res.ok) {
           console.error("MATCH API ERROR", await res.text());
+          if (!cancelled) setLoadError("Unable to load this match right now.");
           return;
         }
 
@@ -1676,6 +1684,7 @@ export default function MatchDetailPage({
 
         if (!data?.success || !data?.match) {
           console.error("Match not found in Redis for", id);
+          if (!cancelled) setLoadError("Match data not found. Please restart or reconnect the simulation.");
           return;
         }
 
@@ -1738,6 +1747,7 @@ export default function MatchDetailPage({
         }
       } catch (err) {
         console.error("LOAD MATCH ERROR", err);
+        if (!cancelled) setLoadError("Unable to load this match right now.");
       }
     }
 
@@ -1805,6 +1815,11 @@ export default function MatchDetailPage({
               insights={insights}
               sessionMeta={sessionMeta}
             />
+          ) : loadError ? (
+            <div className="space-y-3 p-10 text-center">
+              <p className="text-sm text-rose-300">{loadError}</p>
+              <p className="text-xs text-white/60">Match ID: {matchId}</p>
+            </div>
           ) : (
             <div className="p-10 text-center text-white">
               Loading match...

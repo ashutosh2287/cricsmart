@@ -1662,78 +1662,118 @@ export default function MatchDetailPage({
     if (!matchId) return;
     const id = matchId;
     let cancelled = false;
+    const MAX_LOAD_ATTEMPTS = 5;
+    const RETRY_DELAY_MS = 450;
+    const wait = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
 
     async function loadMatch() {
+      let loaded = false;
+
       try {
-        const res = await fetch(`/api/match/${id}`, { cache: "no-store" });
+        for (let attempt = 0; attempt < MAX_LOAD_ATTEMPTS; attempt += 1) {
+          if (cancelled) return;
 
-        if (!res.ok) {
-          console.error("MATCH API ERROR", await res.text());
-          return;
-        }
+          const res = await fetch(`/api/match/${id}`, { cache: "no-store" });
 
-        const data = await res.json();
+          if (!res.ok) {
+            const details = await res.text();
+            console.error("MATCH API ERROR", details);
 
-        if (!data?.success || !data?.match) {
-          console.error("Match not found in Redis for", id);
-          return;
-        }
-
-        // ✅ Hydrate matchEngine (for scorecard helpers etc.)
-        hydrateMatchState(id, data.match);
-
-        setSessionMeta(data.registry ?? null);
-
-        // ✅ CRITICAL: also push into eventStore so MatchProvider sees initial state
-        setMatchState(id, data.match);
-
-        // ✅ Restore in-memory matchMeta from persisted engine state so the
-        //    match page renders correct team names after a page reload/return.
-        const teamAName = data.match.teamA?.name;
-        const teamBName = data.match.teamB?.name;
-        const getTeamIdOrSlug = (existingId: unknown, name: string) => {
-          if (typeof existingId === "string" && existingId.trim()) {
-            return existingId;
+            if (attempt < MAX_LOAD_ATTEMPTS - 1) {
+              await wait(RETRY_DELAY_MS);
+              continue;
+            }
+            break;
           }
-          return name.toLowerCase().trim().replace(/\s+/g, "-");
-        };
-        if (teamAName && teamBName) {
-          setMatchMeta({
-            matchId: id,
-            teamA: {
-              id: getTeamIdOrSlug(data.match.teamA?.id, teamAName),
-              name: teamAName,
-            },
-            teamB: {
-              id: getTeamIdOrSlug(data.match.teamB?.id, teamBName),
-              name: teamBName,
-            },
-            ...(data.match.tossWinner && data.match.tossDecision
-              ? { toss: { winner: data.match.tossWinner, decision: data.match.tossDecision } }
-              : {}),
-          });
+
+          const data = await res.json();
+
+          if (!data?.success || !data?.match) {
+            console.error("Match not found in Redis for", id);
+
+            if (attempt < MAX_LOAD_ATTEMPTS - 1) {
+              await wait(RETRY_DELAY_MS);
+              continue;
+            }
+            break;
+          }
+
+          // ✅ Hydrate matchEngine (for scorecard helpers etc.)
+          hydrateMatchState(id, data.match);
+
+          setSessionMeta(data.registry ?? null);
+
+          // ✅ CRITICAL: also push into eventStore so MatchProvider sees initial state
+          setMatchState(id, data.match);
+
+          // ✅ Restore in-memory matchMeta from persisted engine state so the
+          //    match page renders correct team names after a page reload/return.
+          const teamAName = data.match.teamA?.name;
+          const teamBName = data.match.teamB?.name;
+          const getTeamIdOrSlug = (existingId: unknown, name: string) => {
+            if (typeof existingId === "string" && existingId.trim()) {
+              return existingId;
+            }
+            return name.toLowerCase().trim().replace(/\s+/g, "-");
+          };
+          if (teamAName && teamBName) {
+            setMatchMeta({
+              matchId: id,
+              teamA: {
+                id: getTeamIdOrSlug(data.match.teamA?.id, teamAName),
+                name: teamAName,
+              },
+              teamB: {
+                id: getTeamIdOrSlug(data.match.teamB?.id, teamBName),
+                name: teamBName,
+              },
+              ...(data.match.tossWinner && data.match.tossDecision
+                ? { toss: { winner: data.match.tossWinner, decision: data.match.tossDecision } }
+                : {}),
+            });
+          }
+
+          if (!cancelled) {
+            setMatch({
+              id,
+              slug: id,
+              team1: teamAName ?? "Team A",
+              team2: teamBName ?? "Team B",
+              currentOver: 0,
+              currentBall: 0,
+              status: data.match.matchEnded ? "Completed" : "Live",
+            });
+          }
+
+          // ✅ Auto-connect SSE so live updates flow when returning to the page
+          //    while a simulation is still running in the backend.
+          const runtime = data.runtime;
+          const isRunning = runtime?.isRunning === true && !data.match.matchEnded;
+          if (!cancelled && isRunning) {
+            // connectRealtime is safe to call if already connected — it's a no-op
+            connectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID, {
+              autoStartSimulation: data.registry?.type !== "LIVE",
+            });
+          }
+
+          loaded = true;
+          break;
         }
 
-        if (!cancelled) {
-          setMatch({
+        if (!loaded && !cancelled) {
+          const meta = getMatchMeta(id);
+          setMatch((prev) => prev ?? {
             id,
             slug: id,
-            team1: teamAName ?? "Team A",
-            team2: teamBName ?? "Team B",
+            team1: meta?.teamA?.name ?? "Team A",
+            team2: meta?.teamB?.name ?? "Team B",
             currentOver: 0,
             currentBall: 0,
-            status: data.match.matchEnded ? "Completed" : "Live",
+            status: "Live",
           });
-        }
-
-        // ✅ Auto-connect SSE so live updates flow when returning to the page
-        //    while a simulation is still running in the backend.
-        const runtime = data.runtime;
-        const isRunning = runtime?.isRunning === true && !data.match.matchEnded;
-        if (!cancelled && isRunning) {
-          // connectRealtime is safe to call if already connected — it's a no-op
           connectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID, {
-            autoStartSimulation: data.registry?.type !== "LIVE",
+            autoStartSimulation: false,
           });
         }
       } catch (err) {

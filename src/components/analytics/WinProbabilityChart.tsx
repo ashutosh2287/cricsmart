@@ -92,7 +92,7 @@ function WinProbabilityChart({
 
   return (
     <AnalyticsErrorBoundary fallbackTitle="Win probability chart is temporarily unavailable.">
-      <div className="theme-chart-shell rounded-xl p-4">
+      <div className="theme-chart-shell hierarchy-primary rounded-xl p-3.5">
 
       {/* HEADER */}
       <div className="flex justify-between items-center mb-3">
@@ -145,8 +145,8 @@ function WinProbabilityChart({
 
           <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
 
-          <Area type="monotone" dataKey="batting" fill="url(#battingFill)" stroke="none" />
-          <Area type="monotone" dataKey="bowling" fill="url(#bowlingFill)" stroke="none" />
+          <Area type="monotone" dataKey="batting" fill="url(#battingFill)" stroke="none" isAnimationActive animationDuration={320} />
+          <Area type="monotone" dataKey="bowling" fill="url(#bowlingFill)" stroke="none" isAnimationActive animationDuration={320} />
 
           <XAxis dataKey="over" stroke="var(--chart-axis)" />
           <YAxis domain={[0, 100]} stroke="var(--chart-axis)" tickFormatter={(v) => `${v}%`} />
@@ -170,6 +170,8 @@ function WinProbabilityChart({
             stroke="var(--chart-positive)"
             strokeWidth={3}
             dot={renderMarkerDot}
+            isAnimationActive
+            animationDuration={360}
           />
 
           <Line
@@ -178,6 +180,8 @@ function WinProbabilityChart({
             stroke="var(--chart-negative)"
             strokeWidth={3}
             dot={false}
+            isAnimationActive
+            animationDuration={360}
           />
 
         </LineChart>

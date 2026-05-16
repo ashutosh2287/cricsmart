@@ -1,6 +1,7 @@
 "use client";
 
 import AnimatedScore from "./ui/AnimatedScore";
+import { LivePulse } from "@/components/matches/LivePulse";
 
 type Batsman = {
   name: string;
@@ -85,7 +86,7 @@ export default function MatchHeader({
 
   return (
     <div
-      className="w-full overflow-hidden"
+      className="hierarchy-primary w-full overflow-hidden"
       style={{
         background: "var(--bg-surface)",
         borderRadius: "var(--radius-lg)",
@@ -141,19 +142,10 @@ export default function MatchHeader({
       )}
 
       {/* ── Live / status bar ─────────────────────────────── */}
-      <div className="flex items-center gap-3 px-5 pt-4 pb-0">
+      <div className="flex items-center gap-3 px-4 pt-3 pb-0 md:px-5">
         {isLive && !matchEnded && (
           <span className="flex items-center gap-1.5">
-            <span className="relative flex h-2 w-2">
-              <span
-                className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                style={{ background: "var(--accent-live)" }}
-              />
-              <span
-                className="relative inline-flex rounded-full h-2 w-2"
-                style={{ background: "var(--accent-live)" }}
-              />
-            </span>
+            <LivePulse />
             <span
               className="text-[11px] font-semibold uppercase tracking-[0.18em]"
               style={{ color: "var(--accent-live)" }}
@@ -188,7 +180,7 @@ export default function MatchHeader({
       </div>
 
       {/* ── Main hero: teams + score ──────────────────────── */}
-      <div className="flex items-end justify-between gap-4 px-5 pt-3 pb-2">
+      <div className="flex items-end justify-between gap-4 px-4 pt-2.5 pb-2 md:px-5">
 
         {/* Both teams — equal visual weight */}
         <div className="min-w-0 flex-1">
@@ -242,7 +234,7 @@ export default function MatchHeader({
       </div>
 
       {/* ── Over progress bar ─────────────────────────────── */}
-      <div className="px-5 pb-1">
+      <div className="px-4 pb-1 md:px-5">
         <div
           className="w-full rounded-full overflow-hidden"
           style={{ height: "3px", background: "var(--bg-overlay)" }}
@@ -261,7 +253,7 @@ export default function MatchHeader({
       {/* ── Players row ───────────────────────────────────── */}
       {(striker || nonStriker || bowler) && (
         <div
-          className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-2.5 text-sm"
+          className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-sm md:px-5"
           style={{ borderTop: "1px solid var(--border-subtle)" }}
         >
           {striker && (
@@ -325,7 +317,7 @@ export default function MatchHeader({
       {/* ── Last over balls ───────────────────────────────── */}
       {lastOverBalls.length > 0 && (
         <div
-          className="flex items-center gap-1.5 px-5 py-2.5"
+          className="flex items-center gap-1.5 px-4 py-2 md:px-5"
           style={{ borderTop: "1px solid var(--border-subtle)" }}
         >
           <span
@@ -350,7 +342,7 @@ export default function MatchHeader({
       {/* ── Match metrics (innings-aware) ─────────────────── */}
       {!matchEnded && (
         <div
-          className="flex flex-wrap items-center gap-x-5 gap-y-1 px-5 py-2.5 text-sm"
+          className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-sm md:px-5"
           style={{ borderTop: "1px solid var(--border-subtle)" }}
         >
           <span className="tabular-nums">

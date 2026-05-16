@@ -25,6 +25,16 @@
   /* Border tokens */
   --border-subtle: color-mix(in srgb, #f5f7ff 10%, transparent);
   --border-strong: #232336;
+  --border-hierarchy-1: color-mix(in srgb, var(--accent-brand) 32%, transparent);
+  --border-hierarchy-2: color-mix(in srgb, var(--text-primary) 12%, transparent);
+  --border-hierarchy-3: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  --shadow-hierarchy-1: 0 22px 70px color-mix(in srgb, var(--bg-base) 52%, transparent);
+  --shadow-hierarchy-2: 0 14px 36px color-mix(in srgb, var(--bg-base) 38%, transparent);
+  --shadow-hierarchy-3: 0 8px 20px color-mix(in srgb, var(--bg-base) 24%, transparent);
+  --glow-hierarchy-1: 0 0 34px color-mix(in srgb, var(--accent-glow) 24%, transparent);
+  --motion-fast: 160ms;
+  --motion-base: 240ms;
+  --motion-slow: 340ms;
 
   /* Cinematic and nav tokens */
   --gradient-surface: linear-gradient(
@@ -157,7 +167,14 @@
   --text-muted: #6b7280;
 
   --border-subtle: color-mix(in srgb, #111827 12%, transparent);
-  --border-strong: #dce3f1;
+  --border-strong: #d1d5db;
+  --border-hierarchy-1: color-mix(in srgb, var(--accent-brand) 24%, transparent);
+  --border-hierarchy-2: #d1d5db;
+  --border-hierarchy-3: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --shadow-hierarchy-1: 0 18px 50px rgba(24, 39, 75, 0.14);
+  --shadow-hierarchy-2: 0 12px 28px rgba(24, 39, 75, 0.1);
+  --shadow-hierarchy-3: 0 6px 18px rgba(24, 39, 75, 0.08);
+  --glow-hierarchy-1: 0 0 24px color-mix(in srgb, var(--accent-glow) 14%, transparent);
 
   --gradient-surface: linear-gradient(
     135deg,
@@ -246,10 +263,10 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition:
-    background-color 220ms ease,
-    color 220ms ease,
-    border-color 220ms ease,
-    box-shadow 220ms ease;
+    background-color var(--motion-base) ease,
+    color var(--motion-base) ease,
+    border-color var(--motion-base) ease,
+    box-shadow var(--motion-base) ease;
 }
 
 .matches-panel {
@@ -315,11 +332,11 @@ body {
   color: var(--text-secondary);
   cursor: pointer;
   transition:
-    background-color 220ms ease,
-    color 220ms ease,
-    border-color 220ms ease,
-    transform 220ms ease,
-    box-shadow 220ms ease;
+    background-color var(--motion-base) ease,
+    color var(--motion-base) ease,
+    border-color var(--motion-base) ease,
+    transform var(--motion-base) ease,
+    box-shadow var(--motion-base) ease;
 }
 
 .theme-toggle:hover {
@@ -339,9 +356,9 @@ body {
   align-items: center;
   justify-content: center;
   transition:
-    opacity 220ms ease,
-    color 220ms ease,
-    transform 220ms ease;
+    opacity var(--motion-base) ease,
+    color var(--motion-base) ease,
+    transform var(--motion-base) ease;
 }
 
 .theme-toggle__icon--sun {
@@ -376,10 +393,10 @@ body {
     0 0 18px color-mix(in srgb, var(--accent-glow) 20%, transparent);
   transform: translateX(28px);
   transition:
-    background-color 220ms ease,
-    border-color 220ms ease,
-    transform 220ms ease,
-    box-shadow 220ms ease;
+    background-color var(--motion-base) ease,
+    border-color var(--motion-base) ease,
+    transform var(--motion-base) ease,
+    box-shadow var(--motion-base) ease;
 }
 
 [data-theme="light"] .theme-toggle__knob {
@@ -396,36 +413,67 @@ body {
   background: var(--modal-backdrop);
 }
 
-[data-theme="light"] .text-white {
-  color: var(--text-primary);
+.hierarchy-primary {
+  border: 1px solid var(--border-hierarchy-1);
+  box-shadow: var(--shadow-hierarchy-1), var(--glow-hierarchy-1);
 }
 
-[data-theme="light"] .text-white\/70,
-[data-theme="light"] .text-white\/65,
-[data-theme="light"] .text-white\/55,
-[data-theme="light"] .text-white\/80,
-[data-theme="light"] .text-white\/85,
-[data-theme="light"] .text-white\/90,
-[data-theme="light"] .text-gray-300,
-[data-theme="light"] .text-gray-400,
-[data-theme="light"] .text-zinc-200,
-[data-theme="light"] .text-zinc-300,
-[data-theme="light"] .text-zinc-400 {
-  color: var(--text-secondary);
+.hierarchy-secondary {
+  border: 1px solid var(--border-hierarchy-2);
+  box-shadow: var(--shadow-hierarchy-2);
 }
 
-[data-theme="light"] .bg-black,
-[data-theme="light"] .bg-black\/70,
-[data-theme="light"] .bg-black\/45,
-[data-theme="light"] .bg-gray-900,
-[data-theme="light"] .bg-zinc-900 {
-  background-color: var(--bg-surface);
+.hierarchy-tertiary {
+  border: 1px solid var(--border-hierarchy-3);
+  box-shadow: var(--shadow-hierarchy-3);
 }
 
-[data-theme="light"] .border-white\/10,
-[data-theme="light"] .border-white\/5,
-[data-theme="light"] .border-gray-800 {
-  border-color: var(--border-subtle);
+.density-compact {
+  gap: var(--space-3);
+}
+
+.density-compact > .card,
+.density-compact.card {
+  padding: var(--space-3);
+}
+
+.sports-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent-brand) 45%, transparent) transparent;
+}
+
+.sports-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.sports-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sports-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-brand) 45%, transparent);
+  transition: background-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+}
+
+.sports-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--accent-brand) 68%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-glow) 40%, transparent);
+}
+
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-brand) 40%, transparent);
 }
 
 a {
@@ -504,7 +552,6 @@ select {
   height: var(--space-2);
   border-radius: 999px;
   background: var(--accent-live);
-  animation: livePulse 2s ease-in-out infinite;
 }
 
 .thin-progress {
@@ -752,5 +799,16 @@ select {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

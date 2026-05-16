@@ -34,7 +34,7 @@ import {
   useMatchSelector,
   useScore,
 } from "@/services/matchSelectors";
-import { teams, Team } from "@/data/teams";
+import { Team } from "@/data/teams";
 import { Match } from "@/types/match";
 import { motion } from "framer-motion";
 
@@ -81,8 +81,7 @@ type MainTab =
   | "overview"
   | "live"
   | "analysis"
-  | "overs"
-  | "squad"
+  | "timeline"
   | "scorecard"
   | "admin";
 
@@ -100,12 +99,6 @@ type BowlerStat = {
   overs?: number;
   runs?: number;
   wickets?: number;
-};
-
-type SquadRole = "BAT" | "BOWL" | "AR" | "WK";
-type SquadPlayer = {
-  name: string;
-  role: SquadRole;
 };
 
 type BroadcastInsight = {
@@ -131,28 +124,6 @@ type MatchSessionMeta = {
 
 function cls(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
-}
-
-function isSquadRole(role: string): role is SquadRole {
-  return role === "BAT" || role === "BOWL" || role === "AR" || role === "WK";
-}
-
-function normalizeSquadPlayers(
-  squad?: Array<{ name?: string; role?: string }>
-): SquadPlayer[] {
-  return (squad ?? []).flatMap((player) => {
-    const name = player?.name?.trim();
-    const role = player?.role?.trim();
-
-    if (!name || !role || !isSquadRole(role)) return [];
-
-    return [{ name, role }];
-  });
-}
-
-function findTeamSquadByName(teamName: string): SquadPlayer[] {
-  const team = teams.find((item) => item.name === teamName);
-  return normalizeSquadPlayers(team?.squad);
 }
 
 function formatOverDisplay(overs?: Record<string, unknown>) {
@@ -575,40 +546,11 @@ function TabsArea({
       ? [{ players: `${strikerName} & ${nonStrikerName}`, runs: 0 }]
       : [];
 
-  const normalizedTeamASquad = normalizeSquadPlayers(
-    currentEngineState?.teamA?.squad
-  );
-  const normalizedTeamBSquad = normalizeSquadPlayers(
-    currentEngineState?.teamB?.squad
-  );
-
-  const squadTeams = [
-    {
-      name: currentEngineState?.teamA?.name || match.team1,
-      squad: normalizedTeamASquad,
-    },
-    {
-      name: currentEngineState?.teamB?.name || match.team2,
-      squad: normalizedTeamBSquad,
-    },
-  ].map((team) => {
-    const fallbackSquad = findTeamSquadByName(team.name);
-    const squad = team.squad.length ? team.squad : fallbackSquad;
-
-    return {
-      ...team,
-      squad,
-      battingOrder: squad.length ? getBattingOrder(squad) : [],
-      bowlingOrder: squad.length ? getBowlingOrder(squad) : [],
-    };
-  });
-
   const tabs: MainTab[] = [
     "overview",
     "live",
     "analysis",
-    "overs",
-    "squad",
+    "timeline",
     "scorecard",
     "admin",
   ];
@@ -657,7 +599,7 @@ function TabsArea({
     >
       <div className="min-w-0">
         {/* ── Tab Bar ── */}
-        <div className="sticky top-24 z-20 mb-4 overflow-x-auto">
+        <div className="sticky top-24 z-20 mb-3 overflow-x-auto sports-scrollbar">
   <div
     className="inline-flex min-w-full"
     style={{ borderBottom: "1px solid var(--border-subtle)" }}
@@ -675,9 +617,16 @@ function TabsArea({
               : "2px solid transparent",
             marginBottom: "-1px",
           }}
-          className="px-4 py-3 text-sm font-medium capitalize whitespace-nowrap transition-colors hover:text-[var(--text-primary)]"
+          className="relative px-4 py-3 text-sm font-medium capitalize whitespace-nowrap transition-colors hover:text-[var(--text-primary)]"
         >
           {tab}
+          {isActive ? (
+            <motion.span
+              layoutId="match-tabs-active-indicator"
+              className="absolute -bottom-[1px] left-1 right-1 h-[2px] rounded-full bg-[var(--accent-brand)]"
+              transition={{ type: "spring", stiffness: 500, damping: 34 }}
+            />
+          ) : null}
         </button>
       );
     })}
@@ -686,7 +635,7 @@ function TabsArea({
 
         {/* ── Overview ── */}
         {activeTab === "overview" && (
-          <div className="space-y-4">
+          <div className="animate-fade-in space-y-3">
             <GlassPanel>
               <SectionHeader
                 eyebrow="Match center"
@@ -756,14 +705,14 @@ function TabsArea({
 
         {/* ── Live ── */}
         {activeTab === "live" && (
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
-            <GlassPanel className="p-3">
+          <div className="animate-fade-in grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <GlassPanel level="primary" className="p-3">
               <SectionHeader eyebrow="Ball by ball" title="Live Commentary" />
               <CommentaryPanel matchId={match.slug} insights={insights} />
             </GlassPanel>
 
             <div className="space-y-3">
-              <GlassPanel className="p-3">
+              <GlassPanel level="secondary" className="p-3">
                 <SectionHeader eyebrow="Live pulse" title="Session Status" />
                 <LiveMatchStatus
                   matchId={match.slug}
@@ -772,7 +721,7 @@ function TabsArea({
                 />
               </GlassPanel>
 
-              <GlassPanel className="p-3">
+              <GlassPanel level="tertiary" className="p-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.18em] text-sky-300/80">
@@ -802,8 +751,8 @@ function TabsArea({
 
         {/* ── Analysis ── */}
         {activeTab === "analysis" && (
-          <div className="space-y-3">
-            <GlassPanel className="p-3">
+          <div className="animate-fade-in space-y-3">
+            <GlassPanel level="primary" className="p-3">
               <SectionHeader eyebrow="Unified module" title="Match Analytics" />
               <div className="space-y-3">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -872,7 +821,7 @@ function TabsArea({
               </div>
             </GlassPanel>
 
-            <GlassPanel className="p-3">
+            <GlassPanel level="secondary" className="p-3">
               <SectionHeader eyebrow="Shot analysis" title="Wagon Wheel" />
               <div className="flex h-[260px] items-center justify-center text-white/60">
                 <WagonWheel matchId={match.slug} />
@@ -881,9 +830,9 @@ function TabsArea({
           </div>
         )}
 
-        {/* ── Overs ── */}
-        {activeTab === "overs" && (
-          <div className="space-y-6">
+        {/* ── Timeline ── */}
+        {activeTab === "timeline" && (
+          <div className="animate-fade-in space-y-5">
             <GlassPanel>
               <SectionHeader eyebrow="Moments" title="Highlight Timeline" />
               <HighlightTimeline matchId={match.slug} />
@@ -895,83 +844,9 @@ function TabsArea({
           </div>
         )}
 
-        {activeTab === "squad" && (
-          <div className="space-y-6">
-            <GlassPanel>
-              <SectionHeader eyebrow="Team sheets" title="Squads" />
-              <div className="grid gap-6 xl:grid-cols-2">
-                {squadTeams.map((team) => (
-                  <div
-                    key={team.name}
-                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <h4 className="text-base font-semibold text-white">
-                          {team.name}
-                        </h4>
-                        <p className="mt-1 text-xs text-white/55">
-                          {team.squad.length} players available
-                        </p>
-                      </div>
-                    </div>
-
-                    {team.squad.length ? (
-                      <div className="mt-4 space-y-4">
-                        <div className="space-y-2">
-                          {team.squad.map((player, index) => (
-                            <div
-                              key={`${team.name}-${player.name}`}
-                              className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm"
-                            >
-                              <span className="text-white">
-                                {index + 1}. {player.name}
-                              </span>
-                              <span className="text-xs font-medium uppercase tracking-[0.14em] text-sky-200/80">
-                                {player.role}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">
-                              Projected batting order
-                            </p>
-                            <p className="mt-2 text-sm text-white/75">
-                              {team.battingOrder.length
-                                ? team.battingOrder.join(" · ")
-                                : "Not available"}
-                            </p>
-                          </div>
-                          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">
-                              Projected bowling order
-                            </p>
-                            <p className="mt-2 text-sm text-white/75">
-                              {team.bowlingOrder.length
-                                ? team.bowlingOrder.join(" · ")
-                                : "Not available"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="mt-4 text-sm text-white/60">
-                        Squad details are not available yet.
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </GlassPanel>
-          </div>
-        )}
-
         {/* ── Scorecard ── */}
         {activeTab === "scorecard" && (
-          <div className="space-y-6">
+          <div className="animate-fade-in space-y-5">
             {currentEngineState?.matchEnded && currentEngineState?.winner ? (
               <div className="mt-3 border-t border-white/10 pt-3 text-center text-sm text-white">
                 {currentEngineState.winner} won{" "}
@@ -1057,7 +932,7 @@ function TabsArea({
                             : "0.0";
                         return (
                           <div
-                            key={`batter-${player.name || `${player.runs}-${player.balls}-${player.fours}-${player.sixes}-${player.out ? "out" : "notout"}`}`}
+                            key={player.name}
                             className={cls(
                               "grid grid-cols-[minmax(160px,1.6fr)_0.7fr_0.7fr_0.7fr_0.8fr] items-center gap-3 rounded-2xl border px-3 py-3 text-sm transition",
                               player.isStriker
@@ -1126,7 +1001,7 @@ function TabsArea({
                           overs > 0 ? (runs / overs).toFixed(1) : "0.0";
                         return (
                           <div
-                            key={`bowler-${name || `${overs}-${runs}-${wkts}`}`}
+                            key={name}
                             className="grid grid-cols-5 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm hover:bg-white/[0.06]"
                           >
                             <span className="truncate text-white">{name}</span>
@@ -1220,7 +1095,7 @@ function TabsArea({
                             : "0.0";
                         return (
                           <div
-                            key={`top-batter-${player.name || `${player.runs}-${player.balls}-${player.fours}-${player.sixes}-${player.out ? "out" : "notout"}`}`}
+                            key={player.name}
                             className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
                           >
                             <p className="font-medium text-white">

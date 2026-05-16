@@ -1672,15 +1672,28 @@ export default function MatchDetailPage({
     let cancelled = false;
     const wait = (ms: number) =>
       new Promise((resolve) => setTimeout(resolve, ms));
+    const createMatchSummary = (
+      team1: string,
+      team2: string,
+      status: "Live" | "Completed" = "Live"
+    ): Match => ({
+      id,
+      slug: id,
+      team1,
+      team2,
+      currentOver: 0,
+      currentBall: 0,
+      status,
+    });
 
     async function loadMatch() {
       let loaded = false;
 
       try {
         for (
-          let attemptIndex = 0;
-          attemptIndex < MATCH_LOAD_MAX_ATTEMPTS;
-          attemptIndex += 1
+          let attemptNumber = 0;
+          attemptNumber < MATCH_LOAD_MAX_ATTEMPTS;
+          attemptNumber += 1
         ) {
           if (cancelled) return;
 
@@ -1689,7 +1702,7 @@ export default function MatchDetailPage({
           if (!res.ok) {
             console.error("MATCH API ERROR", await res.text());
 
-            if (attemptIndex < MATCH_LOAD_MAX_ATTEMPTS - 1) {
+            if (attemptNumber < MATCH_LOAD_MAX_ATTEMPTS - 1) {
               await wait(MATCH_LOAD_RETRY_DELAY_MS);
               continue;
             }
@@ -1701,7 +1714,7 @@ export default function MatchDetailPage({
           if (!data?.success || !data?.match) {
             console.error("Match not found in Redis for", id);
 
-            if (attemptIndex < MATCH_LOAD_MAX_ATTEMPTS - 1) {
+            if (attemptNumber < MATCH_LOAD_MAX_ATTEMPTS - 1) {
               await wait(MATCH_LOAD_RETRY_DELAY_MS);
               continue;
             }
@@ -1751,15 +1764,13 @@ export default function MatchDetailPage({
           }
 
           if (!cancelled) {
-            setMatch({
-              id,
-              slug: id,
-              team1: teamAName ?? "Team A",
-              team2: teamBName ?? "Team B",
-              currentOver: 0,
-              currentBall: 0,
-              status: data.match.matchEnded ? "Completed" : "Live",
-            });
+            setMatch(
+              createMatchSummary(
+                teamAName ?? "Team A",
+                teamBName ?? "Team B",
+                data.match.matchEnded ? "Completed" : "Live"
+              )
+            );
           }
 
           // ✅ Auto-connect SSE so live updates flow when returning to the page
@@ -1781,15 +1792,12 @@ export default function MatchDetailPage({
         if (!loaded && !cancelled) {
           const meta = getMatchMeta(id);
           setMatch((prev) =>
-            prev ?? {
-              id,
-              slug: id,
-              team1: meta?.teamA?.name ?? "Team A",
-              team2: meta?.teamB?.name ?? "Team B",
-              currentOver: 0,
-              currentBall: 0,
-              status: "Live",
-            }
+            prev ??
+            createMatchSummary(
+              meta?.teamA?.name ?? "Team A",
+              meta?.teamB?.name ?? "Team B",
+              "Live"
+            )
           );
           connectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID, {
             autoStartSimulation: false,

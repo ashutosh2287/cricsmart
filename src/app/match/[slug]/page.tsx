@@ -1356,9 +1356,21 @@ function MatchInnerPage({
   const { state: currentEngineState } = useMatch();
 
   if (!currentEngineState) {
+    // ✅ FIX: show a visible loading skeleton rather than minimal text that blends
+    //    into the dark background and looks like a blank page.
     return (
-      <div className="p-10 text-center text-white">
-        Loading match engine...
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 p-10 text-center">
+        <div className="flex gap-1.5">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="h-2 w-2 animate-pulse rounded-full bg-sky-400/70"
+              style={{ animationDelay: `${i * 120}ms` }}
+            />
+          ))}
+        </div>
+        <p className="text-sm text-white/70">Initialising match engine…</p>
+        <p className="text-xs text-white/40">{match.team1} vs {match.team2}</p>
       </div>
     );
   }
@@ -1485,45 +1497,51 @@ function MatchInnerPage({
   }
 
   return (
-    <main className="relative overflow-hidden">
+    // ✅ FIX: removed overflow-hidden — it breaks sticky tab bar and can clip motion-animated content
+    <main className="relative">
       <div className="mx-auto max-w-[1500px] px-3 py-3 md:px-5 lg:px-6">
         {/* ── Hero ── */}
+        {/* ✅ FIX: hero always renders regardless of innings state.
+            Previously gated on `currentInnings` — this caused a blank/black match page
+            for any simulation match before innings started (innings: []).
+            Safe defaults ensure all values fall back gracefully. */}
         <div className="mb-3">
-          {currentInnings ? (
-            <div className="space-y-2.5">
-              <GlassPanel>
-                <div className="flex flex-col gap-3">
-                  {/* Header row */}
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-1.5">
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-sky-300/80">
-                        CricSmart Match Center
-                      </p>
-                      <h1 className="text-xl font-semibold text-white md:text-2xl">
-                        {team1Name} vs {team2Name}
-                      </h1>
-                      <p className="text-xs text-white/60">
-                        Live command center with realtime commentary, analytics, and replay.
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <ConnectionStatus hideWhenConnected={false} />
-                      <motion.div
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <Link
-                          href="/"
-                          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-md transition"
-                        >
-                          ← Back to Home
-                        </Link>
-                      </motion.div>
-                    </div>
+          <div className="space-y-2.5">
+            <GlassPanel>
+              <div className="flex flex-col gap-3">
+                {/* Header row */}
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-sky-300/80">
+                      CricSmart Match Center
+                    </p>
+                    <h1 className="text-xl font-semibold text-white md:text-2xl">
+                      {team1Name} vs {team2Name}
+                    </h1>
+                    <p className="text-xs text-white/60">
+                      {currentInnings
+                        ? "Live command center with realtime commentary, analytics, and replay."
+                        : "Simulation ready · select teams and toss to begin."}
+                    </p>
                   </div>
+                  <div className="flex flex-wrap gap-2">
+                    <ConnectionStatus hideWhenConnected={false} />
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Link
+                        href="/"
+                        className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-md transition"
+                      >
+                        ← Back to Home
+                      </Link>
+                    </motion.div>
+                  </div>
+                </div>
 
-                  {/* Match header (scoreboard) */}
-                  <MatchHeader
+                {/* Match header (scoreboard) — always rendered with safe defaults */}
+                <MatchHeader
   team1={team1Name}
   team2={team2Name}
   runs={runs}
@@ -1543,59 +1561,58 @@ function MatchInnerPage({
   crr={crr}
 />
 
-                  {/* Stats pills */}
-                  <div className="grid auto-rows-fr gap-2 md:grid-cols-3 xl:grid-cols-8">
+                {/* Stats pills */}
+                <div className="grid auto-rows-fr gap-2 md:grid-cols-3 xl:grid-cols-8">
+                  <StatPill
+                    label={innings1?.battingTeam ?? "Team 1"}
+                    value={`${innings1?.runs ?? 0}/${innings1?.wickets ?? 0}`}
+                    tone="green"
+                  />
+                  <StatPill
+                    label={innings2?.battingTeam ?? "Team 2"}
+                    value={
+                      innings2
+                        ? `${innings2.runs}/${innings2.wickets}`
+                        : "Yet to bat"
+                    }
+                    tone="blue"
+                  />
+                  <StatPill
+                    label="Current innings"
+                    value={`Innings ${(currentEngineState.currentInningsIndex ?? 0) + 1}`}
+                    tone="neutral"
+                  />
+                  <StatPill
+                    label="Current over"
+                    value={displayOver}
+                    tone="amber"
+                  />
+                  {innings2 && !currentEngineState.matchEnded && (
+                    <StatPill label="Target" value={target} tone="neutral" />
+                  )}
+                  {innings2 && !currentEngineState.matchEnded && (
                     <StatPill
-                      label={innings1?.battingTeam ?? "Team 1"}
-                      value={`${innings1?.runs ?? 0}/${innings1?.wickets ?? 0}`}
-                      tone="green"
+                      label="RRR"
+                      value={rrr ? rrr.toFixed(2) : "0.00"}
+                      tone="red"
                     />
-                    <StatPill
-                      label={innings2?.battingTeam ?? "Team 2"}
-                      value={
-                        innings2
-                          ? `${innings2.runs}/${innings2.wickets}`
-                          : "Yet to bat"
-                      }
-                      tone="blue"
-                    />
-                    <StatPill
-                      label="Current innings"
-                      value={`Innings ${(currentEngineState.currentInningsIndex ?? 0) + 1}`}
-                      tone="neutral"
-                    />
-                    <StatPill
-                      label="Current over"
-                      value={displayOver}
-                      tone="amber"
-                    />
-                    {innings2 && !currentEngineState.matchEnded && (
-                      <StatPill label="Target" value={target} tone="neutral" />
-                    )}
-                    {innings2 && !currentEngineState.matchEnded && (
-                      <StatPill
-                        label="RRR"
-                        value={rrr ? rrr.toFixed(2) : "0.00"}
-                        tone="red"
-                      />
-                    )}
-                    <StatPill
-                      label="CRR"
-                      value={crr ? crr.toFixed(2) : "0.00"}
-                      tone="blue"
-                    />
-                    <StatPill
-                      label="Status"
-                      value={
-                        getLiveMatchStatusLabel(currentEngineState.matchEnded, sessionMeta?.sessionState)
-                      }
-                      tone="neutral"
-                    />
-                  </div>
+                  )}
+                  <StatPill
+                    label="CRR"
+                    value={crr ? crr.toFixed(2) : "0.00"}
+                    tone="blue"
+                  />
+                  <StatPill
+                    label="Status"
+                    value={
+                      getLiveMatchStatusLabel(currentEngineState.matchEnded, sessionMeta?.sessionState)
+                    }
+                    tone="neutral"
+                  />
                 </div>
-              </GlassPanel>
-            </div>
-          ) : null}
+              </div>
+            </GlassPanel>
+          </div>
         </div>
 
         {/* ── Tabs ── */}
@@ -1794,40 +1811,61 @@ export default function MatchDetailPage({
 
   if (!matchId) {
     return (
-      <PageMotion>
-        <div className="bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,#020617_0%,#071120_35%,#0b1220_65%,#020617_100%)]">
-          <div className="p-10 text-center text-white">
-            Invalid match URL.
-          </div>
+      // ✅ No PageMotion here — layout's PageTransition already handles page animation.
+      // min-h-screen ensures the dark gradient always fills the viewport.
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,#020617_0%,#071120_35%,#0b1220_65%,#020617_100%)]">
+        <div className="p-10 text-center text-white">
+          Invalid match URL.
         </div>
-      </PageMotion>
+      </div>
     );
   }
 
   return (
     // ✅ FIX: matchId prop — NOT value prop
+    // ✅ FIX: removed PageMotion wrapper — layout's PageTransition already wraps all pages
+    //    with an opacity: 0 → 1 entrance animation. Adding PageMotion here created a
+    //    double opacity:0 stack that could leave content invisible on first paint.
+    // ✅ FIX: min-h-screen on the gradient div ensures the dark background always fills
+    //    the viewport, preventing a collapsed container when content is loading.
     <MatchProvider matchId={matchId}>
-      <PageMotion>
-        <div className="bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,#020617_0%,#071120_35%,#0b1220_65%,#020617_100%)]">
-          {match ? (
-            <MatchInnerPage
-              match={match}
-              analytics={analytics}
-              insights={insights}
-              sessionMeta={sessionMeta}
-            />
-          ) : loadError ? (
-            <div className="space-y-3 p-10 text-center">
-              <p className="text-sm text-rose-300">{loadError}</p>
-              <p className="text-xs text-white/60">Match ID: {matchId}</p>
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,#020617_0%,#071120_35%,#0b1220_65%,#020617_100%)]">
+        {match ? (
+          <MatchInnerPage
+            match={match}
+            analytics={analytics}
+            insights={insights}
+            sessionMeta={sessionMeta}
+          />
+        ) : loadError ? (
+          <div className="flex min-h-[50vh] flex-col items-center justify-center space-y-3 p-10 text-center">
+            <p className="text-sm text-rose-300">{loadError}</p>
+            <p className="text-xs text-white/60">Match ID: {matchId}</p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white/80 transition hover:bg-white/[0.09]"
+            >
+              Retry
+            </button>
+          </div>
+        ) : (
+          <div className="flex min-h-[50vh] items-center justify-center p-10 text-center text-white">
+            <div className="space-y-3">
+              <div className="flex justify-center gap-1.5">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="h-2 w-2 animate-pulse rounded-full bg-sky-400/70"
+                    style={{ animationDelay: `${i * 120}ms` }}
+                  />
+                ))}
+              </div>
+              <p className="text-sm text-white/70">Loading match…</p>
             </div>
-          ) : (
-            <div className="p-10 text-center text-white">
-              Loading match...
-            </div>
-          )}
-        </div>
-      </PageMotion>
+          </div>
+        )}
+      </div>
     </MatchProvider>
   );
 }

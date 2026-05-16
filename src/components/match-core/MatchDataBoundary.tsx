@@ -20,7 +20,7 @@ export default function MatchDataBoundary({
   if (!matchId) {
     return (
       <div className="p-10 text-center text-[var(--text-primary)]">
-        Invalid match URL.
+        Invalid match URL. Please check the URL and try again.
       </div>
     );
   }

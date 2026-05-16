@@ -1599,6 +1599,8 @@ function MatchInnerPage({
     if (ballsBowled > 0) crr = (runs / ballsBowled) * 6;
   }
 
+  const showChaseStats = Boolean(innings2 && !currentEngineState?.matchEnded);
+
   return (
     <MatchPageCore
       header={
@@ -1619,14 +1621,21 @@ function MatchInnerPage({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <ConnectionStatus hideWhenConnected={false} />
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <MotionSafeContainer
+                    enableMotion
+                    variants={{
+                      initial: { scale: 1 },
+                      animate: { scale: 1 },
+                    }}
+                    transition={{ duration: 0 }}
+                  >
                     <Link
                       href="/"
                       className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-md transition"
                     >
                       ← Back to Home
                     </Link>
-                  </motion.div>
+                  </MotionSafeContainer>
                 </div>
               </div>
 
@@ -1675,10 +1684,10 @@ function MatchInnerPage({
                   value={displayOver}
                   tone="amber"
                 />
-                {innings2 && !currentEngineState?.matchEnded ? (
+                {showChaseStats ? (
                   <StatPill label="Target" value={target} tone="neutral" />
                 ) : null}
-                {innings2 && !currentEngineState?.matchEnded ? (
+                {showChaseStats ? (
                   <StatPill
                     label="RRR"
                     value={rrr ? rrr.toFixed(2) : "0.00"}

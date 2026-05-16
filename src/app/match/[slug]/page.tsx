@@ -918,14 +918,14 @@ function TabsArea({
                   </div>
                   <div className="mt-3 space-y-2">
                     {players.length ? (
-                      players.map((player, index) => {
+                      players.map((player) => {
                         const sr =
                           player.balls > 0
                             ? ((player.runs / player.balls) * 100).toFixed(1)
                             : "0.0";
                         return (
                           <div
-                            key={`batter-${player.name || "unknown"}-${index}`}
+                            key={`batter-${player.name || `${player.runs}-${player.balls}-${player.fours}-${player.sixes}-${player.out ? "out" : "notout"}`}`}
                             className={cls(
                               "grid grid-cols-[minmax(160px,1.6fr)_0.7fr_0.7fr_0.7fr_0.8fr] items-center gap-3 rounded-2xl border px-3 py-3 text-sm transition",
                               player.isStriker
@@ -986,7 +986,7 @@ function TabsArea({
                   </div>
                   <div className="mt-3 space-y-2">
                     {Object.entries(bowling).length ? (
-                      Object.entries(bowling).map(([name, stat], index) => {
+                      Object.entries(bowling).map(([name, stat]) => {
                         const overs = stat.overs ?? 0;
                         const runs = stat.runs ?? 0;
                         const wkts = stat.wickets ?? 0;
@@ -994,7 +994,7 @@ function TabsArea({
                           overs > 0 ? (runs / overs).toFixed(1) : "0.0";
                         return (
                           <div
-                            key={`bowler-${name || "unknown"}-${index}`}
+                            key={`bowler-${name || `${overs}-${runs}-${wkts}`}`}
                             className="grid grid-cols-5 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm hover:bg-white/[0.06]"
                           >
                             <span className="truncate text-white">{name}</span>
@@ -1081,14 +1081,14 @@ function TabsArea({
                   />
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
                     {topPlayers.length ? (
-                      topPlayers.map((player, index) => {
+                      topPlayers.map((player) => {
                         const sr =
                           player.balls > 0
                             ? ((player.runs / player.balls) * 100).toFixed(1)
                             : "0.0";
                         return (
                           <div
-                            key={`top-batter-${player.name || "unknown"}-${index}`}
+                            key={`top-batter-${player.name || `${player.runs}-${player.balls}-${player.fours}-${player.sixes}-${player.out ? "out" : "notout"}`}`}
                             className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
                           >
                             <p className="font-medium text-white">

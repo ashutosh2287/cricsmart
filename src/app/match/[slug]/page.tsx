@@ -34,7 +34,7 @@ import {
   useMatchSelector,
   useScore,
 } from "@/services/matchSelectors";
-import { Team } from "@/data/teams";
+import { teams, Team } from "@/data/teams";
 import { Match } from "@/types/match";
 import { motion } from "framer-motion";
 
@@ -81,7 +81,8 @@ type MainTab =
   | "overview"
   | "live"
   | "analysis"
-  | "timeline"
+  | "overs"
+  | "squad"
   | "scorecard"
   | "admin";
 
@@ -99,6 +100,12 @@ type BowlerStat = {
   overs?: number;
   runs?: number;
   wickets?: number;
+};
+
+type SquadRole = "BAT" | "BOWL" | "AR" | "WK";
+type SquadPlayer = {
+  name: string;
+  role: SquadRole;
 };
 
 type BroadcastInsight = {
@@ -124,6 +131,28 @@ type MatchSessionMeta = {
 
 function cls(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+function isSquadRole(role: string): role is SquadRole {
+  return role === "BAT" || role === "BOWL" || role === "AR" || role === "WK";
+}
+
+function normalizeSquadPlayers(
+  squad?: Array<{ name?: string; role?: string }>
+): SquadPlayer[] {
+  return (squad ?? []).flatMap((player) => {
+    const name = player?.name?.trim();
+    const role = player?.role?.trim();
+
+    if (!name || !role || !isSquadRole(role)) return [];
+
+    return [{ name, role }];
+  });
+}
+
+function findTeamSquadByName(teamName: string): SquadPlayer[] {
+  const team = teams.find((item) => item.name === teamName);
+  return normalizeSquadPlayers(team?.squad);
 }
 
 function formatOverDisplay(overs?: Record<string, unknown>) {
@@ -546,11 +575,40 @@ function TabsArea({
       ? [{ players: `${strikerName} & ${nonStrikerName}`, runs: 0 }]
       : [];
 
+  const normalizedTeamASquad = normalizeSquadPlayers(
+    currentEngineState?.teamA?.squad
+  );
+  const normalizedTeamBSquad = normalizeSquadPlayers(
+    currentEngineState?.teamB?.squad
+  );
+
+  const squadTeams = [
+    {
+      name: currentEngineState?.teamA?.name || match.team1,
+      squad: normalizedTeamASquad,
+    },
+    {
+      name: currentEngineState?.teamB?.name || match.team2,
+      squad: normalizedTeamBSquad,
+    },
+  ].map((team) => {
+    const fallbackSquad = findTeamSquadByName(team.name);
+    const squad = team.squad.length ? team.squad : fallbackSquad;
+
+    return {
+      ...team,
+      squad,
+      battingOrder: squad.length ? getBattingOrder(squad) : [],
+      bowlingOrder: squad.length ? getBowlingOrder(squad) : [],
+    };
+  });
+
   const tabs: MainTab[] = [
     "overview",
     "live",
     "analysis",
-    "timeline",
+    "overs",
+    "squad",
     "scorecard",
     "admin",
   ];
@@ -823,8 +881,8 @@ function TabsArea({
           </div>
         )}
 
-        {/* ── Timeline ── */}
-        {activeTab === "timeline" && (
+        {/* ── Overs ── */}
+        {activeTab === "overs" && (
           <div className="space-y-6">
             <GlassPanel>
               <SectionHeader eyebrow="Moments" title="Highlight Timeline" />
@@ -833,6 +891,80 @@ function TabsArea({
             <GlassPanel>
               <SectionHeader eyebrow="Over view" title="Overs Timeline" />
               <OversTimeline slug={match.slug} />
+            </GlassPanel>
+          </div>
+        )}
+
+        {activeTab === "squad" && (
+          <div className="space-y-6">
+            <GlassPanel>
+              <SectionHeader eyebrow="Team sheets" title="Squads" />
+              <div className="grid gap-6 xl:grid-cols-2">
+                {squadTeams.map((team) => (
+                  <div
+                    key={team.name}
+                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-base font-semibold text-white">
+                          {team.name}
+                        </h4>
+                        <p className="mt-1 text-xs text-white/55">
+                          {team.squad.length} players available
+                        </p>
+                      </div>
+                    </div>
+
+                    {team.squad.length ? (
+                      <div className="mt-4 space-y-4">
+                        <div className="space-y-2">
+                          {team.squad.map((player, index) => (
+                            <div
+                              key={`${team.name}-${player.name}`}
+                              className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm"
+                            >
+                              <span className="text-white">
+                                {index + 1}. {player.name}
+                              </span>
+                              <span className="text-xs font-medium uppercase tracking-[0.14em] text-sky-200/80">
+                                {player.role}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                            <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">
+                              Projected batting order
+                            </p>
+                            <p className="mt-2 text-sm text-white/75">
+                              {team.battingOrder.length
+                                ? team.battingOrder.join(" · ")
+                                : "Not available"}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                            <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">
+                              Projected bowling order
+                            </p>
+                            <p className="mt-2 text-sm text-white/75">
+                              {team.bowlingOrder.length
+                                ? team.bowlingOrder.join(" · ")
+                                : "Not available"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-4 text-sm text-white/60">
+                        Squad details are not available yet.
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </GlassPanel>
           </div>
         )}

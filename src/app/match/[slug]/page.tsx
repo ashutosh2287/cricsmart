@@ -86,6 +86,8 @@ type MainTab =
   | "admin";
 
 const AUTO_RECONNECT_SUBSCRIBER_ID = "match-detail-page-auto";
+const MATCH_LOAD_MAX_ATTEMPTS = 5;
+const MATCH_LOAD_RETRY_DELAY_MS = 450;
 const MAIN_TABS: MainTab[] = [
   "overview",
   "live",
@@ -1668,82 +1670,137 @@ export default function MatchDetailPage({
     if (!matchId) return;
     const id = matchId;
     let cancelled = false;
+    const wait = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+    const createMatchSummary = (
+      team1: string,
+      team2: string,
+      status: "Live" | "Completed" = "Live"
+    ): Match => ({
+      id,
+      slug: id,
+      team1,
+      team2,
+      currentOver: 0,
+      currentBall: 0,
+      status,
+    });
 
     async function loadMatch() {
+      let loaded = false;
+
       try {
-        const res = await fetch(`/api/match/${id}`, { cache: "no-store" });
+        for (
+          let attemptNumber = 0;
+          attemptNumber < MATCH_LOAD_MAX_ATTEMPTS;
+          attemptNumber += 1
+        ) {
+          if (cancelled) return;
 
-        if (!res.ok) {
-          console.error("MATCH API ERROR", await res.text());
-          if (!cancelled) setLoadError("Unable to load this match right now.");
-          return;
-        }
+          const res = await fetch(`/api/match/${id}`, { cache: "no-store" });
 
-        const data = await res.json();
+          if (!res.ok) {
+            console.error("MATCH API ERROR", await res.text());
 
-        if (!data?.success || !data?.match) {
-          console.error("Match not found in Redis for", id);
-          if (!cancelled) setLoadError("Match data not found. Please refresh the page.");
-          return;
-        }
-
-        if (!cancelled) setLoadError(null);
-
-        // ✅ Hydrate matchEngine (for scorecard helpers etc.)
-        hydrateMatchState(id, data.match);
-
-        setSessionMeta(data.registry ?? null);
-
-        // ✅ CRITICAL: also push into eventStore so MatchProvider sees initial state
-        setMatchState(id, data.match);
-
-        // ✅ Restore in-memory matchMeta from persisted engine state so the
-        //    match page renders correct team names after a page reload/return.
-        const teamAName = data.match.teamA?.name;
-        const teamBName = data.match.teamB?.name;
-        const getTeamIdOrSlug = (existingId: unknown, name: string) => {
-          if (typeof existingId === "string" && existingId.trim()) {
-            return existingId;
+            if (attemptNumber < MATCH_LOAD_MAX_ATTEMPTS - 1) {
+              await wait(MATCH_LOAD_RETRY_DELAY_MS);
+              continue;
+            }
+            break;
           }
-          return name.toLowerCase().trim().replace(/\s+/g, "-");
-        };
-        if (teamAName && teamBName) {
-          setMatchMeta({
-            matchId: id,
-            teamA: {
-              id: getTeamIdOrSlug(data.match.teamA?.id, teamAName),
-              name: teamAName,
-            },
-            teamB: {
-              id: getTeamIdOrSlug(data.match.teamB?.id, teamBName),
-              name: teamBName,
-            },
-            ...(data.match.tossWinner && data.match.tossDecision
-              ? { toss: { winner: data.match.tossWinner, decision: data.match.tossDecision } }
-              : {}),
-          });
+
+          const data = await res.json();
+
+          if (!data?.success || !data?.match) {
+            console.error("Match not found in Redis for", id);
+
+            if (attemptNumber < MATCH_LOAD_MAX_ATTEMPTS - 1) {
+              await wait(MATCH_LOAD_RETRY_DELAY_MS);
+              continue;
+            }
+            break;
+          }
+
+          if (!cancelled) setLoadError(null);
+
+          // ✅ Hydrate matchEngine (for scorecard helpers etc.)
+          hydrateMatchState(id, data.match);
+
+          setSessionMeta(data.registry ?? null);
+
+          // ✅ CRITICAL: also push into eventStore so MatchProvider sees initial state
+          setMatchState(id, data.match);
+
+          // ✅ Restore in-memory matchMeta from persisted engine state so the
+          //    match page renders correct team names after a page reload/return.
+          const teamAName = data.match.teamA?.name;
+          const teamBName = data.match.teamB?.name;
+          const getTeamIdOrSlug = (existingId: unknown, name: string) => {
+            if (typeof existingId === "string" && existingId.trim()) {
+              return existingId;
+            }
+            return name.toLowerCase().trim().replace(/\s+/g, "-");
+          };
+          if (teamAName && teamBName) {
+            setMatchMeta({
+              matchId: id,
+              teamA: {
+                id: getTeamIdOrSlug(data.match.teamA?.id, teamAName),
+                name: teamAName,
+              },
+              teamB: {
+                id: getTeamIdOrSlug(data.match.teamB?.id, teamBName),
+                name: teamBName,
+              },
+              ...(data.match.tossWinner && data.match.tossDecision
+                ? {
+                    toss: {
+                      winner: data.match.tossWinner,
+                      decision: data.match.tossDecision,
+                    },
+                  }
+                : {}),
+            });
+          }
+
+          if (!cancelled) {
+            setMatch(
+              createMatchSummary(
+                teamAName ?? "Team A",
+                teamBName ?? "Team B",
+                data.match.matchEnded ? "Completed" : "Live"
+              )
+            );
+          }
+
+          // ✅ Auto-connect SSE so live updates flow when returning to the page
+          //    while a simulation is still running in the backend.
+          const runtime = data.runtime;
+          const isRunning =
+            runtime?.isRunning === true && !data.match.matchEnded;
+          if (!cancelled && isRunning) {
+            // connectRealtime is safe to call if already connected — it's a no-op
+            connectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID, {
+              autoStartSimulation: data.registry?.type !== "LIVE",
+            });
+          }
+
+          loaded = true;
+          break;
         }
 
-        if (!cancelled) {
-          setMatch({
-            id,
-            slug: id,
-            team1: teamAName ?? "Team A",
-            team2: teamBName ?? "Team B",
-            currentOver: 0,
-            currentBall: 0,
-            status: data.match.matchEnded ? "Completed" : "Live",
-          });
-        }
-
-        // ✅ Auto-connect SSE so live updates flow when returning to the page
-        //    while a simulation is still running in the backend.
-        const runtime = data.runtime;
-        const isRunning = runtime?.isRunning === true && !data.match.matchEnded;
-        if (!cancelled && isRunning) {
-          // connectRealtime is safe to call if already connected — it's a no-op
+        if (!loaded && !cancelled) {
+          const meta = getMatchMeta(id);
+          setMatch((prev) =>
+            prev ??
+            createMatchSummary(
+              meta?.teamA?.name ?? "Team A",
+              meta?.teamB?.name ?? "Team B",
+              "Live"
+            )
+          );
           connectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID, {
-            autoStartSimulation: data.registry?.type !== "LIVE",
+            autoStartSimulation: false,
           });
         }
       } catch (err) {

@@ -109,7 +109,7 @@ def train_ranker(
     predictions = np.asarray(ranker.predict(transformed), dtype=float)
     ndcg = float(
         ndcg_score(
-            np.asarray([labels.to_numpy(dtype=float)], dtype=float),
+            np.asarray([labels.to_numpy(dtype=float)]),
             np.asarray([predictions], dtype=float),
         )
     )

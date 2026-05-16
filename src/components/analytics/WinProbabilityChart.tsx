@@ -35,11 +35,6 @@ type DotProps = {
   payload?: ChartPoint;
 };
 
-type TooltipPayloadRow = {
-  value: number;
-  dataKey: string;
-};
-
 function markerTone(marker: ChartPoint["marker"]) {
   if (marker === "WICKET") return "var(--state-wicket)";
   if (marker === "TURNING_POINT") return "var(--state-turning-point)";
@@ -108,12 +103,14 @@ function WinProbabilityChart({
       label,
     }: {
       active?: boolean;
-      payload?: TooltipPayloadRow[];
-      label?: number;
+      payload?: ReadonlyArray<{ value?: number | string; dataKey?: string | number }>;
+      label?: number | string;
     }) => {
       if (!active || !payload?.length) return null;
-      const battingValue = payload.find((item) => item.dataKey === "batting")?.value ?? 0;
-      const bowlingValue = payload.find((item) => item.dataKey === "bowling")?.value ?? 0;
+      const battingRaw = payload.find((item) => item.dataKey === "batting")?.value ?? 0;
+      const bowlingRaw = payload.find((item) => item.dataKey === "bowling")?.value ?? 0;
+      const battingValue = Number(battingRaw);
+      const bowlingValue = Number(bowlingRaw);
       const edge = Math.abs(battingValue - bowlingValue);
       const note =
         edge >= 20 ? "Major momentum edge" : edge >= 10 ? "Meaningful advantage" : "Balanced phase";
@@ -128,7 +125,7 @@ function WinProbabilityChart({
             padding: "8px 10px",
           }}
         >
-          <p style={{ color: "var(--text-secondary)", marginBottom: 4 }}>Over {label}</p>
+          <p style={{ color: "var(--text-secondary)", marginBottom: 4 }}>Over {String(label ?? "")}</p>
           <p style={{ color: "var(--chart-positive)" }}>{team1 ?? "BAT"} {battingValue.toFixed(1)}%</p>
           <p style={{ color: "var(--chart-negative)" }}>{team2 ?? "BOWL"} {bowlingValue.toFixed(1)}%</p>
           <p style={{ color: "var(--text-secondary)", marginTop: 4 }}>{note}</p>
@@ -228,7 +225,7 @@ function WinProbabilityChart({
           ))}
 
           <Tooltip
-            content={renderTooltip}
+            content={renderTooltip as any}
           />
 
           {/* MAIN LINE */}

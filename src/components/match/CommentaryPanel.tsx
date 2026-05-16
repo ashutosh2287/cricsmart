@@ -7,7 +7,6 @@ import { useCurrentInnings } from "@/services/matchSelectors";
 import { translateCommentary } from "@/services/commentary/commentaryTranslator";
 import type { BallEvent } from "@/types/ballEvent";
 import {
-  commentaryArrivalVariants,
   getCommentaryEnergyVariants,
 } from "@/animations/live-animations";
 import {

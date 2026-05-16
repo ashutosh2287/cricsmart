@@ -272,7 +272,7 @@ function StickyInsightsRail({
     0
   );
   const lastOverWickets = lastOverBalls.filter(
-    (ball: { outcome?: string }) => ball?.outcome === "WICKET"
+    (ball) => (ball as { type?: string })?.type === "WICKET"
   ).length;
   const momentumSignal =
     lastOverWickets > 0 ? "Bowling surge" : lastOverRuns >= 10 ? "Batting surge" : "Balanced";

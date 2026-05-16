@@ -7,6 +7,9 @@ type MatchPageCoreProps = {
   tabs: React.ReactNode;
 };
 
+/**
+ * Provides the stable core match-page layout with dedicated header and tab regions.
+ */
 export default function MatchPageCore({ header, tabs }: MatchPageCoreProps) {
   return (
     <main className="relative overflow-hidden">

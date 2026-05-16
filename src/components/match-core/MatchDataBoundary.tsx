@@ -10,6 +10,9 @@ type MatchDataBoundaryProps = {
   children: React.ReactNode;
 };
 
+/**
+ * Handles match-id validation plus loading and error states before rendering content.
+ */
 export default function MatchDataBoundary({
   matchId,
   loading,

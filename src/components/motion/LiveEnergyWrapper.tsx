@@ -13,6 +13,9 @@ type LiveEnergyWrapperProps = {
   state?: LiveEnergyState;
 };
 
+/**
+ * Applies optional live-energy motion styling while preserving child rendering.
+ */
 export default function LiveEnergyWrapper({
   children,
   className,

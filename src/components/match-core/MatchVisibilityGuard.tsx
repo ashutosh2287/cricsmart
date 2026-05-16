@@ -8,6 +8,9 @@ type MatchVisibilityGuardProps = {
   isVisible?: boolean;
 };
 
+/**
+ * Controls visibility via CSS without unmounting children from the DOM.
+ */
 export default function MatchVisibilityGuard({
   children,
   className,

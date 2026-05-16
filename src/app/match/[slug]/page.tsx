@@ -1621,21 +1621,14 @@ function MatchInnerPage({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <ConnectionStatus hideWhenConnected={false} />
-                  <MotionSafeContainer
-                    enableMotion
-                    variants={{
-                      initial: { scale: 1 },
-                      animate: { scale: 1 },
-                    }}
-                    transition={{ duration: 0 }}
-                  >
+                  <div>
                     <Link
                       href="/"
                       className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-md transition"
                     >
                       ← Back to Home
                     </Link>
-                  </MotionSafeContainer>
+                  </div>
                 </div>
               </div>
 
@@ -1907,7 +1900,7 @@ export default function MatchDetailPage({
     return (
       <MatchRenderBoundary>
         <MatchDataBoundary loading={false} hasData={false}>
-          <></>
+          {null}
         </MatchDataBoundary>
       </MatchRenderBoundary>
     );

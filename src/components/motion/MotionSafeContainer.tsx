@@ -13,6 +13,9 @@ type MotionSafeContainerProps = {
   transition?: Transition;
 };
 
+/**
+ * Renders children with optional motion and automatically falls back to plain rendering.
+ */
 export default function MotionSafeContainer({
   children,
   className,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { motion, type Transition, type Variants } from "framer-motion";
 
 type MotionSafeContainerProps = {
@@ -26,13 +26,9 @@ export default function MotionSafeContainer({
   animate = "animate",
   exit = "exit",
 }: MotionSafeContainerProps) {
-  const [hydrated, setHydrated] = useState(false);
+  const canAnimate = enableMotion && typeof window !== "undefined";
 
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
-
-  if (!enableMotion || !hydrated) {
+  if (!canAnimate) {
     return (
       <div className={className} style={style} data-motion-safe-container="fallback">
         {children}

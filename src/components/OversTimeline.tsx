@@ -56,8 +56,8 @@ function hasOverData(innings?: InningsSlice) {
   return Boolean(innings?.overs && Object.keys(innings.overs).length > 0);
 }
 
-function formatInningsLabel(teamName: string | undefined, inningsLabel: string) {
-  return `${teamName ?? "Team"} (${inningsLabel})`;
+function formatInningsLabel(teamName: string | undefined, inningsOrdinal: string) {
+  return `${teamName ?? "Team"} (${inningsOrdinal})`;
 }
 
 export default function OversTimeline({ slug }: Props) {

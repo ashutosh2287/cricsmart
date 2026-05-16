@@ -151,7 +151,8 @@ function normalizeSquadPlayers(
 }
 
 function findTeamSquadByName(teamName: string): SquadPlayer[] {
-  return teams.find((team) => team.name === teamName)?.squad ?? [];
+  const team = teams.find((item) => item.name === teamName);
+  return normalizeSquadPlayers(team?.squad);
 }
 
 function formatOverDisplay(overs?: Record<string, unknown>) {

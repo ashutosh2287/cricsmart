@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import { LivePulse } from "@/components/matches/LivePulse";
@@ -337,8 +337,8 @@ export default function HomePage() {
   const [teamAInput, setTeamAInput] = useState("");
   const [teamBInput, setTeamBInput] = useState("");
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const formRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const liveFeed = useMemo(() => buildLiveFeed(liveMatches), [liveMatches]);
 
@@ -346,6 +346,7 @@ export default function HomePage() {
     setShowCreateForm(false);
     setTeamAInput("");
     setTeamBInput("");
+    setCreateError(null);
   }
 
   // Fetch simulated matches
@@ -398,21 +399,20 @@ export default function HomePage() {
     return () => { mounted = false; clearInterval(interval); };
   }, []);
 
-  // Close create form on outside click / escape
+  // Close create form on escape
   useEffect(() => {
     if (!showCreateForm) return;
-    const onDown = (e: MouseEvent) => {
-      if (formRef.current && !formRef.current.contains(e.target as Node)) closeCreateForm();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeCreateForm();
     };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeCreateForm(); };
-    document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+    return () => document.removeEventListener("keydown", onKey);
   }, [showCreateForm]);
 
   const handleCreateMatch = async () => {
     const teamA = teamAInput.trim() || "Team A";
     const teamB = teamBInput.trim() || "Team B";
+    setCreateError(null);
     setCreating(true);
     try {
       const res = await fetch("/api/create-match", {
@@ -420,12 +420,17 @@ export default function HomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ teamA, teamB }),
       });
+      if (!res.ok) {
+        const details = await res.text().catch(() => "");
+        throw new Error(details || `status ${res.status}`);
+      }
       const data = await res.json();
       if (!data?.matchId) throw new Error("failed");
       closeCreateForm();
-      router.push(`/admin/${data.matchId}`);
+      router.push(`/match/${data.matchId}?tab=admin`);
     } catch (err) {
       console.error("❌", err);
+      setCreateError(err instanceof Error ? err.message : "Failed to create match.");
     } finally {
       setCreating(false);
     }
@@ -659,9 +664,9 @@ export default function HomePage() {
           )}
         </section>
 
-        <div className="fixed bottom-4 right-4 z-40" ref={formRef}>
+        <div className="fixed bottom-4 right-4 z-40">
           <button
-            onClick={() => setShowCreateForm((v) => !v)}
+            onClick={() => setShowCreateForm(true)}
             className="interactive-sports rounded-full px-4 py-2 text-sm font-semibold shadow-lg"
             style={{
               background: "var(--accent-brand)",
@@ -670,17 +675,41 @@ export default function HomePage() {
           >
             + Create Simulation
           </button>
-          {showCreateForm && (
+        </div>
+
+        {showCreateForm && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(2, 6, 23, 0.7)" }}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget && !creating) closeCreateForm();
+            }}
+          >
             <div
-              className="absolute bottom-full right-0 mb-2 rounded-xl p-4 w-64 shadow-xl"
+              className="rounded-xl p-4 w-full max-w-sm shadow-xl"
               style={{
                 background: "var(--bg-raised)",
                 border: "1px solid var(--border-subtle)",
               }}
+              onMouseDown={(e) => e.stopPropagation()}
             >
-              <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-primary)" }}>
-                New Simulation
-              </p>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                  New Simulation
+                </p>
+                <button
+                  type="button"
+                  onClick={closeCreateForm}
+                  disabled={creating}
+                  className="text-sm px-2 py-1 rounded-md disabled:opacity-60"
+                  style={{
+                    color: "var(--text-muted)",
+                    border: "1px solid var(--border-subtle)",
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
               <div className="space-y-2.5">
                 <div>
                   <label
@@ -731,10 +760,15 @@ export default function HomePage() {
                 >
                   {creating ? "Creating…" : "Create & Open"}
                 </button>
+                {createError && (
+                  <p className="text-xs" style={{ color: "#fda4af" }}>
+                    {createError}
+                  </p>
+                )}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
       </div>
     </div>

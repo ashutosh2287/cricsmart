@@ -20,7 +20,12 @@ import MatchStory from "@/components/MatchStory";
 import MatchGraphExplorer from "@/components/match/MatchGraphExplorer";
 import MomentumHeatmap from "@/components/MomentumHeatmap";
 import OversTimeline from "@/components/OversTimeline";
-import PageMotion from "@/components/ui/PageMotion";
+import MatchDataBoundary from "@/components/match-core/MatchDataBoundary";
+import MatchPageCore from "@/components/match-core/MatchPageCore";
+import MatchRenderBoundary from "@/components/match-core/MatchRenderBoundary";
+import LiveEnergyWrapper from "@/components/motion/LiveEnergyWrapper";
+import MotionFallbackBoundary from "@/components/motion/MotionFallbackBoundary";
+import MotionSafeContainer from "@/components/motion/MotionSafeContainer";
 import PartnershipPanel from "@/components/PartnershipPanel";
 import ReplaySlider from "@/components/match/ReplaySlider";
 import TeamSelector from "@/components/teams/TeamSelector";
@@ -64,6 +69,7 @@ import { calculateWinProbability } from "@/services/analytics/calculateWinProbab
 import { setMatchMeta } from "@/store/matchStore";
 import AnimatedScore from "@/components/ui/AnimatedScore";
 import ConnectionStatus from "@/components/ui/ConnectionStatus";
+import { pageRevealVariants, transitions } from "@/animations/motion-presets";
 
 // ─────────────────────────────────────────────
 // Types
@@ -1604,15 +1610,13 @@ function MatchInnerPage({
   }
 
   return (
-    <main className="relative overflow-hidden">
-      <div className="mx-auto max-w-[1500px] px-3 py-3 md:px-5 lg:px-6">
-        {/* ── Hero ── */}
+    <MatchPageCore
+      header={
         <div className="mb-3">
           {currentInnings ? (
             <div className="space-y-2.5">
               <GlassPanel>
                 <div className="flex flex-col gap-3">
-                  {/* Header row */}
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-1.5">
                       <p className="text-[11px] uppercase tracking-[0.22em] text-sky-300/80">
@@ -1627,10 +1631,7 @@ function MatchInnerPage({
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <ConnectionStatus hideWhenConnected={false} />
-                      <motion.div
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                         <Link
                           href="/"
                           className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-md transition"
@@ -1640,92 +1641,94 @@ function MatchInnerPage({
                       </motion.div>
                     </div>
                   </div>
-
-                  {/* Match header (scoreboard) */}
-                  <MatchHeader
-  team1={team1Name}
-  team2={team2Name}
-  runs={runs}
-  wickets={wickets}
-  over={Math.floor(displayOver)}
-  ball={Math.round((displayOver % 1) * 10)}
-  striker={striker}
-  nonStriker={nonStriker}
-  bowler={bowler}
-  lastOverBalls={lastOverBalls}
-  isLive={!currentEngineState.matchEnded}
-  matchEnded={currentEngineState.matchEnded}
-  winner={currentEngineState.winner}
-  winBy={currentEngineState.winBy}
-  target={innings2 ? target : undefined}
-  rrr={innings2 && !currentEngineState.matchEnded ? rrr : undefined}
-  crr={crr}
-/>
-
-                  {/* Stats pills */}
-                  <div className="grid auto-rows-fr gap-2 md:grid-cols-3 xl:grid-cols-8">
-                    <StatPill
-                      label={innings1?.battingTeam ?? "Team 1"}
-                      value={`${innings1?.runs ?? 0}/${innings1?.wickets ?? 0}`}
-                      tone="green"
-                    />
-                    <StatPill
-                      label={innings2?.battingTeam ?? "Team 2"}
-                      value={
-                        innings2
-                          ? `${innings2.runs}/${innings2.wickets}`
-                          : "Yet to bat"
-                      }
-                      tone="blue"
-                    />
-                    <StatPill
-                      label="Current innings"
-                      value={`Innings ${(currentEngineState.currentInningsIndex ?? 0) + 1}`}
-                      tone="neutral"
-                    />
-                    <StatPill
-                      label="Current over"
-                      value={displayOver}
-                      tone="amber"
-                    />
-                    {innings2 && !currentEngineState.matchEnded && (
-                      <StatPill label="Target" value={target} tone="neutral" />
-                    )}
-                    {innings2 && !currentEngineState.matchEnded && (
-                      <StatPill
-                        label="RRR"
-                        value={rrr ? rrr.toFixed(2) : "0.00"}
-                        tone="red"
-                      />
-                    )}
-                    <StatPill
-                      label="CRR"
-                      value={crr ? crr.toFixed(2) : "0.00"}
-                      tone="blue"
-                    />
-                    <StatPill
-                      label="Status"
-                      value={
-                        getLiveMatchStatusLabel(currentEngineState.matchEnded, sessionMeta?.sessionState)
-                      }
-                      tone="neutral"
-                    />
-                  </div>
                 </div>
               </GlassPanel>
             </div>
           ) : null}
         </div>
-
-        {/* ── Tabs ── */}
+      }
+      scoreboard={
+        <div className="mb-3">
+          {currentInnings ? (
+            <GlassPanel>
+              <div className="space-y-3">
+                <MatchHeader
+                  team1={team1Name}
+                  team2={team2Name}
+                  runs={runs}
+                  wickets={wickets}
+                  over={Math.floor(displayOver)}
+                  ball={Math.round((displayOver % 1) * 10)}
+                  striker={striker}
+                  nonStriker={nonStriker}
+                  bowler={bowler}
+                  lastOverBalls={lastOverBalls}
+                  isLive={!currentEngineState.matchEnded}
+                  matchEnded={currentEngineState.matchEnded}
+                  winner={currentEngineState.winner}
+                  winBy={currentEngineState.winBy}
+                  target={innings2 ? target : undefined}
+                  rrr={innings2 && !currentEngineState.matchEnded ? rrr : undefined}
+                  crr={crr}
+                />
+                <div className="grid auto-rows-fr gap-2 md:grid-cols-3 xl:grid-cols-8">
+                  <StatPill
+                    label={innings1?.battingTeam ?? "Team 1"}
+                    value={`${innings1?.runs ?? 0}/${innings1?.wickets ?? 0}`}
+                    tone="green"
+                  />
+                  <StatPill
+                    label={innings2?.battingTeam ?? "Team 2"}
+                    value={innings2 ? `${innings2.runs}/${innings2.wickets}` : "Yet to bat"}
+                    tone="blue"
+                  />
+                  <StatPill
+                    label="Current innings"
+                    value={`Innings ${(currentEngineState.currentInningsIndex ?? 0) + 1}`}
+                    tone="neutral"
+                  />
+                  <StatPill label="Current over" value={displayOver} tone="amber" />
+                  {innings2 && !currentEngineState.matchEnded && (
+                    <StatPill label="Target" value={target} tone="neutral" />
+                  )}
+                  {innings2 && !currentEngineState.matchEnded && (
+                    <StatPill
+                      label="RRR"
+                      value={rrr ? rrr.toFixed(2) : "0.00"}
+                      tone="red"
+                    />
+                  )}
+                  <StatPill
+                    label="CRR"
+                    value={crr ? crr.toFixed(2) : "0.00"}
+                    tone="blue"
+                  />
+                  <StatPill
+                    label="Status"
+                    value={getLiveMatchStatusLabel(
+                      currentEngineState.matchEnded,
+                      sessionMeta?.sessionState
+                    )}
+                    tone="neutral"
+                  />
+                </div>
+              </div>
+            </GlassPanel>
+          ) : null}
+        </div>
+      }
+      tabs={<div />}
+      main={
         <TabsArea
           match={match}
           analytics={analytics}
           insights={insights}
           sessionMeta={sessionMeta}
         />
-      </div>
-    </main>
+      }
+      commentaryShell={<div data-shell="commentary-shell" />}
+      analyticsShell={<div data-shell="analytics-shell" />}
+    />
   );
 }
 
@@ -1911,52 +1914,83 @@ export default function MatchDetailPage({
 
   // ── Render ──
 
+  const pageSurfaceStyle = {
+    backgroundColor: "var(--bg-base)",
+    backgroundImage: "var(--page-hero-gradient)",
+  };
+
   if (!matchId) {
+    const invalidMatchContent = (
+      <div style={pageSurfaceStyle}>
+        <div className="p-10 text-center text-[var(--text-primary)]">Invalid match URL.</div>
+      </div>
+    );
+
     return (
-      <PageMotion>
-        <div
-          style={{
-            backgroundColor: "var(--bg-base)",
-            backgroundImage: "var(--page-hero-gradient)",
-          }}
-        >
-          <div className="p-10 text-center text-[var(--text-primary)]">
-            Invalid match URL.
-          </div>
-        </div>
-      </PageMotion>
+      <MatchRenderBoundary fallback={invalidMatchContent}>
+        <MotionFallbackBoundary fallback={invalidMatchContent}>
+          <MotionSafeContainer
+            enableMotion
+            variants={pageRevealVariants}
+            transition={transitions.base}
+          >
+            <LiveEnergyWrapper enabled state="regular">
+              {invalidMatchContent}
+            </LiveEnergyWrapper>
+          </MotionSafeContainer>
+        </MotionFallbackBoundary>
+      </MatchRenderBoundary>
     );
   }
 
+  const loadingFallback = (
+    <div className="space-y-3 p-10 text-center text-white">
+      <p>Loading match...</p>
+      <p className="text-xs text-white/60">Match ID: {matchId}</p>
+    </div>
+  );
+  const errorFallback = loadError ? (
+    <div className="space-y-3 p-10 text-center">
+      <p className="text-sm text-rose-300">{loadError}</p>
+      <p className="text-xs text-white/60">Match ID: {matchId}</p>
+    </div>
+  ) : undefined;
+
+  const renderSafeContent = (
+    <div style={pageSurfaceStyle}>
+      <MatchDataBoundary
+        isReady={Boolean(match)}
+        error={loadError}
+        loadingFallback={loadingFallback}
+        errorFallback={errorFallback}
+      >
+        {match ? (
+          <MatchInnerPage
+            match={match}
+            analytics={analytics}
+            insights={insights}
+            sessionMeta={sessionMeta}
+          />
+        ) : null}
+      </MatchDataBoundary>
+    </div>
+  );
+
   return (
-    // ✅ FIX: matchId prop — NOT value prop
     <MatchProvider matchId={matchId}>
-      <PageMotion>
-        <div
-          style={{
-            backgroundColor: "var(--bg-base)",
-            backgroundImage: "var(--page-hero-gradient)",
-          }}
-        >
-          {match ? (
-            <MatchInnerPage
-              match={match}
-              analytics={analytics}
-              insights={insights}
-              sessionMeta={sessionMeta}
-            />
-          ) : loadError ? (
-            <div className="space-y-3 p-10 text-center">
-              <p className="text-sm text-rose-300">{loadError}</p>
-              <p className="text-xs text-white/60">Match ID: {matchId}</p>
-            </div>
-          ) : (
-            <div className="p-10 text-center text-white">
-              Loading match...
-            </div>
-          )}
-        </div>
-      </PageMotion>
+      <MatchRenderBoundary fallback={renderSafeContent}>
+        <MotionFallbackBoundary fallback={renderSafeContent}>
+          <MotionSafeContainer
+            enableMotion
+            variants={pageRevealVariants}
+            transition={transitions.base}
+          >
+            <LiveEnergyWrapper enabled state="regular">
+              {renderSafeContent}
+            </LiveEnergyWrapper>
+          </MotionSafeContainer>
+        </MotionFallbackBoundary>
+      </MatchRenderBoundary>
     </MatchProvider>
   );
 }

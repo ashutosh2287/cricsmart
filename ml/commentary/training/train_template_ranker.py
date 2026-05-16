@@ -107,11 +107,10 @@ def train_ranker(
     ranker.fit(transformed, labels, group=query_sizes)
 
     predictions = np.asarray(ranker.predict(transformed), dtype=float)
+    true_relevance = labels.to_numpy(dtype=float).reshape(1, -1)
+    pred_scores = predictions.reshape(1, -1)
     ndcg = float(
-        ndcg_score(
-            np.asarray([labels.to_numpy(dtype=float)]),
-            np.asarray([predictions], dtype=float),
-        )
+        ndcg_score(true_relevance, pred_scores)
     )
 
     pipeline = Pipeline(

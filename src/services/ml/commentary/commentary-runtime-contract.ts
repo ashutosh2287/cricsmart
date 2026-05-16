@@ -145,7 +145,6 @@ export function getRuntimeThresholds() {
   return {
     commentary_type_threshold: thresholds.commentary_type_threshold,
     tone_threshold: thresholds.tone_threshold,
-    template_rank_threshold: thresholds.template_rank_threshold,
     template_threshold: thresholds.template_rank_threshold,
     retrieval_threshold: thresholds.retrieval_threshold,
   };

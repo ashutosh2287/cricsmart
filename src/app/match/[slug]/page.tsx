@@ -150,6 +150,10 @@ function normalizeSquadPlayers(
   });
 }
 
+function findTeamSquadByName(teamName: string): SquadPlayer[] {
+  return teams.find((team) => team.name === teamName)?.squad ?? [];
+}
+
 function formatOverDisplay(overs?: Record<string, unknown>) {
   if (!overs) return 0;
 
@@ -570,20 +574,24 @@ function TabsArea({
       ? [{ players: `${strikerName} & ${nonStrikerName}`, runs: 0 }]
       : [];
 
-  const liveTeamASquad = normalizeSquadPlayers(currentEngineState?.teamA?.squad);
-  const liveTeamBSquad = normalizeSquadPlayers(currentEngineState?.teamB?.squad);
+  const normalizedTeamASquad = normalizeSquadPlayers(
+    currentEngineState?.teamA?.squad
+  );
+  const normalizedTeamBSquad = normalizeSquadPlayers(
+    currentEngineState?.teamB?.squad
+  );
 
   const squadTeams = [
     {
       name: currentEngineState?.teamA?.name || match.team1,
-      squad: liveTeamASquad,
+      squad: normalizedTeamASquad,
     },
     {
       name: currentEngineState?.teamB?.name || match.team2,
-      squad: liveTeamBSquad,
+      squad: normalizedTeamBSquad,
     },
   ].map((team) => {
-    const fallbackSquad = teams.find((item) => item.name === team.name)?.squad ?? [];
+    const fallbackSquad = findTeamSquadByName(team.name);
     const squad = team.squad.length ? team.squad : fallbackSquad;
 
     return {

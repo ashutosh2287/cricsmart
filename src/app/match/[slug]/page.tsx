@@ -918,14 +918,14 @@ function TabsArea({
                   </div>
                   <div className="mt-3 space-y-2">
                     {players.length ? (
-                      players.map((player) => {
+                      players.map((player, index) => {
                         const sr =
                           player.balls > 0
                             ? ((player.runs / player.balls) * 100).toFixed(1)
                             : "0.0";
                         return (
                           <div
-                            key={player.name}
+                            key={`batter-${player.name || "unknown"}-${index}`}
                             className={cls(
                               "grid grid-cols-[minmax(160px,1.6fr)_0.7fr_0.7fr_0.7fr_0.8fr] items-center gap-3 rounded-2xl border px-3 py-3 text-sm transition",
                               player.isStriker
@@ -986,7 +986,7 @@ function TabsArea({
                   </div>
                   <div className="mt-3 space-y-2">
                     {Object.entries(bowling).length ? (
-                      Object.entries(bowling).map(([name, stat]) => {
+                      Object.entries(bowling).map(([name, stat], index) => {
                         const overs = stat.overs ?? 0;
                         const runs = stat.runs ?? 0;
                         const wkts = stat.wickets ?? 0;
@@ -994,7 +994,7 @@ function TabsArea({
                           overs > 0 ? (runs / overs).toFixed(1) : "0.0";
                         return (
                           <div
-                            key={name}
+                            key={`bowler-${name || "unknown"}-${index}`}
                             className="grid grid-cols-5 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm hover:bg-white/[0.06]"
                           >
                             <span className="truncate text-white">{name}</span>
@@ -1081,14 +1081,14 @@ function TabsArea({
                   />
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
                     {topPlayers.length ? (
-                      topPlayers.map((player) => {
+                      topPlayers.map((player, index) => {
                         const sr =
                           player.balls > 0
                             ? ((player.runs / player.balls) * 100).toFixed(1)
                             : "0.0";
                         return (
                           <div
-                            key={player.name}
+                            key={`top-batter-${player.name || "unknown"}-${index}`}
                             className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
                           >
                             <p className="font-medium text-white">

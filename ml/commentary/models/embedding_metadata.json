@@ -1,0 +1,42 @@
+{
+  "metadataVersion": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "embeddingModel": "all-MiniLM-L6-v2",
+  "datasetVersion": "1.0.0",
+  "embeddingDimension": 384,
+  "contextDimension": 14,
+  "rows": 0,
+  "retrievalConfig": {
+    "embeddingWeight": 0.35,
+    "contextWeight": 0.65,
+    "retrievalFeatureColumns": [
+      "innings_norm",
+      "over_norm",
+      "wickets_lost_norm",
+      "balls_remaining_norm",
+      "pressure_score_norm",
+      "momentum_score_norm",
+      "collapse_score_norm",
+      "partnership_strength_norm",
+      "boundary_frequency",
+      "dot_ball_pressure",
+      "probability_swing",
+      "death_over_intensity",
+      "is_death_over",
+      "is_chase"
+    ],
+    "deterministicOrdering": "score_desc_then_id_asc"
+  },
+  "similarityThresholds": {
+    "min_similarity": 0.7,
+    "max_duplicates": 2,
+    "fallback_strategy": "deterministic_templates"
+  },
+  "trainedAt": "1970-01-01T00:00:00+00:00",
+  "embeddingMode": "sentence-transformers",
+  "artifacts": {
+    "embeddingsPath": "ml/commentary/models/commentary_embeddings.npy",
+    "contextFeaturesPath": "ml/commentary/models/commentary_context_features.npy"
+  },
+  "embeddingRows": []
+}

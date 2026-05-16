@@ -73,6 +73,7 @@ export default function MatchesPage() {
 
   const [simMatches, setSimMatches] = useState<SimMatch[]>([]);
   const [simLoading, setSimLoading] = useState(true);
+  const [deletingSimulationId, setDeletingSimulationId] = useState<string | null>(null);
 
   const discoverySnapshotRef = useRef<CuratedDiscoveryPayload>(EMPTY_DISCOVERY);
   const router = useRouter();
@@ -135,6 +136,28 @@ export default function MatchesPage() {
   }, []);
 
   const sections = useMemo(() => discovery.sections, [discovery]);
+
+  const handleDeleteSimulation = async (matchId: string) => {
+    setDeletingSimulationId(matchId);
+    try {
+      const res = await fetch("/api/matches/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId }),
+      });
+      if (!res.ok) {
+        const details = await res.text().catch(() => "");
+        throw new Error(
+          `Failed to delete simulation ${matchId}. status=${res.status} details=${details}`
+        );
+      }
+      setSimMatches((prev) => prev.filter((match) => match.matchId !== matchId));
+    } catch (error) {
+      console.error("Failed to delete simulation", { matchId, error });
+    } finally {
+      setDeletingSimulationId(null);
+    }
+  };
 
   useEffect(() => {
     console.debug("MATCHES_CURATED_SECTIONS", {
@@ -224,34 +247,38 @@ export default function MatchesPage() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {simMatches.map((match) => {
               const isLive = match.status === "LIVE";
+              const isDeleting = deletingSimulationId === match.matchId;
 
               return (
-                <button
+                <div
                   key={match.matchId}
-                  onClick={async () => {
-                    if (match.type === "LIVE") {
-                      router.push(`/match/${match.matchId}`);
-                      return;
-                    }
-
-                    await fetch("/api/match/init", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        matchId: match.matchId,
-                        teamA: match.teamA,
-                        teamB: match.teamB,
-                        type: match.type,
-                        externalMatchId: match.externalMatchId ?? match.matchId,
-                      }),
-                    });
-                    router.push(`/match/${match.matchId}`);
+                  className="grid grid-cols-[1fr_auto] items-start rounded-lg"
+                  style={{
+                    border: "1px solid var(--border-subtle)",
+                    background: "color-mix(in srgb, var(--bg-surface) 92%, transparent)",
                   }}
-                    className="rounded-lg p-3 text-left transition-colors"
-                    style={{
-                      border: "1px solid var(--border-subtle)",
-                      background: "color-mix(in srgb, var(--bg-surface) 92%, transparent)",
+                >
+                  <button
+                    onClick={async () => {
+                      if (match.type === "LIVE") {
+                        router.push(`/match/${match.matchId}`);
+                        return;
+                      }
+
+                      await fetch("/api/match/init", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          matchId: match.matchId,
+                          teamA: match.teamA,
+                          teamB: match.teamB,
+                          type: match.type,
+                          externalMatchId: match.externalMatchId ?? match.matchId,
+                        }),
+                      });
+                      router.push(`/match/${match.matchId}`);
                     }}
+                    className="w-full p-3 text-left transition-colors"
                   >
                     <p className="text-sm font-semibold text-[var(--text-primary)]">
                       {match.teamA} vs {match.teamB}
@@ -278,7 +305,37 @@ export default function MatchesPage() {
                       </p>
                     ) : null}
                   </button>
-              );
+                  <div className="p-2">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSimulation(match.matchId)}
+                      disabled={isDeleting}
+                      aria-busy={isDeleting}
+                      aria-label={
+                        isDeleting
+                          ? `Deleting simulation ${match.teamA} vs ${match.teamB}`
+                          : `Delete simulation ${match.teamA} vs ${match.teamB}`
+                      }
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors disabled:opacity-50"
+                      style={{
+                        border: "1px solid var(--border-subtle)",
+                        background: "var(--bg-overlay)",
+                        color: "var(--text-muted)",
+                      }}
+                      title="Delete simulation"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <span aria-hidden="true">…</span>
+                          <span className="sr-only">Deleting</span>
+                        </>
+                      ) : (
+                        "✕"
+                      )}
+                    </button>
+                  </div>
+                </div>
+               );
             })}
           </div>
         )}

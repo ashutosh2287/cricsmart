@@ -1057,7 +1057,7 @@ function TabsArea({
                             : "0.0";
                         return (
                           <div
-                            key={player.name}
+                            key={`batter-${player.name || `${player.runs}-${player.balls}-${player.fours}-${player.sixes}-${player.out ? "out" : "notout"}`}`}
                             className={cls(
                               "grid grid-cols-[minmax(160px,1.6fr)_0.7fr_0.7fr_0.7fr_0.8fr] items-center gap-3 rounded-2xl border px-3 py-3 text-sm transition",
                               player.isStriker
@@ -1126,7 +1126,7 @@ function TabsArea({
                           overs > 0 ? (runs / overs).toFixed(1) : "0.0";
                         return (
                           <div
-                            key={name}
+                            key={`bowler-${name || `${overs}-${runs}-${wkts}`}`}
                             className="grid grid-cols-5 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm hover:bg-white/[0.06]"
                           >
                             <span className="truncate text-white">{name}</span>
@@ -1220,7 +1220,7 @@ function TabsArea({
                             : "0.0";
                         return (
                           <div
-                            key={player.name}
+                            key={`top-batter-${player.name || `${player.runs}-${player.balls}-${player.fours}-${player.sixes}-${player.out ? "out" : "notout"}`}`}
                             className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
                           >
                             <p className="font-medium text-white">

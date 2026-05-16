@@ -599,7 +599,7 @@ function TabsArea({
     >
       <div className="min-w-0">
         {/* ── Tab Bar ── */}
-        <div className="sticky top-24 z-20 mb-4 overflow-x-auto">
+        <div className="sticky top-24 z-20 mb-3 overflow-x-auto sports-scrollbar">
   <div
     className="inline-flex min-w-full"
     style={{ borderBottom: "1px solid var(--border-subtle)" }}
@@ -617,9 +617,16 @@ function TabsArea({
               : "2px solid transparent",
             marginBottom: "-1px",
           }}
-          className="px-4 py-3 text-sm font-medium capitalize whitespace-nowrap transition-colors hover:text-[var(--text-primary)]"
+          className="relative px-4 py-3 text-sm font-medium capitalize whitespace-nowrap transition-colors hover:text-[var(--text-primary)]"
         >
           {tab}
+          {isActive ? (
+            <motion.span
+              layoutId="match-tabs-active-indicator"
+              className="absolute -bottom-[1px] left-1 right-1 h-[2px] rounded-full bg-[var(--accent-brand)]"
+              transition={{ type: "spring", stiffness: 500, damping: 34 }}
+            />
+          ) : null}
         </button>
       );
     })}
@@ -628,7 +635,7 @@ function TabsArea({
 
         {/* ── Overview ── */}
         {activeTab === "overview" && (
-          <div className="space-y-4">
+          <div className="animate-fade-in space-y-3">
             <GlassPanel>
               <SectionHeader
                 eyebrow="Match center"
@@ -698,14 +705,14 @@ function TabsArea({
 
         {/* ── Live ── */}
         {activeTab === "live" && (
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
-            <GlassPanel className="p-3">
+          <div className="animate-fade-in grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <GlassPanel level="primary" className="p-3">
               <SectionHeader eyebrow="Ball by ball" title="Live Commentary" />
               <CommentaryPanel matchId={match.slug} insights={insights} />
             </GlassPanel>
 
             <div className="space-y-3">
-              <GlassPanel className="p-3">
+              <GlassPanel level="secondary" className="p-3">
                 <SectionHeader eyebrow="Live pulse" title="Session Status" />
                 <LiveMatchStatus
                   matchId={match.slug}
@@ -714,7 +721,7 @@ function TabsArea({
                 />
               </GlassPanel>
 
-              <GlassPanel className="p-3">
+              <GlassPanel level="tertiary" className="p-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.18em] text-sky-300/80">
@@ -744,8 +751,8 @@ function TabsArea({
 
         {/* ── Analysis ── */}
         {activeTab === "analysis" && (
-          <div className="space-y-3">
-            <GlassPanel className="p-3">
+          <div className="animate-fade-in space-y-3">
+            <GlassPanel level="primary" className="p-3">
               <SectionHeader eyebrow="Unified module" title="Match Analytics" />
               <div className="space-y-3">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -814,7 +821,7 @@ function TabsArea({
               </div>
             </GlassPanel>
 
-            <GlassPanel className="p-3">
+            <GlassPanel level="secondary" className="p-3">
               <SectionHeader eyebrow="Shot analysis" title="Wagon Wheel" />
               <div className="flex h-[260px] items-center justify-center text-white/60">
                 <WagonWheel matchId={match.slug} />
@@ -825,7 +832,7 @@ function TabsArea({
 
         {/* ── Timeline ── */}
         {activeTab === "timeline" && (
-          <div className="space-y-6">
+          <div className="animate-fade-in space-y-5">
             <GlassPanel>
               <SectionHeader eyebrow="Moments" title="Highlight Timeline" />
               <HighlightTimeline matchId={match.slug} />
@@ -839,7 +846,7 @@ function TabsArea({
 
         {/* ── Scorecard ── */}
         {activeTab === "scorecard" && (
-          <div className="space-y-6">
+          <div className="animate-fade-in space-y-5">
             {currentEngineState?.matchEnded && currentEngineState?.winner ? (
               <div className="mt-3 border-t border-white/10 pt-3 text-center text-sm text-white">
                 {currentEngineState.winner} won{" "}

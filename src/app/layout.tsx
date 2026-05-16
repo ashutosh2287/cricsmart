@@ -90,7 +90,7 @@ export default function RootLayout({
              MAIN CONTENT (ANIMATED)
           ======================================== */}
           <main className="min-h-screen bg-[var(--bg-base)]">
-            <div className="mx-auto w-full max-w-[1100px] px-4 py-8 md:px-6">
+            <div className="mx-auto w-full max-w-[1100px] px-3 py-6 md:px-4 md:py-7">
               <PageTransition>{children}</PageTransition>
             </div>
           </main>

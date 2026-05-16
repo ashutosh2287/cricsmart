@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import { LivePulse } from "@/components/matches/LivePulse";
 
 // ─────────────────────────────────────────────
 // Types
@@ -106,10 +107,7 @@ function LiveMatchCard({ match }: { match: RealMatch }) {
             {category}
           </span>
           <span className="flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "#ef4444" }}>
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
-            </span>
+            <LivePulse />
             LIVE
           </span>
         </div>
@@ -183,15 +181,8 @@ function SimulationRow({
       >
         {/* Live dot */}
         {match.status === "Live" && (
-          <span className="relative flex h-2 w-2 shrink-0">
-            <span
-              className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-              style={{ background: "var(--accent-live)" }}
-            />
-            <span
-              className="relative inline-flex rounded-full h-2 w-2"
-              style={{ background: "var(--accent-live)" }}
-            />
+          <span className="shrink-0">
+            <LivePulse />
           </span>
         )}
 
@@ -368,10 +359,10 @@ export default function HomePage() {
         color: "var(--text-primary)",
       }}
     >
-      <div className="mx-auto w-full max-w-[1100px] px-4 py-8 md:px-6">
+      <div className="mx-auto w-full max-w-[1100px] px-3 py-6 md:px-4">
 
         {/* ── Top bar ──────────────────────────────────── */}
-        <div className="flex items-center justify-between mb-10">
+        <div className="mb-6 flex items-center justify-between">
           <div>
             <h1
               className="text-2xl font-bold tracking-tight"
@@ -488,18 +479,14 @@ export default function HomePage() {
 
         {/* ── Live Now ─────────────────────────────────── */}
         <section
-          className="mb-10 rounded-2xl p-5 md:p-6"
+          className="hierarchy-primary mb-6 rounded-2xl p-4 md:p-5"
           style={{
             background: "var(--bg-surface)",
-            border: "1px solid var(--border-subtle)",
           }}
         >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-              </span>
+              <LivePulse />
               <h2
                 className="text-sm font-semibold uppercase tracking-[0.18em]"
                 style={{ color: "var(--text-secondary)" }}
@@ -554,14 +541,13 @@ export default function HomePage() {
         </section>
 
         {/* Divider */}
-        <div className="mb-10" />
+        <div className="mb-6" />
 
         {/* ── Your Simulations ─────────────────────────── */}
         <section
-          className="rounded-2xl p-5 md:p-6"
+          className="hierarchy-secondary rounded-2xl p-4 md:p-5"
           style={{
             background: "var(--bg-surface)",
-            border: "1px solid var(--border-subtle)",
           }}
         >
           <div className="flex items-center justify-between mb-4">
@@ -583,7 +569,7 @@ export default function HomePage() {
 
           {matches.length === 0 ? (
             <div
-              className="rounded-xl px-4 py-8 text-center"
+              className="rounded-xl px-4 py-6 text-center"
               style={{
                 background: "var(--bg-surface)",
                 border: "1px solid var(--border-subtle)",

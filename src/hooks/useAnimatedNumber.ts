@@ -1,13 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function useAnimatedNumber(target: number, duration = 400) {
-
   const [value, setValue] = useState(target);
+  const valueRef = useRef(target);
 
   useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
+  useEffect(() => {
+    let rafId = 0;
     let start: number | null = null;
-    const initial = value;
+    const initial = valueRef.current;
     const diff = target - initial;
 
     if (diff === 0) return;
@@ -16,22 +20,20 @@ export function useAnimatedNumber(target: number, duration = 400) {
 
       if (!start) start = timestamp;
 
-      const progress = Math.min((timestamp - start) / duration, 1);
+      const progress = Math.min((timestamp - start) / Math.max(duration, 1), 1);
 
       const nextValue = Math.round(initial + diff * progress);
 
       setValue(nextValue);
 
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        rafId = requestAnimationFrame(animate);
       }
-
     }
 
-    requestAnimationFrame(animate);
-
-  }, [target]);
+    rafId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafId);
+  }, [target, duration]);
 
   return value;
-
 }

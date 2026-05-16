@@ -3,6 +3,7 @@
 import { useMatchSelector, useScore } from "@/services/matchSelectors";
 import type { MatchReconnectHealth } from "@/services/match/matchRegistry";
 import type { LiveSessionState } from "@/types/liveSession";
+import { LivePulse } from "@/components/matches/LivePulse";
 
 type Props = {
   matchId: string;
@@ -52,9 +53,9 @@ export default function LiveMatchStatus({
   const showPulse = !matchEnded && sessionState !== "DISCONNECTED" && sessionState !== "FAILED";
 
   return (
-    <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-raised)]/70 px-3 py-2 text-xs">
+    <div className="hierarchy-secondary inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-[var(--bg-raised)]/70 px-3 py-2 text-xs">
       <span className="inline-flex items-center gap-1.5">
-        {showPulse && <span className="live-pulse-dot" />}
+        {showPulse && <LivePulse />}
         <span
           className="font-semibold uppercase tracking-[0.14em]"
           style={{

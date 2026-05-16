@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useMatchSelector } from "@/services/matchSelectors";
 import type { BallEvent } from "@/types/ballEvent";
 import { initReplay, seekNextSix, seekNextWicket, seekToOver } from "@/services/replay/replayController";
+import { commentaryArrivalVariants } from "@/animations/live-animations";
 
 type Props = {
   slug: string;
@@ -72,7 +74,7 @@ function InningsRow({
         </span>
       </div>
 
-      <div className="overflow-x-auto pb-1">
+      <div className="sports-scrollbar overflow-x-auto pb-1">
         <div className="flex min-w-max snap-x snap-mandatory gap-2.5">
           {overs.map((overNumber) => {
             const balls = innings?.overs?.[overNumber] ?? [];
@@ -86,9 +88,12 @@ function InningsRow({
             const pressure = getPressureTag(runs, wickets);
 
             return (
-              <div
+              <motion.div
                 key={`${title}-${overNumber}`}
-                className="w-[180px] shrink-0 snap-start rounded-xl border border-white/10 bg-white/[0.03] p-3"
+                className="w-[172px] shrink-0 snap-start rounded-xl border border-white/10 bg-white/[0.03] p-2.5 transition-transform duration-200 hover:-translate-y-0.5"
+                variants={commentaryArrivalVariants}
+                initial="initial"
+                animate="animate"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold text-white">Over {overNumber + 1}</span>
@@ -101,7 +106,7 @@ function InningsRow({
                   </button>
                 </div>
 
-                <div className="mb-2 flex flex-wrap gap-1.5 text-[10px]">
+                <div className="mb-1.5 flex flex-wrap gap-1 text-[10px]">
                   <span className="rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-white/80">{runs} runs</span>
                   {!!wickets && <span className="rounded-md border border-red-400/35 bg-red-500/12 px-1.5 py-0.5 text-red-200">{wickets} wk</span>}
                   {!!boundaries && <span className="rounded-md border border-amber-400/35 bg-amber-500/12 px-1.5 py-0.5 text-amber-200">{boundaries} bdy</span>}
@@ -109,7 +114,7 @@ function InningsRow({
 
                 <div className={`mb-2 rounded-md border px-2 py-1 text-[10px] ${pressure.cls}`}>{pressure.label}</div>
 
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1">
                   {tokens.map((token, index) => (
                     <span
                       key={`${overNumber}-${index}`}
@@ -121,7 +126,7 @@ function InningsRow({
                     </span>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -159,7 +164,7 @@ export default function OversTimeline({ slug }: Props) {
   };
 
   return (
-    <div className="space-y-4">
+      <div className="space-y-3">
       <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -187,8 +192,10 @@ export default function OversTimeline({ slug }: Props) {
         </div>
       </div>
 
-      <InningsRow innings={innings?.[0]} title="1st Innings" onJumpOver={jumpOver} />
-      <InningsRow innings={innings?.[1]} title="2nd Innings" onJumpOver={jumpOver} />
+      <AnimatePresence mode="popLayout">
+        <InningsRow innings={innings?.[0]} title="1st Innings" onJumpOver={jumpOver} />
+        <InningsRow innings={innings?.[1]} title="2nd Innings" onJumpOver={jumpOver} />
+      </AnimatePresence>
 
       <div className="flex flex-wrap items-center gap-2 text-xs text-white/60">
         {[

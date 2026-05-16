@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import type { InningsState } from "@/services/matchEngine";
 import { useCurrentInnings } from "@/services/matchSelectors";
 import { translateCommentary } from "@/services/commentary/commentaryTranslator";
 import type { BallEvent } from "@/types/ballEvent";
+import { commentaryArrivalVariants } from "@/animations/live-animations";
 
 type BroadcastInsight = {
   type: string;
@@ -408,7 +410,7 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
   const currentOver = overBlocks[0];
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.9))] p-3.5">
+    <div className="hierarchy-primary rounded-2xl bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.9))] p-3">
       {insights && insights.length > 0 ? (
         <div className="mb-3 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-3">
           <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-yellow-300">
@@ -455,15 +457,23 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
         </div>
       ) : null}
 
-      <div className="max-h-[74vh] space-y-3 overflow-y-auto pr-1">
+      <div className="sports-scrollbar max-h-[74vh] space-y-2.5 overflow-y-auto pr-1">
         {overBlocks.length === 0 ? (
           <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm text-white/55">
             Waiting for live commentary...
           </div>
         ) : null}
 
-        {overBlocks.map((block) => (
-          <div key={block.summary.key} className="space-y-2.5 rounded-xl border border-white/10 bg-white/[0.025] p-2.5">
+        <AnimatePresence initial={false}>
+          {overBlocks.map((block) => (
+          <motion.div
+            key={block.summary.key}
+            variants={commentaryArrivalVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="space-y-2 rounded-xl border border-white/10 bg-white/[0.025] p-2.5"
+          >
             <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -547,9 +557,16 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {block.balls.map((ball) => (
-                <div key={ball.key} className={`rounded-xl border p-2.5 ${getTagClasses(ball.tag)}`}>
+                <motion.div
+                  key={ball.key}
+                  variants={commentaryArrivalVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className={`rounded-xl border p-2.5 ${getTagClasses(ball.tag)} ${ball.tag === "WICKET" ? "hierarchy-primary" : ""}`}
+                >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <div className="text-sm font-medium text-white">
@@ -566,11 +583,12 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
                       </span>
                     ) : null}
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
-          </div>
+          </motion.div>
         ))}
+        </AnimatePresence>
       </div>
     </div>
   );

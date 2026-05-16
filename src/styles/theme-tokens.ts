@@ -1,5 +1,11 @@
-export type ThemeMode = "dark" | "light" | "system";
-export type ResolvedTheme = "dark" | "light";
+import {
+  darkDesignTokens,
+  designTokensByMode,
+  lightDesignTokens,
+  type ResolvedTheme,
+} from "@/styles/design-tokens";
+
+export type { ThemeMode, ResolvedTheme } from "@/styles/design-tokens";
 
 export type ThemeTokens = {
   colors: {
@@ -56,27 +62,27 @@ export type ThemeTokens = {
 
 export const darkTheme: ThemeTokens = {
   colors: {
-    background: "#050507",
-    surface: "#0D0D12",
-    elevatedSurface: "#14141C",
-    primaryAccent: "#4F7CFF",
-    accentGlow: "#6E5BFF",
-    livePulse: "#FF4D5A",
-    success: "#00B894",
-    border: "#232336",
-    textPrimary: "#F5F7FF",
-    textSecondary: "#9AA4C7",
+    background: darkDesignTokens.colors.background,
+    surface: darkDesignTokens.colors.surface,
+    elevatedSurface: darkDesignTokens.colors.elevatedSurface,
+    primaryAccent: darkDesignTokens.colors.accentBrand,
+    accentGlow: darkDesignTokens.colors.accentGlow,
+    livePulse: darkDesignTokens.colors.accentLive,
+    success: darkDesignTokens.colors.accentSuccess,
+    border: darkDesignTokens.colors.borderStrong,
+    textPrimary: darkDesignTokens.colors.textPrimary,
+    textSecondary: darkDesignTokens.colors.textSecondary,
   },
   borders: {
-    subtle: "color-mix(in srgb, #F5F7FF 10%, transparent)",
-    strong: "color-mix(in srgb, #4F7CFF 30%, transparent)",
+    subtle: darkDesignTokens.colors.borderSubtle,
+    strong: darkDesignTokens.colors.borderStrong,
   },
   shadows: {
-    card: "0 24px 80px rgba(2, 6, 23, 0.35)",
-    cinematic: "0 35px 120px rgba(1, 3, 14, 0.6)",
+    card: darkDesignTokens.shadows.level2,
+    cinematic: darkDesignTokens.shadows.level1,
   },
   glows: {
-    primary: "0 0 30px color-mix(in srgb, #4F7CFF 35%, transparent)",
+    primary: darkDesignTokens.shadows.glowBrand,
     secondary: "0 0 40px color-mix(in srgb, #6E5BFF 30%, transparent)",
   },
   gradients: {
@@ -111,27 +117,27 @@ export const darkTheme: ThemeTokens = {
 
 export const lightTheme: ThemeTokens = {
   colors: {
-    background: "#F5F7FB",
-    surface: "#FFFFFF",
-    elevatedSurface: "#F0F3FA",
-    primaryAccent: "#3366FF",
-    accentGlow: "#5B4DFF",
-    livePulse: "#E63946",
-    success: "#008A67",
-    border: "#DCE3F1",
-    textPrimary: "#111827",
-    textSecondary: "#3F4A63",
+    background: lightDesignTokens.colors.background,
+    surface: lightDesignTokens.colors.surface,
+    elevatedSurface: lightDesignTokens.colors.elevatedSurface,
+    primaryAccent: lightDesignTokens.colors.accentBrand,
+    accentGlow: lightDesignTokens.colors.accentGlow,
+    livePulse: lightDesignTokens.colors.accentLive,
+    success: lightDesignTokens.colors.accentSuccess,
+    border: lightDesignTokens.colors.borderStrong,
+    textPrimary: lightDesignTokens.colors.textPrimary,
+    textSecondary: lightDesignTokens.colors.textSecondary,
   },
   borders: {
-    subtle: "color-mix(in srgb, #111827 18%, transparent)",
+    subtle: lightDesignTokens.colors.borderSubtle,
     strong: "color-mix(in srgb, #3366FF 28%, transparent)",
   },
   shadows: {
-    card: "0 16px 44px rgba(29, 41, 69, 0.12)",
-    cinematic: "0 28px 64px rgba(51, 102, 255, 0.1)",
+    card: lightDesignTokens.shadows.level2,
+    cinematic: lightDesignTokens.shadows.level1,
   },
   glows: {
-    primary: "0 0 24px color-mix(in srgb, #3366FF 16%, transparent)",
+    primary: lightDesignTokens.shadows.glowBrand,
     secondary: "0 0 24px color-mix(in srgb, #5B4DFF 14%, transparent)",
   },
   gradients: {
@@ -165,6 +171,12 @@ export const lightTheme: ThemeTokens = {
 };
 
 export const themeTokensByMode: Record<ResolvedTheme, ThemeTokens> = {
-  dark: darkTheme,
-  light: lightTheme,
+  dark: {
+    ...darkTheme,
+    colors: { ...darkTheme.colors, background: designTokensByMode.dark.colors.background },
+  },
+  light: {
+    ...lightTheme,
+    colors: { ...lightTheme.colors, background: designTokensByMode.light.colors.background },
+  },
 };

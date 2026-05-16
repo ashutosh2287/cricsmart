@@ -86,6 +86,8 @@ type MainTab =
   | "admin";
 
 const AUTO_RECONNECT_SUBSCRIBER_ID = "match-detail-page-auto";
+const MATCH_LOAD_MAX_ATTEMPTS = 5;
+const MATCH_LOAD_RETRY_DELAY_MS = 450;
 const MAIN_TABS: MainTab[] = [
   "overview",
   "live",
@@ -1668,8 +1670,6 @@ export default function MatchDetailPage({
     if (!matchId) return;
     const id = matchId;
     let cancelled = false;
-    const MAX_LOAD_ATTEMPTS = 5;
-    const RETRY_DELAY_MS = 450;
     const wait = (ms: number) =>
       new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -1677,7 +1677,11 @@ export default function MatchDetailPage({
       let loaded = false;
 
       try {
-        for (let attempt = 0; attempt < MAX_LOAD_ATTEMPTS; attempt += 1) {
+        for (
+          let attemptIndex = 0;
+          attemptIndex < MATCH_LOAD_MAX_ATTEMPTS;
+          attemptIndex += 1
+        ) {
           if (cancelled) return;
 
           const res = await fetch(`/api/match/${id}`, { cache: "no-store" });
@@ -1685,8 +1689,8 @@ export default function MatchDetailPage({
           if (!res.ok) {
             console.error("MATCH API ERROR", await res.text());
 
-            if (attempt < MAX_LOAD_ATTEMPTS - 1) {
-              await wait(RETRY_DELAY_MS);
+            if (attemptIndex < MATCH_LOAD_MAX_ATTEMPTS - 1) {
+              await wait(MATCH_LOAD_RETRY_DELAY_MS);
               continue;
             }
             break;
@@ -1697,8 +1701,8 @@ export default function MatchDetailPage({
           if (!data?.success || !data?.match) {
             console.error("Match not found in Redis for", id);
 
-            if (attempt < MAX_LOAD_ATTEMPTS - 1) {
-              await wait(RETRY_DELAY_MS);
+            if (attemptIndex < MATCH_LOAD_MAX_ATTEMPTS - 1) {
+              await wait(MATCH_LOAD_RETRY_DELAY_MS);
               continue;
             }
             break;
@@ -1790,7 +1794,6 @@ export default function MatchDetailPage({
           connectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID, {
             autoStartSimulation: false,
           });
-          setLoadError("Unable to load this match right now.");
         }
       } catch (err) {
         console.error("LOAD MATCH ERROR", err);

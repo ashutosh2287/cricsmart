@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-<<<<<<< HEAD
 from typing import Any
 
 import joblib
@@ -16,18 +15,37 @@ if __package__ in {None, ""}:
 
     sys.path.append(str(Path(__file__).resolve().parents[3]))
 
+from ml.commentary.embeddings.embedding_metadata import (
+    build_embedding_metadata,
+    save_embedding_metadata,
+)
 from ml.commentary.preprocessing.feature_engineering import (
     RETRIEVAL_FEATURE_COLUMNS,
     build_retrieval_features,
 )
 
 DEFAULT_MODEL_NAME = "all-MiniLM-L6-v2"
+DEFAULT_DATASET_PATH = "ml/commentary/datasets/commentary_dataset.csv"
+DEFAULT_OUT_DIR = "ml/commentary/models"
+
+REQUIRED_METADATA_FIELDS = [
+    "match_id",
+    "innings",
+    "over",
+    "ball",
+    "commentary_text",
+    "commentary_type",
+    "pressure_level",
+    "momentum_state",
+    "tone",
+    "wickets_lost",
+]
 
 
-def load_sentence_transformer(model_name: str):
+def _load_sentence_transformer(model_name: str):
     try:
         from sentence_transformers import SentenceTransformer
-    except ImportError as error:  # pragma: no cover - optional dependency path
+    except ImportError as error:  # pragma: no cover
         raise RuntimeError(
             "sentence-transformers is required for transformer embeddings. "
             "Install ml/requirements.txt or use --fallback tfidf."
@@ -35,21 +53,59 @@ def load_sentence_transformer(model_name: str):
     return SentenceTransformer(model_name)
 
 
-def compute_embeddings(texts: list[str], model_name: str, fallback: str) -> tuple[np.ndarray, dict[str, Any]]:
+def _probability_band(probability: float) -> str:
+    if probability >= 0.80:
+        return "dominant"
+    if probability >= 0.60:
+        return "ahead"
+    if probability >= 0.40:
+        return "balanced"
+    if probability >= 0.20:
+        return "behind"
+    return "critical"
+
+
+def _encode_embeddings(texts: list[str], model_name: str, fallback: str) -> tuple[np.ndarray, dict[str, Any]]:
     if fallback == "tfidf":
         vectorizer = TfidfVectorizer(max_features=384, ngram_range=(1, 2))
         matrix = vectorizer.fit_transform(texts).toarray().astype("float32")
         return matrix, {"mode": "tfidf", "vectorizer": vectorizer}
 
-    model = load_sentence_transformer(model_name)
+    model = _load_sentence_transformer(model_name)
     matrix = np.asarray(model.encode(texts, normalize_embeddings=True), dtype="float32")
     return matrix, {"mode": "sentence-transformers", "model_name": model_name}
 
 
+def _normalize_over_phase(value: Any) -> str:
+    return str(value or "MIDDLE_OVERS")
+
+
+def _build_embedding_rows(df: pd.DataFrame) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for record in df.to_dict(orient="records"):
+        wp = float(record.get("win_probability", 0.5) or 0.5)
+        row = {
+            "match_id": str(record.get("match_id", "")),
+            "innings": int(record.get("innings", 1) or 1),
+            "over": int(record.get("over", 0) or 0),
+            "ball": int(record.get("ball", 0) or 0),
+            "commentary_text": str(record.get("commentary_text", "")),
+            "commentary_type": str(record.get("commentary_type", "summary")),
+            "pressure_level": str(record.get("pressure_level", "MEDIUM")),
+            "momentum_state": str(record.get("momentum_state", "NEUTRAL")),
+            "tone": str(record.get("tone", "neutral")),
+            "wickets_lost": int(record.get("wickets_lost", 0) or 0),
+            "over_phase": _normalize_over_phase(record.get("phase_of_match")),
+            "probability_band": _probability_band(wp),
+        }
+        rows.append(row)
+    return rows
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate commentary embeddings for retrieval.")
-    parser.add_argument("--data", default="ml/commentary/datasets/commentary_dataset.csv")
-    parser.add_argument("--out-dir", default="ml/commentary/embeddings/artifacts")
+    parser.add_argument("--data", default=DEFAULT_DATASET_PATH)
+    parser.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
     parser.add_argument("--model", default=DEFAULT_MODEL_NAME)
     parser.add_argument("--fallback", choices=["transformer", "tfidf"], default="transformer")
     args = parser.parse_args()
@@ -62,131 +118,60 @@ def main() -> None:
     if dataframe.empty:
         raise ValueError("Commentary dataset is empty")
 
+    missing = [field for field in REQUIRED_METADATA_FIELDS if field not in dataframe.columns]
+    if missing:
+        raise ValueError(f"Dataset is missing required embedding metadata fields: {missing}")
+
     texts = dataframe["commentary_text"].fillna("").astype(str).tolist()
-    embeddings, metadata = compute_embeddings(texts, args.model, args.fallback)
+    embeddings, metadata = _encode_embeddings(texts, args.model, args.fallback)
     retrieval_features = np.asarray(
         [list(build_retrieval_features(record).values()) for record in dataframe.to_dict(orient="records")],
         dtype="float32",
     )
 
-    np.save(out_dir / "commentary_embeddings.npy", embeddings)
-    np.save(out_dir / "commentary_context_features.npy", retrieval_features)
+    embeddings_path = out_dir / "commentary_embeddings.npy"
+    context_features_path = out_dir / "commentary_context_features.npy"
+    np.save(embeddings_path, embeddings)
+    np.save(context_features_path, retrieval_features)
 
-    metadata_fields = [
-        "match_id",
-        "innings",
-        "over",
-        "ball",
-        "pressure_level",
-        "momentum_state",
-        "collapse_risk",
-        "phase_of_match",
-        "commentary_type",
-        "importance",
-        "tone",
-        "commentary_text",
-        "win_probability",
-    ]
-    metadata_rows = dataframe[metadata_fields].to_dict(orient="records")
-    metadata_path = out_dir / "commentary_metadata.jsonl"
-    metadata_path.write_text(
-        "\n".join(json.dumps(row, ensure_ascii=False) for row in metadata_rows),
-        encoding="utf-8",
+    embedding_rows = _build_embedding_rows(dataframe)
+    metadata_payload = build_embedding_metadata(
+        embedding_model=metadata.get("model_name", args.model),
+        dataset_version="1.0.0",
+        embedding_dim=int(embeddings.shape[1]),
+        context_dim=int(retrieval_features.shape[1]),
+        rows=len(embedding_rows),
+        retrieval_feature_columns=RETRIEVAL_FEATURE_COLUMNS,
     )
+    metadata_payload.update(
+        {
+            "embeddingMode": metadata["mode"],
+            "artifacts": {
+                "embeddingsPath": str(embeddings_path.resolve()),
+                "contextFeaturesPath": str(context_features_path.resolve()),
+            },
+            "embeddingRows": embedding_rows,
+        }
+    )
+    metadata_path = out_dir / "embedding_metadata.json"
+    save_embedding_metadata(metadata_payload, metadata_path)
 
-    manifest = {
-        "rows": len(metadata_rows),
-        "embeddingDimension": int(embeddings.shape[1]),
-        "contextDimension": int(retrieval_features.shape[1]),
-        "embeddingMode": metadata["mode"],
-        "embeddingModel": metadata.get("model_name", "tfidf"),
-        "retrievalFeatureColumns": RETRIEVAL_FEATURE_COLUMNS,
-        "embeddingsPath": str((out_dir / "commentary_embeddings.npy").resolve()),
-        "contextFeaturesPath": str((out_dir / "commentary_context_features.npy").resolve()),
-        "metadataPath": str(metadata_path.resolve()),
-    }
-    (out_dir / "embedding_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     if metadata["mode"] == "tfidf":
         joblib.dump(metadata["vectorizer"], out_dir / "commentary_vectorizer.joblib")
 
-    print(json.dumps(manifest, indent=2))
-=======
-from typing import Dict, List
-
-import numpy as np
-import pandas as pd
-
-MODEL_NAME = "all-MiniLM-L6-v2"
-
-
-def _load_encoder(model_name: str):
-    try:
-        from sentence_transformers import SentenceTransformer
-    except ImportError as exc:
-        raise RuntimeError(
-            "sentence-transformers is required. Install with: pip install sentence-transformers"
-        ) from exc
-    return SentenceTransformer(model_name)
-
-
-def _build_texts(df: pd.DataFrame) -> List[str]:
-    rows = []
-    for _, row in df.iterrows():
-        text = str(row.get("commentary_text", "")).strip()
-        context = (
-            f"type={row.get('commentary_type','summary')} "
-            f"tone={row.get('tone','neutral')} "
-            f"pressure={row.get('pressure_level','MEDIUM')} "
-            f"phase={row.get('phase_of_match','middle_overs')} "
-            f"over={row.get('over',0)} "
-            f"wickets={row.get('wickets_lost',0)}"
-        )
-        rows.append(f"{text} || {context}")
-    return rows
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate commentary embeddings")
-    parser.add_argument("--data", default="ml/commentary/datasets/commentary_dataset.csv")
-    parser.add_argument("--out-dir", default="ml/commentary/models")
-    parser.add_argument("--model", default=MODEL_NAME)
-    args = parser.parse_args()
-
-    df = pd.read_csv(Path(args.data))
-    out_dir = Path(args.out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    encoder = _load_encoder(args.model)
-    texts = _build_texts(df)
-    vectors = encoder.encode(texts, show_progress_bar=True, normalize_embeddings=True)
-    vectors = np.asarray(vectors, dtype=np.float32)
-
-    vectors_path = out_dir / "commentary_embeddings.npy"
-    metadata_path = out_dir / "commentary_embeddings_metadata.json"
-    rows_path = out_dir / "commentary_embeddings_rows.parquet"
-
-    np.save(vectors_path, vectors)
-    df.to_parquet(rows_path, index=False)
-    metadata_path.write_text(
+    print(
         json.dumps(
             {
-                "model": args.model,
-                "rows": int(len(df)),
-                "dim": int(vectors.shape[1]) if vectors.size else 0,
-                "vectors": str(vectors_path),
-                "rowsFile": str(rows_path),
+                "rows": len(embedding_rows),
+                "embeddingDimension": int(embeddings.shape[1]),
+                "contextDimension": int(retrieval_features.shape[1]),
+                "embeddingsPath": str(embeddings_path),
+                "metadataPath": str(metadata_path),
             },
             indent=2,
-        ),
-        encoding="utf-8",
+        )
     )
-    print(f"Saved embeddings to {vectors_path}")
->>>>>>> origin/copilot/train-commentary-ml-system
 
 
 if __name__ == "__main__":
     main()
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/copilot/train-commentary-ml-system

@@ -58,6 +58,7 @@ ml/commentary/models/*.joblib
 ml/commentary/models/*.json
 !ml/commentary/models/feature_contract.json
 !ml/commentary/models/runtime_thresholds.json
+!ml/commentary/models/embedding_metadata.json
 ml/commentary/datasets/processed/
 ml/commentary/evaluation/*.json
 ml/commentary/evaluation/*.md

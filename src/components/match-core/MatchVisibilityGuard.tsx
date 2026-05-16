@@ -1,26 +1,41 @@
 "use client";
 
 import React from "react";
+import {
+  getTierFromState,
+  importanceTierClassMap,
+  type LiveEnergyState,
+} from "@/animations/live-energy";
 
-type MatchVisibilityGuardProps = {
+function cls(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
+
+type LiveEnergyWrapperProps = {
   children: React.ReactNode;
+  state?: LiveEnergyState;
+  enabled?: boolean;
   className?: string;
-  isVisible?: boolean;
 };
 
-/**
- * Controls visibility via CSS without unmounting children from the DOM.
- */
-export default function MatchVisibilityGuard({
+export default function LiveEnergyWrapper({
   children,
+  state = "regular",
+  enabled = true,
   className,
-  isVisible = true,
-}: MatchVisibilityGuardProps) {
+}: LiveEnergyWrapperProps) {
+  const tier = getTierFromState(state);
+  const tierClasses = importanceTierClassMap[tier];
+
   return (
     <div
-      className={className}
-      style={{ visibility: isVisible ? "visible" : "hidden" }}
-      data-match-visibility={isVisible ? "visible" : "hidden"}
+      data-motion-layer="live-energy"
+      className={cls(
+        "relative",
+        className,
+        enabled && tierClasses.glowClass,
+        enabled && tierClasses.animationClass
+      )}
     >
       {children}
     </div>

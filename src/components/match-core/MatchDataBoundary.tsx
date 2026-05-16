@@ -3,42 +3,38 @@
 import React from "react";
 
 type MatchDataBoundaryProps = {
-  matchId?: string;
-  loading: boolean;
-  hasData: boolean;
+  isReady: boolean;
   error?: string | null;
+  loadingFallback?: React.ReactNode;
+  errorFallback?: React.ReactNode;
   children: React.ReactNode;
 };
 
-/**
- * Handles match-id validation plus loading and error states before rendering content.
- */
 export default function MatchDataBoundary({
-  matchId,
-  loading,
-  hasData,
+  isReady,
   error,
+  loadingFallback,
+  errorFallback,
   children,
 }: MatchDataBoundaryProps) {
-  if (!matchId) {
-    return (
-      <div className="p-10 text-center text-[var(--text-primary)]">
-        Invalid match URL. Please check the URL and try again.
-      </div>
-    );
-  }
-
   if (error) {
     return (
-      <div className="space-y-3 p-10 text-center">
-        <p className="text-sm text-rose-300">{error}</p>
-        <p className="text-xs text-white/60">Match ID: {matchId}</p>
-      </div>
+      errorFallback ?? (
+        <div className="space-y-3 p-10 text-center">
+          <p className="text-sm text-rose-300">{error}</p>
+        </div>
+      )
     );
   }
 
-  if (loading || !hasData) {
-    return <div className="p-10 text-center text-white">Loading match...</div>;
+  if (!isReady) {
+    return (
+      loadingFallback ?? (
+        <div className="p-10 text-center text-white">
+          Loading match...
+        </div>
+      )
+    );
   }
 
   return <>{children}</>;

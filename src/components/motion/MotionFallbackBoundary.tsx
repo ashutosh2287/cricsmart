@@ -4,7 +4,7 @@ import React from "react";
 
 type MotionFallbackBoundaryProps = {
   children: React.ReactNode;
-  fallback?: React.ReactNode;
+  fallback: React.ReactNode;
 };
 
 type MotionFallbackBoundaryState = {
@@ -21,15 +21,12 @@ export default class MotionFallbackBoundary extends React.Component<
     return { hasError: true };
   }
 
-  componentDidCatch(error: unknown) {
-    console.error("[MotionFallbackBoundary] motion failure", error);
+  componentDidCatch(error: Error) {
+    console.error("MotionFallbackBoundary caught motion error", error);
   }
 
   render() {
-    if (this.state.hasError) {
-      return this.props.fallback ?? null;
-    }
-
+    if (this.state.hasError) return this.props.fallback;
     return this.props.children;
   }
 }

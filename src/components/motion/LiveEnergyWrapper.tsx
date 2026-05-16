@@ -1,41 +1,43 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
-import type { LiveEnergyState } from "@/animations/live-energy";
-import { getCommentaryEnergyVariants } from "@/animations/live-animations";
-import MotionFallbackBoundary from "@/components/motion/MotionFallbackBoundary";
+import {
+  getTierFromState,
+  importanceTierClassMap,
+  type LiveEnergyState,
+} from "@/animations/live-energy";
+
+function cls(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
 
 type LiveEnergyWrapperProps = {
   children: React.ReactNode;
-  className?: string;
-  enabled?: boolean;
   state?: LiveEnergyState;
+  enabled?: boolean;
+  className?: string;
 };
 
-/**
- * Applies optional live-energy motion styling while preserving child rendering.
- */
 export default function LiveEnergyWrapper({
   children,
-  className,
-  enabled = true,
   state = "regular",
+  enabled = true,
+  className,
 }: LiveEnergyWrapperProps) {
-  if (!enabled) {
-    return <div className={className}>{children}</div>;
-  }
+  const tier = getTierFromState(state);
+  const tierClasses = importanceTierClassMap[tier];
 
   return (
-    <MotionFallbackBoundary fallback={<div className={className}>{children}</div>}>
-      <motion.div
-        className={className}
-        initial="initial"
-        animate="animate"
-        variants={getCommentaryEnergyVariants(state)}
-      >
-        {children}
-      </motion.div>
-    </MotionFallbackBoundary>
+    <div
+      data-motion-layer="live-energy"
+      className={cls(
+        "relative",
+        className,
+        enabled && tierClasses.glowClass,
+        enabled && tierClasses.animationClass
+      )}
+    >
+      {children}
+    </div>
   );
 }

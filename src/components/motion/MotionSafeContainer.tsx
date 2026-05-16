@@ -1,46 +1,53 @@
 "use client";
 
 import React from "react";
-import { motion, useReducedMotion, type Transition, type Variants } from "framer-motion";
-import { pageRevealVariants, transitions } from "@/animations/motion-presets";
-import MotionFallbackBoundary from "@/components/motion/MotionFallbackBoundary";
+import { motion, type Transition, type Variants } from "framer-motion";
 
 type MotionSafeContainerProps = {
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
   enableMotion?: boolean;
   variants?: Variants;
   transition?: Transition;
+  initial?: string;
+  animate?: string;
+  exit?: string;
 };
 
-/**
- * Renders children with optional motion and automatically falls back to plain rendering.
- */
 export default function MotionSafeContainer({
   children,
   className,
+  style,
   enableMotion = true,
-  variants = pageRevealVariants,
-  transition = transitions.base,
+  variants,
+  transition,
+  initial = "initial",
+  animate = "animate",
+  exit = "exit",
 }: MotionSafeContainerProps) {
-  const reduceMotion = useReducedMotion();
+  const canAnimate = enableMotion && typeof window !== "undefined";
 
-  if (!enableMotion || reduceMotion) {
-    return <div className={className}>{children}</div>;
+  if (!canAnimate) {
+    return (
+      <div className={className} style={style} data-motion-safe-container="fallback">
+        {children}
+      </div>
+    );
   }
 
   return (
-    <MotionFallbackBoundary fallback={<div className={className}>{children}</div>}>
-      <motion.div
-        className={className}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        variants={variants}
-        transition={transition}
-      >
-        {children}
-      </motion.div>
-    </MotionFallbackBoundary>
+    <motion.div
+      className={className}
+      style={style}
+      initial={initial}
+      animate={animate}
+      exit={exit}
+      variants={variants}
+      transition={transition}
+      data-motion-safe-container="enhanced"
+    >
+      {children}
+    </motion.div>
   );
 }

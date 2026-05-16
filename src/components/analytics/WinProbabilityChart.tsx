@@ -35,6 +35,19 @@ type DotProps = {
   payload?: ChartPoint;
 };
 
+type TooltipPayloadRow = {
+  value: number;
+  dataKey: string;
+};
+
+function markerTone(marker: ChartPoint["marker"]) {
+  if (marker === "WICKET") return "var(--state-wicket)";
+  if (marker === "TURNING_POINT") return "var(--state-turning-point)";
+  if (marker === "FOUR" || marker === "SIX") return "var(--state-boundary)";
+  if (marker === "SWING") return "var(--state-momentum)";
+  return "var(--chart-marker-default)";
+}
+
 function WinProbabilityChart({
   data,
   team1,
@@ -48,7 +61,7 @@ function WinProbabilityChart({
   const renderMarkerDot = useCallback(({ cx, cy, payload }: DotProps) => {
     if (!payload?.marker || cx === undefined || cy === undefined) return null;
 
-    let color = "var(--chart-marker-default)";
+    let color = markerTone(payload.marker);
     let label = "";
 
     if (payload.marker === "TURNING_POINT") {
@@ -88,11 +101,54 @@ function WinProbabilityChart({
     );
   }, []);
 
+  const renderTooltip = useCallback(
+    ({
+      active,
+      payload,
+      label,
+    }: {
+      active?: boolean;
+      payload?: TooltipPayloadRow[];
+      label?: number;
+    }) => {
+      if (!active || !payload?.length) return null;
+      const battingValue = payload.find((item) => item.dataKey === "batting")?.value ?? 0;
+      const bowlingValue = payload.find((item) => item.dataKey === "bowling")?.value ?? 0;
+      const edge = Math.abs(battingValue - bowlingValue);
+      const note =
+        edge >= 20 ? "Major momentum edge" : edge >= 10 ? "Meaningful advantage" : "Balanced phase";
+
+      return (
+        <div
+          style={{
+            backgroundColor: "var(--chart-tooltip-bg)",
+            border: "1px solid var(--chart-tooltip-border)",
+            color: "var(--chart-tooltip-text)",
+            borderRadius: 8,
+            padding: "8px 10px",
+          }}
+        >
+          <p style={{ color: "var(--text-secondary)", marginBottom: 4 }}>Over {label}</p>
+          <p style={{ color: "var(--chart-positive)" }}>{team1 ?? "BAT"} {battingValue.toFixed(1)}%</p>
+          <p style={{ color: "var(--chart-negative)" }}>{team2 ?? "BOWL"} {bowlingValue.toFixed(1)}%</p>
+          <p style={{ color: "var(--text-secondary)", marginTop: 4 }}>{note}</p>
+        </div>
+      );
+    },
+    [team1, team2]
+  );
+
+  const wicketMarkers = useMemo(() => data.filter((point) => point.marker === "WICKET"), [data]);
+  const turningMarkers = useMemo(
+    () => data.filter((point) => point.marker === "TURNING_POINT"),
+    [data]
+  );
+
   if (!lastPoint) return null;
 
   return (
     <AnalyticsErrorBoundary fallbackTitle="Win probability chart is temporarily unavailable.">
-      <div className="theme-chart-shell hierarchy-primary rounded-xl p-3.5">
+      <div className="theme-chart-shell hierarchy-primary rounded-xl p-3.5 tier-2-glow">
 
       {/* HEADER */}
       <div className="flex justify-between items-center mb-3">
@@ -152,15 +208,27 @@ function WinProbabilityChart({
           <YAxis domain={[0, 100]} stroke="var(--chart-axis)" tickFormatter={(v) => `${v}%`} />
 
           <ReferenceLine y={50} stroke="var(--chart-grid)" strokeDasharray="4 4" />
+          {wicketMarkers.map((marker, index) => (
+            <ReferenceLine
+              key={`wicket-marker-${index}`}
+              x={marker.over}
+              stroke="var(--state-wicket)"
+              strokeDasharray="3 3"
+              strokeOpacity={0.7}
+            />
+          ))}
+          {turningMarkers.map((marker, index) => (
+            <ReferenceLine
+              key={`turning-marker-${index}`}
+              x={marker.over}
+              stroke="var(--state-turning-point)"
+              strokeDasharray="2 4"
+              strokeOpacity={0.65}
+            />
+          ))}
 
           <Tooltip
-            formatter={(v) => `${Number(v).toFixed(1)}%`}
-            contentStyle={{
-              backgroundColor: "var(--chart-tooltip-bg)",
-              border: "1px solid var(--chart-tooltip-border)",
-              color: "var(--chart-tooltip-text)",
-            }}
-            labelStyle={{ color: "var(--text-secondary)" }}
+            content={renderTooltip}
           />
 
           {/* MAIN LINE */}
@@ -170,8 +238,9 @@ function WinProbabilityChart({
             stroke="var(--chart-positive)"
             strokeWidth={3}
             dot={renderMarkerDot}
+            activeDot={{ r: 5, fill: "var(--state-momentum)", stroke: "var(--chart-marker-stroke)" }}
             isAnimationActive
-            animationDuration={360}
+            animationDuration={280}
           />
 
           <Line
@@ -181,7 +250,7 @@ function WinProbabilityChart({
             strokeWidth={3}
             dot={false}
             isAnimationActive
-            animationDuration={360}
+            animationDuration={280}
           />
 
         </LineChart>

@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import { LivePulse } from "@/components/matches/LivePulse";
+import { importanceTierClassMap, type ImportanceTier } from "@/animations/live-energy";
 
 // ─────────────────────────────────────────────
 // Types
@@ -25,6 +26,14 @@ type Match = {
 };
 
 type ScoreEntry = { r?: number; w?: number; o?: number; inning?: string };
+type FeedTone = "wicket" | "momentum" | "pressure" | "boundary" | "partnership" | "turning";
+type LiveFeedEvent = {
+  id: string;
+  title: string;
+  detail: string;
+  tone: FeedTone;
+  tier: ImportanceTier;
+};
 
 type RealMatch = {
   id: string;
@@ -77,6 +86,90 @@ function categoryBadgeColor(cat: string) {
     bg: "color-mix(in srgb, var(--text-primary) 8%, transparent)",
     color: "var(--text-secondary)",
   };
+}
+
+function runRate(entry?: ScoreEntry) {
+  const overs = entry?.o ?? 0;
+  const runs = entry?.r ?? 0;
+  if (!overs) return 0;
+  return runs / overs;
+}
+
+function buildLiveFeed(matches: RealMatch[]): LiveFeedEvent[] {
+  const events: LiveFeedEvent[] = [];
+
+  matches.forEach((match) => {
+    const [teamA, teamB] = getTeamNames(match);
+    const scores = Array.isArray(match.score) ? match.score : [];
+    const first = scores[0];
+    const second = scores[1];
+    const secondRunRate = runRate(second);
+    const firstRunRate = runRate(first);
+    const chaseGap = (first?.r ?? 0) - (second?.r ?? 0);
+    const secondWickets = second?.w ?? 0;
+
+    if (second && secondWickets >= 5) {
+      events.push({
+        id: `${match.id}-collapse`,
+        title: `${teamB} wobble`,
+        detail: `${teamB} are ${second.r ?? 0}/${secondWickets}. Collapse risk rising.`,
+        tone: "wicket",
+        tier: 3,
+      });
+    }
+
+    if (second && chaseGap > 0 && chaseGap <= 20 && secondWickets <= 6) {
+      events.push({
+        id: `${match.id}-close-chase`,
+        title: "Close chase alert",
+        detail: `${teamB} need ${chaseGap} more. Match pressure peaking.`,
+        tone: "pressure",
+        tier: 2,
+      });
+    }
+
+    if (Math.max(firstRunRate, secondRunRate) >= 9) {
+      events.push({
+        id: `${match.id}-momentum`,
+        title: "Momentum surge",
+        detail: `${teamA} vs ${teamB} scoring rate has accelerated.`,
+        tone: "momentum",
+        tier: 2,
+      });
+    }
+
+    if ((first?.w ?? 0) <= 2 && (first?.r ?? 0) >= 70) {
+      events.push({
+        id: `${match.id}-partnership`,
+        title: "Active partnership",
+        detail: `${teamA} are building a stable stand with low wicket loss.`,
+        tone: "partnership",
+        tier: 2,
+      });
+    }
+
+    if (scores.some((entry) => runRate(entry) >= 11)) {
+      events.push({
+        id: `${match.id}-boundary-run`,
+        title: "Boundary phase",
+        detail: "Recent over tempo suggests boundary-heavy scoring.",
+        tone: "boundary",
+        tier: 2,
+      });
+    }
+
+    if ((first?.w ?? 0) >= 3 || (second?.w ?? 0) >= 3) {
+      events.push({
+        id: `${match.id}-turning`,
+        title: "Turning-point watch",
+        detail: "Wicket clusters indicate a potential match swing.",
+        tone: "turning",
+        tier: 3,
+      });
+    }
+  });
+
+  return events.slice(0, 8);
 }
 
 // ─────────────────────────────────────────────
@@ -247,6 +340,7 @@ export default function HomePage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const liveFeed = useMemo(() => buildLiveFeed(liveMatches), [liveMatches]);
 
   function closeCreateForm() {
     setShowCreateForm(false);
@@ -359,7 +453,7 @@ export default function HomePage() {
         color: "var(--text-primary)",
       }}
     >
-      <div className="mx-auto w-full max-w-[1100px] px-3 py-6 md:px-4">
+      <div className="mx-auto w-full max-w-[1180px] px-3 py-5 md:px-4 sports-density">
 
         {/* ── Top bar ──────────────────────────────────── */}
         <div className="mb-6 flex items-center justify-between">
@@ -378,102 +472,19 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-  <ThemeToggle />
-
-  <Link
-    href="/matches"
-    className="text-sm px-4 py-2 rounded-lg transition-colors"
-    style={{
-      background: "var(--bg-surface)",
-      color: "var(--text-secondary)",
-      border: "1px solid var(--border-subtle)",
-    }}
-  >
-    All Matches
-  </Link>
-
-  <div className="relative" ref={formRef}>
-              <button
-                onClick={() => setShowCreateForm((v) => !v)}
-                className="text-sm px-4 py-2 rounded-lg font-medium transition-colors"
-                style={{
-                  background: "var(--accent-brand)",
-                  color: "#fff",
-                }}
-              >
-                + New Simulation
-              </button>
-
-              {/* Create form dropdown */}
-              {showCreateForm && (
-                <div
-                  className="absolute right-0 top-full mt-2 z-50 rounded-xl p-4 w-64 shadow-xl"
-                  style={{
-                    background: "var(--bg-raised)",
-                    border: "1px solid var(--border-subtle)",
-                  }}
-                >
-                  <p
-                    className="text-sm font-semibold mb-3"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    New Simulation
-                  </p>
-                  <div className="space-y-2.5">
-                    <div>
-                      <label
-                        className="text-[11px] uppercase tracking-[0.12em] block mb-1"
-                        style={{ color: "var(--text-muted)" }}
-                      >
-                        Team A
-                      </label>
-                      <input
-                        type="text"
-                        value={teamAInput}
-                        onChange={(e) => setTeamAInput(e.target.value)}
-                        placeholder="e.g. India"
-                        className="w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors"
-                        style={{
-                          background: "var(--bg-overlay)",
-                          border: "1px solid var(--border-subtle)",
-                          color: "var(--text-primary)",
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label
-                        className="text-[11px] uppercase tracking-[0.12em] block mb-1"
-                        style={{ color: "var(--text-muted)" }}
-                      >
-                        Team B
-                      </label>
-                      <input
-                        type="text"
-                        value={teamBInput}
-                        onChange={(e) => setTeamBInput(e.target.value)}
-                        placeholder="e.g. Australia"
-                        onKeyDown={(e) => e.key === "Enter" && handleCreateMatch()}
-                        className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                        style={{
-                          background: "var(--bg-overlay)",
-                          border: "1px solid var(--border-subtle)",
-                          color: "var(--text-primary)",
-                        }}
-                      />
-                    </div>
-                    <button
-                      onClick={handleCreateMatch}
-                      disabled={creating}
-                      className="w-full rounded-lg py-2 text-sm font-semibold transition-opacity disabled:opacity-60"
-                      style={{ background: "var(--accent-brand)", color: "#fff" }}
-                    >
-                      {creating ? "Creating…" : "Create & Open"}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Link
+              href="/matches"
+              className="interactive-sports text-sm px-3.5 py-1.5 rounded-lg transition-colors"
+              style={{
+                background: "var(--bg-surface)",
+                color: "var(--text-secondary)",
+                border: "1px solid var(--border-subtle)",
+              }}
+            >
+              All Matches
+            </Link>
           </div>
         </div>
 
@@ -541,7 +552,52 @@ export default function HomePage() {
         </section>
 
         {/* Divider */}
-        <div className="mb-6" />
+        <div className="sports-separator mb-4" />
+
+        <section className="hierarchy-secondary rounded-2xl p-4 md:p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+              Live Sports Feed
+            </h2>
+            <span className="text-[11px] text-[var(--text-muted)]">Event-driven narrative</span>
+          </div>
+
+          {liveFeed.length === 0 ? (
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-4 text-sm text-[var(--text-muted)]">
+              Awaiting live events…
+            </div>
+          ) : (
+            <div className="grid gap-2.5 md:grid-cols-2">
+              {liveFeed.map((event) => {
+                const tierClass = importanceTierClassMap[event.tier];
+                const toneClass =
+                  event.tone === "wicket"
+                    ? "state-wicket"
+                    : event.tone === "momentum"
+                    ? "state-momentum"
+                    : event.tone === "pressure"
+                    ? "state-pressure"
+                    : event.tone === "boundary"
+                    ? "state-boundary"
+                    : event.tone === "partnership"
+                    ? "state-partnership"
+                    : "state-collapse";
+
+                return (
+                  <div
+                    key={event.id}
+                    className={`rounded-xl border bg-[var(--bg-surface)] px-3 py-2.5 ${tierClass.borderClass} ${tierClass.glowClass}`}
+                  >
+                    <p className={`text-[11px] uppercase tracking-[0.16em] ${toneClass}`}>{event.title}</p>
+                    <p className={`mt-1 text-sm text-[var(--text-primary)] ${tierClass.textClass}`}>{event.detail}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <div className="sports-separator mb-4" />
 
         {/* ── Your Simulations ─────────────────────────── */}
         <section
@@ -602,6 +658,83 @@ export default function HomePage() {
             </div>
           )}
         </section>
+
+        <div className="fixed bottom-4 right-4 z-40" ref={formRef}>
+          <button
+            onClick={() => setShowCreateForm((v) => !v)}
+            className="interactive-sports rounded-full px-4 py-2 text-sm font-semibold shadow-lg"
+            style={{
+              background: "var(--accent-brand)",
+              color: "#fff",
+            }}
+          >
+            + Create Simulation
+          </button>
+          {showCreateForm && (
+            <div
+              className="absolute bottom-full right-0 mb-2 rounded-xl p-4 w-64 shadow-xl"
+              style={{
+                background: "var(--bg-raised)",
+                border: "1px solid var(--border-subtle)",
+              }}
+            >
+              <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-primary)" }}>
+                New Simulation
+              </p>
+              <div className="space-y-2.5">
+                <div>
+                  <label
+                    className="text-[11px] uppercase tracking-[0.12em] block mb-1"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Team A
+                  </label>
+                  <input
+                    type="text"
+                    value={teamAInput}
+                    onChange={(e) => setTeamAInput(e.target.value)}
+                    placeholder="e.g. India"
+                    className="w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors"
+                    style={{
+                      background: "var(--bg-overlay)",
+                      border: "1px solid var(--border-subtle)",
+                      color: "var(--text-primary)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    className="text-[11px] uppercase tracking-[0.12em] block mb-1"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Team B
+                  </label>
+                  <input
+                    type="text"
+                    value={teamBInput}
+                    onChange={(e) => setTeamBInput(e.target.value)}
+                    placeholder="e.g. Australia"
+                    onKeyDown={(e) => e.key === "Enter" && handleCreateMatch()}
+                    className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                    style={{
+                      background: "var(--bg-overlay)",
+                      border: "1px solid var(--border-subtle)",
+                      color: "var(--text-primary)",
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={handleCreateMatch}
+                  disabled={creating}
+                  className="interactive-sports w-full rounded-lg py-2 text-sm font-semibold transition-opacity disabled:opacity-60"
+                  style={{ background: "var(--accent-brand)", color: "#fff" }}
+                >
+                  {creating ? "Creating…" : "Create & Open"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
       </div>
     </div>

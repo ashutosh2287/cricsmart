@@ -16,6 +16,15 @@
   --accent-brand: #4f7cff;
   --accent-glow: #6e5bff;
   --accent-success: #00b894;
+  --state-boundary: #4f7cff;
+  --state-wicket: #ff4d5a;
+  --state-pressure: #f4b740;
+  --state-momentum: #22d3ee;
+  --state-collapse: #fb7232;
+  --state-partnership: #16a34a;
+  --state-required-rr-danger: #dc2626;
+  --state-turning-point: #7c3aed;
+  --state-milestone: #eab308;
 
   /* Text tokens */
   --text-primary: #f5f7ff;
@@ -57,11 +66,11 @@
   --modal-backdrop: color-mix(in srgb, var(--bg-base) 86%, transparent);
 
   /* Chart tokens */
-  --chart-positive: var(--accent-success);
-  --chart-negative: var(--accent-live);
-  --chart-neutral: var(--accent-amber);
-  --chart-batting: var(--accent-brand);
-  --chart-bowling: #ff7a59;
+  --chart-positive: var(--state-partnership);
+  --chart-negative: var(--state-wicket);
+  --chart-neutral: var(--state-pressure);
+  --chart-batting: var(--state-boundary);
+  --chart-bowling: var(--state-collapse);
   --chart-grid: color-mix(in srgb, var(--text-primary) 18%, transparent);
   --chart-axis: color-mix(in srgb, var(--text-primary) 75%, transparent);
   --chart-tooltip-bg: var(--bg-surface);
@@ -161,6 +170,15 @@
   --accent-brand: #3366ff;
   --accent-glow: #5b4dff;
   --accent-success: #008a67;
+  --state-boundary: #3366ff;
+  --state-wicket: #d7263d;
+  --state-pressure: #c08400;
+  --state-momentum: #0891b2;
+  --state-collapse: #ea580c;
+  --state-partnership: #15803d;
+  --state-required-rr-danger: #b91c1c;
+  --state-turning-point: #6d28d9;
+  --state-milestone: #ca8a04;
 
   --text-primary: #111827;
   --text-secondary: #5b647a;
@@ -195,11 +213,11 @@
   );
   --modal-backdrop: color-mix(in srgb, var(--bg-base) 72%, transparent);
 
-  --chart-positive: var(--accent-success);
-  --chart-negative: var(--accent-danger);
-  --chart-neutral: var(--accent-amber);
-  --chart-batting: var(--accent-brand);
-  --chart-bowling: #f97316;
+  --chart-positive: var(--state-partnership);
+  --chart-negative: var(--state-wicket);
+  --chart-neutral: var(--state-pressure);
+  --chart-batting: var(--state-boundary);
+  --chart-bowling: var(--state-collapse);
   --chart-grid: color-mix(in srgb, var(--text-primary) 14%, transparent);
   --chart-axis: color-mix(in srgb, var(--text-primary) 68%, transparent);
   --chart-tooltip-bg: var(--bg-surface);
@@ -437,6 +455,25 @@ body {
   padding: var(--space-3);
 }
 
+.sports-density {
+  gap: var(--space-3);
+}
+
+.sports-density-tight {
+  gap: var(--space-2);
+}
+
+.sports-density > section,
+.sports-density > .card,
+.sports-density-tight > section,
+.sports-density-tight > .card {
+  margin-block: 0;
+}
+
+.sports-separator {
+  border-top: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
 .sports-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--accent-brand) 45%, transparent) transparent;
@@ -486,6 +523,105 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+.interactive-sports {
+  transition:
+    transform var(--motion-fast) ease,
+    background-color var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease;
+  will-change: transform, opacity;
+}
+
+.interactive-sports:hover {
+  transform: translateY(-1px);
+}
+
+.interactive-sports:active {
+  transform: translateY(0);
+}
+
+.interactive-sports:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-brand) 58%, transparent);
+  outline-offset: 2px;
+}
+
+.state-boundary {
+  color: var(--state-boundary);
+}
+
+.state-wicket {
+  color: var(--state-wicket);
+}
+
+.state-pressure {
+  color: var(--state-pressure);
+}
+
+.state-momentum {
+  color: var(--state-momentum);
+}
+
+.state-collapse {
+  color: var(--state-collapse);
+}
+
+.state-partnership {
+  color: var(--state-partnership);
+}
+
+.state-required-rr-danger {
+  color: var(--state-required-rr-danger);
+}
+
+.tier-1-glow {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.tier-2-glow {
+  box-shadow: 0 0 12px color-mix(in srgb, var(--state-momentum) 20%, transparent);
+}
+
+.tier-3-glow {
+  box-shadow: 0 0 18px color-mix(in srgb, var(--state-wicket) 26%, transparent);
+}
+
+.tier-1-border {
+  border-color: color-mix(in srgb, var(--text-primary) 14%, transparent);
+}
+
+.tier-2-border {
+  border-color: color-mix(in srgb, var(--state-pressure) 34%, transparent);
+}
+
+.tier-3-border {
+  border-color: color-mix(in srgb, var(--state-wicket) 42%, transparent);
+}
+
+.tier-1-text {
+  font-weight: 500;
+}
+
+.tier-2-text {
+  font-weight: 600;
+}
+
+.tier-3-text {
+  font-weight: 700;
+}
+
+.tier-1-commentary {
+  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+}
+
+.tier-2-commentary {
+  background: color-mix(in srgb, var(--state-pressure) 12%, var(--bg-surface));
+}
+
+.tier-3-commentary {
+  background: color-mix(in srgb, var(--state-wicket) 14%, var(--bg-surface));
 }
 
 ::selection {
@@ -806,9 +942,22 @@ select {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 160ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 120ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .tier-2-glow,
+  .tier-3-glow,
+  .stadium-overlay,
+  .director-overlay {
+    box-shadow: none !important;
+    animation-duration: 140ms !important;
+  }
+
+  .interactive-sports:hover,
+  .interactive-sports:active {
+    transform: none !important;
   }
 }

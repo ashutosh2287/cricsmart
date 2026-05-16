@@ -1,7 +1,7 @@
 import type { EventSourceType } from "@/types/ballEvent";
 import { validateCommentaryParity } from "./commentaryParityValidator";
 
-const PARITY_SOURCES: EventSourceType[] = ["LIVE_INGESTION", "MOCK_INGESTION", "SIMULATION", "REPLAY"];
+const PARITY_SOURCES: EventSourceType[] = ["LIVE_INGESTION", "SIMULATION", "REPLAY"];
 
 export type CommentaryParitySourceMatches = Partial<Record<EventSourceType, string>>;
 

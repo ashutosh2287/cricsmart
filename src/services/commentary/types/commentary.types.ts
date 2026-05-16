@@ -118,6 +118,23 @@ export interface CommentaryEvent {
   timestamp: number;
   focusPlayer?: string;
   templateKey?: string;
+  retrievalMetadata?: {
+    candidates: Array<{ id: string; text: string; score: number }>;
+    appliedFilters: Record<string, unknown>;
+  };
+  confidenceMetadata?: {
+    classifier: number;
+    ranker: number;
+    retrieval: number;
+    fallbackReasons: string[];
+    latencyMs: {
+      classifier: number;
+      ranker: number;
+      retrieval: number;
+    };
+    schemaHash?: string | null;
+    schemaVersion?: string | null;
+  };
 }
 
 export type CommentaryProbabilityState = {

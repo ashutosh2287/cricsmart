@@ -18,6 +18,6 @@ export function isCommentaryTemplateRankerEnabled(): boolean {
 
 export const COMMENTARY_ML_LATENCY_BUDGET_MS = {
   classifier: 10,
-  retrieval: 20,
+  retrieval: 25,
   ranking: 10,
 } as const;

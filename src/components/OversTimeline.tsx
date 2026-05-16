@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMatchSelector } from "@/services/matchSelectors";
 import type { BallEvent } from "@/types/ballEvent";
 
@@ -83,25 +83,15 @@ export default function OversTimeline({ slug }: Props) {
     [innings]
   );
 
-  const [selectedInnings, setSelectedInnings] = useState(0);
+  const [selectedInnings, setSelectedInnings] = useState<number | null>(null);
+  const preferredInnings = inningsOptions.find((option) => option.hasOvers)?.index ?? 0;
+  const activeInnings =
+    selectedInnings !== null &&
+    inningsOptions.some((option) => option.index === selectedInnings)
+      ? selectedInnings
+      : preferredInnings;
 
-  useEffect(() => {
-    const nextInnings = inningsOptions.find((option) => option.hasOvers)?.index ?? 0;
-    const selectedOption = inningsOptions.find(
-      (option) => option.index === selectedInnings
-    );
-
-    if (
-      selectedOption &&
-      (selectedOption.hasOvers || selectedOption.index === nextInnings)
-    ) {
-      return;
-    }
-
-    setSelectedInnings(nextInnings);
-  }, [inningsOptions, selectedInnings]);
-
-  const selectedOvers = innings?.[selectedInnings]?.overs;
+  const selectedOvers = innings?.[activeInnings]?.overs;
 
   const overSummaries = useMemo(() => {
     if (!selectedOvers) return [];
@@ -149,7 +139,7 @@ export default function OversTimeline({ slug }: Props) {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
         {inningsOptions.map((option) => {
-          const isActive = selectedInnings === option.index;
+          const isActive = activeInnings === option.index;
 
           return (
             <button

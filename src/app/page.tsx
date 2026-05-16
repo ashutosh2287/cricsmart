@@ -625,25 +625,97 @@ export default function HomePage() {
 
           {matches.length === 0 ? (
             <div
-              className="rounded-xl px-4 py-6 text-center"
+              className="rounded-xl px-4 py-6"
               style={{
                 background: "var(--bg-surface)",
                 border: "1px solid var(--border-subtle)",
               }}
             >
-              <p
-                className="text-sm mb-3"
-                style={{ color: "var(--text-muted)" }}
-              >
-                No simulations yet.
-              </p>
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="text-sm px-4 py-2 rounded-lg font-medium"
-                style={{ background: "var(--accent-brand)", color: "#fff" }}
-              >
-                + Create your first simulation
-              </button>
+              {!showCreateForm ? (
+                <div className="text-center">
+                  <p
+                    className="text-sm mb-3"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    No simulations yet.
+                  </p>
+                  <button
+                    onClick={() => setShowCreateForm(true)}
+                    className="text-sm px-4 py-2 rounded-lg font-medium"
+                    style={{ background: "var(--accent-brand)", color: "#fff" }}
+                  >
+                    + Create your first simulation
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-primary)" }}>
+                    New Simulation
+                  </p>
+                  <div>
+                    <label
+                      className="text-[11px] uppercase tracking-[0.12em] block mb-1"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      Team A
+                    </label>
+                    <input
+                      type="text"
+                      value={teamAInput}
+                      onChange={(e) => setTeamAInput(e.target.value)}
+                      placeholder="e.g. India"
+                      className="w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors"
+                      style={{
+                        background: "var(--bg-overlay)",
+                        border: "1px solid var(--border-subtle)",
+                        color: "var(--text-primary)",
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      className="text-[11px] uppercase tracking-[0.12em] block mb-1"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      Team B
+                    </label>
+                    <input
+                      type="text"
+                      value={teamBInput}
+                      onChange={(e) => setTeamBInput(e.target.value)}
+                      placeholder="e.g. Australia"
+                      onKeyDown={(e) => e.key === "Enter" && handleCreateMatch()}
+                      className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                      style={{
+                        background: "var(--bg-overlay)",
+                        border: "1px solid var(--border-subtle)",
+                        color: "var(--text-primary)",
+                      }}
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={handleCreateMatch}
+                      disabled={creating}
+                      className="interactive-sports flex-1 rounded-lg py-2 text-sm font-semibold transition-opacity disabled:opacity-60"
+                      style={{ background: "var(--accent-brand)", color: "#fff" }}
+                    >
+                      {creating ? "Creating…" : "Create & Open"}
+                    </button>
+                    <button
+                      onClick={closeCreateForm}
+                      className="rounded-lg px-3 py-2 text-sm"
+                      style={{
+                        background: "var(--bg-overlay)",
+                        border: "1px solid var(--border-subtle)",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-2">

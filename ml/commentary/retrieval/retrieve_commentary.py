@@ -20,10 +20,6 @@ if __package__ in {None, ""}:
     import sys
     sys.path.append(str(Path(__file__).resolve().parents[3]))
 
-from ml.commentary.retrieval.retrieval_filters import (
-    over_band,
-    wickets_lost_band,
-)
 from ml.commentary.retrieval.retrieval_utils import filter_and_rank
 
 _DEFAULT_INDEX_DIR = "ml/commentary/models/retrieval"
@@ -101,7 +97,7 @@ def retrieve_similar_commentary(
     over_band_val: Optional[str] = None,
     commentary_type: Optional[str] = None,
     momentum_state: Optional[str] = None,
-    min_similarity: float = 0.0,
+    min_similarity: float = 0.70,
     max_duplicates: int = 2,
 ) -> List[Dict[str, Any]]:
     """Retrieve top-k similar commentary examples from the FAISS index.
@@ -179,7 +175,7 @@ def main() -> None:
     parser.add_argument("--wickets-lost-band", default=None, dest="wickets_lost_band")
     parser.add_argument("--over-band", default=None, dest="over_band")
     parser.add_argument("--commentary-type", default=None)
-    parser.add_argument("--min-similarity", type=float, default=0.0)
+    parser.add_argument("--min-similarity", type=float, default=0.70)
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
@@ -209,4 +205,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

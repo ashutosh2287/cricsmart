@@ -32,7 +32,7 @@ if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[3]))
 
 DEFAULT_INDEX_DIR = Path("ml/commentary/models/retrieval")
-DEFAULT_EMBEDDINGS_DIR = Path("ml/commentary/embeddings/artifacts")
+DEFAULT_EMBEDDINGS_DIR = Path("ml/commentary/models")
 DEFAULT_OUT_DIR = Path("ml/commentary/evaluation")
 
 _MIN_SIMILARITY = 0.0  # Evaluate across the full spectrum; thresholding is a deployment concern.

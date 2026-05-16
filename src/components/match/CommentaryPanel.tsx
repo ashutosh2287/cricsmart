@@ -465,129 +465,132 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
         ) : null}
 
         <AnimatePresence initial={false}>
-          {overBlocks.map((block) => (
-          <motion.div
-            key={block.summary.key}
-            variants={commentaryArrivalVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="space-y-2 rounded-xl border border-white/10 bg-white/[0.025] p-2.5"
-          >
-            <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-white">{block.summary.overLabel}</span>
-                    <span className="text-xs text-white/55">{block.summary.overScore}</span>
-                  </div>
-                  <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/45">Over summary</p>
-                </div>
-
-                <div className="text-left sm:text-right">
-                  <div className="font-mono text-xs text-sky-200">{block.summary.sequence.join("  ")}</div>
-                  <div className="mt-1 text-xs text-white/60">
-                    {block.summary.overRuns} run{block.summary.overRuns === 1 ? "" : "s"}
-                    {block.summary.wicketCount > 0
-                      ? ` · ${block.summary.wicketCount} wicket${block.summary.wicketCount > 1 ? "s" : ""}`
-                      : ""}
-                  </div>
-                  <div className="mt-1 text-[11px] uppercase tracking-[0.14em] text-white/45">
-                    Pressure {block.summary.pressure} · {block.summary.momentum}
-                  </div>
-                </div>
-              </div>
-
-              {block.arrivals.length > 0 ? (
-                <div className="mt-3 grid gap-2 border-t border-dashed border-white/10 pt-3 md:grid-cols-2">
-                  {block.arrivals.map((arrival) => (
-                    <div key={`${block.summary.key}-arrival-${arrival.name}`} className="rounded-lg border border-cyan-400/20 bg-cyan-500/10 px-3 py-2">
-                      <div className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">Batter arrival</div>
-                      <div className="mt-1 text-sm font-semibold text-white">{arrival.name}</div>
-                      <div className="mt-1 flex flex-wrap gap-2 text-xs text-cyan-100/85">
-                        <span>{arrival.runs}({arrival.balls})</span>
-                        <span>SR {arrival.strikeRate}</span>
-                        <span>{arrival.pressure} pressure</span>
-                      </div>
-                      <div className="mt-1 text-xs text-cyan-100/75">{arrival.matchup}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-
-              {block.highlightNotes.length > 0 ? (
-                <div className="mt-3 space-y-1.5 border-t border-dashed border-white/10 pt-3">
-                  {block.highlightNotes.map((note, index) => (
-                    <div
-                      key={`${block.summary.key}-highlight-${index}`}
-                      className={`rounded-lg border px-3 py-2 text-xs ${
-                        note.type === "WICKET"
-                          ? "border-red-400/40 bg-red-500/12 text-red-100"
-                          : note.type === "MILESTONE"
-                            ? "border-amber-400/40 bg-amber-500/12 text-amber-100"
-                            : "border-emerald-400/30 bg-emerald-500/12 text-emerald-100"
-                      }`}
-                    >
-                      {note.message}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-
-              <div className="mt-3 grid gap-3 border-t border-white/10 pt-3 md:grid-cols-[minmax(0,1fr)_auto]">
-                <div className="space-y-1.5 text-xs text-white/75">
-                  {block.summary.batters.map((batter) => (
-                    <div key={batter.name} className="flex items-center justify-between gap-3">
-                      <span>{batter.name}</span>
-                      <span className="font-medium text-white">
-                        {batter.runs}({batter.balls})
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {block.summary.bowler ? (
-                  <div className="min-w-[130px] text-left md:text-right">
-                    <div className="text-xs text-white">{block.summary.bowler.name}</div>
-                    <div className="mt-1 text-xs text-white/60">
-                      {formatOverCount(block.summary.bowler.balls)}-{block.summary.bowler.runs}-{block.summary.bowler.wickets}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              {block.balls.map((ball) => (
-                <motion.div
-                  key={ball.key}
-                  variants={commentaryArrivalVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  className={`rounded-xl border p-2.5 ${getTagClasses(ball.tag)} ${ball.tag === "WICKET" ? "hierarchy-primary" : ""}`}
-                >
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          {overBlocks.map((block, blockIndex) => {
+            const blockKey = block.summary.key || `summary-${blockIndex}`;
+            return (
+              <motion.div
+                key={blockKey}
+                variants={commentaryArrivalVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className="space-y-2 rounded-xl border border-white/10 bg-white/[0.025] p-2.5"
+              >
+                <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <div className="text-sm font-medium text-white">
-                        {ball.ballLabel} &nbsp; {translateCommentary(ball.headline, lang)}
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-white">{block.summary.overLabel}</span>
+                        <span className="text-xs text-white/55">{block.summary.overScore}</span>
                       </div>
-                      <p className="mt-1.5 max-w-3xl text-xs leading-5 text-white/75">
-                        {translateCommentary(ball.detail, lang)}
-                      </p>
+                      <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/45">Over summary</p>
                     </div>
 
-                    {ball.tag ? (
-                      <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/85">
-                        {ball.tag}
-                      </span>
+                    <div className="text-left sm:text-right">
+                      <div className="font-mono text-xs text-sky-200">{block.summary.sequence.join("  ")}</div>
+                      <div className="mt-1 text-xs text-white/60">
+                        {block.summary.overRuns} run{block.summary.overRuns === 1 ? "" : "s"}
+                        {block.summary.wicketCount > 0
+                          ? ` · ${block.summary.wicketCount} wicket${block.summary.wicketCount > 1 ? "s" : ""}`
+                          : ""}
+                      </div>
+                      <div className="mt-1 text-[11px] uppercase tracking-[0.14em] text-white/45">
+                        Pressure {block.summary.pressure} · {block.summary.momentum}
+                      </div>
+                    </div>
+                  </div>
+
+                  {block.arrivals.length > 0 ? (
+                    <div className="mt-3 grid gap-2 border-t border-dashed border-white/10 pt-3 md:grid-cols-2">
+                      {block.arrivals.map((arrival, arrivalIndex) => (
+                        <div key={`${blockKey}-arrival-${arrivalIndex}`} className="rounded-lg border border-cyan-400/20 bg-cyan-500/10 px-3 py-2">
+                          <div className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">Batter arrival</div>
+                          <div className="mt-1 text-sm font-semibold text-white">{arrival.name}</div>
+                          <div className="mt-1 flex flex-wrap gap-2 text-xs text-cyan-100/85">
+                            <span>{arrival.runs}({arrival.balls})</span>
+                            <span>SR {arrival.strikeRate}</span>
+                            <span>{arrival.pressure} pressure</span>
+                          </div>
+                          <div className="mt-1 text-xs text-cyan-100/75">{arrival.matchup}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {block.highlightNotes.length > 0 ? (
+                    <div className="mt-3 space-y-1.5 border-t border-dashed border-white/10 pt-3">
+                      {block.highlightNotes.map((note, index) => (
+                        <div
+                          key={`${blockKey}-highlight-${index}`}
+                          className={`rounded-lg border px-3 py-2 text-xs ${
+                            note.type === "WICKET"
+                              ? "border-red-400/40 bg-red-500/12 text-red-100"
+                              : note.type === "MILESTONE"
+                                ? "border-amber-400/40 bg-amber-500/12 text-amber-100"
+                                : "border-emerald-400/30 bg-emerald-500/12 text-emerald-100"
+                          }`}
+                        >
+                          {note.message}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className="mt-3 grid gap-3 border-t border-white/10 pt-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                    <div className="space-y-1.5 text-xs text-white/75">
+                      {block.summary.batters.map((batter, batterIndex) => (
+                        <div key={`${blockKey}-batter-${batterIndex}`} className="flex items-center justify-between gap-3">
+                          <span>{batter.name}</span>
+                          <span className="font-medium text-white">
+                            {batter.runs}({batter.balls})
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {block.summary.bowler ? (
+                      <div className="min-w-[130px] text-left md:text-right">
+                        <div className="text-xs text-white">{block.summary.bowler.name}</div>
+                        <div className="mt-1 text-xs text-white/60">
+                          {formatOverCount(block.summary.bowler.balls)}-{block.summary.bowler.runs}-{block.summary.bowler.wickets}
+                        </div>
+                      </div>
                     ) : null}
                   </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        ))}
+                </div>
+
+                <div className="space-y-1.5">
+                  {block.balls.map((ball, ballIndex) => (
+                    <motion.div
+                      key={ball.key || `${blockKey}-ball-${ballIndex}`}
+                      variants={commentaryArrivalVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      className={`rounded-xl border p-2.5 ${getTagClasses(ball.tag)} ${ball.tag === "WICKET" ? "hierarchy-primary" : ""}`}
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-white">
+                            {ball.ballLabel} &nbsp; {translateCommentary(ball.headline, lang)}
+                          </div>
+                          <p className="mt-1.5 max-w-3xl text-xs leading-5 text-white/75">
+                            {translateCommentary(ball.detail, lang)}
+                          </p>
+                        </div>
+
+                        {ball.tag ? (
+                          <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/85">
+                            {ball.tag}
+                          </span>
+                        ) : null}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
       </div>
     </div>

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import joblib
+import numpy as np
 import pandas as pd
 from lightgbm import LGBMRanker
 from sklearn.compose import ColumnTransformer
@@ -105,8 +106,12 @@ def train_ranker(
     transformed = preprocessor.fit_transform(features)
     ranker.fit(transformed, labels, group=query_sizes)
 
-    predictions = ranker.predict(transformed)
-    ndcg = float(ndcg_score([labels.tolist()], [predictions.tolist()]))
+    predictions = np.asarray(ranker.predict(transformed), dtype=float)
+    true_relevance = labels.to_numpy(dtype=float).reshape(1, -1)
+    pred_scores = predictions.reshape(1, -1)
+    ndcg = float(
+        ndcg_score(true_relevance, pred_scores)
+    )
 
     pipeline = Pipeline(
         steps=[

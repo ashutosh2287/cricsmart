@@ -73,7 +73,7 @@ export default function MatchesPage() {
 
   const [simMatches, setSimMatches] = useState<SimMatch[]>([]);
   const [simLoading, setSimLoading] = useState(true);
-  const [deletingMatchId, setDeletingMatchId] = useState<string | null>(null);
+  const [deletingSimulationId, setDeletingSimulationId] = useState<string | null>(null);
 
   const discoverySnapshotRef = useRef<CuratedDiscoveryPayload>(EMPTY_DISCOVERY);
   const router = useRouter();
@@ -138,7 +138,7 @@ export default function MatchesPage() {
   const sections = useMemo(() => discovery.sections, [discovery]);
 
   const handleDeleteSimulation = async (matchId: string) => {
-    setDeletingMatchId(matchId);
+    setDeletingSimulationId(matchId);
     try {
       const res = await fetch("/api/matches/delete", {
         method: "DELETE",
@@ -153,9 +153,9 @@ export default function MatchesPage() {
       }
       setSimMatches((prev) => prev.filter((match) => match.matchId !== matchId));
     } catch (error) {
-      console.error("Failed to delete simulation from /matches", { matchId, error });
+      console.error("Failed to delete simulation", { matchId, error });
     } finally {
-      setDeletingMatchId(null);
+      setDeletingSimulationId(null);
     }
   };
 
@@ -247,7 +247,7 @@ export default function MatchesPage() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {simMatches.map((match) => {
               const isLive = match.status === "LIVE";
-              const isDeleting = deletingMatchId === match.matchId;
+              const isDeleting = deletingSimulationId === match.matchId;
 
               return (
                 <div

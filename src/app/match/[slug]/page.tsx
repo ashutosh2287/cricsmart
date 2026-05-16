@@ -1683,7 +1683,7 @@ export default function MatchDetailPage({
 
         if (!data?.success || !data?.match) {
           console.error("Match not found in Redis for", id);
-          if (!cancelled) setLoadError("Match data not found. Please restart or reconnect the simulation.");
+          if (!cancelled) setLoadError("Match data not found. Please refresh the page or check that the simulation is still running.");
           return;
         }
 

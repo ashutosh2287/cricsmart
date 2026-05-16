@@ -1671,7 +1671,6 @@ export default function MatchDetailPage({
 
     async function loadMatch() {
       try {
-        if (!cancelled) setLoadError(null);
         const res = await fetch(`/api/match/${id}`, { cache: "no-store" });
 
         if (!res.ok) {
@@ -1687,6 +1686,8 @@ export default function MatchDetailPage({
           if (!cancelled) setLoadError("Match data not found. Please restart or reconnect the simulation.");
           return;
         }
+
+        if (!cancelled) setLoadError(null);
 
         // ✅ Hydrate matchEngine (for scorecard helpers etc.)
         hydrateMatchState(id, data.match);

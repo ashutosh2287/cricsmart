@@ -465,9 +465,9 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
         ) : null}
 
         <AnimatePresence initial={false}>
-          {overBlocks.map((block) => (
+          {overBlocks.map((block, blockIndex) => (
           <motion.div
-            key={block.summary.key}
+            key={block.summary.key || `summary-${blockIndex}`}
             variants={commentaryArrivalVariants}
             initial="initial"
             animate="animate"
@@ -500,8 +500,8 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
 
               {block.arrivals.length > 0 ? (
                 <div className="mt-3 grid gap-2 border-t border-dashed border-white/10 pt-3 md:grid-cols-2">
-                  {block.arrivals.map((arrival) => (
-                    <div key={`${block.summary.key}-arrival-${arrival.name}`} className="rounded-lg border border-cyan-400/20 bg-cyan-500/10 px-3 py-2">
+                  {block.arrivals.map((arrival, arrivalIndex) => (
+                    <div key={`${block.summary.key || `summary-${blockIndex}`}-arrival-${arrival.name || "unknown"}-${arrivalIndex}`} className="rounded-lg border border-cyan-400/20 bg-cyan-500/10 px-3 py-2">
                       <div className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">Batter arrival</div>
                       <div className="mt-1 text-sm font-semibold text-white">{arrival.name}</div>
                       <div className="mt-1 flex flex-wrap gap-2 text-xs text-cyan-100/85">
@@ -536,8 +536,8 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
 
               <div className="mt-3 grid gap-3 border-t border-white/10 pt-3 md:grid-cols-[minmax(0,1fr)_auto]">
                 <div className="space-y-1.5 text-xs text-white/75">
-                  {block.summary.batters.map((batter) => (
-                    <div key={batter.name} className="flex items-center justify-between gap-3">
+                  {block.summary.batters.map((batter, batterIndex) => (
+                    <div key={`${block.summary.key || `summary-${blockIndex}`}-batter-${batter.name || "unknown"}-${batterIndex}`} className="flex items-center justify-between gap-3">
                       <span>{batter.name}</span>
                       <span className="font-medium text-white">
                         {batter.runs}({batter.balls})
@@ -558,9 +558,9 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
             </div>
 
             <div className="space-y-1.5">
-              {block.balls.map((ball) => (
+              {block.balls.map((ball, ballIndex) => (
                 <motion.div
-                  key={ball.key}
+                  key={ball.key || `${block.summary.key || `summary-${blockIndex}`}-ball-${ballIndex}`}
                   variants={commentaryArrivalVariants}
                   initial="initial"
                   animate="animate"

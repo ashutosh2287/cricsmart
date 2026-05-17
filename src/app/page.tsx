@@ -479,6 +479,16 @@ export default function HomePage() {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="interactive-sports text-sm px-3.5 py-1.5 rounded-lg font-semibold transition-colors"
+              style={{
+                background: "var(--accent-brand)",
+                color: "#fff",
+              }}
+            >
+              + New Simulation
+            </button>
             <Link
               href="/matches"
               className="interactive-sports text-sm px-3.5 py-1.5 rounded-lg transition-colors"

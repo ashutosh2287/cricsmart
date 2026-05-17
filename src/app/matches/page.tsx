@@ -187,8 +187,11 @@ export default function MatchesPage() {
       const data = await res.json();
 
       if (!res.ok || !data?.matchId) {
+        const statusInfo = `status: ${res.status}`;
         throw new Error(
-          typeof data?.error === "string" ? data.error : "Failed to create simulation"
+          typeof data?.error === "string"
+            ? `${data.error} (${statusInfo})`
+            : `Failed to create simulation (${statusInfo})`
         );
       }
 
@@ -273,6 +276,11 @@ export default function MatchesPage() {
                     value={teamAInput}
                     onChange={(e) => setTeamAInput(e.target.value)}
                     placeholder="e.g. India"
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter" || creating) return;
+                      e.preventDefault();
+                      handleCreateMatch();
+                    }}
                     className="w-full rounded-lg px-3 py-2 text-sm outline-none"
                     style={{
                       background: "var(--bg-overlay)",

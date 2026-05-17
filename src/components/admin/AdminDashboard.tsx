@@ -9,22 +9,68 @@ import TossPanel from "@/components/match/TossPanel";
 import GlassPanel from "@/components/ui/GlassPanel";
 import { Team } from "@/data/teams";
 import { getMatchMeta, setMatchMeta } from "@/store/matchStore";
-import { connectRealtime } from "@/services/realtime/connectRealtime";
+import { startSimulationFromMeta } from "@/services/simulation/startSimulationClient";
 
 export default function AdminDashboard({ matchId }: { matchId: string }) {
-  
   type TossData = {
-  winner: { name: string };
-  decision: "BAT" | "BOWL";
-};
-const router = useRouter();
-const [tossData, setTossData] = useState<TossData | null>(null);
+    winner: { name: string };
+    decision: "BAT" | "BOWL";
+  };
+  const router = useRouter();
+  const [tossData, setTossData] = useState<TossData | null>(() => {
+    const existingMeta = getMatchMeta(matchId);
+    if (!existingMeta?.toss?.winner || !existingMeta?.toss?.decision) {
+      return null;
+    }
+    return {
+      winner: { name: existingMeta.toss.winner },
+      decision: existingMeta.toss.decision,
+    };
+  });
   const [matchMeta, setLocalMatchMeta] = useState(() => getMatchMeta(matchId));
-  const [isRunning, setIsRunning] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
-  const [speed, setSpeed] = useState(1500);
+
+  const hasRequiredSetup = Boolean(
+    matchMeta?.teamA?.name &&
+      matchMeta?.teamB?.name &&
+      (tossData?.winner?.name || matchMeta?.toss?.winner) &&
+      (tossData?.decision || matchMeta?.toss?.decision)
+  );
+
+  const handleStartSimulation = async () => {
+    if (isStarting) return;
+
+    const latestMeta = getMatchMeta(matchId) ?? matchMeta;
+
+    if (!latestMeta?.teamA?.name || !latestMeta?.teamB?.name) {
+      setStartError("Please select teams first.");
+      return;
+    }
+
+    const resolvedMeta = {
+      ...latestMeta,
+      toss: latestMeta.toss ?? {
+        winner: tossData?.winner.name ?? "",
+        decision: tossData?.decision ?? "BAT",
+      },
+    };
+
+    setIsStarting(true);
+    setStartError(null);
+
+    try {
+      await startSimulationFromMeta(matchId, resolvedMeta);
+      router.push(`/match/${matchId}?tab=overview`);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to start simulation. Please try again.";
+      setStartError(message);
+      setIsStarting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -62,6 +108,7 @@ const [tossData, setTossData] = useState<TossData | null>(null);
               };
               setMatchMeta(nextMeta);
               setLocalMatchMeta(nextMeta);
+              setStartError(null);
             }}
           />
         ) : (
@@ -82,34 +129,25 @@ const [tossData, setTossData] = useState<TossData | null>(null);
               };
               setMatchMeta(nextMeta);
               setLocalMatchMeta(nextMeta);
+              setStartError(null);
             }}
           />
         )}
 
         {/* START BUTTON */}
         <button
-  onClick={() => {
-  if (!matchMeta || !tossData) {
-    alert("⚠️ Complete team selection and toss first");
-    return;
-  }
-
-  console.log("🔥 ADMIN START CLICKED");
-
-  setIsStarting(true);
-  setStartError(null);
-
-  // ✅ ONLY THIS
-  connectRealtime(matchId, "admin-dashboard");
-
-  // OPTIONAL: redirect if you want
-  router.push(`/match/${matchId}`);
-}}
-  disabled={!matchMeta || !tossData || isStarting}
-  className="mt-4 bg-green-600 px-4 py-2 rounded-xl disabled:opacity-50"
->
-  {isStarting ? "Starting..." : "Start Simulation"}
-</button>
+          type="button"
+          onClick={handleStartSimulation}
+          disabled={!hasRequiredSetup || isStarting}
+          className="mt-4 bg-green-600 px-4 py-2 rounded-xl disabled:opacity-50"
+        >
+          {isStarting ? "Starting..." : "Start Simulation"}
+        </button>
+        {startError ? (
+          <div className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+            {startError}
+          </div>
+        ) : null}
 
       </GlassPanel>
     </div>

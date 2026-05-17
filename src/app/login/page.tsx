@@ -20,6 +20,12 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace(nextUrl);
+    }
+  }, [loading, nextUrl, router, user]);
+
   if (!loading && !authEnabled) {
     return (
       <div className="mx-auto max-w-md rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 text-sm text-[var(--text-secondary)]">
@@ -27,12 +33,6 @@ export default function LoginPage() {
       </div>
     );
   }
-
-  useEffect(() => {
-    if (!loading && user) {
-      router.replace(nextUrl);
-    }
-  }, [loading, nextUrl, router, user]);
 
   if (!loading && user) {
     return null;

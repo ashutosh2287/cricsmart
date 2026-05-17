@@ -13,7 +13,7 @@ export default async function AdminPage({
 
   if (
     isAdminProtectionEnabled() &&
-    (!session || ![\"admin\", \"operator\", \"internal\"].includes(session.user.role))
+    (!session || !["admin", "operator", "internal"].includes(session.user.role))
   ) {
     redirect(`/login?next=${encodeURIComponent(`/admin/${matchId}`)}`);
   }

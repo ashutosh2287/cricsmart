@@ -59,7 +59,7 @@ export default function SignupPageClient() {
       });
       const body = (await res.json()) as { success?: boolean; error?: string };
       if (!res.ok || !body.success) {
-        setError(body.error ?? "Invalid credentials");
+        setError(body.error ?? "Signup failed");
         return;
       }
       await refreshSession();

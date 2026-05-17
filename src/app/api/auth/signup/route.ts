@@ -9,8 +9,20 @@ import { createAuthSession, setAuthSessionCookie } from "@/services/auth/session
 const USERNAME_MIN = 3;
 const PASSWORD_MIN = 8;
 
-function invalidCredentials() {
-  return NextResponse.json({ success: false, error: "Invalid credentials" }, { status: 401 });
+function errorResponse(error: string, status = 400) {
+  return NextResponse.json({ success: false, error }, { status });
+}
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidUsername(username: string): boolean {
+  return username.length >= USERNAME_MIN && /^[a-z0-9_]+$/.test(username);
+}
+
+function isStrongEnoughPassword(password: string): boolean {
+  return password.length >= PASSWORD_MIN && /[A-Za-z]/.test(password) && /\d/.test(password);
 }
 
 export async function POST(req: NextRequest) {
@@ -26,19 +38,31 @@ export async function POST(req: NextRequest) {
       confirmPassword?: string;
     };
 
-    const username = body.username?.trim() ?? "";
+    const username = body.username?.trim().toLowerCase() ?? "";
     const email = body.email?.trim().toLowerCase() ?? "";
     const password = body.password ?? "";
     const confirmPassword = body.confirmPassword ?? "";
 
-    if (
-      username.length < USERNAME_MIN ||
-      !/^[A-Za-z0-9_]+$/.test(username) ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-      password.length < PASSWORD_MIN ||
-      password !== confirmPassword
-    ) {
-      return invalidCredentials();
+    logger.info("AUTH", "signup_validation_input", { email, username });
+
+    if (!username || !email || !password || !confirmPassword) {
+      return errorResponse("Username, email, password and confirmPassword are required");
+    }
+
+    if (!isValidUsername(username)) {
+      return errorResponse("Username must be at least 3 characters and contain only lowercase letters, numbers, or underscores");
+    }
+
+    if (!isValidEmail(email)) {
+      return errorResponse("Invalid email");
+    }
+
+    if (!isStrongEnoughPassword(password)) {
+      return errorResponse("Password must be at least 8 characters and include at least one letter and one number");
+    }
+
+    if (password !== confirmPassword) {
+      return errorResponse("Password mismatch");
     }
 
     const [existingByEmail, existingByUsername] = await Promise.all([
@@ -46,8 +70,19 @@ export async function POST(req: NextRequest) {
       findByUsername(username),
     ]);
 
-    if (existingByEmail || existingByUsername) {
-      return invalidCredentials();
+    logger.info("AUTH", "signup_duplicate_check", {
+      email,
+      username,
+      existingByEmail: Boolean(existingByEmail),
+      existingByUsername: Boolean(existingByUsername),
+    });
+
+    if (existingByEmail) {
+      return errorResponse("Email already exists", 409);
+    }
+
+    if (existingByUsername) {
+      return errorResponse("Username already exists", 409);
     }
 
     const passwordHash = await hashPassword(password);
@@ -56,6 +91,12 @@ export async function POST(req: NextRequest) {
       email,
       passwordHash,
       role: "public",
+    });
+
+    logger.info("AUTH", "signup_user_created", {
+      userId: user.id,
+      username: user.username,
+      email: user.email,
     });
 
     const session = await createAuthSession({

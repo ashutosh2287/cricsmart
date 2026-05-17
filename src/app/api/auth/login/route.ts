@@ -4,10 +4,12 @@ import {
   getAuthRateLimitMaxAttempts,
   getAuthRateLimitWindowSeconds,
   isAuthEnabled,
-  validateBootstrapCredentials,
 } from "@/config/auth";
 import { logger } from "@/lib/logger";
+import { findByEmailOrUsername } from "@/lib/repositories/user.repository";
 import { logAuthSensitiveAction } from "@/services/auth/routeGuard";
+import { verifyPassword } from "@/services/auth/password";
+import { toAuthRole } from "@/services/auth/roles";
 import { createAuthSession, setAuthSessionCookie } from "@/services/auth/sessionStore";
 import { getRedis } from "@/services/storage/redisClient";
 
@@ -42,26 +44,31 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = (await req.json()) as { username?: string; password?: string };
-    const username = body?.username?.trim() ?? "";
+    const body = (await req.json()) as { identifier?: string; username?: string; email?: string; password?: string };
+    const identifier = body?.identifier?.trim() || body?.username?.trim() || body?.email?.trim() || "";
     const password = body?.password ?? "";
 
-    if (!username || !password) {
+    if (!identifier || !password) {
       return failureResponse();
     }
 
-    if (await hitRateLimit(req, username)) {
-      logger.warn("AUTH", "login_rate_limited", { username });
+    if (await hitRateLimit(req, identifier)) {
+      logger.warn("AUTH", "login_rate_limited", { identifier });
       return NextResponse.json({ success: false, error: "Too many attempts" }, { status: 429 });
     }
 
-    const user = validateBootstrapCredentials(username, password);
-    if (!user) {
-      logger.warn("AUTH", "login_failed", { username });
+    const user = await findByEmailOrUsername(identifier);
+    const isValid = user ? await verifyPassword(password, user.passwordHash) : false;
+    if (!user || !isValid) {
+      logger.warn("AUTH", "login_failed", { identifier });
       return failureResponse();
     }
 
-    const session = await createAuthSession(user);
+    const session = await createAuthSession({
+      userId: user.id,
+      username: user.username,
+      role: toAuthRole(user.role),
+    });
     await setAuthSessionCookie(session);
 
     logAuthSensitiveAction("login_success", {
@@ -73,9 +80,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       user: {
-        id: user.id,
+        userId: user.id,
         username: user.username,
         role: user.role,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
       },
     });
   } catch (error) {

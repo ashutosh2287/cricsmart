@@ -15,7 +15,7 @@ export default async function AdminPage({
     isAdminProtectionEnabled() &&
     (!session || !["admin", "operator", "internal"].includes(session.user.role))
   ) {
-    redirect(`/login?next=${encodeURIComponent(`/admin/${matchId}`)}`);
+    redirect(`/login?redirect=${encodeURIComponent(`/admin/${matchId}`)}`);
   }
 
   return <AdminPageClient matchId={matchId} />;

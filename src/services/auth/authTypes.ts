@@ -1,14 +1,20 @@
 import type { AuthRole } from "@/config/auth";
 
 export type AuthUser = {
-  id: string;
+  userId: string;
   username: string;
   role: AuthRole;
+  email?: string;
+  avatarUrl?: string | null;
 };
 
 export type AuthSession = {
-  id: string;
-  user: AuthUser;
+  sessionId: string;
+  userId: string;
+  username: string;
+  role: AuthRole;
   createdAt: number;
+  expiresAt: number;
   lastSeenAt: number;
+  user: AuthUser;
 };

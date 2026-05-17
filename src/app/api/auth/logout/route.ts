@@ -13,12 +13,12 @@ export async function POST(req: Request) {
   }
 
   const session = await getAuthSessionFromRequest(req);
-  if (session?.id) {
-    await deleteAuthSessionById(session.id);
+  if (session?.sessionId) {
+    await deleteAuthSessionById(session.sessionId);
     logAuthSensitiveAction("logout", {
       route: "/api/auth/logout",
-      role: session.user.role,
-      username: session.user.username,
+      role: session.role,
+      username: session.username,
     });
   }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import MenuSection, { DrawerMenuItem } from "@/components/navigation/MenuSection";
+import { useAuth } from "@/providers/AuthProvider";
 
 const icon = (path: string) => (
   <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -67,6 +68,7 @@ const sections: DrawerSection[] = [
 export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<number | null>(null);
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     if (!isOpen || !drawerRef.current) {
@@ -163,6 +165,18 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
           </div>
 
           <nav className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label="Primary navigation">
+            <MenuSection
+              title="My Account"
+              items={[
+                {
+                  label: "My Account",
+                  href: isAuthenticated ? "/account" : `/login?redirect=${encodeURIComponent("/account")}`,
+                  icon: icon("M10 11a4 4 0 100-8 4 4 0 000 8zm-6 6a6 6 0 0112 0"),
+                },
+              ]}
+              pathname={pathname}
+              onNavigate={onClose}
+            />
             {sections.map((section) => (
               <MenuSection
                 key={section.title}

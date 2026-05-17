@@ -1,13 +1,6 @@
 import { timingSafeEqual } from "crypto";
 
-export type AuthRole = "operator" | "admin" | "internal";
-
-type BootstrapUser = {
-  id: string;
-  username: string;
-  password: string;
-  role: AuthRole;
-};
+export type AuthRole = "public" | "operator" | "admin" | "internal";
 
 function parseBoolean(value: string | undefined, fallback: boolean): boolean {
   if (value === undefined) return fallback;
@@ -55,7 +48,7 @@ export function getAuthCookieName(): string {
 }
 
 export function getAuthSessionTtlSeconds(): number {
-  return Math.max(300, parseNumber(process.env.AUTH_SESSION_TTL_SECONDS, 60 * 60 * 8));
+  return Math.max(300, parseNumber(process.env.AUTH_SESSION_TTL_SECONDS, 60 * 60 * 24 * 7));
 }
 
 export function getAuthSessionRotateSeconds(): number {
@@ -75,60 +68,7 @@ export function getAuthCookieSecure(): boolean {
 }
 
 export function getAuthCookieSameSite(): "lax" | "strict" {
-  const strict = parseBoolean(process.env.AUTH_COOKIE_STRICT_SAMESITE, false);
-  return strict ? "strict" : "lax";
-}
-
-function addBootstrapUser(
-  users: BootstrapUser[],
-  role: AuthRole,
-  username: string | undefined,
-  password: string | undefined
-) {
-  const normalizedUsername = username?.trim();
-  const normalizedPassword = password?.trim();
-  if (!normalizedUsername || !normalizedPassword) return;
-
-  users.push({
-    id: `${role}:${normalizedUsername.toLowerCase()}`,
-    username: normalizedUsername,
-    password: normalizedPassword,
-    role,
-  });
-}
-
-export function getBootstrapUsers(): BootstrapUser[] {
-  const users: BootstrapUser[] = [];
-
-  addBootstrapUser(
-    users,
-    "admin",
-    process.env.AUTH_BOOTSTRAP_ADMIN_USERNAME,
-    process.env.AUTH_BOOTSTRAP_ADMIN_PASSWORD
-  );
-  addBootstrapUser(
-    users,
-    "operator",
-    process.env.AUTH_BOOTSTRAP_OPERATOR_USERNAME,
-    process.env.AUTH_BOOTSTRAP_OPERATOR_PASSWORD
-  );
-  addBootstrapUser(
-    users,
-    "internal",
-    process.env.AUTH_BOOTSTRAP_INTERNAL_USERNAME,
-    process.env.AUTH_BOOTSTRAP_INTERNAL_PASSWORD
-  );
-
-  if (isDevAuthBypassEnabled() && process.env.AUTH_BOOTSTRAP_DEV_USERNAME?.trim()) {
-    addBootstrapUser(
-      users,
-      "admin",
-      process.env.AUTH_BOOTSTRAP_DEV_USERNAME,
-      process.env.AUTH_BOOTSTRAP_DEV_PASSWORD ?? "dev-password"
-    );
-  }
-
-  return users;
+  return "lax";
 }
 
 function safeBuffer(value: string): Buffer {
@@ -140,20 +80,4 @@ export function safeCredentialCompare(left: string, right: string): boolean {
   const rightBuffer = safeBuffer(right);
   if (leftBuffer.length !== rightBuffer.length) return false;
   return timingSafeEqual(leftBuffer, rightBuffer);
-}
-
-export function validateBootstrapCredentials(
-  username: string,
-  password: string
-): { id: string; username: string; role: AuthRole } | null {
-  const users = getBootstrapUsers();
-  const normalizedUsername = username.trim().toLowerCase();
-
-  for (const user of users) {
-    if (user.username.toLowerCase() !== normalizedUsername) continue;
-    if (!safeCredentialCompare(user.password, password)) return null;
-    return { id: user.id, username: user.username, role: user.role };
-  }
-
-  return null;
 }

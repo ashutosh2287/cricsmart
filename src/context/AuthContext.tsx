@@ -4,17 +4,20 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { AuthRole } from "@/config/auth";
 
 type AuthUser = {
-  id: string;
+  userId: string;
   username: string;
   role: AuthRole;
+  email?: string;
+  avatarUrl?: string | null;
 };
 
 type AuthContextValue = {
   user: AuthUser | null;
   authEnabled: boolean;
   loading: boolean;
-  refresh: () => Promise<void>;
-  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  isAuthenticated: boolean;
+  refreshSession: () => Promise<void>;
+  login: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 };
 
@@ -42,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authEnabled, setAuthEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
+  const refreshSession = useCallback(async () => {
     try {
       const state = await fetchMe();
       setUser(state.user);
@@ -53,14 +56,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    void refreshSession();
+  }, [refreshSession]);
 
-  const login = useCallback(async (username: string, password: string) => {
+  const login = useCallback(async (identifier: string, password: string) => {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ identifier, password }),
     });
 
     const body = (await res.json()) as {
@@ -72,27 +75,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: body.error ?? "Login failed" };
     }
 
-    await refresh();
+    await refreshSession();
     return { success: true };
-  }, [refresh]);
+  }, [refreshSession]);
 
   const logout = useCallback(async () => {
     await fetch("/api/auth/logout", {
       method: "POST",
     });
-    await refresh();
-  }, [refresh]);
+    await refreshSession();
+  }, [refreshSession]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       authEnabled,
       loading,
-      refresh,
+      isAuthenticated: Boolean(user),
+      refreshSession,
       login,
       logout,
     }),
-    [user, authEnabled, loading, refresh, login, logout]
+    [user, authEnabled, loading, refreshSession, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

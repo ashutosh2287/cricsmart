@@ -553,7 +553,7 @@ export default function MatchGraphExplorer({
                           type="monotone"
                           dataKey="score"
                           name="Momentum score"
-                          stroke="var(--accent-glow)"
+                          stroke="var(--accent-glow, #6e5bff)"
                           strokeWidth={3}
                           dot={{ r: 4 }}
                         />

@@ -40,9 +40,14 @@ function WinProbabilityChart({
   team1,
   team2
 }: Props) {
+  const hasLivePoints = data.length > 0;
+  const chartData = useMemo(
+    () => (hasLivePoints ? data : [{ over: 0, batting: 50, bowling: 50 }]),
+    [data, hasLivePoints]
+  );
   const lastPoint = useMemo(
-    () => (data.length ? data[data.length - 1] : null),
-    [data]
+    () => chartData[chartData.length - 1] ?? null,
+    [chartData]
   );
 
   const renderMarkerDot = useCallback(({ cx, cy, payload }: DotProps) => {
@@ -120,10 +125,15 @@ function WinProbabilityChart({
         </div>
 
       </div>
+      {!hasLivePoints ? (
+        <p className="mb-3 text-xs text-[var(--text-secondary)]">
+          Waiting for simulation events — showing neutral 50/50 baseline.
+        </p>
+      ) : null}
 
       <ResponsiveContainer width="100%" height={260}>
 
-        <LineChart data={data}>
+        <LineChart data={chartData}>
 
           {/* GRADIENTS */}
           <defs>

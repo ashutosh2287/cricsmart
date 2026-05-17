@@ -35,7 +35,16 @@ function toCellStyle(normalized: number) {
 }
 
 export default function MomentumHeatmap({ data }: Props) {
-  if (!data.length) return null;
+  if (!data.length) {
+    return (
+      <div className="w-full rounded-[16px] border border-[var(--border-subtle)] bg-[var(--bg-surface)]/70 p-4">
+        <h3 className="text-base font-semibold text-[var(--text-primary)]">Momentum Heatmap</h3>
+        <p className="mt-2 text-xs text-[var(--text-secondary)]">
+          Heatmap will appear once ball-by-ball momentum data is available.
+        </p>
+      </div>
+    );
+  }
 
   const maxAbs = Math.max(...data.map((point) => Math.abs(point.score)), 1);
   const normalized = data.map((point) => ({
@@ -71,8 +80,11 @@ export default function MomentumHeatmap({ data }: Props) {
     <div className="w-full rounded-[16px] border border-[var(--border-subtle)] bg-[var(--bg-surface)]/70 p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="text-base font-semibold text-[var(--text-primary)]">Momentum Heatmap</h3>
-        <span className="text-xs text-[var(--text-secondary)]">Normalized scale</span>
+        <span className="text-xs text-[var(--text-secondary)]">Normalized scale (−1 to +1)</span>
       </div>
+      <p className="mb-3 text-xs text-[var(--text-secondary)]">
+        Green = batting control, red = bowling control. Cell numbers show normalized momentum.
+      </p>
 
       <div className="overflow-x-auto">
         <div className="min-w-[720px] space-y-2">
@@ -108,9 +120,11 @@ export default function MomentumHeatmap({ data }: Props) {
                   <div
                     key={`${lane.key}-${index}`}
                     title={`Over ${normalized[index].over}: ${normalized[index].raw.toFixed(1)}`}
-                    className="h-6 rounded border"
+                    className="flex h-7 items-center justify-center rounded border text-[10px] font-medium text-[var(--text-primary)]"
                     style={style}
-                  />
+                  >
+                    {value.toFixed(2)}
+                  </div>
                 );
               })}
             </div>

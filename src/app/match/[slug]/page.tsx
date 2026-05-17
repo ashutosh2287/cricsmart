@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState, use } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import AdminScoringPanel from "@/components/admin/AdminScoringPanel";
 import BroadcastControlDashboard from "@/components/BroadcastControlDashboard";
 import BroadcastDirectorPanel from "@/components/BroadcastDirectorPanel";
@@ -70,6 +70,8 @@ import { setMatchMeta } from "@/store/matchStore";
 import AnimatedScore from "@/components/ui/AnimatedScore";
 import ConnectionStatus from "@/components/ui/ConnectionStatus";
 import { pageRevealVariants, transitions } from "@/animations/motion-presets";
+import { isSimulationLifecycleAtLeast } from "@/services/simulation/simulation-lifecycle";
+import type { SimulationLifecycleState } from "@/services/simulation/simulation-lifecycle";
 
 // ─────────────────────────────────────────────
 // Types
@@ -135,6 +137,7 @@ type MatchSessionMeta = {
   type?: "LIVE" | "SIMULATION";
   sessionState?: LiveSessionState;
   reconnectHealth?: MatchReconnectHealth;
+  simulationLifecycle?: SimulationLifecycleState;
 };
 
 // ─────────────────────────────────────────────
@@ -450,6 +453,14 @@ function TabsArea({
   const [startError, setStartError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1500);
   const [showReplayTimeline, setShowReplayTimeline] = useState(false);
+
+  async function updateLifecycle(lifecycle: SimulationLifecycleState) {
+    await fetch("/api/simulation/lifecycle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ matchId: match.slug, lifecycle }),
+    });
+  }
 
   const hasLiveMatchState =
     !!currentEngineState &&
@@ -1293,6 +1304,7 @@ function TabsArea({
                       setMatchMeta(nextMeta);
                       setLocalMatchMeta(nextMeta);
                       setStartError(null);
+                      void updateLifecycle("CONFIGURING");
                     }}
                   />
                 ) : (
@@ -1315,6 +1327,7 @@ function TabsArea({
                         };
                         setMatchMeta(nextMeta);
                         setLocalMatchMeta(nextMeta);
+                        void updateLifecycle("READY");
                       }}
                     />
                   </div>
@@ -1336,6 +1349,7 @@ function TabsArea({
                       const latestMeta = getMatchMeta(id);
                       if (!latestMeta?.teamA?.name || !latestMeta?.teamB?.name)
                         return setStartError("Please select teams first.");
+                      void updateLifecycle("INITIALIZING");
                       connectRealtime(id, "match-page-admin-start");
                     }}
                     className={cls(
@@ -1757,6 +1771,8 @@ export default function MatchDetailPage({
   const [sessionMeta, setSessionMeta] = useState<MatchSessionMeta | null>(null);
   const [insights, setInsights] = useState<BroadcastInsight[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
+  const router = useRouter();
 
   type WinPoint = {
     over: number;
@@ -1811,10 +1827,47 @@ export default function MatchDetailPage({
 
         if (!cancelled) setLoadError(null);
 
+        const registry = (data.registry ?? null) as MatchSessionMeta | null;
+        const hasTeams =
+          typeof data.match.teamA?.name === "string" &&
+          data.match.teamA.name.trim().length > 0 &&
+          typeof data.match.teamB?.name === "string" &&
+          data.match.teamB.name.trim().length > 0;
+        const hasInitializedInnings =
+          Array.isArray(data.match.innings) &&
+          data.match.innings.length >= 1 &&
+          typeof data.match.currentInningsIndex === "number";
+        const hasScoreState =
+          hasInitializedInnings &&
+          typeof data.match.innings[0]?.runs === "number" &&
+          typeof data.match.innings[0]?.wickets === "number";
+        const requiresControlPage =
+          registry?.type === "SIMULATION" &&
+          (!isSimulationLifecycleAtLeast(registry?.simulationLifecycle, "READY") ||
+            !hasTeams ||
+            !hasInitializedInnings ||
+            !hasScoreState);
+
+        if (requiresControlPage) {
+          console.info("routeRedirected", {
+            matchId: id,
+            lifecycle: registry?.simulationLifecycle ?? "DRAFT",
+          });
+          if (!cancelled) {
+            setRedirectTarget(`/admin/${id}`);
+            setLoadError("Simulation setup is incomplete. Redirecting to control page.");
+          }
+          return;
+        }
+
+        if (!cancelled) {
+          setRedirectTarget(null);
+        }
+
         // ✅ Hydrate matchEngine (for scorecard helpers etc.)
         hydrateMatchState(id, data.match);
 
-        setSessionMeta(data.registry ?? null);
+        setSessionMeta(registry);
 
         // ✅ CRITICAL: also push into eventStore so MatchProvider sees initial state
         setMatchState(id, data.match);
@@ -1877,6 +1930,11 @@ export default function MatchDetailPage({
     loadMatch();
     return () => { cancelled = true; };
   }, [matchId]);
+
+  useEffect(() => {
+    if (!redirectTarget) return;
+    router.replace(redirectTarget);
+  }, [redirectTarget, router]);
 
   // Analytics / insights from window events
   useEffect(() => {
@@ -1944,11 +2002,49 @@ export default function MatchDetailPage({
   }
 
   const loadingFallback = (
-    <div className="space-y-3 p-10 text-center text-white">
-      <p>Loading match...</p>
+    <div className="space-y-4 p-6 md:p-8">
+      <div className="h-8 w-56 animate-pulse rounded-lg bg-white/10" />
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="h-24 animate-pulse rounded-xl bg-white/10" />
+        <div className="h-24 animate-pulse rounded-xl bg-white/10" />
+        <div className="h-24 animate-pulse rounded-xl bg-white/10" />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+        <div className="h-64 animate-pulse rounded-2xl bg-white/10" />
+        <div className="h-64 animate-pulse rounded-2xl bg-white/10" />
+      </div>
       <p className="text-xs text-white/60">Match ID: {matchId}</p>
     </div>
   );
+
+  if (redirectTarget) {
+    const redirectContent = (
+      <div style={pageSurfaceStyle}>
+        <div className="space-y-3 p-10 text-center">
+          <p className="text-sm text-amber-300">
+            Simulation setup is incomplete. Redirecting to Simulation Control…
+          </p>
+          <p className="text-xs text-white/60">Match ID: {matchId}</p>
+        </div>
+      </div>
+    );
+
+    return (
+      <MatchRenderBoundary fallback={redirectContent}>
+        <MotionFallbackBoundary fallback={redirectContent}>
+          <MotionSafeContainer
+            enableMotion
+            variants={pageRevealVariants}
+            transition={transitions.base}
+          >
+            <LiveEnergyWrapper enabled state="regular">
+              {redirectContent}
+            </LiveEnergyWrapper>
+          </MotionSafeContainer>
+        </MotionFallbackBoundary>
+      </MatchRenderBoundary>
+    );
+  }
   const errorFallback = loadError ? (
     <div className="space-y-3 p-10 text-center">
       <p className="text-sm text-rose-300">{loadError}</p>

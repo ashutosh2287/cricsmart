@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/services/storage/redisClient";
-import { upsertMatchRegistry } from "@/services/match/matchRegistry";
-import { createMatchId } from "@/services/match/createLiveMatchId";
+import { createDraftSimulationSession } from "@/services/simulation/simulation-orchestrator";
 
 const MATCH_LIST_KEY = "matches:list";
 
@@ -15,34 +14,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Teams required" }, { status: 400 });
   }
 
-  const matchId = createMatchId(teamA, teamB);
-
-  const redis = getRedis();
+  const created = await createDraftSimulationSession({ teamA, teamB });
 
   const match = {
-    matchId,
-    slug: matchId,
+    matchId: created.matchId,
+    slug: created.slug,
     teamA,
     teamB,
     status: "UPCOMING",
     createdAt: Date.now(),
   };
-
-  await redis.hset(`match:${matchId}:meta`, match);
-  await redis.sadd(MATCH_LIST_KEY, matchId);
-
-  await upsertMatchRegistry({
-    matchId,
-    slug: matchId,
-    teamA,
-    teamB,
-    status: "UPCOMING",
-    type: "SIMULATION",
-    sourceType: "SIMULATION",
-    isLiveConnected: false,
-    heartbeatFresh: false,
-    reconnectHealth: "disconnected",
-  });
 
   return NextResponse.json({ success: true, match });
 }

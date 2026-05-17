@@ -4,8 +4,12 @@ import { getCommentaryContextSnapshots } from "@/services/commentary/commentaryC
 import { getLatestCommentaryIntelligence } from "@/services/commentary/commentaryIntelligenceStore";
 import { getMatchStoryState } from "@/services/commentary/commentaryMatchStoryEngine";
 import { getCommentarySummaries } from "@/services/commentary/commentarySummaryEngine";
+import { requireRouteAccess } from "@/services/auth/routeGuard";
 
 export async function GET(request: Request) {
+  const access = await requireRouteAccess({ req: request, scope: "internal" });
+  if (!access.ok) return access.response;
+
   const { searchParams } = new URL(request.url);
   const matchId = searchParams.get("matchId") ?? "";
   const snapshots = matchId ? getCommentaryContextSnapshots(matchId) : [];

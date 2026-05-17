@@ -12,6 +12,7 @@ import { getProviderMode } from "@/config/providerMode";
 import { logger } from "@/lib/logger";
 import type { SessionSourceType } from "@/types/liveSession";
 import { ensureSessionRecoveryStarted } from "@/services/runtime/sessionRecoveryBootstrap";
+import { logAuthSensitiveAction, requireRouteAccess } from "@/services/auth/routeGuard";
 
 const DEFAULT_SIMULATION_SPEED_MS = 300;
 
@@ -34,6 +35,9 @@ const createTeam = (name: string) => ({
 });
 
 export async function POST(req: NextRequest) {
+  const access = await requireRouteAccess({ req, scope: "admin" });
+  if (!access.ok) return access.response;
+
   ensureSessionRecoveryStarted();
 
   try {
@@ -241,6 +245,13 @@ export async function POST(req: NextRequest) {
         startLiveMatchIngestor(matchId, resolvedExternalMatchId);
       }
     }
+
+    logAuthSensitiveAction("init_match", {
+      route: "/api/match/init",
+      matchId,
+      role: access.session?.user.role,
+      username: access.session?.user.username,
+    });
 
     return NextResponse.json({
       success: true,

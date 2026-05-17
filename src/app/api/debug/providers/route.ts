@@ -11,11 +11,15 @@ import { getPollingLimits } from "@/services/providers/polling/pollingStrategy";
 import { getSnapshotResilienceMetrics } from "@/services/runtime/snapshotCache";
 import { getSessionRecoveryDiagnostics } from "@/services/runtime/sessionRecovery";
 import { ensureSessionRecoveryStarted } from "@/services/runtime/sessionRecoveryBootstrap";
+import { requireRouteAccess } from "@/services/auth/routeGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const access = await requireRouteAccess({ req, scope: "internal" });
+  if (!access.ok) return access.response;
+
   ensureSessionRecoveryStarted();
 
   const providerMode = getProviderMode();

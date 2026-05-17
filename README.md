@@ -36,6 +36,67 @@ Runtime flags:
 - `NEXT_PUBLIC_ERROR_ENDPOINT` – Optional monitoring endpoint for client crash reports.
 - `LOG_LEVEL` – Structured logger minimum level (`debug`, `info`, `warn`, `error`).
 
+## Authentication and authorization
+
+Auth is cookie-based with server-side Redis sessions.
+
+### Roles
+
+- `public` (unauthenticated): read-only match viewing endpoints/pages.
+- `operator` / `admin`: simulation + match control endpoints.
+- `internal` (and `admin`): debug/diagnostics endpoints.
+
+### Rollout
+
+Use phased rollout with:
+
+- `AUTH_ENABLED` (boolean)
+- `AUTH_ROLLOUT_PHASE` (`1` to `4`)
+  - Phase 1: auth endpoints + login UI
+  - Phase 2: protect internal/debug routes
+  - Phase 3: protect admin mutation routes
+  - Phase 4: optional SSE enforcement (with `AUTH_ENFORCE_SSE=true`)
+
+### Core auth env vars
+
+- `AUTH_COOKIE_NAME` (default `cricsmart_session`)
+- `AUTH_SESSION_TTL_SECONDS` (default `28800`)
+- `AUTH_SESSION_ROTATE_SECONDS` (default `1800`)
+- `AUTH_RATE_LIMIT_WINDOW_SECONDS` (default `60`)
+- `AUTH_RATE_LIMIT_MAX_ATTEMPTS` (default `6`)
+- `AUTH_ALLOW_DEV_BYPASS` (non-production only)
+- Bootstrap credentials:
+  - `AUTH_BOOTSTRAP_ADMIN_USERNAME` / `AUTH_BOOTSTRAP_ADMIN_PASSWORD`
+  - `AUTH_BOOTSTRAP_OPERATOR_USERNAME` / `AUTH_BOOTSTRAP_OPERATOR_PASSWORD`
+  - `AUTH_BOOTSTRAP_INTERNAL_USERNAME` / `AUTH_BOOTSTRAP_INTERNAL_PASSWORD`
+
+### Protected route matrix
+
+- Public:
+  - `GET /api/live/fixtures`
+  - `GET /api/matches`
+  - `GET /api/match/[matchId]`
+  - `GET /api/realtime/[matchId]` (only if SSE enforcement disabled)
+- Admin/operator:
+  - `POST /api/create-match`
+  - `POST /api/match`
+  - `POST /api/match/init`
+  - `POST /api/match/stop`
+  - `POST /api/start-simulation`
+  - `POST /api/set-speed`
+  - `POST /api/simulation/*`
+  - `DELETE /api/matches/delete`
+  - `POST|DELETE /api/events`
+- Internal/admin:
+  - `GET /api/debug/*`
+  - `GET /api/live/runtime-check`
+
+### Incident playbook (auth)
+
+- Rotate session secret/cookie policy env values.
+- Invalidate active sessions by deleting keys with prefix `auth:session:*` in Redis.
+- Rotate bootstrap credentials and redeploy.
+
 ## Start a live match (runbook)
 
 1. Confirm prerequisites:

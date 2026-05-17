@@ -5,6 +5,7 @@ import {
   removeClient,
 } from "@/services/realtime/realtimeController";
 import { validateLiveSessionForSse } from "@/services/live/liveSessionOrchestrator";
+import { requireRouteAccess } from "@/services/auth/routeGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +19,11 @@ export async function GET(
   req: NextRequest,
   context: { params: Promise<{ matchId: string }> } // ✅ FIXED
 ) {
+  const access = await requireRouteAccess({ req, scope: "sse" });
+  if (!access.ok) {
+    return new Response("Unauthorized", { status: access.response.status });
+  }
+
   const { matchId } = await context.params; // ✅ FIXED
 
   console.log("🧠 SSE ROUTE MATCH ID:", matchId);

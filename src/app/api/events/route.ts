@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/services/storage/redisClient";
+import { logAuthSensitiveAction, requireRouteAccess } from "@/services/auth/routeGuard";
 
 /**
  * 🔹 GET EVENTS (PRIMARY USE)
@@ -45,6 +46,9 @@ export async function GET(req: NextRequest) {
  * 🔹 DELETE EVENTS (RESET / ADMIN)
  */
 export async function DELETE(req: NextRequest) {
+  const access = await requireRouteAccess({ req, scope: "admin" });
+  if (!access.ok) return access.response;
+
   try {
     const { matchId } = await req.json();
 
@@ -59,6 +63,12 @@ export async function DELETE(req: NextRequest) {
     const key = `match:${matchId}:events`;
 
     await redis.del(key);
+    logAuthSensitiveAction("delete_events", {
+      route: "/api/events",
+      matchId,
+      role: access.session?.user.role,
+      username: access.session?.user.username,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -76,6 +86,9 @@ export async function DELETE(req: NextRequest) {
  * (NOT USED BY ENGINE ANYMORE)
  */
 export async function POST(req: NextRequest) {
+  const access = await requireRouteAccess({ req, scope: "admin" });
+  if (!access.ok) return access.response;
+
   try {
     const { matchId, event } = await req.json();
 
@@ -98,6 +111,12 @@ export async function POST(req: NextRequest) {
         eventSource: event?.eventSource ?? "MANUAL",
       })
     );
+    logAuthSensitiveAction("append_event_manual", {
+      route: "/api/events",
+      matchId,
+      role: access.session?.user.role,
+      username: access.session?.user.username,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

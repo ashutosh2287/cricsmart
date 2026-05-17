@@ -11,6 +11,7 @@ import {
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 import { getSimulationPreset } from "@/services/simulation/simulationPresets";
 import { setSimulationSeed } from "@/services/simulation/simulationRandom";
+import { logAuthSensitiveAction, requireRouteAccess } from "@/services/auth/routeGuard";
 
 export const runtime = "nodejs";
 
@@ -35,6 +36,9 @@ function normalizeTeamName(name: string | undefined): string | undefined {
 }
 
 export async function POST(req: Request) {
+  const access = await requireRouteAccess({ req, scope: "admin" });
+  if (!access.ok) return access.response;
+
   let lockedMatchId: string | undefined;
 
   try {
@@ -258,6 +262,13 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
+
+    logAuthSensitiveAction("start_simulation", {
+      route: "/api/start-simulation",
+      matchId,
+      role: access.session?.user.role,
+      username: access.session?.user.username,
+    });
 
     return Response.json({
       success: true,

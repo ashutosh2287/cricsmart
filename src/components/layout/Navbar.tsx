@@ -9,6 +9,7 @@ import AppDrawer from "@/components/navigation/AppDrawer";
 import MobileMenuButton from "@/components/navigation/MobileMenuButton";
 import { isPathActive } from "@/components/navigation/navigationUtils";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import { useAuth } from "@/context/AuthContext";
 import { useDrawer } from "@/hooks/useDrawer";
 
 type FixtureScoreEntry = { r?: number; w?: number; o?: number };
@@ -178,6 +179,7 @@ export default function Navbar() {
   const lastFetchedAtRef = useRef(0);
   const allDropdownRef = useRef<HTMLDivElement>(null);
   const { isOpen, closeDrawer, toggleDrawer } = useDrawer();
+  const { user, logout, authEnabled, loading: authLoading } = useAuth();
 
   const activeLink = quickLinks.find((link) => isPathActive(pathname, link.href));
 
@@ -339,6 +341,27 @@ export default function Navbar() {
             </div>
 
             <div className="flex min-w-[120px] items-center justify-end gap-3 md:min-w-[190px]">
+              {!authLoading && authEnabled ? (
+                user ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void logout();
+                    }}
+                    className="hidden rounded-md border border-[var(--border-subtle)] bg-[var(--bg-raised)]/40 px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-[var(--text-secondary)] md:inline-flex"
+                    title={`Signed in as ${user.username}`}
+                  >
+                    Logout
+                  </button>
+                ) : (
+                  <Link
+                    href={`/login?next=${encodeURIComponent(pathname || "/")}`}
+                    className="hidden rounded-md border border-[var(--border-subtle)] bg-[var(--bg-raised)]/40 px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-[var(--text-secondary)] md:inline-flex"
+                  >
+                    Login
+                  </Link>
+                )
+              ) : null}
               <span className="hidden rounded-md border border-[var(--border-subtle)] bg-[var(--bg-raised)]/40 px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-[var(--text-secondary)] md:inline-flex">
                 {matchesPanelOpen ? "Matches" : activeLink?.name ?? "Cricket"}
               </span>

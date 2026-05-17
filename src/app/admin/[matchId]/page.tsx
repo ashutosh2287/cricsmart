@@ -1,23 +1,22 @@
-"use client";
+import { redirect } from "next/navigation";
+import { isAdminProtectionEnabled } from "@/config/auth";
+import AdminPageClient from "@/components/admin/AdminPageClient";
+import { getAuthSessionFromServerCookies } from "@/services/auth/sessionStore";
 
-import { useParams } from "next/navigation";
-import AdminDashboard from "@/components/admin/AdminDashboard";
+export default async function AdminPage({
+  params,
+}: {
+  params: Promise<{ matchId: string }>;
+}) {
+  const { matchId } = await params;
+  const session = await getAuthSessionFromServerCookies();
 
-export default function AdminPage() {
-  const params = useParams();
-  const matchId = params.matchId as string;
-
-  if (!matchId) {
-    return <div className="p-10 text-white">Invalid match</div>;
+  if (
+    isAdminProtectionEnabled() &&
+    (!session || ![\"admin\", \"operator\", \"internal\"].includes(session.user.role))
+  ) {
+    redirect(`/login?next=${encodeURIComponent(`/admin/${matchId}`)}`);
   }
 
-  return (
-    <div className="min-h-screen bg-[#020617] text-white p-6">
-      <h1 className="text-2xl font-bold mb-6">
-        Admin Panel — {matchId}
-      </h1>
-
-      <AdminDashboard matchId={matchId} />
-    </div>
-  );
+  return <AdminPageClient matchId={matchId} />;
 }

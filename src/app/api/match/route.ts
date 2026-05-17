@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/services/storage/redisClient";
 import { upsertMatchRegistry } from "@/services/match/matchRegistry";
 import { createMatchId } from "@/services/match/createLiveMatchId";
+import { logAuthSensitiveAction, requireRouteAccess } from "@/services/auth/routeGuard";
 
 const MATCH_LIST_KEY = "matches:list";
 
 export async function POST(req: NextRequest) {
+  const access = await requireRouteAccess({ req, scope: "admin" });
+  if (!access.ok) return access.response;
+
   const body = await req.json();
 
   const teamA = body?.teamA?.trim();
@@ -42,6 +46,13 @@ export async function POST(req: NextRequest) {
     isLiveConnected: false,
     heartbeatFresh: false,
     reconnectHealth: "disconnected",
+  });
+
+  logAuthSensitiveAction("create_match_legacy", {
+    route: "/api/match",
+    matchId,
+    role: access.session?.user.role,
+    username: access.session?.user.username,
   });
 
   return NextResponse.json({ success: true, match });

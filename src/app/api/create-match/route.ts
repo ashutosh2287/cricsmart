@@ -3,10 +3,14 @@ import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorag
 import { getRedis } from "@/services/storage/redisClient";
 import { upsertMatchRegistry } from "@/services/match/matchRegistry";
 import { createMatchId } from "@/services/match/createLiveMatchId";
+import { logAuthSensitiveAction, requireRouteAccess } from "@/services/auth/routeGuard";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
+  const access = await requireRouteAccess({ req, scope: "admin" });
+  if (!access.ok) return access.response;
+
   try {
     const body = await req.json();
 
@@ -53,6 +57,13 @@ export async function POST(req: Request) {
       isLiveConnected: false,
       heartbeatFresh: false,
       reconnectHealth: "disconnected",
+    });
+
+    logAuthSensitiveAction("create_match", {
+      route: "/api/create-match",
+      matchId,
+      role: access.session?.user.role,
+      username: access.session?.user.username,
     });
 
     const verify = await storage.load(matchId);

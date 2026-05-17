@@ -1,18 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import type { InningsState } from "@/services/matchEngine";
 import { useCurrentInnings } from "@/services/matchSelectors";
 import { translateCommentary } from "@/services/commentary/commentaryTranslator";
 import type { BallEvent } from "@/types/ballEvent";
-import {
-  getCommentaryEnergyVariants,
-} from "@/animations/live-animations";
-import {
-  getLiveEnergyStateFromTag,
-  importanceTierClassMap,
-} from "@/animations/live-energy";
 
 type BroadcastInsight = {
   type: string;
@@ -402,17 +394,10 @@ function buildOverBlocks(innings: InningsState | undefined): OverBlock[] {
 }
 
 function getTagClasses(tag: string | null) {
-  if (tag === "WICKET") return "tier-3-border tier-3-commentary state-wicket";
-  if (tag === "SIX") return "tier-2-border tier-2-commentary state-boundary";
-  if (tag === "FOUR") return "tier-2-border tier-2-commentary state-boundary";
+  if (tag === "WICKET") return "border-red-400/45 bg-red-950/30 text-red-100";
+  if (tag === "SIX") return "border-amber-400/35 bg-amber-950/25 text-amber-100";
+  if (tag === "FOUR") return "border-sky-400/35 bg-sky-950/25 text-sky-100";
   return "border-white/10 bg-slate-950/55 text-white";
-}
-
-function getBlockEnergyState(overRuns: number, wicketCount: number) {
-  if (wicketCount > 0) return "wicket";
-  if (overRuns >= 10) return "momentum";
-  if (overRuns <= 3) return "pressure";
-  return "regular";
 }
 
 export default function CommentaryPanel({ matchId, insights }: Props) {
@@ -423,7 +408,7 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
   const currentOver = overBlocks[0];
 
   return (
-    <div className="hierarchy-primary rounded-2xl bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.9))] p-3">
+    <div className="rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.9))] p-3.5">
       {insights && insights.length > 0 ? (
         <div className="mb-3 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-3">
           <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-yellow-300">
@@ -470,42 +455,15 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
         </div>
       ) : null}
 
-      <div className="sports-scrollbar max-h-[74vh] space-y-2 overflow-y-auto pr-1">
+      <div className="max-h-[74vh] space-y-3 overflow-y-auto pr-1">
         {overBlocks.length === 0 ? (
           <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm text-white/55">
             Waiting for live commentary...
           </div>
         ) : null}
 
-        <AnimatePresence initial={false}>
-          {overBlocks.map((block) => (
-          (() => {
-            const blockState = getBlockEnergyState(
-              block.summary.overRuns,
-              block.summary.wicketCount
-            );
-            const blockTier =
-              blockState === "wicket" ? 3 : blockState === "regular" ? 1 : 2;
-            const tierClass = importanceTierClassMap[blockTier];
-            const pressureClass =
-              block.summary.pressure === "Extreme" || block.summary.pressure === "High"
-                ? "state-pressure"
-                : "text-white/70";
-            const momentumClass = block.summary.momentum.includes("Bowling")
-              ? "state-wicket"
-              : block.summary.momentum.includes("Batting")
-              ? "state-momentum"
-              : "text-white/70";
-
-            return (
-          <motion.div
-            key={block.summary.key}
-            variants={getCommentaryEnergyVariants(blockState)}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className={`space-y-2 rounded-xl border p-2.5 ${tierClass.borderClass} ${tierClass.glowClass}`}
-          >
+        {overBlocks.map((block) => (
+          <div key={block.summary.key} className="space-y-2.5 rounded-xl border border-white/10 bg-white/[0.025] p-2.5">
             <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -525,9 +483,7 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
                       : ""}
                   </div>
                   <div className="mt-1 text-[11px] uppercase tracking-[0.14em] text-white/45">
-                    <span className={pressureClass}>Pressure {block.summary.pressure}</span>
-                    <span className="text-white/40"> · </span>
-                    <span className={momentumClass}>{block.summary.momentum}</span>
+                    Pressure {block.summary.pressure} · {block.summary.momentum}
                   </div>
                 </div>
               </div>
@@ -556,13 +512,12 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
                       key={`${block.summary.key}-highlight-${index}`}
                       className={`rounded-lg border px-3 py-2 text-xs ${
                         note.type === "WICKET"
-                          ? "tier-3-border tier-3-commentary state-wicket"
+                          ? "border-red-400/40 bg-red-500/12 text-red-100"
                           : note.type === "MILESTONE"
-                            ? "tier-2-border tier-2-commentary state-pressure"
-                            : "tier-2-border tier-2-commentary state-partnership"
+                            ? "border-amber-400/40 bg-amber-500/12 text-amber-100"
+                            : "border-emerald-400/30 bg-emerald-500/12 text-emerald-100"
                       }`}
                     >
-                      <span className="mr-1 text-[10px] uppercase tracking-[0.15em] text-white/70">Key moment</span>
                       {note.message}
                     </div>
                   ))}
@@ -592,21 +547,9 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
               </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {block.balls.map((ball) => (
-                (() => {
-                  const state = getLiveEnergyStateFromTag(ball.tag);
-                  const tier = state === "wicket" || state === "turningPoint" ? 3 : state === "regular" ? 1 : 2;
-                  const tierClass = importanceTierClassMap[tier];
-                  return (
-                <motion.div
-                  key={ball.key}
-                  variants={getCommentaryEnergyVariants(state)}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  className={`rounded-xl border p-2.5 ${getTagClasses(ball.tag)} ${tierClass.commentaryClass} ${tierClass.borderClass} ${tierClass.textClass} ${ball.tag === "WICKET" ? "hierarchy-primary" : ""}`}
-                >
+                <div key={ball.key} className={`rounded-xl border p-2.5 ${getTagClasses(ball.tag)}`}>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <div className="text-sm font-medium text-white">
@@ -618,21 +561,16 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
                     </div>
 
                     {ball.tag ? (
-                      <span className={`rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] ${tierClass.borderClass}`}>
+                      <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/85">
                         {ball.tag}
                       </span>
                     ) : null}
                   </div>
-                </motion.div>
-                  );
-                })()
+                </div>
               ))}
             </div>
-          </motion.div>
-            );
-          })()
+          </div>
         ))}
-        </AnimatePresence>
       </div>
     </div>
   );

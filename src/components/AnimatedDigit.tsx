@@ -1,31 +1,36 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Props = {
   value: number;
 };
 
 export default function AnimatedDigit({ value }: Props) {
+
   const [display, setDisplay] = useState(value);
-  const displayRef = useRef(value);
 
   useEffect(() => {
-    displayRef.current = display;
-  }, [display]);
 
-  useEffect(() => {
-    if (displayRef.current === value) return;
-    let rafId = 0;
-    let current = displayRef.current;
-    const step = () => {
-      if (current === value) return;
+    if (display === value) return;
+
+    let current = display;
+
+    const interval = setInterval(() => {
+
+      if (current === value) {
+        clearInterval(interval);
+        return;
+      }
+
       current += current < value ? 1 : -1;
+
       setDisplay(current);
-      rafId = window.setTimeout(step, 26);
-    };
-    step();
-    return () => clearTimeout(rafId);
+
+    }, 30); // speed of flip
+
+    return () => clearInterval(interval);
+
   }, [value]);
 
   return (

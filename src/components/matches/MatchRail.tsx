@@ -6,7 +6,7 @@ export function MatchRail({ matches }: { matches: CuratedMatch[] }) {
   if (matches.length === 0) return <EmptyLiveState />;
 
   return (
-    <div className="sports-scrollbar flex gap-2.5 overflow-x-auto pb-1">
+    <div className="flex gap-3 overflow-x-auto pb-1">
       {matches.map((match) => (
         <MatchCardLive key={match.id} match={match} />
       ))}

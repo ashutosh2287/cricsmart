@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { pageRevealVariants, transitions } from "@/animations/motion-presets";
 
 export default function PageMotion({
   children,
@@ -10,11 +9,9 @@ export default function PageMotion({
 }) {
   return (
     <motion.div
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      variants={pageRevealVariants}
-      transition={transitions.base}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.18 }}
     >
       {children}
     </motion.div>

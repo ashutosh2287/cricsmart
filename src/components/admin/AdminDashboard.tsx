@@ -10,6 +10,7 @@ import GlassPanel from "@/components/ui/GlassPanel";
 import { Team } from "@/data/teams";
 import { getMatchMeta, setMatchMeta } from "@/store/matchStore";
 import { connectRealtime } from "@/services/realtime/connectRealtime";
+import type { SimulationLifecycleState } from "@/services/simulation/simulation-lifecycle";
 
 export default function AdminDashboard({ matchId }: { matchId: string }) {
   
@@ -25,6 +26,14 @@ const [tossData, setTossData] = useState<TossData | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1500);
+
+  async function updateLifecycle(lifecycle: SimulationLifecycleState) {
+    await fetch("/api/simulation/lifecycle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ matchId, lifecycle }),
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -62,6 +71,7 @@ const [tossData, setTossData] = useState<TossData | null>(null);
               };
               setMatchMeta(nextMeta);
               setLocalMatchMeta(nextMeta);
+              void updateLifecycle("CONFIGURING");
             }}
           />
         ) : (
@@ -82,6 +92,7 @@ const [tossData, setTossData] = useState<TossData | null>(null);
               };
               setMatchMeta(nextMeta);
               setLocalMatchMeta(nextMeta);
+              void updateLifecycle("READY");
             }}
           />
         )}
@@ -95,6 +106,7 @@ const [tossData, setTossData] = useState<TossData | null>(null);
   }
 
   console.log("🔥 ADMIN START CLICKED");
+  void updateLifecycle("INITIALIZING");
 
   setIsStarting(true);
   setStartError(null);

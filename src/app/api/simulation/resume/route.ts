@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resumeSimulation } from "@/services/simulation/matchSimulator";
+import { transitionSimulationLifecycle } from "@/services/simulation/simulation-orchestrator";
 
 export async function POST(req: NextRequest) {
   const { matchId } = await req.json();
@@ -9,6 +10,7 @@ export async function POST(req: NextRequest) {
   }
 
   resumeSimulation(matchId);
+  await transitionSimulationLifecycle(matchId, "RUNNING");
 
   return NextResponse.json({ success: true });
 }

@@ -11,6 +11,7 @@ import {
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 import { getSimulationPreset } from "@/services/simulation/simulationPresets";
 import { setSimulationSeed } from "@/services/simulation/simulationRandom";
+import { transitionSimulationLifecycle } from "@/services/simulation/simulation-orchestrator";
 
 export const runtime = "nodejs";
 
@@ -84,6 +85,7 @@ export async function POST(req: Request) {
 
     startLocks.add(matchId);
     lockedMatchId = matchId;
+    await transitionSimulationLifecycle(matchId, "INITIALIZING");
 
     // ==============================
     // 🏏 GET TEAMS
@@ -277,6 +279,12 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   } finally {
+    if (lockedMatchId) {
+      const nextLifecycle = isSimulationRunning(lockedMatchId)
+        ? "RUNNING"
+        : "READY";
+      await transitionSimulationLifecycle(lockedMatchId, nextLifecycle);
+    }
     if (lockedMatchId) {
       startLocks.delete(lockedMatchId);
     }

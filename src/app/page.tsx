@@ -745,7 +745,7 @@ export default function HomePage() {
               color: "#fff",
             }}
           >
-            + Create Simulation
+            + New Simulation
           </button>
         </div>
 

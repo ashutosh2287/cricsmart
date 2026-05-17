@@ -1,4 +1,5 @@
 import { getRedis } from "@/services/storage/redisClient";
+import type { SimulationLifecycleState } from "@/services/simulation/simulation-lifecycle";
 import type {
   LiveSessionProvider,
   LiveSessionState,
@@ -55,6 +56,7 @@ export type MatchRegistryRecord = {
   heartbeatFresh?: boolean;
   reconnectHealth?: MatchReconnectHealth;
   isLiveConnected?: boolean;
+  simulationLifecycle?: SimulationLifecycleState;
 };
 
 const LIVE_TERMINAL_STATES = new Set<LiveSessionState>(["COMPLETED", "FAILED"]);
@@ -138,6 +140,9 @@ function decodeRecord(
     heartbeatFresh: toBool(raw.heartbeatFresh),
     reconnectHealth: toOptionalString(raw.reconnectHealth) as MatchReconnectHealth | undefined,
     isLiveConnected: toBool(raw.isLiveConnected),
+    simulationLifecycle: toOptionalString(raw.simulationLifecycle) as
+      | SimulationLifecycleState
+      | undefined,
   };
 }
 
@@ -181,6 +186,7 @@ function encodeRecord(record: MatchRegistryRecord): Record<string, string> {
   if (record.heartbeatFresh !== undefined) encoded.heartbeatFresh = String(record.heartbeatFresh);
   if (record.reconnectHealth) encoded.reconnectHealth = record.reconnectHealth;
   if (record.isLiveConnected !== undefined) encoded.isLiveConnected = String(record.isLiveConnected);
+  if (record.simulationLifecycle) encoded.simulationLifecycle = record.simulationLifecycle;
 
   return encoded;
 }

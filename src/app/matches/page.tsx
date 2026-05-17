@@ -263,19 +263,7 @@ export default function MatchesPage() {
                         router.push(`/match/${match.matchId}`);
                         return;
                       }
-
-                      await fetch("/api/match/init", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          matchId: match.matchId,
-                          teamA: match.teamA,
-                          teamB: match.teamB,
-                          type: match.type,
-                          externalMatchId: match.externalMatchId ?? match.matchId,
-                        }),
-                      });
-                      router.push(`/match/${match.matchId}`);
+                      router.push(`/admin/${match.matchId}`);
                     }}
                     className="w-full p-3 text-left transition-colors"
                   >

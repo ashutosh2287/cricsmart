@@ -5,12 +5,16 @@ import { resetMatchState } from "@/services/matchEngine";
 import { stopWorker } from "@/services/queue/eventWorker";
 import { markMatchStopped, getMatchRegistry } from "@/services/match/matchRegistry";
 import { stopLiveSession } from "@/services/live/liveSessionOrchestrator";
+import { logAuthSensitiveAction, requireRouteAccess } from "@/services/auth/routeGuard";
 
 /* ========================= */
 /* API: STOP MATCH */
 /* ========================= */
 
 export async function POST(req: NextRequest) {
+  const access = await requireRouteAccess({ req, scope: "admin" });
+  if (!access.ok) return access.response;
+
   try {
     const body = await req.json();
     const { matchId } = body;
@@ -38,6 +42,12 @@ export async function POST(req: NextRequest) {
     resetMatchState(matchId);
 
     await markMatchStopped(matchId);
+    logAuthSensitiveAction("stop_match", {
+      route: "/api/match/stop",
+      matchId,
+      role: access.session?.user.role,
+      username: access.session?.user.username,
+    });
 
     return NextResponse.json({
       success: true,

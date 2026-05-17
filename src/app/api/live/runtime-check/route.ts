@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireRouteAccess } from "@/services/auth/routeGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,7 +48,10 @@ function summarizeStatus(matches: MatchRecord[]) {
   );
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const access = await requireRouteAccess({ req, scope: "internal" });
+  if (!access.ok) return access.response;
+
   const apiKey = process.env.CRICKET_API_KEY;
 
   if (!apiKey) {

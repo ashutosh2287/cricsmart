@@ -172,7 +172,7 @@ export default function MatchesPage() {
   }, [sections]);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 text-[var(--text-primary)] md:px-6">
+    <div className="mx-auto max-w-7xl space-y-6 px-3 py-5 text-[var(--text-primary)] md:px-4">
       <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)] md:text-2xl">Matches</h1>
 
       {discovery.stale && (
@@ -192,14 +192,13 @@ export default function MatchesPage() {
         {realLoading ? (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-28 animate-pulse rounded-lg"
-                  style={{
-                    border: "1px solid var(--border-subtle)",
-                    background: "color-mix(in srgb, var(--bg-surface) 88%, transparent)",
-                  }}
-                />
+              <div
+                key={i}
+                className="hierarchy-tertiary h-24 animate-pulse rounded-lg"
+                style={{
+                  background: "color-mix(in srgb, var(--bg-surface) 88%, transparent)",
+                }}
+              />
               ))}
             </div>
           ) : (

@@ -9,6 +9,7 @@ import EngineBootstrap from "@/components/EngineBootstrap";
 import PageTransition from "@/components/ui/PageTransition";
 import MonitoringBootstrap from "@/components/MonitoringBootstrap";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 const themeInitializerScript = `
 (() => {
@@ -56,6 +57,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider>
+          <AuthProvider>
           {/* ========================================
              CINEMATIC BACKGROUND
           ======================================== */}
@@ -94,6 +96,7 @@ export default function RootLayout({
               <PageTransition>{children}</PageTransition>
             </div>
           </main>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

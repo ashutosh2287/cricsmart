@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/services/storage/redisClient";
-import { createDraftSimulationSession } from "@/services/simulation/simulation-orchestrator";
+import { upsertMatchRegistry } from "@/services/match/matchRegistry";
+import { createMatchId } from "@/services/match/createLiveMatchId";
+import { logAuthSensitiveAction, requireRouteAccess } from "@/services/auth/routeGuard";
 
 const MATCH_LIST_KEY = "matches:list";
 
 export async function POST(req: NextRequest) {
+  const access = await requireRouteAccess({ req, scope: "admin" });
+  if (!access.ok) return access.response;
+
   const body = await req.json();
 
   const teamA = body?.teamA?.trim();
@@ -14,16 +19,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Teams required" }, { status: 400 });
   }
 
-  const created = await createDraftSimulationSession({ teamA, teamB });
+  const matchId = createMatchId(teamA, teamB);
+
+  const redis = getRedis();
 
   const match = {
-    matchId: created.matchId,
-    slug: created.slug,
+    matchId,
+    slug: matchId,
     teamA,
     teamB,
     status: "UPCOMING",
     createdAt: Date.now(),
   };
+
+  await redis.hset(`match:${matchId}:meta`, match);
+  await redis.sadd(MATCH_LIST_KEY, matchId);
+
+  await upsertMatchRegistry({
+    matchId,
+    slug: matchId,
+    teamA,
+    teamB,
+    status: "UPCOMING",
+    type: "SIMULATION",
+    sourceType: "SIMULATION",
+    isLiveConnected: false,
+    heartbeatFresh: false,
+    reconnectHealth: "disconnected",
+  });
+
+  logAuthSensitiveAction("create_match_legacy", {
+    route: "/api/match",
+    matchId,
+    role: access.session?.user.role,
+    username: access.session?.user.username,
+  });
 
   return NextResponse.json({ success: true, match });
 }

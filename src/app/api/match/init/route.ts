@@ -12,7 +12,7 @@ import { getProviderMode } from "@/config/providerMode";
 import { logger } from "@/lib/logger";
 import type { SessionSourceType } from "@/types/liveSession";
 import { ensureSessionRecoveryStarted } from "@/services/runtime/sessionRecoveryBootstrap";
-import { transitionSimulationLifecycle } from "@/services/simulation/simulation-orchestrator";
+import { logAuthSensitiveAction, requireRouteAccess } from "@/services/auth/routeGuard";
 
 const DEFAULT_SIMULATION_SPEED_MS = 300;
 
@@ -35,6 +35,9 @@ const createTeam = (name: string) => ({
 });
 
 export async function POST(req: NextRequest) {
+  const access = await requireRouteAccess({ req, scope: "admin" });
+  if (!access.ok) return access.response;
+
   ensureSessionRecoveryStarted();
 
   try {
@@ -109,11 +112,67 @@ export async function POST(req: NextRequest) {
       reconnectHealth: matchType === "LIVE" ? "stale" : "disconnected",
     });
 
-    if (matchType === "SIMULATION") {
-      await transitionSimulationLifecycle(
+    if (matchType === "SIMULATION" && !existing) {
+      const teamAObj = createTeam(teamA);
+      const teamBObj = createTeam(teamB);
+
+      // Default to teamA batting when toss data is not provided by caller.
+      const resolvedTossWinner = tossWinner ?? teamA;
+      const resolvedDecision = decision ?? "BAT";
+
+      const simState: SimulationState = {
+        teamA: teamAObj,
+        teamB: teamBObj,
+        tossWinner: resolvedTossWinner,
+        decision: resolvedDecision,
+        battingTeam:
+          resolvedDecision === "BAT"
+            ? resolvedTossWinner === teamA
+              ? teamAObj
+              : teamBObj
+            : resolvedTossWinner === teamA
+              ? teamBObj
+              : teamAObj,
+        bowlingTeam:
+          resolvedDecision === "BAT"
+            ? resolvedTossWinner === teamA
+              ? teamBObj
+              : teamAObj
+            : resolvedTossWinner === teamA
+              ? teamAObj
+              : teamBObj,
+        striker: "",
+        nonStriker: "",
+        bowler: "",
+        battingOrder: [],
+        bowlingOrder: [],
+        bowlingPlan: [],
+        nextBatsmanIndex: 2,
+        currentBowlerIndex: 0,
+        over: 0,
+        ball: 0,
+        totalRuns: 0,
+        wickets: 0,
+        currentInningsIndex: 0,
+        phase: "POWERPLAY",
+        matchEnded: false,
+        winner: null,
+        winBy: null,
+      };
+
+      await startSimulation(simState, matchId, DEFAULT_SIMULATION_SPEED_MS);
+
+      await upsertMatchRegistry({
         matchId,
-        tossWinner && decision ? "READY" : "CONFIGURING"
-      );
+        teamA,
+        teamB,
+        type: "SIMULATION",
+        sourceType: "SIMULATION",
+        status: "LIVE",
+        isLiveConnected: true,
+        heartbeatFresh: true,
+        reconnectHealth: "healthy",
+      });
     }
 
     if (matchType === "LIVE") {
@@ -186,6 +245,13 @@ export async function POST(req: NextRequest) {
         startLiveMatchIngestor(matchId, resolvedExternalMatchId);
       }
     }
+
+    logAuthSensitiveAction("init_match", {
+      route: "/api/match/init",
+      matchId,
+      role: access.session?.user.role,
+      username: access.session?.user.username,
+    });
 
     return NextResponse.json({
       success: true,

@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exportRecordingDataset } from "@/services/recording/recordingExporter";
 import type { RecordingFormat } from "@/services/recording/recordingStore";
+import { requireRouteAccess } from "@/services/auth/routeGuard";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  const access = await requireRouteAccess({ req, scope: "admin" });
+  if (!access.ok) return access.response;
+
   try {
     const body = await req.json();
     const matchId = body?.matchId;

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resumeSimulation } from "@/services/simulation/matchSimulator";
-import { transitionSimulationLifecycle } from "@/services/simulation/simulation-orchestrator";
+import { logAuthSensitiveAction, requireRouteAccess } from "@/services/auth/routeGuard";
 
 export async function POST(req: NextRequest) {
+  const access = await requireRouteAccess({ req, scope: "admin" });
+  if (!access.ok) return access.response;
+
   const { matchId } = await req.json();
 
   if (!matchId) {
@@ -10,7 +13,12 @@ export async function POST(req: NextRequest) {
   }
 
   resumeSimulation(matchId);
-  await transitionSimulationLifecycle(matchId, "RUNNING");
+  logAuthSensitiveAction("resume_simulation", {
+    route: "/api/simulation/resume",
+    matchId,
+    role: access.session?.user.role,
+    username: access.session?.user.username,
+  });
 
   return NextResponse.json({ success: true });
 }

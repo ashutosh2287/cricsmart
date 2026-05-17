@@ -5,8 +5,12 @@ import {
   MATCH_LIST_KEY,
   getMatchMetaKey,
 } from "@/services/match/matchRegistry";
+import { logAuthSensitiveAction, requireRouteAccess } from "@/services/auth/routeGuard";
 
 export async function DELETE(req: NextRequest) {
+  const access = await requireRouteAccess({ req, scope: "admin" });
+  if (!access.ok) return access.response;
+
   try {
     const { matchId } = await req.json();
 
@@ -28,6 +32,12 @@ export async function DELETE(req: NextRequest) {
 
     // Remove simulation state
     await storage.delete(matchId);
+    logAuthSensitiveAction("delete_match", {
+      route: "/api/matches/delete",
+      matchId,
+      role: access.session?.user.role,
+      username: access.session?.user.username,
+    });
 
     return NextResponse.json({ success: true, matchId });
   } catch (err) {

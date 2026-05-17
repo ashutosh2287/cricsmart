@@ -62,3 +62,5 @@ ml/commentary/models/*.json
 ml/commentary/datasets/processed/
 ml/commentary/evaluation/*.json
 ml/commentary/evaluation/*.md
+
+/generated/prisma

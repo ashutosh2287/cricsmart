@@ -233,9 +233,9 @@ export default function MatchesPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-3 py-5 text-[var(--text-primary)] md:px-4">
-      <div className="flex items-center justify-between gap-3" ref={createFormRef}>
+      <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)] md:text-2xl">Matches</h1>
-        <div className="relative">
+        <div className="relative" ref={createFormRef}>
           <button
             type="button"
             onClick={() => setShowCreateForm((v) => !v)}
@@ -291,7 +291,11 @@ export default function MatchesPage() {
                     value={teamBInput}
                     onChange={(e) => setTeamBInput(e.target.value)}
                     placeholder="e.g. Australia"
-                    onKeyDown={(e) => e.key === "Enter" && handleCreateMatch()}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter" || creating) return;
+                      e.preventDefault();
+                      handleCreateMatch();
+                    }}
                     className="w-full rounded-lg px-3 py-2 text-sm outline-none"
                     style={{
                       background: "var(--bg-overlay)",

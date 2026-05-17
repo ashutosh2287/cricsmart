@@ -81,8 +81,9 @@ type MainTab =
   | "overview"
   | "live"
   | "analysis"
-  | "timeline"
+  | "overs"
   | "scorecard"
+  | "squad"
   | "admin";
 
 const AUTO_RECONNECT_SUBSCRIBER_ID = "match-detail-page-auto";
@@ -550,10 +551,14 @@ function TabsArea({
     "overview",
     "live",
     "analysis",
-    "timeline",
+    "overs",
     "scorecard",
+    "squad",
     "admin",
   ];
+
+  const teamASquad = currentEngineState?.teamA?.squad ?? [];
+  const teamBSquad = currentEngineState?.teamB?.squad ?? [];
 
   const summaryCards = [
     {
@@ -823,8 +828,8 @@ function TabsArea({
           </div>
         )}
 
-        {/* ── Timeline ── */}
-        {activeTab === "timeline" && (
+        {/* ── Overs ── */}
+        {activeTab === "overs" && (
           <div className="space-y-6">
             <GlassPanel>
               <SectionHeader eyebrow="Moments" title="Highlight Timeline" />
@@ -1112,6 +1117,59 @@ function TabsArea({
                 </GlassPanel>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ── Squad ── */}
+        {activeTab === "squad" && (
+          <div className="grid gap-6 xl:grid-cols-2">
+            <GlassPanel>
+              <SectionHeader
+                eyebrow="Team sheet"
+                title={currentEngineState?.teamA?.name ?? match.team1}
+              />
+              <div className="space-y-2">
+                {teamASquad.length ? (
+                  teamASquad.map((player, index) => (
+                    <div
+                      key={`${player.name}-${index}`}
+                      className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm"
+                    >
+                      <span className="text-white">{player.name}</span>
+                      <span className="text-xs uppercase tracking-[0.12em] text-white/55">
+                        {player.role}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-white/60">No squad data available.</p>
+                )}
+              </div>
+            </GlassPanel>
+
+            <GlassPanel>
+              <SectionHeader
+                eyebrow="Team sheet"
+                title={currentEngineState?.teamB?.name ?? match.team2}
+              />
+              <div className="space-y-2">
+                {teamBSquad.length ? (
+                  teamBSquad.map((player, index) => (
+                    <div
+                      key={`${player.name}-${index}`}
+                      className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm"
+                    >
+                      <span className="text-white">{player.name}</span>
+                      <span className="text-xs uppercase tracking-[0.12em] text-white/55">
+                        {player.role}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-white/60">No squad data available.</p>
+                )}
+              </div>
+            </GlassPanel>
           </div>
         )}
 

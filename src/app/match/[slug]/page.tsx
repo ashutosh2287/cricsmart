@@ -61,6 +61,12 @@ import {
 } from "@/services/analytics/scorecardEngine";
 import { getMatchBySlug } from "@/services/matchService";
 import { connectRealtime } from "@/services/realtime/connectRealtime";
+import { startSimulationFromMeta } from "@/services/simulation/startSimulationClient";
+import {
+  MAIN_TABS,
+  resolveRequestedTab,
+  type MainTab,
+} from "@/services/match/matchTabRouting";
 import type { MatchReconnectHealth } from "@/services/match/matchRegistry";
 import type { LiveSessionState } from "@/types/liveSession";
 import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
@@ -76,25 +82,8 @@ import { pageRevealVariants, transitions } from "@/animations/motion-presets";
 // ─────────────────────────────────────────────
 
 type AnalysisFilter = "ALL" | "BATTING" | "BOWLING" | "PRESSURE";
-type MainTab =
-  | "overview"
-  | "live"
-  | "analysis"
-  | "overs"
-  | "squads"
-  | "scorecard"
-  | "admin";
 
 const AUTO_RECONNECT_SUBSCRIBER_ID = "match-detail-page-auto";
-const MAIN_TABS: MainTab[] = [
-  "overview",
-  "live",
-  "analysis",
-  "overs",
-  "squads",
-  "scorecard",
-  "admin",
-];
 
 const TAB_LABELS: Record<MainTab, string> = {
   overview: "Overview",
@@ -143,10 +132,6 @@ type MatchSessionMeta = {
 
 function cls(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
-}
-
-function isMainTab(value: string): value is MainTab {
-  return MAIN_TABS.includes(value as MainTab);
 }
 
 function formatOverDisplay(overs?: Record<string, unknown>) {
@@ -431,12 +416,7 @@ function TabsArea({
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "timeline") {
-      setTimeout(() => setActiveTab("overs"), 0);
-      return;
-    }
-    if (!tab || !isMainTab(tab)) return;
-    setTimeout(() => setActiveTab(tab), 0);
+    setTimeout(() => setActiveTab(resolveRequestedTab(tab)), 0);
   }, [searchParams]);
 
   const [showExpandedAnalytics, setShowExpandedAnalytics] = useState(false);
@@ -605,7 +585,7 @@ function TabsArea({
       ? [{ players: `${strikerName} & ${nonStrikerName}`, runs: 0 }]
       : [];
 
-  const tabs: MainTab[] = MAIN_TABS;
+  const tabs = MAIN_TABS;
 
   const fallbackTeamA = teams.find(
     (team) => team.name.toLowerCase() === (matchMeta?.teamA?.name ?? match.team1).toLowerCase()
@@ -1334,9 +1314,31 @@ function TabsArea({
                         return setStartError("Please complete toss first.");
                       if (effectiveIsRunning) return;
                       const latestMeta = getMatchMeta(id);
-                      if (!latestMeta?.teamA?.name || !latestMeta?.teamB?.name)
+                      if (
+                        !latestMeta?.teamA?.name ||
+                        !latestMeta?.teamB?.name
+                      )
                         return setStartError("Please select teams first.");
-                      connectRealtime(id, "match-page-admin-start");
+                      if (!latestMeta?.toss?.winner || !latestMeta?.toss?.decision)
+                        return setStartError("Please complete toss first.");
+                      setIsStarting(true);
+                      setStartError(null);
+                      try {
+                        await startSimulationFromMeta(id, latestMeta);
+                        setIsRunning(true);
+                        connectRealtime(id, "match-page-admin-start", {
+                          autoStartSimulation: false,
+                        });
+                        setActiveTab("live");
+                      } catch (error) {
+                        const message =
+                          error instanceof Error
+                            ? error.message
+                            : "Failed to start simulation.";
+                        setStartError(message);
+                      } finally {
+                        setIsStarting(false);
+                      }
                     }}
                     className={cls(
                       "rounded-xl px-4 py-2.5 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60",

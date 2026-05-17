@@ -261,12 +261,14 @@ export default function MatchesPage() {
               <div className="space-y-2.5">
                 <div>
                   <label
+                    htmlFor="new-simulation-team-a"
                     className="mb-1 block text-[11px] uppercase tracking-[0.12em]"
                     style={{ color: "var(--text-muted)" }}
                   >
                     Team A
                   </label>
                   <input
+                    id="new-simulation-team-a"
                     type="text"
                     value={teamAInput}
                     onChange={(e) => setTeamAInput(e.target.value)}
@@ -281,12 +283,14 @@ export default function MatchesPage() {
                 </div>
                 <div>
                   <label
+                    htmlFor="new-simulation-team-b"
                     className="mb-1 block text-[11px] uppercase tracking-[0.12em]"
                     style={{ color: "var(--text-muted)" }}
                   >
                     Team B
                   </label>
                   <input
+                    id="new-simulation-team-b"
                     type="text"
                     value={teamBInput}
                     onChange={(e) => setTeamBInput(e.target.value)}

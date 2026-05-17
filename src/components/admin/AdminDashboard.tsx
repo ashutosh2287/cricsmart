@@ -102,8 +102,7 @@ const [tossData, setTossData] = useState<TossData | null>(null);
   // ✅ ONLY THIS
   connectRealtime(matchId, "admin-dashboard");
 
-  // OPTIONAL: redirect if you want
-  router.push(`/match/${matchId}`);
+  router.push(`/match/${matchId}?tab=live`);
 }}
   disabled={!matchMeta || !tossData || isStarting}
   className="mt-4 bg-green-600 px-4 py-2 rounded-xl disabled:opacity-50"

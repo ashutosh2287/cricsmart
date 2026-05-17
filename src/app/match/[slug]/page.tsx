@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState, use } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import AdminScoringPanel from "@/components/admin/AdminScoringPanel";
 import BroadcastControlDashboard from "@/components/BroadcastControlDashboard";
 import BroadcastDirectorPanel from "@/components/BroadcastDirectorPanel";
@@ -425,6 +425,7 @@ function TabsArea({
   const [matchMeta, setLocalMatchMeta] = useState(() =>
     getMatchMeta(match.slug)
   );
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<MainTab>("overview");
@@ -1337,6 +1338,8 @@ function TabsArea({
                       if (!latestMeta?.teamA?.name || !latestMeta?.teamB?.name)
                         return setStartError("Please select teams first.");
                       connectRealtime(id, "match-page-admin-start");
+                      setActiveTab("live");
+                      router.replace(`/match/${id}?tab=live`);
                     }}
                     className={cls(
                       "rounded-xl px-4 py-2.5 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60",

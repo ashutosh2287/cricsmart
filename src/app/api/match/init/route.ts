@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { initMatch, getMatchState } from "@/services/matchEngine";
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
+import { SimulationState } from "@/services/simulation/simulationState";
+import { startSimulation } from "@/services/simulation/matchSimulator";
 import { startMatch } from "@/services/match/matchManager";
 import { startLiveMatchIngestor } from "@/services/ingestion/liveMatchIngestor";
 import { startWorker } from "@/services/queue/eventWorker";
@@ -11,6 +13,8 @@ import { logger } from "@/lib/logger";
 import type { SessionSourceType } from "@/types/liveSession";
 import { ensureSessionRecoveryStarted } from "@/services/runtime/sessionRecoveryBootstrap";
 import { transitionSimulationLifecycle } from "@/services/simulation/simulation-orchestrator";
+
+const DEFAULT_SIMULATION_SPEED_MS = 300;
 
 const createTeam = (name: string) => ({
   name,

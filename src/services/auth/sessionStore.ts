@@ -3,6 +3,7 @@ import "server-only";
 import { randomBytes } from "crypto";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
+import type { AuthRole } from "@/config/auth";
 import {
   getAuthCookieName,
   getAuthCookieSameSite,
@@ -13,9 +14,9 @@ import {
 } from "@/config/auth";
 import { logger } from "@/lib/logger";
 import { getRedis } from "@/services/storage/redisClient";
-import type { AuthSession, AuthUser } from "./authTypes";
+import type { AuthSession } from "./authTypes";
 
-const SESSION_KEY_PREFIX = "auth:session:";
+const SESSION_KEY_PREFIX = "session:";
 const SESSION_REFRESH_GRACE_SECONDS = 15;
 
 function getSessionKey(id: string): string {
@@ -31,9 +32,12 @@ function now(): number {
 }
 
 type StoredSession = {
-  id: string;
-  user: AuthUser;
+  sessionId: string;
+  userId: string;
+  username: string;
+  role: AuthRole;
   createdAt: number;
+  expiresAt: number;
   lastSeenAt: number;
 };
 
@@ -41,7 +45,7 @@ function parseStoredSession(raw: string | null): StoredSession | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as StoredSession;
-    if (!parsed?.id || !parsed?.user?.id || !parsed?.user?.username || !parsed?.user?.role) {
+    if (!parsed?.sessionId || !parsed?.userId || !parsed?.username || !parsed?.role || !parsed?.expiresAt) {
       return null;
     }
     return parsed;
@@ -50,26 +54,48 @@ function parseStoredSession(raw: string | null): StoredSession | null {
   }
 }
 
-export async function createAuthSession(user: AuthUser): Promise<AuthSession> {
-  const id = newSessionId();
+function toAuthSession(session: StoredSession): AuthSession {
+  return {
+    sessionId: session.sessionId,
+    userId: session.userId,
+    username: session.username,
+    role: session.role,
+    createdAt: session.createdAt,
+    expiresAt: session.expiresAt,
+    lastSeenAt: session.lastSeenAt,
+    user: {
+      userId: session.userId,
+      username: session.username,
+      role: session.role,
+    },
+  };
+}
+
+export async function createAuthSession(user: { userId: string; username: string; role: AuthRole }): Promise<AuthSession> {
+  const sessionId = newSessionId();
+  const ttlSeconds = getAuthSessionTtlSeconds();
   const createdAt = now();
+  const expiresAt = createdAt + ttlSeconds * 1000;
   const session: StoredSession = {
-    id,
-    user,
+    sessionId,
+    userId: user.userId,
+    username: user.username,
+    role: user.role,
     createdAt,
+    expiresAt,
     lastSeenAt: createdAt,
   };
 
   const redis = getRedis();
-  await redis.set(getSessionKey(id), JSON.stringify(session), "EX", getAuthSessionTtlSeconds());
+  await redis.set(getSessionKey(sessionId), JSON.stringify(session), "EX", ttlSeconds);
 
   logger.info("AUTH", "session_created", {
-    userId: user.id,
+    userId: user.userId,
     username: user.username,
     role: user.role,
   });
 
-  return session;
+  return toAuthSession(session);
 }
 
 export async function deleteAuthSessionById(sessionId: string): Promise<void> {
@@ -78,37 +104,45 @@ export async function deleteAuthSessionById(sessionId: string): Promise<void> {
   await redis.del(getSessionKey(sessionId));
 }
 
-async function refreshAuthSession(session: StoredSession): Promise<StoredSession> {
+async function refreshAuthSession(session: StoredSession): Promise<AuthSession> {
   const redis = getRedis();
+  const ttlSeconds = getAuthSessionTtlSeconds();
   const refreshed: StoredSession = {
     ...session,
     lastSeenAt: now(),
+    expiresAt: now() + ttlSeconds * 1000,
   };
-  await redis.set(getSessionKey(session.id), JSON.stringify(refreshed), "EX", getAuthSessionTtlSeconds());
-  return refreshed;
+  await redis.set(getSessionKey(session.sessionId), JSON.stringify(refreshed), "EX", ttlSeconds);
+  return toAuthSession(refreshed);
 }
 
-export async function rotateAuthSession(session: StoredSession): Promise<StoredSession> {
+export async function rotateAuthSession(session: AuthSession): Promise<AuthSession> {
   const nextId = newSessionId();
   const redis = getRedis();
+  const ttlSeconds = getAuthSessionTtlSeconds();
+  const timestamp = now();
 
   const rotated: StoredSession = {
-    ...session,
-    id: nextId,
-    lastSeenAt: now(),
+    sessionId: nextId,
+    userId: session.userId,
+    username: session.username,
+    role: session.role,
+    createdAt: session.createdAt,
+    expiresAt: timestamp + ttlSeconds * 1000,
+    lastSeenAt: timestamp,
   };
 
   const multi = redis.multi();
-  multi.del(getSessionKey(session.id));
-  multi.set(getSessionKey(nextId), JSON.stringify(rotated), "EX", getAuthSessionTtlSeconds());
+  multi.del(getSessionKey(session.sessionId));
+  multi.set(getSessionKey(nextId), JSON.stringify(rotated), "EX", ttlSeconds);
   await multi.exec();
 
   logger.info("AUTH", "session_rotated", {
-    userId: rotated.user.id,
-    role: rotated.user.role,
+    userId: rotated.userId,
+    role: rotated.role,
   });
 
-  return rotated;
+  return toAuthSession(rotated);
 }
 
 export async function getAuthSessionById(sessionId: string): Promise<AuthSession | null> {
@@ -120,11 +154,16 @@ export async function getAuthSessionById(sessionId: string): Promise<AuthSession
   const session = parseStoredSession(raw);
   if (!session) return null;
 
-  if (now() - session.lastSeenAt >= SESSION_REFRESH_GRACE_SECONDS * 1000) {
-    return refreshAuthSession(session);
+  if (now() > session.expiresAt) {
+    await deleteAuthSessionById(session.sessionId);
+    return null;
   }
 
-  return session;
+  if (now() - session.lastSeenAt >= SESSION_REFRESH_GRACE_SECONDS * 1000) {
+    return await refreshAuthSession(session);
+  }
+
+  return toAuthSession(session);
 }
 
 export function readSessionIdFromCookieHeader(cookieHeader: string | null): string | null {
@@ -164,7 +203,7 @@ export async function getAuthSessionFromServerCookies(): Promise<AuthSession | n
 export async function setAuthSessionCookie(session: AuthSession): Promise<void> {
   const jar = await cookies();
   const cookieName = getAuthCookieName();
-  jar.set(cookieName, session.id, {
+  jar.set(cookieName, session.sessionId, {
     httpOnly: true,
     secure: getAuthCookieSecure(),
     sameSite: getAuthCookieSameSite(),

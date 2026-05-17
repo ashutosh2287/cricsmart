@@ -1,16 +1,16 @@
 import { Suspense } from "react";
-import LoginPageClient from "./LoginPageClient";
+import SignupPageClient from "./SignupPageClient";
 
-export default function LoginPage() {
+export default function SignupPage() {
   return (
     <Suspense
       fallback={
         <div className="mx-auto max-w-md rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 text-sm text-[var(--text-secondary)]">
-          Loading login...
+          Loading signup...
         </div>
       }
     >
-      <LoginPageClient />
+      <SignupPageClient />
     </Suspense>
   );
 }

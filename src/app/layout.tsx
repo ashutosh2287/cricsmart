@@ -9,7 +9,7 @@ import EngineBootstrap from "@/components/EngineBootstrap";
 import PageTransition from "@/components/ui/PageTransition";
 import MonitoringBootstrap from "@/components/MonitoringBootstrap";
 import { ThemeProvider } from "@/context/ThemeContext";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider } from "@/providers/AuthProvider";
 
 const themeInitializerScript = `
 (() => {

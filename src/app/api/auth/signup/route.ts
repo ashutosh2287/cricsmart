@@ -14,7 +14,14 @@ function errorResponse(error: string, status = 400) {
 }
 
 function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  if (!email || email.includes(" ")) return false;
+  const atIndex = email.indexOf("@");
+  if (atIndex <= 0 || atIndex !== email.lastIndexOf("@")) return false;
+  const domain = email.slice(atIndex + 1);
+  if (!domain || domain.startsWith(".") || domain.endsWith(".")) return false;
+  const dotIndex = domain.indexOf(".");
+  if (dotIndex <= 0 || dotIndex === domain.length - 1) return false;
+  return true;
 }
 
 function isValidUsername(username: string): boolean {
@@ -43,8 +50,6 @@ export async function POST(req: NextRequest) {
     const password = body.password ?? "";
     const confirmPassword = body.confirmPassword ?? "";
 
-    logger.info("AUTH", "signup_validation_input", { email, username });
-
     if (!username || !email || !password || !confirmPassword) {
       return errorResponse("Username, email, password and confirmPassword are required");
     }
@@ -70,13 +75,6 @@ export async function POST(req: NextRequest) {
       findByUsername(username),
     ]);
 
-    logger.info("AUTH", "signup_duplicate_check", {
-      email,
-      username,
-      existingByEmail: Boolean(existingByEmail),
-      existingByUsername: Boolean(existingByUsername),
-    });
-
     if (existingByEmail) {
       return errorResponse("Email already exists", 409);
     }
@@ -91,12 +89,6 @@ export async function POST(req: NextRequest) {
       email,
       passwordHash,
       role: "public",
-    });
-
-    logger.info("AUTH", "signup_user_created", {
-      userId: user.id,
-      username: user.username,
-      email: user.email,
     });
 
     const session = await createAuthSession({

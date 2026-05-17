@@ -56,23 +56,23 @@ export function MatchCardLive({ match }: { match: CuratedMatch }) {
   }
 
   return (
-    <article className="hierarchy-primary w-[248px] shrink-0 rounded-lg bg-[var(--bg-surface)] p-2.5 transition-all duration-200 hover:-translate-y-0.5">
+    <article className="w-[260px] shrink-0 rounded-lg border border-red-500/25 bg-zinc-900/85 p-3 transition-colors hover:border-red-400/40">
       <div className="mb-2 flex items-start justify-between gap-2">
-        <h3 className="line-clamp-2 text-sm font-semibold text-[var(--text-primary)]">{match.title}</h3>
+        <h3 className="line-clamp-2 text-sm font-semibold text-zinc-100">{match.title}</h3>
         <MatchStatusPill status={match.status} />
       </div>
 
       {match.score.length > 0 ? (
-        <div className="space-y-1 text-xs font-mono text-[var(--text-secondary)]">
+        <div className="space-y-1 text-xs font-mono text-zinc-200">
           {match.score.slice(0, 2).map((entry, idx) => (
             <p key={idx} className="line-clamp-1">
-              {entry.inning ? <span className="text-[var(--text-muted)]">{entry.inning}: </span> : null}
+              {entry.inning ? <span className="text-zinc-400">{entry.inning}: </span> : null}
               {formatScore(entry.r, entry.w, entry.o)}
             </p>
           ))}
         </div>
       ) : (
-        <p className="text-xs text-[var(--text-muted)]">Live updates incoming</p>
+        <p className="text-xs text-zinc-400">Live updates incoming</p>
       )}
 
       <MatchMetaRow match={match} />

@@ -212,7 +212,7 @@ export default function MatchGraphExplorer({
   return (
     <>
       <div
-        className="hierarchy-primary rounded-[30px] bg-[var(--gradient-surface)] p-4 md:p-5"
+        className="rounded-[30px] border border-[var(--border-subtle)] bg-[var(--gradient-surface)] p-6"
         style={{
           boxShadow: "0 24px 80px color-mix(in srgb, var(--bg-base) 38%, transparent)",
         }}
@@ -235,7 +235,7 @@ export default function MatchGraphExplorer({
         </div>
 
         <div className="mt-5 space-y-5">
-            <div className="hierarchy-secondary rounded-[24px] bg-[var(--bg-surface)]/80 p-4">
+          <div className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-surface)]/80 p-5">
             <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--text-secondary)]">
               WIN PROBABILITY
             </p>
@@ -325,7 +325,7 @@ export default function MatchGraphExplorer({
       {isOpen ? (
         <div className="theme-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md">
           <div
-            className="hierarchy-primary flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[32px] bg-[var(--bg-overlay)]"
+            className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-overlay)]"
             style={{
               boxShadow: "0 32px 120px color-mix(in srgb, var(--bg-base) 55%, transparent)",
             }}
@@ -403,7 +403,7 @@ export default function MatchGraphExplorer({
               </div>
             </div>
 
-            <div className="sports-scrollbar overflow-y-auto p-4 md:p-5">
+            <div className="overflow-y-auto p-5 md:p-6">
               {activeTab === "winProbability" ? (
                 <ChartShell
                   title="Win probability"

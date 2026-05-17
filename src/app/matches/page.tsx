@@ -74,14 +74,8 @@ export default function MatchesPage() {
   const [simMatches, setSimMatches] = useState<SimMatch[]>([]);
   const [simLoading, setSimLoading] = useState(true);
   const [deletingSimulationId, setDeletingSimulationId] = useState<string | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [teamAInput, setTeamAInput] = useState("");
-  const [teamBInput, setTeamBInput] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
 
   const discoverySnapshotRef = useRef<CuratedDiscoveryPayload>(EMPTY_DISCOVERY);
-  const createFormRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -165,63 +159,6 @@ export default function MatchesPage() {
     }
   };
 
-  const closeCreateForm = () => {
-    setShowCreateForm(false);
-    setTeamAInput("");
-    setTeamBInput("");
-    setCreateError(null);
-  };
-
-  const handleCreateMatch = async () => {
-    const teamA = teamAInput.trim() || "Team A";
-    const teamB = teamBInput.trim() || "Team B";
-    setCreating(true);
-    setCreateError(null);
-
-    try {
-      const res = await fetch("/api/create-match", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamA, teamB }),
-      });
-      const data = await res.json();
-
-      if (!res.ok || !data?.matchId) {
-        const statusInfo = `status: ${res.status}`;
-        throw new Error(
-          typeof data?.error === "string"
-            ? `${data.error} (${statusInfo})`
-            : `Failed to create simulation (${statusInfo})`
-        );
-      }
-
-      closeCreateForm();
-      router.push(`/admin/${data.matchId}`);
-    } catch (error) {
-      setCreateError(error instanceof Error ? error.message : "Failed to create simulation");
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!showCreateForm) return;
-    const onDown = (e: MouseEvent) => {
-      if (createFormRef.current && !createFormRef.current.contains(e.target as Node)) {
-        closeCreateForm();
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeCreateForm();
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [showCreateForm]);
-
   useEffect(() => {
     console.debug("MATCHES_CURATED_SECTIONS", {
       keys: Object.keys(sections),
@@ -235,104 +172,8 @@ export default function MatchesPage() {
   }, [sections]);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-3 py-5 text-[var(--text-primary)] md:px-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)] md:text-2xl">Matches</h1>
-        <div className="relative" ref={createFormRef}>
-          <button
-            type="button"
-            onClick={() => setShowCreateForm((v) => !v)}
-            className="rounded-full px-4 py-2 text-sm font-semibold transition-opacity"
-            style={{
-              background: "var(--accent-brand)",
-              color: "#fff",
-            }}
-          >
-            + New Simulation
-          </button>
-          {showCreateForm ? (
-            <div
-              className="absolute right-0 top-full z-20 mt-2 w-72 rounded-xl p-4 shadow-xl"
-              style={{
-                background: "var(--bg-raised)",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              <p className="mb-3 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                New Simulation
-              </p>
-              <div className="space-y-2.5">
-                <div>
-                  <label
-                    htmlFor="new-simulation-team-a"
-                    className="mb-1 block text-[11px] uppercase tracking-[0.12em]"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Team A
-                  </label>
-                  <input
-                    id="new-simulation-team-a"
-                    type="text"
-                    value={teamAInput}
-                    onChange={(e) => setTeamAInput(e.target.value)}
-                    placeholder="e.g. India"
-                    onKeyDown={(e) => {
-                      if (e.key !== "Enter" || creating) return;
-                      e.preventDefault();
-                      handleCreateMatch();
-                    }}
-                    className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                    style={{
-                      background: "var(--bg-overlay)",
-                      border: "1px solid var(--border-subtle)",
-                      color: "var(--text-primary)",
-                    }}
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="new-simulation-team-b"
-                    className="mb-1 block text-[11px] uppercase tracking-[0.12em]"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Team B
-                  </label>
-                  <input
-                    id="new-simulation-team-b"
-                    type="text"
-                    value={teamBInput}
-                    onChange={(e) => setTeamBInput(e.target.value)}
-                    placeholder="e.g. Australia"
-                    onKeyDown={(e) => {
-                      if (e.key !== "Enter" || creating) return;
-                      e.preventDefault();
-                      handleCreateMatch();
-                    }}
-                    className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                    style={{
-                      background: "var(--bg-overlay)",
-                      border: "1px solid var(--border-subtle)",
-                      color: "var(--text-primary)",
-                    }}
-                  />
-                </div>
-                {createError ? (
-                  <p className="text-xs text-red-400">{createError}</p>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={handleCreateMatch}
-                  disabled={creating}
-                  className="w-full rounded-lg py-2 text-sm font-semibold transition-opacity disabled:opacity-60"
-                  style={{ background: "var(--accent-brand)", color: "#fff" }}
-                >
-                  {creating ? "Creating…" : "Create & Open"}
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </div>
+    <div className="mx-auto max-w-7xl space-y-8 px-4 py-6 text-[var(--text-primary)] md:px-6">
+      <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)] md:text-2xl">Matches</h1>
 
       {discovery.stale && (
         <div
@@ -351,13 +192,14 @@ export default function MatchesPage() {
         {realLoading ? (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
-              <div
-                key={i}
-                className="hierarchy-tertiary h-24 animate-pulse rounded-lg"
-                style={{
-                  background: "color-mix(in srgb, var(--bg-surface) 88%, transparent)",
-                }}
-              />
+                <div
+                  key={i}
+                  className="h-28 animate-pulse rounded-lg"
+                  style={{
+                    border: "1px solid var(--border-subtle)",
+                    background: "color-mix(in srgb, var(--bg-surface) 88%, transparent)",
+                  }}
+                />
               ))}
             </div>
           ) : (
@@ -422,7 +264,19 @@ export default function MatchesPage() {
                         router.push(`/match/${match.matchId}`);
                         return;
                       }
-                      router.push(`/admin/${match.matchId}`);
+
+                      await fetch("/api/match/init", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          matchId: match.matchId,
+                          teamA: match.teamA,
+                          teamB: match.teamB,
+                          type: match.type,
+                          externalMatchId: match.externalMatchId ?? match.matchId,
+                        }),
+                      });
+                      router.push(`/match/${match.matchId}`);
                     }}
                     className="w-full p-3 text-left transition-colors"
                   >

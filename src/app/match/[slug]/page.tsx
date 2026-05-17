@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState, use } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import AdminScoringPanel from "@/components/admin/AdminScoringPanel";
 import BroadcastControlDashboard from "@/components/BroadcastControlDashboard";
 import BroadcastDirectorPanel from "@/components/BroadcastDirectorPanel";
@@ -20,12 +20,7 @@ import MatchStory from "@/components/MatchStory";
 import MatchGraphExplorer from "@/components/match/MatchGraphExplorer";
 import MomentumHeatmap from "@/components/MomentumHeatmap";
 import OversTimeline from "@/components/OversTimeline";
-import MatchDataBoundary from "@/components/match-core/MatchDataBoundary";
-import MatchPageCore from "@/components/match-core/MatchPageCore";
-import MatchRenderBoundary from "@/components/match-core/MatchRenderBoundary";
-import LiveEnergyWrapper from "@/components/motion/LiveEnergyWrapper";
-import MotionFallbackBoundary from "@/components/motion/MotionFallbackBoundary";
-import MotionSafeContainer from "@/components/motion/MotionSafeContainer";
+import PageMotion from "@/components/ui/PageMotion";
 import PartnershipPanel from "@/components/PartnershipPanel";
 import ReplaySlider from "@/components/match/ReplaySlider";
 import TeamSelector from "@/components/teams/TeamSelector";
@@ -39,13 +34,14 @@ import {
   useMatchSelector,
   useScore,
 } from "@/services/matchSelectors";
-import { Team, teams } from "@/data/teams";
+import { Team } from "@/data/teams";
 import { Match } from "@/types/match";
 import { motion } from "framer-motion";
 
 // ✅ Only keep what's needed from matchEngine
 import {
   hydrateMatchState,
+  MatchState,
 } from "@/services/matchEngine";
 
 // ✅ Import setMatchState so hydration feeds into eventStore (MatchProvider's source)
@@ -63,15 +59,18 @@ import { getMatchBySlug } from "@/services/matchService";
 import { connectRealtime } from "@/services/realtime/connectRealtime";
 import type { MatchReconnectHealth } from "@/services/match/matchRegistry";
 import type { LiveSessionState } from "@/types/liveSession";
+import {
+  getBattingOrder,
+  getBowlingOrder,
+} from "@/services/simulation/lineup";
 import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
 import WagonWheel from "@/components/analytics/WagonWheel";
 import { calculateWinProbability } from "@/services/analytics/calculateWinProbability";
 import { setMatchMeta } from "@/store/matchStore";
+import { v4 as uuidv4 } from "uuid";
+import { useRouter } from "next/navigation";
 import AnimatedScore from "@/components/ui/AnimatedScore";
 import ConnectionStatus from "@/components/ui/ConnectionStatus";
-import { pageRevealVariants, transitions } from "@/animations/motion-presets";
-import { isSimulationLifecycleAtLeast } from "@/services/simulation/simulation-lifecycle";
-import type { SimulationLifecycleState } from "@/services/simulation/simulation-lifecycle";
 
 // ─────────────────────────────────────────────
 // Types
@@ -82,31 +81,11 @@ type MainTab =
   | "overview"
   | "live"
   | "analysis"
-  | "overs"
-  | "squads"
+  | "timeline"
   | "scorecard"
   | "admin";
 
 const AUTO_RECONNECT_SUBSCRIBER_ID = "match-detail-page-auto";
-const MAIN_TABS: MainTab[] = [
-  "overview",
-  "live",
-  "analysis",
-  "overs",
-  "squads",
-  "scorecard",
-  "admin",
-];
-
-const TAB_LABELS: Record<MainTab, string> = {
-  overview: "Overview",
-  live: "Live",
-  analysis: "Analytics",
-  overs: "Overs",
-  squads: "Squads",
-  scorecard: "Scorecard",
-  admin: "Admin",
-};
 
 type PlayerStat = {
   runs: number;
@@ -137,7 +116,6 @@ type MatchSessionMeta = {
   type?: "LIVE" | "SIMULATION";
   sessionState?: LiveSessionState;
   reconnectHealth?: MatchReconnectHealth;
-  simulationLifecycle?: SimulationLifecycleState;
 };
 
 // ─────────────────────────────────────────────
@@ -146,10 +124,6 @@ type MatchSessionMeta = {
 
 function cls(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
-}
-
-function isMainTab(value: string): value is MainTab {
-  return MAIN_TABS.includes(value as MainTab);
 }
 
 function formatOverDisplay(overs?: Record<string, unknown>) {
@@ -185,11 +159,11 @@ function StatPill({
   tone?: "neutral" | "green" | "blue" | "amber" | "red";
 }) {
   const toneMap = {
-    neutral: "tier-1-border tier-1-commentary text-white",
-    green: "tier-2-border tier-2-commentary state-partnership",
-    blue: "tier-2-border tier-2-commentary state-boundary",
-    amber: "tier-2-border tier-2-commentary state-pressure",
-    red: "tier-3-border tier-3-commentary state-required-rr-danger",
+    neutral: "border-white/10 bg-white/[0.03] text-white",
+    green: "border-white/10 bg-white/[0.03] text-white",
+    blue: "border-white/10 bg-white/[0.03] text-white",
+    amber: "border-white/10 bg-white/[0.03] text-white",
+    red: "border-white/10 bg-white/[0.03] text-white",
   };
 
   return (
@@ -276,21 +250,6 @@ function StickyInsightsRail({
       ? overs[lastOverKey].slice(0, 6)
       : [];
 
-  const lastOverRuns = lastOverBalls.reduce(
-    (sum, ball: { runs?: number }) => sum + Number(ball?.runs ?? 0),
-    0
-  );
-  const lastOverWickets = lastOverBalls.filter(
-    (ball) => (ball as { type?: string })?.type === "WICKET"
-  ).length;
-  const momentumSignal =
-    lastOverWickets > 0 ? "Bowling surge" : lastOverRuns >= 10 ? "Batting surge" : "Balanced";
-  const probabilitySnapshot = Math.max(
-    5,
-    Math.min(95, Math.round(50 + score.runs * 0.15 - score.wickets * 4 + lastOverRuns * 0.9))
-  );
-  const recentEvent = lastOverWickets > 0 ? "Wicket impact" : lastOverRuns >= 8 ? "Boundary burst" : "Steady over";
-
   return (
     <div className="space-y-4 lg:sticky lg:top-28">
       <GlassPanel>
@@ -332,24 +291,6 @@ function StickyInsightsRail({
             tone="blue"
           />
           <StatPill label="Bowler" value={"—"} tone="amber" />
-        </div>
-      </GlassPanel>
-
-      <GlassPanel level="secondary">
-        <SectionHeader eyebrow="Telemetry" title="Live Console" />
-        <div className="grid grid-cols-1 gap-2.5">
-          <div className="tier-2-border rounded-xl border bg-white/[0.03] px-3 py-2">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-secondary)]">Momentum</p>
-            <p className="mt-1 text-sm font-semibold state-momentum">{momentumSignal}</p>
-          </div>
-          <div className="tier-2-border rounded-xl border bg-white/[0.03] px-3 py-2">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-secondary)]">Mini Probability</p>
-            <p className="mt-1 text-sm font-semibold state-boundary">{probabilitySnapshot}% batting edge</p>
-          </div>
-          <div className="tier-3-border rounded-xl border bg-white/[0.03] px-3 py-2">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-secondary)]">Recent Event</p>
-            <p className="mt-1 text-sm font-semibold state-wicket">{recentEvent}</p>
-          </div>
         </div>
       </GlassPanel>
 
@@ -434,12 +375,8 @@ function TabsArea({
   const [activeTab, setActiveTab] = useState<MainTab>("overview");
 
   useEffect(() => {
-    const tab = searchParams.get("tab");
-    if (tab === "timeline") {
-      setTimeout(() => setActiveTab("overs"), 0);
-      return;
-    }
-    if (!tab || !isMainTab(tab)) return;
+    const tab = searchParams.get("tab") as MainTab;
+    if (!tab) return;
     setTimeout(() => setActiveTab(tab), 0);
   }, [searchParams]);
 
@@ -454,14 +391,6 @@ function TabsArea({
   const [startError, setStartError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1500);
   const [showReplayTimeline, setShowReplayTimeline] = useState(false);
-
-  async function updateLifecycle(lifecycle: SimulationLifecycleState) {
-    await fetch("/api/simulation/lifecycle", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ matchId: match.slug, lifecycle }),
-    });
-  }
 
   const hasLiveMatchState =
     !!currentEngineState &&
@@ -617,26 +546,14 @@ function TabsArea({
       ? [{ players: `${strikerName} & ${nonStrikerName}`, runs: 0 }]
       : [];
 
-  const tabs: MainTab[] = MAIN_TABS;
-
-  const fallbackTeamA = teams.find(
-    (team) => team.name.toLowerCase() === (matchMeta?.teamA?.name ?? match.team1).toLowerCase()
-  );
-  const fallbackTeamB = teams.find(
-    (team) => team.name.toLowerCase() === (matchMeta?.teamB?.name ?? match.team2).toLowerCase()
-  );
-
-  const squadA = currentEngineState?.teamA?.squad?.length
-    ? currentEngineState.teamA.squad
-    : fallbackTeamA?.squad ?? [];
-  const squadB = currentEngineState?.teamB?.squad?.length
-    ? currentEngineState.teamB.squad
-    : fallbackTeamB?.squad ?? [];
-
-  const playingXIA = squadA.slice(0, 11);
-  const playingXIB = squadB.slice(0, 11);
-  const benchA = squadA.slice(11);
-  const benchB = squadB.slice(11);
+  const tabs: MainTab[] = [
+    "overview",
+    "live",
+    "analysis",
+    "timeline",
+    "scorecard",
+    "admin",
+  ];
 
   const summaryCards = [
     {
@@ -682,7 +599,7 @@ function TabsArea({
     >
       <div className="min-w-0">
         {/* ── Tab Bar ── */}
-        <div className="sticky top-24 z-20 mb-3 overflow-x-auto sports-scrollbar">
+        <div className="sticky top-24 z-20 mb-4 overflow-x-auto">
   <div
     className="inline-flex min-w-full"
     style={{ borderBottom: "1px solid var(--border-subtle)" }}
@@ -700,16 +617,9 @@ function TabsArea({
               : "2px solid transparent",
             marginBottom: "-1px",
           }}
-          className="interactive-sports relative px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors hover:text-[var(--text-primary)]"
+          className="px-4 py-3 text-sm font-medium capitalize whitespace-nowrap transition-colors hover:text-[var(--text-primary)]"
         >
-          {TAB_LABELS[tab]}
-          {isActive ? (
-            <motion.span
-              layoutId="match-tabs-active-indicator"
-              className="absolute -bottom-[1px] left-1 right-1 h-[2px] rounded-full bg-[var(--accent-brand)]"
-              transition={{ type: "spring", stiffness: 500, damping: 34 }}
-            />
-          ) : null}
+          {tab}
         </button>
       );
     })}
@@ -718,7 +628,7 @@ function TabsArea({
 
         {/* ── Overview ── */}
         {activeTab === "overview" && (
-          <div className="animate-fade-in space-y-3">
+          <div className="space-y-4">
             <GlassPanel>
               <SectionHeader
                 eyebrow="Match center"
@@ -788,14 +698,14 @@ function TabsArea({
 
         {/* ── Live ── */}
         {activeTab === "live" && (
-          <div className="animate-fade-in grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
-            <GlassPanel level="primary" className="p-3">
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <GlassPanel className="p-3">
               <SectionHeader eyebrow="Ball by ball" title="Live Commentary" />
               <CommentaryPanel matchId={match.slug} insights={insights} />
             </GlassPanel>
 
             <div className="space-y-3">
-              <GlassPanel level="secondary" className="p-3">
+              <GlassPanel className="p-3">
                 <SectionHeader eyebrow="Live pulse" title="Session Status" />
                 <LiveMatchStatus
                   matchId={match.slug}
@@ -804,7 +714,7 @@ function TabsArea({
                 />
               </GlassPanel>
 
-              <GlassPanel level="tertiary" className="p-3">
+              <GlassPanel className="p-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.18em] text-sky-300/80">
@@ -834,8 +744,8 @@ function TabsArea({
 
         {/* ── Analysis ── */}
         {activeTab === "analysis" && (
-          <div className="animate-fade-in space-y-3">
-            <GlassPanel level="primary" className="p-3">
+          <div className="space-y-3">
+            <GlassPanel className="p-3">
               <SectionHeader eyebrow="Unified module" title="Match Analytics" />
               <div className="space-y-3">
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -904,7 +814,7 @@ function TabsArea({
               </div>
             </GlassPanel>
 
-            <GlassPanel level="secondary" className="p-3">
+            <GlassPanel className="p-3">
               <SectionHeader eyebrow="Shot analysis" title="Wagon Wheel" />
               <div className="flex h-[260px] items-center justify-center text-white/60">
                 <WagonWheel matchId={match.slug} />
@@ -913,82 +823,23 @@ function TabsArea({
           </div>
         )}
 
-        {/* ── Overs ── */}
-        {activeTab === "overs" && (
-          <div className="animate-fade-in space-y-5">
+        {/* ── Timeline ── */}
+        {activeTab === "timeline" && (
+          <div className="space-y-6">
             <GlassPanel>
               <SectionHeader eyebrow="Moments" title="Highlight Timeline" />
               <HighlightTimeline matchId={match.slug} />
             </GlassPanel>
             <GlassPanel>
-              <SectionHeader eyebrow="Over view" title="Overs Console" />
+              <SectionHeader eyebrow="Over view" title="Overs Timeline" />
               <OversTimeline slug={match.slug} />
             </GlassPanel>
           </div>
         )}
 
-        {/* ── Squads ── */}
-        {activeTab === "squads" && (
-          <div className="animate-fade-in space-y-4">
-            {[
-              { team: matchMeta?.teamA?.name ?? match.team1, xi: playingXIA, bench: benchA },
-              { team: matchMeta?.teamB?.name ?? match.team2, xi: playingXIB, bench: benchB },
-            ].map((entry) => (
-              <GlassPanel key={entry.team} level="secondary" className="p-3">
-                <SectionHeader eyebrow="Squads" title={entry.team} />
-                <div className="space-y-3">
-                  <div>
-                    <p className="mb-2 text-[11px] uppercase tracking-[0.16em] text-[var(--text-secondary)]">Playing XI</p>
-                    <div className="grid gap-2 md:grid-cols-2">
-                      {entry.xi.map((player, index) => {
-                        const isCaptain = index === 0;
-                        const isWk = player.role === "WK";
-                        return (
-                          <div
-                            key={`${entry.team}-xi-${player.name}`}
-                            className="tier-2-border rounded-lg border bg-white/[0.03] px-3 py-2"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-sm font-semibold text-white">{player.name}</span>
-                              <span className="text-[10px] uppercase tracking-[0.14em] text-[var(--text-secondary)]">{player.role}</span>
-                            </div>
-                            <div className="mt-1 flex gap-2 text-[10px] uppercase tracking-[0.12em]">
-                              {isCaptain ? <span className="state-boundary">Captain</span> : null}
-                              {isWk ? <span className="state-partnership">WK</span> : null}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="mb-2 text-[11px] uppercase tracking-[0.16em] text-[var(--text-secondary)]">Bench</p>
-                    {entry.bench.length ? (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {entry.bench.map((player) => (
-                          <div
-                            key={`${entry.team}-bench-${player.name}`}
-                            className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm text-white/85"
-                          >
-                            <span>{player.name}</span>
-                            <span className="ml-2 text-xs text-white/50">({player.role})</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-white/60">Bench not available yet.</p>
-                    )}
-                  </div>
-                </div>
-              </GlassPanel>
-            ))}
-          </div>
-        )}
-
         {/* ── Scorecard ── */}
         {activeTab === "scorecard" && (
-          <div className="animate-fade-in space-y-5">
+          <div className="space-y-6">
             {currentEngineState?.matchEnded && currentEngineState?.winner ? (
               <div className="mt-3 border-t border-white/10 pt-3 text-center text-sm text-white">
                 {currentEngineState.winner} won{" "}
@@ -1305,7 +1156,6 @@ function TabsArea({
                       setMatchMeta(nextMeta);
                       setLocalMatchMeta(nextMeta);
                       setStartError(null);
-                      void updateLifecycle("CONFIGURING");
                     }}
                   />
                 ) : (
@@ -1328,7 +1178,6 @@ function TabsArea({
                         };
                         setMatchMeta(nextMeta);
                         setLocalMatchMeta(nextMeta);
-                        void updateLifecycle("READY");
                       }}
                     />
                   </div>
@@ -1350,10 +1199,7 @@ function TabsArea({
                       const latestMeta = getMatchMeta(id);
                       if (!latestMeta?.teamA?.name || !latestMeta?.teamB?.name)
                         return setStartError("Please select teams first.");
-                      void updateLifecycle("INITIALIZING");
                       connectRealtime(id, "match-page-admin-start");
-                      setActiveTab("live");
-                      router.replace(`/match/${id}?tab=live`);
                     }}
                     className={cls(
                       "rounded-xl px-4 py-2.5 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60",
@@ -1627,13 +1473,15 @@ function MatchInnerPage({
   }
 
   return (
-    <MatchPageCore
-      header={
+    <main className="relative overflow-hidden">
+      <div className="mx-auto max-w-[1500px] px-3 py-3 md:px-5 lg:px-6">
+        {/* ── Hero ── */}
         <div className="mb-3">
           {currentInnings ? (
             <div className="space-y-2.5">
               <GlassPanel>
                 <div className="flex flex-col gap-3">
+                  {/* Header row */}
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-1.5">
                       <p className="text-[11px] uppercase tracking-[0.22em] text-sky-300/80">
@@ -1648,7 +1496,10 @@ function MatchInnerPage({
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <ConnectionStatus hideWhenConnected={false} />
-                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
                         <Link
                           href="/"
                           className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-md transition"
@@ -1658,94 +1509,92 @@ function MatchInnerPage({
                       </motion.div>
                     </div>
                   </div>
+
+                  {/* Match header (scoreboard) */}
+                  <MatchHeader
+  team1={team1Name}
+  team2={team2Name}
+  runs={runs}
+  wickets={wickets}
+  over={Math.floor(displayOver)}
+  ball={Math.round((displayOver % 1) * 10)}
+  striker={striker}
+  nonStriker={nonStriker}
+  bowler={bowler}
+  lastOverBalls={lastOverBalls}
+  isLive={!currentEngineState.matchEnded}
+  matchEnded={currentEngineState.matchEnded}
+  winner={currentEngineState.winner}
+  winBy={currentEngineState.winBy}
+  target={innings2 ? target : undefined}
+  rrr={innings2 && !currentEngineState.matchEnded ? rrr : undefined}
+  crr={crr}
+/>
+
+                  {/* Stats pills */}
+                  <div className="grid auto-rows-fr gap-2 md:grid-cols-3 xl:grid-cols-8">
+                    <StatPill
+                      label={innings1?.battingTeam ?? "Team 1"}
+                      value={`${innings1?.runs ?? 0}/${innings1?.wickets ?? 0}`}
+                      tone="green"
+                    />
+                    <StatPill
+                      label={innings2?.battingTeam ?? "Team 2"}
+                      value={
+                        innings2
+                          ? `${innings2.runs}/${innings2.wickets}`
+                          : "Yet to bat"
+                      }
+                      tone="blue"
+                    />
+                    <StatPill
+                      label="Current innings"
+                      value={`Innings ${(currentEngineState.currentInningsIndex ?? 0) + 1}`}
+                      tone="neutral"
+                    />
+                    <StatPill
+                      label="Current over"
+                      value={displayOver}
+                      tone="amber"
+                    />
+                    {innings2 && !currentEngineState.matchEnded && (
+                      <StatPill label="Target" value={target} tone="neutral" />
+                    )}
+                    {innings2 && !currentEngineState.matchEnded && (
+                      <StatPill
+                        label="RRR"
+                        value={rrr ? rrr.toFixed(2) : "0.00"}
+                        tone="red"
+                      />
+                    )}
+                    <StatPill
+                      label="CRR"
+                      value={crr ? crr.toFixed(2) : "0.00"}
+                      tone="blue"
+                    />
+                    <StatPill
+                      label="Status"
+                      value={
+                        getLiveMatchStatusLabel(currentEngineState.matchEnded, sessionMeta?.sessionState)
+                      }
+                      tone="neutral"
+                    />
+                  </div>
                 </div>
               </GlassPanel>
             </div>
           ) : null}
         </div>
-      }
-      scoreboard={
-        <div className="mb-3">
-          {currentInnings ? (
-            <GlassPanel>
-              <div className="space-y-3">
-                <MatchHeader
-                  team1={team1Name}
-                  team2={team2Name}
-                  runs={runs}
-                  wickets={wickets}
-                  over={Math.floor(displayOver)}
-                  ball={Math.round((displayOver % 1) * 10)}
-                  striker={striker}
-                  nonStriker={nonStriker}
-                  bowler={bowler}
-                  lastOverBalls={lastOverBalls}
-                  isLive={!currentEngineState.matchEnded}
-                  matchEnded={currentEngineState.matchEnded}
-                  winner={currentEngineState.winner}
-                  winBy={currentEngineState.winBy}
-                  target={innings2 ? target : undefined}
-                  rrr={innings2 && !currentEngineState.matchEnded ? rrr : undefined}
-                  crr={crr}
-                />
-                <div className="grid auto-rows-fr gap-2 md:grid-cols-3 xl:grid-cols-8">
-                  <StatPill
-                    label={innings1?.battingTeam ?? "Team 1"}
-                    value={`${innings1?.runs ?? 0}/${innings1?.wickets ?? 0}`}
-                    tone="green"
-                  />
-                  <StatPill
-                    label={innings2?.battingTeam ?? "Team 2"}
-                    value={innings2 ? `${innings2.runs}/${innings2.wickets}` : "Yet to bat"}
-                    tone="blue"
-                  />
-                  <StatPill
-                    label="Current innings"
-                    value={`Innings ${(currentEngineState.currentInningsIndex ?? 0) + 1}`}
-                    tone="neutral"
-                  />
-                  <StatPill label="Current over" value={displayOver} tone="amber" />
-                  {innings2 && !currentEngineState.matchEnded && (
-                    <StatPill label="Target" value={target} tone="neutral" />
-                  )}
-                  {innings2 && !currentEngineState.matchEnded && (
-                    <StatPill
-                      label="RRR"
-                      value={rrr ? rrr.toFixed(2) : "0.00"}
-                      tone="red"
-                    />
-                  )}
-                  <StatPill
-                    label="CRR"
-                    value={crr ? crr.toFixed(2) : "0.00"}
-                    tone="blue"
-                  />
-                  <StatPill
-                    label="Status"
-                    value={getLiveMatchStatusLabel(
-                      currentEngineState.matchEnded,
-                      sessionMeta?.sessionState
-                    )}
-                    tone="neutral"
-                  />
-                </div>
-              </div>
-            </GlassPanel>
-          ) : null}
-        </div>
-      }
-      tabs={<div />}
-      main={
+
+        {/* ── Tabs ── */}
         <TabsArea
           match={match}
           analytics={analytics}
           insights={insights}
           sessionMeta={sessionMeta}
         />
-      }
-      commentaryShell={<div data-shell="commentary-shell" />}
-      analyticsShell={<div data-shell="analytics-shell" />}
-    />
+      </div>
+    </main>
   );
 }
 
@@ -1773,9 +1622,6 @@ export default function MatchDetailPage({
   const [match, setMatch] = useState<Match | undefined>();
   const [sessionMeta, setSessionMeta] = useState<MatchSessionMeta | null>(null);
   const [insights, setInsights] = useState<BroadcastInsight[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
-  const router = useRouter();
 
   type WinPoint = {
     over: number;
@@ -1816,7 +1662,6 @@ export default function MatchDetailPage({
 
         if (!res.ok) {
           console.error("MATCH API ERROR", await res.text());
-          if (!cancelled) setLoadError("Unable to load this match right now.");
           return;
         }
 
@@ -1824,53 +1669,13 @@ export default function MatchDetailPage({
 
         if (!data?.success || !data?.match) {
           console.error("Match not found in Redis for", id);
-          if (!cancelled) setLoadError("Match data not found. Please refresh the page.");
           return;
-        }
-
-        if (!cancelled) setLoadError(null);
-
-        const registry = (data.registry ?? null) as MatchSessionMeta | null;
-        const hasTeams =
-          typeof data.match.teamA?.name === "string" &&
-          data.match.teamA.name.trim().length > 0 &&
-          typeof data.match.teamB?.name === "string" &&
-          data.match.teamB.name.trim().length > 0;
-        const hasInitializedInnings =
-          Array.isArray(data.match.innings) &&
-          data.match.innings.length >= 1 &&
-          typeof data.match.currentInningsIndex === "number";
-        const hasScoreState =
-          hasInitializedInnings &&
-          typeof data.match.innings[0]?.runs === "number" &&
-          typeof data.match.innings[0]?.wickets === "number";
-        const requiresControlPage =
-          registry?.type === "SIMULATION" &&
-          (!isSimulationLifecycleAtLeast(registry?.simulationLifecycle, "READY") ||
-            !hasTeams ||
-            !hasInitializedInnings ||
-            !hasScoreState);
-
-        if (requiresControlPage) {
-          console.info("routeRedirected", {
-            matchId: id,
-            lifecycle: registry?.simulationLifecycle ?? "DRAFT",
-          });
-          if (!cancelled) {
-            setRedirectTarget(`/admin/${id}`);
-            setLoadError("Simulation setup is incomplete. Redirecting to control page.");
-          }
-          return;
-        }
-
-        if (!cancelled) {
-          setRedirectTarget(null);
         }
 
         // ✅ Hydrate matchEngine (for scorecard helpers etc.)
         hydrateMatchState(id, data.match);
 
-        setSessionMeta(registry);
+        setSessionMeta(data.registry ?? null);
 
         // ✅ CRITICAL: also push into eventStore so MatchProvider sees initial state
         setMatchState(id, data.match);
@@ -1926,18 +1731,12 @@ export default function MatchDetailPage({
         }
       } catch (err) {
         console.error("LOAD MATCH ERROR", err);
-        if (!cancelled) setLoadError("Unable to load this match right now.");
       }
     }
 
     loadMatch();
     return () => { cancelled = true; };
   }, [matchId]);
-
-  useEffect(() => {
-    if (!redirectTarget) return;
-    router.replace(redirectTarget);
-  }, [redirectTarget, router]);
 
   // Analytics / insights from window events
   useEffect(() => {
@@ -1975,121 +1774,37 @@ export default function MatchDetailPage({
 
   // ── Render ──
 
-  const pageSurfaceStyle = {
-    backgroundColor: "var(--bg-base)",
-    backgroundImage: "var(--page-hero-gradient)",
-  };
-
   if (!matchId) {
-    const invalidMatchContent = (
-      <div style={pageSurfaceStyle}>
-        <div className="p-10 text-center text-[var(--text-primary)]">Invalid match URL.</div>
-      </div>
-    );
-
     return (
-      <MatchRenderBoundary fallback={invalidMatchContent}>
-        <MotionFallbackBoundary fallback={invalidMatchContent}>
-          <MotionSafeContainer
-            enableMotion
-            variants={pageRevealVariants}
-            transition={transitions.base}
-          >
-            <LiveEnergyWrapper enabled state="regular">
-              {invalidMatchContent}
-            </LiveEnergyWrapper>
-          </MotionSafeContainer>
-        </MotionFallbackBoundary>
-      </MatchRenderBoundary>
-    );
-  }
-
-  const loadingFallback = (
-    <div className="space-y-4 p-6 md:p-8">
-      <div className="h-8 w-56 animate-pulse rounded-lg bg-white/10" />
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="h-24 animate-pulse rounded-xl bg-white/10" />
-        <div className="h-24 animate-pulse rounded-xl bg-white/10" />
-        <div className="h-24 animate-pulse rounded-xl bg-white/10" />
-      </div>
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <div className="h-64 animate-pulse rounded-2xl bg-white/10" />
-        <div className="h-64 animate-pulse rounded-2xl bg-white/10" />
-      </div>
-      <p className="text-xs text-white/60">Match ID: {matchId}</p>
-    </div>
-  );
-
-  if (redirectTarget) {
-    const redirectContent = (
-      <div style={pageSurfaceStyle}>
-        <div className="space-y-3 p-10 text-center">
-          <p className="text-sm text-amber-300">
-            Simulation setup is incomplete. Redirecting to Simulation Control…
-          </p>
-          <p className="text-xs text-white/60">Match ID: {matchId}</p>
+      <PageMotion>
+        <div className="bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,#020617_0%,#071120_35%,#0b1220_65%,#020617_100%)]">
+          <div className="p-10 text-center text-white">
+            Invalid match URL.
+          </div>
         </div>
-      </div>
-    );
-
-    return (
-      <MatchRenderBoundary fallback={redirectContent}>
-        <MotionFallbackBoundary fallback={redirectContent}>
-          <MotionSafeContainer
-            enableMotion
-            variants={pageRevealVariants}
-            transition={transitions.base}
-          >
-            <LiveEnergyWrapper enabled state="regular">
-              {redirectContent}
-            </LiveEnergyWrapper>
-          </MotionSafeContainer>
-        </MotionFallbackBoundary>
-      </MatchRenderBoundary>
+      </PageMotion>
     );
   }
-  const errorFallback = loadError ? (
-    <div className="space-y-3 p-10 text-center">
-      <p className="text-sm text-rose-300">{loadError}</p>
-      <p className="text-xs text-white/60">Match ID: {matchId}</p>
-    </div>
-  ) : undefined;
-
-  const renderSafeContent = (
-    <div style={pageSurfaceStyle}>
-      <MatchDataBoundary
-        isReady={Boolean(match)}
-        error={loadError}
-        loadingFallback={loadingFallback}
-        errorFallback={errorFallback}
-      >
-        {match ? (
-          <MatchInnerPage
-            match={match}
-            analytics={analytics}
-            insights={insights}
-            sessionMeta={sessionMeta}
-          />
-        ) : null}
-      </MatchDataBoundary>
-    </div>
-  );
 
   return (
+    // ✅ FIX: matchId prop — NOT value prop
     <MatchProvider matchId={matchId}>
-      <MatchRenderBoundary fallback={renderSafeContent}>
-        <MotionFallbackBoundary fallback={renderSafeContent}>
-          <MotionSafeContainer
-            enableMotion
-            variants={pageRevealVariants}
-            transition={transitions.base}
-          >
-            <LiveEnergyWrapper enabled state="regular">
-              {renderSafeContent}
-            </LiveEnergyWrapper>
-          </MotionSafeContainer>
-        </MotionFallbackBoundary>
-      </MatchRenderBoundary>
+      <PageMotion>
+        <div className="bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,#020617_0%,#071120_35%,#0b1220_65%,#020617_100%)]">
+          {match ? (
+            <MatchInnerPage
+              match={match}
+              analytics={analytics}
+              insights={insights}
+              sessionMeta={sessionMeta}
+            />
+          ) : (
+            <div className="p-10 text-center text-white">
+              Loading match...
+            </div>
+          )}
+        </div>
+      </PageMotion>
     </MatchProvider>
   );
 }

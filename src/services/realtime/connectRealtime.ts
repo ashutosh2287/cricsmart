@@ -1,8 +1,8 @@
 import { routeRealtimeEvent } from "../realtimeRouter";
 import type { RealtimeEvent } from "../realtimeRouter";
-import { getMatchMeta, setMatchMeta } from "@/store/matchStore";
+import { getMatchMeta } from "@/store/matchStore";
 import { hydrateMatchState } from "@/services/matchEngine";
-import { getMatchState as getRealtimeMatchState, setMatchState } from "@/lib/eventStore";
+import { setMatchState } from "@/lib/eventStore";
 
 const MAX_BACKOFF_MS = 10000;
 const BASE_BACKOFF_MS = 500;
@@ -94,79 +94,6 @@ async function refreshLatestSnapshot(matchId: string) {
 
   hydrateMatchState(matchId, body.match);
   setMatchState(matchId, body.match);
-
-  const teamAName = body.match.teamA?.name;
-  const teamBName = body.match.teamB?.name;
-  if (teamAName && teamBName) {
-    setMatchMeta({
-      matchId,
-      teamA: {
-        id:
-          (typeof body.match.teamA?.id === "string" && body.match.teamA.id.trim()) ||
-          teamAName.toLowerCase().trim().replace(/\s+/g, "-"),
-        name: teamAName,
-      },
-      teamB: {
-        id:
-          (typeof body.match.teamB?.id === "string" && body.match.teamB.id.trim()) ||
-          teamBName.toLowerCase().trim().replace(/\s+/g, "-"),
-        name: teamBName,
-      },
-      ...(body.match.tossWinner && body.match.tossDecision
-        ? { toss: { winner: body.match.tossWinner, decision: body.match.tossDecision } }
-        : {}),
-    });
-  }
-}
-
-function resolveSimulationStartMeta(matchId: string) {
-  const matchMeta = getMatchMeta(matchId);
-  if (
-    matchMeta?.teamA?.name &&
-    matchMeta?.teamB?.name &&
-    matchMeta.toss?.winner &&
-    matchMeta.toss?.decision
-  ) {
-    return {
-      teamAName: matchMeta.teamA.name,
-      teamBName: matchMeta.teamB.name,
-      tossWinner: matchMeta.toss.winner,
-      tossDecision: matchMeta.toss.decision,
-    };
-  }
-
-  const realtimeMatchState = getRealtimeMatchState(matchId);
-  if (
-    !realtimeMatchState?.teamA?.name ||
-    !realtimeMatchState?.teamB?.name ||
-    !realtimeMatchState.tossWinner ||
-    !realtimeMatchState.decision
-  ) {
-    return null;
-  }
-
-  setMatchMeta({
-    matchId,
-    teamA: {
-      id: realtimeMatchState.teamA.name.toLowerCase().trim().replace(/\s+/g, "-"),
-      name: realtimeMatchState.teamA.name,
-    },
-    teamB: {
-      id: realtimeMatchState.teamB.name.toLowerCase().trim().replace(/\s+/g, "-"),
-      name: realtimeMatchState.teamB.name,
-    },
-    toss: {
-      winner: realtimeMatchState.tossWinner,
-      decision: realtimeMatchState.decision,
-    },
-  });
-
-  return {
-    teamAName: realtimeMatchState.teamA.name,
-    teamBName: realtimeMatchState.teamB.name,
-    tossWinner: realtimeMatchState.tossWinner,
-    tossDecision: realtimeMatchState.decision,
-  };
 }
 
 function openSocket(matchId: string) {
@@ -217,9 +144,13 @@ function openSocket(matchId: string) {
 
   if (shouldStartSimulation) {
     setTimeout(() => {
-      const simulationStartMeta = resolveSimulationStartMeta(matchId);
-      if (!simulationStartMeta) {
-        console.warn("ENGINE WARN: skipping auto-start due to missing match metadata");
+      const matchMeta = getMatchMeta(matchId);
+      if (!matchMeta) {
+        console.error("ENGINE ERROR: missing match metadata");
+        return;
+      }
+      if (!matchMeta.toss?.winner || !matchMeta.toss?.decision) {
+        console.error("ENGINE ERROR: missing toss metadata");
         return;
       }
 
@@ -228,7 +159,10 @@ function openSocket(matchId: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           matchId,
-          ...simulationStartMeta,
+          teamAName: matchMeta.teamA.name,
+          teamBName: matchMeta.teamB.name,
+          tossWinner: matchMeta.toss.winner,
+          tossDecision: matchMeta.toss.decision,
         }),
       })
         .then((res) => res.json())

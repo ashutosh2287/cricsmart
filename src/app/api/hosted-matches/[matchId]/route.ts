@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ matchId
     const canAccess =
       session.user.role === "admin" ||
       session.user.role === "internal" ||
-      (await hasHostedMatchControlAccess(matchId, session.userId, session.role));
+      (await hasHostedMatchControlAccess(matchId, session.userId, session.user.role));
     if (!canAccess) {
       return NextResponse.json({ success: false, error: "Hosted match not available" }, { status: 404 });
     }

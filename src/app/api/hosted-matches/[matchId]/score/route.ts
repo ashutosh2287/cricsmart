@@ -26,6 +26,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ matchI
     return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
   }
 
+  if (!hostedMatch.teamA || !hostedMatch.teamB) {
+    return NextResponse.json({ success: false, error: "Match teams not configured" }, { status: 400 });
+  }
+
   const body = (await req.json()) as {
     type?: string;
     runs?: number;

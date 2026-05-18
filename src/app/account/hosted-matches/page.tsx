@@ -22,7 +22,7 @@ export default async function AccountHostedMatchesPage() {
           {hostedMatches.map((match) => (
             <Link key={match.id} href={`/hosted-matches/${match.id}/control`} className="block rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
               <p className="text-base font-semibold text-[var(--text-primary)]">{match.title}</p>
-              <p className="text-sm text-[var(--text-secondary)]">{match.teamA.name} vs {match.teamB.name}</p>
+              <p className="text-sm text-[var(--text-secondary)]">{match.teamA?.name} vs {match.teamB?.name}</p>
             </Link>
           ))}
         </div>

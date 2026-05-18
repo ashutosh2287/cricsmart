@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import { useAuth } from "@/providers/AuthProvider";
 
 // ─────────────────────────────────────────────
 // Types
@@ -256,6 +257,7 @@ export default function HomePage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { authEnabled, isAuthenticated, loading: authLoading } = useAuth();
 
   function closeCreateForm() {
     setShowCreateForm(false);
@@ -326,6 +328,11 @@ export default function HomePage() {
   }, [showCreateForm]);
 
   const handleCreateMatch = async () => {
+    if (!authLoading && authEnabled && !isAuthenticated) {
+      router.push(`/login?redirect=${encodeURIComponent("/")}`);
+      return;
+    }
+
     const teamA = teamAInput.trim() || "Team A";
     const teamB = teamBInput.trim() || "Team B";
     setCreating(true);
@@ -403,16 +410,30 @@ export default function HomePage() {
   </Link>
 
   <div className="relative" ref={formRef}>
-              <button
-                onClick={() => setShowCreateForm((v) => !v)}
-                className="text-sm px-4 py-2 rounded-lg font-medium transition-colors"
-                style={{
-                  background: "var(--accent-brand)",
-                  color: "#fff",
-                }}
-              >
-                + New Simulation
-              </button>
+              {(!authLoading && authEnabled && !isAuthenticated) ? (
+                <Link
+                  href={`/login?redirect=${encodeURIComponent("/")}`}
+                  className="text-sm px-4 py-2 rounded-lg transition-colors"
+                  style={{
+                    background: "var(--bg-surface)",
+                    color: "var(--text-secondary)",
+                    border: "1px solid var(--border-subtle)",
+                  }}
+                >
+                  Sign in to host
+                </Link>
+              ) : (
+                <button
+                  onClick={() => setShowCreateForm((v) => !v)}
+                  className="text-sm px-4 py-2 rounded-lg font-medium transition-colors"
+                  style={{
+                    background: "var(--accent-brand)",
+                    color: "#fff",
+                  }}
+                >
+                  + New Simulation
+                </button>
+              )}
 
               {/* Create form dropdown */}
               {showCreateForm && (

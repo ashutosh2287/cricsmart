@@ -30,6 +30,7 @@ const sections: DrawerSection[] = [
     items: [
       { label: "Home", href: "/", icon: icon("M3 9.5L10 4l7 5.5V16H3V9.5z") },
       { label: "Matches", href: "/matches", icon: icon("M4 5h12v10H4z") },
+      { label: "Hosted Matches", href: "/hosted-matches", icon: icon("M5 5h10v10H5z") },
       { label: "Live Matches", href: "/live-matches", icon: icon("M4 10h4m4 0h4M10 4v12") },
       { label: "Live Scores", href: "/live-scores", icon: icon("M4 14l3-3 2 2 4-5 3 3") },
       { label: "Schedule", href: "/schedule", icon: icon("M5 4h10v12H5z M5 8h10") },
@@ -41,6 +42,8 @@ const sections: DrawerSection[] = [
       { label: "Series", href: "/series", icon: icon("M4 6h12M4 10h12M4 14h8") },
       { label: "Teams", href: "/teams", icon: icon("M4 15a3 3 0 016 0m2 0a3 3 0 016 0M7 8a2 2 0 110-4 2 2 0 010 4zm6 0a2 2 0 110-4 2 2 0 010 4z") },
       { label: "Players", href: "/players", icon: icon("M10 11a4 4 0 100-8 4 4 0 000 8zm-6 6a6 6 0 0112 0") },
+      { label: "Discover Players", href: "/players/discover", icon: icon("M4 10h12M10 4v12") },
+      { label: "Tournaments", href: "/tournaments", icon: icon("M5 5h10v10H5zM5 8h10") },
       { label: "Rankings", href: "/rankings", icon: icon("M5 15h10M6 15V7m4 8V5m4 10V9") },
       { label: "Points Table", href: "/points-table", icon: icon("M4 5h12v10H4zM8 5v10M12 5v10") },
     ],
@@ -172,6 +175,16 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
                   label: "My Account",
                   href: isAuthenticated ? "/account" : `/login?redirect=${encodeURIComponent("/account")}`,
                   icon: icon("M10 11a4 4 0 100-8 4 4 0 000 8zm-6 6a6 6 0 0112 0"),
+                },
+                {
+                  label: "My Teams",
+                  href: isAuthenticated ? "/account/teams" : `/login?redirect=${encodeURIComponent("/account/teams")}`,
+                  icon: icon("M4 15a3 3 0 016 0m2 0a3 3 0 016 0"),
+                },
+                {
+                  label: "Host Match",
+                  href: isAuthenticated ? "/host/matches/create" : `/login?redirect=${encodeURIComponent("/host/matches/create")}`,
+                  icon: icon("M4 10h12M10 4v12"),
                 },
               ]}
               pathname={pathname}

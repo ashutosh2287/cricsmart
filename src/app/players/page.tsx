@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import PageMotion from "@/components/ui/PageMotion";
 import { motion } from "framer-motion";
 import { getPlayers } from "@/services/playerService";
@@ -27,6 +28,10 @@ export default function PlayersPage() {
           <p className="text-sm text-[var(--text-secondary)]">
             Performance analytics and impact statistics
           </p>
+
+          <Link href="/players/discover" className="inline-flex rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-xs text-[var(--text-primary)]">
+            Discover Profiles
+          </Link>
 
           <div className="mt-4 h-px bg-gradient-to-r from-transparent via-[var(--border-subtle)] to-transparent"/>
 

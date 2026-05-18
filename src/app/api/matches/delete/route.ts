@@ -5,10 +5,11 @@ import {
   MATCH_LIST_KEY,
   getMatchMetaKey,
 } from "@/services/match/matchRegistry";
+import { getHostedMatchBySlug, hasHostedMatchControlAccess } from "@/lib/repositories/hostedMatch.repository";
 import { logAuthSensitiveAction, requireRouteAccess } from "@/services/auth/routeGuard";
 
 export async function DELETE(req: NextRequest) {
-  const access = await requireRouteAccess({ req, scope: "admin" });
+  const access = await requireRouteAccess({ req, scope: "creator" });
   if (!access.ok) return access.response;
 
   try {
@@ -19,6 +20,18 @@ export async function DELETE(req: NextRequest) {
         { success: false, error: "matchId is required" },
         { status: 400 }
       );
+    }
+
+    const hostedMatch = await getHostedMatchBySlug(matchId);
+    if (hostedMatch && access.session) {
+      const canManage = await hasHostedMatchControlAccess(
+        hostedMatch.id,
+        access.session.userId,
+        access.session.role
+      );
+      if (!canManage) {
+        return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+      }
     }
 
     const redis = getRedis();

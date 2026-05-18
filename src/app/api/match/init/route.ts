@@ -35,7 +35,7 @@ const createTeam = (name: string) => ({
 });
 
 export async function POST(req: NextRequest) {
-  const access = await requireRouteAccess({ req, scope: "admin" });
+  const access = await requireRouteAccess({ req, scope: "creator" });
   if (!access.ok) return access.response;
 
   ensureSessionRecoveryStarted();

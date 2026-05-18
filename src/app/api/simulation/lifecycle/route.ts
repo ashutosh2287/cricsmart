@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireRouteAccess } from "@/services/auth/routeGuard";
 import { transitionSimulationLifecycle } from "@/services/simulation/simulation-orchestrator";
 import { SIMULATION_LIFECYCLE_STATES } from "@/services/simulation/simulation-lifecycle";
 import type { SimulationLifecycleState } from "@/services/simulation/simulation-lifecycle";
 
 export async function POST(req: NextRequest) {
+  const access = await requireRouteAccess({ req, scope: "admin" });
+  if (!access.ok) return access.response;
+
   const body = (await req.json()) as {
     matchId?: string;
     lifecycle?: string;

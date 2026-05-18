@@ -8,7 +8,7 @@ import { logAuthSensitiveAction, requireRouteAccess } from "@/services/auth/rout
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const access = await requireRouteAccess({ req, scope: "admin" });
+  const access = await requireRouteAccess({ req, scope: "creator" });
   if (!access.ok) return access.response;
 
   try {

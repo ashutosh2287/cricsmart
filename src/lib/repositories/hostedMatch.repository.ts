@@ -1,102 +1,277 @@
-import { randomUUID } from "crypto";
-import { NextRequest, NextResponse } from "next/server";
-import type { EngineBallEvent } from "@/services/matchEngine";
-import { dispatchBallEvent } from "@/services/matchEngine";
-import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
-import { getHostedMatchById, hasHostedMatchControlAccess } from "@/lib/repositories/hostedMatch.repository";
-import { requireRouteAccess } from "@/services/auth/routeGuard";
+import type { HostedMatch, HostedMatchMember } from "@prisma/client";
+import { prisma } from "@/lib/db/prisma";
 
-const VALID_EVENT_TYPES = new Set(["RUN", "FOUR", "SIX", "WICKET", "WD", "NB", "BYE", "LB"]);
+export type CreateHostedMatchInput = {
+  slug: string;
+  title: string;
+  format: string;
+  venue?: string;
+  startTime: Date;
+  createdById: string;
+  teamAId: string;
+  teamBId: string;
+  status?: string;
+  visibility?: string;
+  scoringMode?: string;
+};
 
-export async function POST(req: NextRequest, context: { params: Promise<{ matchId: string }> }) {
-  const access = await requireRouteAccess({ req, scope: "creator" });
-  if (!access.ok) return access.response;
-  if (!access.session) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-  }
+export type UpdateHostedMatchInput = {
+  title?: string;
+  format?: string;
+  venue?: string | null;
+  startTime?: Date;
+  status?: string;
+  visibility?: string;
+  scoringMode?: string;
+};
 
-  const { matchId } = await context.params;
-  const hostedMatch = await getHostedMatchById(matchId);
-  if (!hostedMatch) {
-    return NextResponse.json({ success: false, error: "Hosted match not found" }, { status: 404 });
-  }
+type UpsertHostedLiveMatchInput = {
+  externalMatchId: string;
+  teamA: string;
+  teamB: string;
+  createdById: string;
+};
 
-  const canControl = await hasHostedMatchControlAccess(matchId, access.session.userId, access.session.role);
-  if (!canControl) {
-    return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
-  }
+export async function createHostedMatch(input: CreateHostedMatchInput): Promise<HostedMatch> {
+  return prisma.hostedMatch.create({
+    data: {
+      slug: input.slug,
+      title: input.title.trim(),
+      format: input.format.trim(),
+      venue: input.venue?.trim() || null,
+      startTime: input.startTime,
+      createdById: input.createdById,
+      teamAId: input.teamAId,
+      teamBId: input.teamBId,
+      status: input.status ?? "DRAFT",
+      visibility: input.visibility ?? "PUBLIC",
+      scoringMode: input.scoringMode ?? "LIVE",
+    },
+  });
+}
 
-  if (!hostedMatch.teamA || !hostedMatch.teamB) {
-    return NextResponse.json({ success: false, error: "Match teams not configured" }, { status: 400 });
-  }
+export async function listHostedMatchesPublic() {
+  return prisma.hostedMatch.findMany({
+    where: { visibility: "PUBLIC" },
+    include: {
+      teamA: true,
+      teamB: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
 
-  const body = (await req.json()) as {
-    type?: string;
-    runs?: number;
-    batsman?: string;
-    nonStriker?: string;
-    bowler?: string;
-    dismissalKind?: "BOWLED" | "CAUGHT" | "RUN_OUT_STRIKER" | "RUN_OUT_NON_STRIKER";
+export async function listHostedMatchesByCreator(createdById: string) {
+  return prisma.hostedMatch.findMany({
+    where: { createdById },
+    include: {
+      teamA: true,
+      teamB: true,
+      members: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getHostedMatchById(id: string) {
+  return prisma.hostedMatch.findUnique({
+    where: { id },
+    include: {
+      teamA: true,
+      teamB: true,
+      members: true,
+    },
+  });
+}
+
+export async function findHostedMatchById(id: string) {
+  return getHostedMatchById(id);
+}
+
+export async function upsertHostedLiveMatch(input: UpsertHostedLiveMatchInput): Promise<HostedMatch> {
+  const normalizedExternalId = input.externalMatchId.trim().toLowerCase();
+  const teamAName = input.teamA.trim();
+  const teamBName = input.teamB.trim();
+  const toSafeSlugFragment = (value: string) => {
+    let result = "";
+    let previousWasDash = false;
+
+    for (const char of value) {
+      const isAlphaNumeric =
+        (char >= "a" && char <= "z") || (char >= "0" && char <= "9");
+
+      if (isAlphaNumeric) {
+        result += char;
+        previousWasDash = false;
+      } else if (!previousWasDash && result.length > 0) {
+        result += "-";
+        previousWasDash = true;
+      }
+    }
+
+    if (result.endsWith("-")) {
+      result = result.slice(0, -1);
+    }
+
+    return result || "match";
   };
 
-  const eventType = body.type?.trim().toUpperCase();
-  if (!eventType || !VALID_EVENT_TYPES.has(eventType)) {
-    return NextResponse.json({ success: false, error: "Invalid scoring event type" }, { status: 400 });
-  }
+  const slug = `live-${toSafeSlugFragment(normalizedExternalId)}`;
 
-  const basePlayers = {
-    batsman: body.batsman?.trim() || hostedMatch.teamA.name,
-    nonStriker: body.nonStriker?.trim() || `${hostedMatch.teamA.name} Partner`,
-    bowler: body.bowler?.trim() || `${hostedMatch.teamB.name} Bowler`,
-    battingTeam: hostedMatch.teamA.name,
-    bowlingTeam: hostedMatch.teamB.name,
+  const shortCode = (name: string) =>
+    name
+      .replace(/[^a-zA-Z0-9 ]+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 3)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") || name.slice(0, 3).toUpperCase();
+
+  const ensureTeam = async (name: string) => {
+    const existing = await prisma.team.findFirst({
+      where: {
+        ownerId: input.createdById,
+        name: {
+          equals: name,
+          mode: "insensitive",
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (existing) return existing;
+
+    return prisma.team.create({
+      data: {
+        ownerId: input.createdById,
+        name,
+        shortName: shortCode(name),
+      },
+    });
   };
 
-  let event: EngineBallEvent;
-  switch (eventType) {
-    case "RUN":
-      event = { type: "RUN", runs: Math.max(0, Math.min(6, Math.floor(body.runs ?? 0))), ...basePlayers };
-      break;
-    case "FOUR":
-      event = { type: "FOUR", runs: 4, ...basePlayers };
-      break;
-    case "SIX":
-      event = { type: "SIX", runs: 6, ...basePlayers };
-      break;
-    case "WICKET":
-      event = { type: "WICKET", dismissalKind: body.dismissalKind, ...basePlayers };
-      break;
-    case "WD":
-      event = { type: "WD", runs: Math.max(1, Math.floor(body.runs ?? 1)), ...basePlayers };
-      break;
-    case "NB":
-      event = { type: "NB", runs: Math.max(1, Math.floor(body.runs ?? 1)), ...basePlayers };
-      break;
-    case "BYE":
-      event = { type: "BYE", runs: Math.max(1, Math.floor(body.runs ?? 1)), ...basePlayers };
-      break;
-    case "LB":
-      event = { type: "LB", runs: Math.max(1, Math.floor(body.runs ?? 1)), ...basePlayers };
-      break;
-    default:
-      return NextResponse.json({ success: false, error: "Unsupported event" }, { status: 400 });
+  const [teamA, teamB] = await Promise.all([ensureTeam(teamAName), ensureTeam(teamBName)]);
+
+  return prisma.hostedMatch.upsert({
+    where: { slug },
+    update: {
+      title: `${teamAName} vs ${teamBName}`,
+      teamAId: teamA.id,
+      teamBId: teamB.id,
+      status: "LIVE",
+      scoringMode: "LIVE",
+      visibility: "PUBLIC",
+      format: "LIVE",
+      venue: null,
+    },
+    create: {
+      slug,
+      title: `${teamAName} vs ${teamBName}`,
+      format: "LIVE",
+      venue: null,
+      startTime: new Date(),
+      createdById: input.createdById,
+      teamAId: teamA.id,
+      teamBId: teamB.id,
+      status: "LIVE",
+      visibility: "PUBLIC",
+      scoringMode: "LIVE",
+    },
+  });
+}
+
+export async function getHostedMatchBySlug(slug: string) {
+  return prisma.hostedMatch.findUnique({
+    where: { slug },
+    include: {
+      teamA: true,
+      teamB: true,
+      members: true,
+    },
+  });
+}
+
+export async function updateHostedMatchByOwner(
+  id: string,
+  ownerId: string,
+  input: UpdateHostedMatchInput,
+): Promise<HostedMatch | null> {
+  const existing = await prisma.hostedMatch.findUnique({ where: { id } });
+  if (!existing || existing.createdById !== ownerId) {
+    return null;
   }
 
-  event.id = randomUUID();
-  event.eventSource = "MANUAL";
-  event.timestamp = Date.now();
+  return prisma.hostedMatch.update({
+    where: { id },
+    data: {
+      ...(input.title !== undefined ? { title: input.title.trim() } : {}),
+      ...(input.format !== undefined ? { format: input.format.trim() } : {}),
+      ...(input.venue !== undefined ? { venue: input.venue?.trim() || null } : {}),
+      ...(input.startTime !== undefined ? { startTime: input.startTime } : {}),
+      ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(input.visibility !== undefined ? { visibility: input.visibility } : {}),
+      ...(input.scoringMode !== undefined ? { scoringMode: input.scoringMode } : {}),
+    },
+  });
+}
 
-  const result = dispatchBallEvent(hostedMatch.slug, event);
-  if (!result.ok) {
-    return NextResponse.json({ success: false, error: result.reason }, { status: 400 });
+export async function deleteHostedMatchByOwner(id: string, ownerId: string): Promise<boolean> {
+  const existing = await prisma.hostedMatch.findUnique({ where: { id } });
+  if (!existing || existing.createdById !== ownerId) {
+    return false;
   }
 
-  const storage = new RedisSimulationStorage();
-  await storage.save(hostedMatch.slug, result.state, {
-    isRunning: true,
-    isPaused: false,
-    speed: 1,
+  await prisma.hostedMatch.delete({ where: { id } });
+  return true;
+}
+
+export async function upsertHostedMatchMember(input: {
+  hostedMatchId: string;
+  userId: string;
+  role: string;
+}): Promise<HostedMatchMember> {
+  return prisma.hostedMatchMember.upsert({
+    where: {
+      hostedMatchId_userId: {
+        hostedMatchId: input.hostedMatchId,
+        userId: input.userId,
+      },
+    },
+    update: {
+      role: input.role,
+    },
+    create: {
+      hostedMatchId: input.hostedMatchId,
+      userId: input.userId,
+      role: input.role,
+    },
+  });
+}
+
+export async function removeHostedMatchMember(hostedMatchId: string, userId: string): Promise<void> {
+  await prisma.hostedMatchMember.deleteMany({
+    where: {
+      hostedMatchId,
+      userId,
+    },
+  });
+}
+
+export async function hasHostedMatchControlAccess(hostedMatchId: string, userId: string, userRole?: string): Promise<boolean> {
+  const hostedMatch = await prisma.hostedMatch.findUnique({
+    where: { id: hostedMatchId },
+    include: {
+      members: true,
+    },
   });
 
-  return NextResponse.json({ success: true, data: result.state });
+  if (!hostedMatch) return false;
+  if (hostedMatch.createdById === userId) return true;
+  if (userRole === "admin" || userRole === "operator" || userRole === "internal") return true;
+
+  return hostedMatch.members.some((member) => {
+    if (member.userId !== userId) return false;
+    return ["SCORER", "OPERATOR"].includes(member.role.toUpperCase());
+  });
 }

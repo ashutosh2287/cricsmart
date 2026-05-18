@@ -16,15 +16,171 @@ model User {
   avatarUrl    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  teams                 Team[]
+  hostedMatches         HostedMatch[]       @relation("HostedMatchCreator")
+  hostedMatchRoles      HostedMatchMember[]
+  tournaments           Tournament[]        @relation("TournamentOrganizer")
+  playerProfile         PlayerProfile?
+  teamFollows           TeamFollow[]
+  favoriteTeams         FavoriteTeam[]
+  savedMatches          SavedMatch[]
+  tournamentMemberships TournamentMember[]
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  shortName String
+  logoUrl   String?
+  ownerId   String
+  city      String?
+  createdAt DateTime @default(now())
+
+  owner           User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  hostedMatchesA  HostedMatch[]       @relation("HostedMatchTeamA")
+  hostedMatchesB  HostedMatch[]       @relation("HostedMatchTeamB")
+  tournamentTeams TournamentTeam[]
+  followers       TeamFollow[]
+  favorites       FavoriteTeam[]
+}
+
+model PlayerProfile {
+  id           String   @id @default(cuid())
+  userId       String?  @unique
+  displayName  String
+  battingStyle String?
+  bowlingStyle String?
+  role         String?
+  statsSnapshot Json?
+  createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 model HostedMatch {
-  id             String   @id @default(cuid())
-  externalMatchId String? @unique
-  teamA          String
-  teamB          String
-  type           String   @default("LIVE")
-  runtimeMatchId String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  format      String
+  venue       String?
+  startTime   DateTime
+  createdById String
+  teamAId     String
+  teamBId     String
+  status      String   @default("DRAFT")
+  visibility  String   @default("PUBLIC")
+  scoringMode String   @default("LIVE")
+  createdAt   DateTime @default(now())
+
+  createdBy         User                @relation("HostedMatchCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  teamA             Team                @relation("HostedMatchTeamA", fields: [teamAId], references: [id], onDelete: Restrict)
+  teamB             Team                @relation("HostedMatchTeamB", fields: [teamBId], references: [id], onDelete: Restrict)
+  members           HostedMatchMember[]
+  tournamentMatches TournamentMatch[]
+  savedByUsers      SavedMatch[]
+}
+
+model HostedMatchMember {
+  id            String   @id @default(cuid())
+  hostedMatchId String
+  userId        String
+  role          String
+  createdAt     DateTime @default(now())
+
+  hostedMatch HostedMatch @relation(fields: [hostedMatchId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([hostedMatchId, userId])
+}
+
+model Tournament {
+  id          String   @id @default(cuid())
+  name        String
+  organizerId String
+  format      String?
+  location    String?
+  bannerUrl   String?
+  startDate   DateTime
+  endDate     DateTime
+  visibility  String   @default("PUBLIC")
+  createdAt   DateTime @default(now())
+
+  organizer   User               @relation("TournamentOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
+  teams       TournamentTeam[]
+  matches     TournamentMatch[]
+  memberships TournamentMember[]
+}
+
+model TournamentTeam {
+  id           String   @id @default(cuid())
+  tournamentId String
+  teamId       String
+  createdAt    DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, teamId])
+}
+
+model TournamentMatch {
+  id            String   @id @default(cuid())
+  tournamentId  String
+  hostedMatchId String
+  createdAt     DateTime @default(now())
+
+  tournament  Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  hostedMatch HostedMatch @relation(fields: [hostedMatchId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, hostedMatchId])
+}
+
+model TeamFollow {
+  id        String   @id @default(cuid())
+  userId    String
+  teamId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+}
+
+model FavoriteTeam {
+  id        String   @id @default(cuid())
+  userId    String
+  teamId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+}
+
+model SavedMatch {
+  id            String   @id @default(cuid())
+  userId        String
+  hostedMatchId String
+  createdAt     DateTime @default(now())
+
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hostedMatch HostedMatch @relation(fields: [hostedMatchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, hostedMatchId])
+}
+
+model TournamentMember {
+  id           String   @id @default(cuid())
+  tournamentId String
+  userId       String
+  role         String   @default("MEMBER")
+  createdAt    DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, userId])
 }

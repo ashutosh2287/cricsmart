@@ -23,10 +23,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ matchI
     return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
   }
 
-  const runtimeMatchId = hostedMatch.slug;
+  const matchSlug = hostedMatch.slug;
 
-  initMatch(runtimeMatchId);
-  const state = getMatchState(runtimeMatchId);
+  initMatch(matchSlug);
+  const state = getMatchState(matchSlug);
   if (!state) {
     return NextResponse.json({ success: false, error: "Failed to initialize MatchEngine" }, { status: 500 });
   }
@@ -35,15 +35,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ matchI
   state.teamB.name = hostedMatch.teamB.name;
 
   const storage = new RedisSimulationStorage();
-  await storage.save(runtimeMatchId, state, {
+  await storage.save(matchSlug, state, {
     isRunning: true,
     isPaused: false,
     speed: 1,
   });
 
   await upsertMatchRegistry({
-    matchId: runtimeMatchId,
-    slug: runtimeMatchId,
+    matchId: matchSlug,
+    slug: matchSlug,
     teamA: hostedMatch.teamA.name,
     teamB: hostedMatch.teamB.name,
     status: "LIVE",
@@ -57,8 +57,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ matchI
   return NextResponse.json({
     success: true,
     data: {
-      matchId: runtimeMatchId,
-      matchCenterUrl: `/match/${runtimeMatchId}`,
+      matchId: matchSlug,
+      matchCenterUrl: `/match/${matchSlug}`,
       adminUrl: `/hosted-matches/${matchId}/control`,
       scoreUrl: `/hosted-matches/${matchId}/score`,
     },

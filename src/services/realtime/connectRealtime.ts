@@ -150,7 +150,7 @@ function openSocket(matchId: string) {
         return;
       }
       if (!matchMeta.toss?.winner || !matchMeta.toss?.decision) {
-        console.error("ENGINE ERROR: missing toss metadata");
+        console.warn("ENGINE WARN: skipping auto-start (missing toss metadata)");
         return;
       }
 

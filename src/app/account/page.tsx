@@ -23,15 +23,30 @@ export default async function AccountDashboardPage() {
           <p className="mt-1 text-sm text-[var(--text-secondary)]">Manage account preferences</p>
         </Link>
 
-        <div className={cardClass}>
-          <p className="text-base font-semibold text-[var(--text-primary)]">Notifications</p>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">Coming soon</p>
-        </div>
+        <Link href="/account/teams" className={cardClass}>
+          <p className="text-base font-semibold text-[var(--text-primary)]">My Teams</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Create and manage owned teams</p>
+        </Link>
 
-        <div className={cardClass}>
-          <p className="text-base font-semibold text-[var(--text-primary)]">Subscription</p>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">Coming soon</p>
-        </div>
+        <Link href="/account/hosted-matches" className={cardClass}>
+          <p className="text-base font-semibold text-[var(--text-primary)]">Hosted Matches</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Create hosted matches and scoring controls</p>
+        </Link>
+
+        <Link href="/account/tournaments" className={cardClass}>
+          <p className="text-base font-semibold text-[var(--text-primary)]">My Tournaments</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Create tournaments and manage fixtures</p>
+        </Link>
+
+        <Link href="/account/saved" className={cardClass}>
+          <p className="text-base font-semibold text-[var(--text-primary)]">Saved & Favorites</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Saved matches and favorite teams</p>
+        </Link>
+
+        <Link href="/account/activity" className={cardClass}>
+          <p className="text-base font-semibold text-[var(--text-primary)]">Activity Feed</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Recent platform actions and updates</p>
+        </Link>
       </div>
 
       <div className="pt-2">

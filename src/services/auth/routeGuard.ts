@@ -8,10 +8,11 @@ import {
   isSseAuthEnabled,
 } from "@/config/auth";
 import { logger } from "@/lib/logger";
+import { requiresAuthFor } from "@/services/auth/accessPolicy";
 import type { AuthSession } from "@/services/auth/authTypes";
 import { getAuthSessionFromRequest } from "@/services/auth/sessionStore";
 
-type GuardScope = "admin" | "internal" | "sse";
+type GuardScope = "creator" | "admin" | "internal" | "sse";
 
 type AuthGuardOptions = {
   req: NextRequest | Request;
@@ -20,6 +21,7 @@ type AuthGuardOptions = {
 };
 
 function isScopeEnabled(scope: GuardScope): boolean {
+  if (scope === "creator") return requiresAuthFor("CREATOR_ACTION") && isAuthEnabled();
   if (!isAuthEnabled()) return false;
   if (scope === "internal") return isInternalProtectionEnabled();
   if (scope === "admin") return isAdminProtectionEnabled();
@@ -27,6 +29,7 @@ function isScopeEnabled(scope: GuardScope): boolean {
 }
 
 function defaultRolesForScope(scope: GuardScope): AuthRole[] {
+  if (scope === "creator") return ["public", "operator", "admin", "internal"];
   if (scope === "internal") return ["internal", "admin"];
   return ["operator", "admin", "internal"];
 }

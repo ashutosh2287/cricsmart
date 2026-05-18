@@ -25,6 +25,13 @@ export type UpdateHostedMatchInput = {
   scoringMode?: string;
 };
 
+type UpsertHostedLiveMatchInput = {
+  externalMatchId: string;
+  teamA: string;
+  teamB: string;
+  createdById: string;
+};
+
 export async function createHostedMatch(input: CreateHostedMatchInput): Promise<HostedMatch> {
   return prisma.hostedMatch.create({
     data: {
@@ -73,6 +80,103 @@ export async function getHostedMatchById(id: string) {
       teamA: true,
       teamB: true,
       members: true,
+    },
+  });
+}
+
+export async function findHostedMatchById(id: string) {
+  return getHostedMatchById(id);
+}
+
+export async function upsertHostedLiveMatch(input: UpsertHostedLiveMatchInput): Promise<HostedMatch> {
+  const normalizedExternalId = input.externalMatchId.trim().toLowerCase();
+  const teamAName = input.teamA.trim();
+  const teamBName = input.teamB.trim();
+  const toSafeSlugFragment = (value: string) => {
+    let result = "";
+    let previousWasDash = false;
+
+    for (const char of value) {
+      const isAlphaNumeric =
+        (char >= "a" && char <= "z") || (char >= "0" && char <= "9");
+
+      if (isAlphaNumeric) {
+        result += char;
+        previousWasDash = false;
+      } else if (!previousWasDash && result.length > 0) {
+        result += "-";
+        previousWasDash = true;
+      }
+    }
+
+    if (result.endsWith("-")) {
+      result = result.slice(0, -1);
+    }
+
+    return result || "match";
+  };
+
+  const slug = `live-${toSafeSlugFragment(normalizedExternalId)}`;
+
+  const shortCode = (name: string) =>
+    name
+      .replace(/[^a-zA-Z0-9 ]+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 3)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") || name.slice(0, 3).toUpperCase();
+
+  const ensureTeam = async (name: string) => {
+    const existing = await prisma.team.findFirst({
+      where: {
+        ownerId: input.createdById,
+        name: {
+          equals: name,
+          mode: "insensitive",
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (existing) return existing;
+
+    return prisma.team.create({
+      data: {
+        ownerId: input.createdById,
+        name,
+        shortName: shortCode(name),
+      },
+    });
+  };
+
+  const [teamA, teamB] = await Promise.all([ensureTeam(teamAName), ensureTeam(teamBName)]);
+
+  return prisma.hostedMatch.upsert({
+    where: { slug },
+    update: {
+      title: `${teamAName} vs ${teamBName}`,
+      teamAId: teamA.id,
+      teamBId: teamB.id,
+      status: "LIVE",
+      scoringMode: "LIVE",
+      visibility: "PUBLIC",
+      format: "LIVE",
+      venue: null,
+    },
+    create: {
+      slug,
+      title: `${teamAName} vs ${teamBName}`,
+      format: "LIVE",
+      venue: null,
+      startTime: new Date(),
+      createdById: input.createdById,
+      teamAId: teamA.id,
+      teamBId: teamB.id,
+      status: "LIVE",
+      visibility: "PUBLIC",
+      scoringMode: "LIVE",
     },
   });
 }

@@ -5,6 +5,12 @@ import { requireRouteAccess } from "@/services/auth/routeGuard";
 export async function POST(req: NextRequest) {
   const access = await requireRouteAccess({ req, scope: "admin" });
   if (!access.ok) return access.response;
+  if (!access.session) {
+    return NextResponse.json(
+      { success: false, message: "Authenticated session required" },
+      { status: 401 }
+    );
+  }
 
   try {
     const body = await req.json();
@@ -27,6 +33,7 @@ export async function POST(req: NextRequest) {
       externalMatchId,
       teamA,
       teamB,
+      createdById: access.session.userId,
     });
 
     return NextResponse.json({

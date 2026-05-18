@@ -27,12 +27,18 @@ type HostedMatchDelegate = {
   update(args: { where: { id: string }; data: { runtimeMatchId: string } }): Promise<HostedMatch>;
 };
 
+let hostedMatchDelegateCache: HostedMatchDelegate | null = null;
+
 function getHostedMatchDelegate(): HostedMatchDelegate {
+  if (hostedMatchDelegateCache) {
+    return hostedMatchDelegateCache;
+  }
   const candidate = prisma as unknown as { hostedMatch?: HostedMatchDelegate };
   if (!candidate.hostedMatch) {
     throw new Error('Prisma client is missing "hostedMatch". Run "npx prisma generate".');
   }
-  return candidate.hostedMatch;
+  hostedMatchDelegateCache = candidate.hostedMatch;
+  return hostedMatchDelegateCache;
 }
 
 export async function findHostedMatchById(id: string): Promise<HostedMatch | null> {

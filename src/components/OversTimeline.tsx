@@ -23,8 +23,8 @@ type OverSummary = {
 
 function getBallLabel(ball: BallEvent) {
   if (ball.type === "WICKET" || ball.wicket) return "W";
-  if (ball.type === "WD" || ball.extraType === "WD") return "Wd";
-  if (ball.type === "NB" || ball.extraType === "NB") return "Nb";
+  if (ball.type === "WD") return "Wd";
+  if (ball.type === "NB") return "Nb";
   const totalRuns = ball.totalRuns ?? ball.runs ?? 0;
   if (totalRuns === 0) return "•";
   return String(totalRuns);

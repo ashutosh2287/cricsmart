@@ -16,7 +16,7 @@ export default async function HostedMatchPage({ params }: { params: Promise<{ id
     <div className="mx-auto w-full max-w-3xl space-y-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
       <h1 className="text-2xl font-semibold text-[var(--text-primary)]">{hostedMatch.title}</h1>
       <p className="text-sm text-[var(--text-secondary)]">
-        {hostedMatch.teamA.name} vs {hostedMatch.teamB.name}
+        {hostedMatch.teamA?.name} vs {hostedMatch.teamB?.name}
       </p>
       <p className="text-xs text-[var(--text-muted)]">{hostedMatch.format} · {hostedMatch.venue ?? "Venue TBD"}</p>
 

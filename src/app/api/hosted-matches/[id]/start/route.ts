@@ -23,6 +23,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
   }
 
+  if (!hostedMatch.teamA || !hostedMatch.teamB) {
+    return NextResponse.json({ success: false, error: "Match teams not configured" }, { status: 400 });
+  }
+
   const matchId = hostedMatch.slug;
 
   initMatch(matchId);

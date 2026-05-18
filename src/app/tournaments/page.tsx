@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { listTournamentsPublic } from "@/lib/repositories/tournament.repository";
 
+export const dynamic = "force-dynamic";
+
 export default async function TournamentsPage() {
   const tournaments = await listTournamentsPublic();
 

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { listHostedMatchesPublic } from "@/lib/repositories/hostedMatch.repository";
 
+export const dynamic = "force-dynamic";
+
 export default async function HostedMatchesPage() {
   const hostedMatches = await listHostedMatchesPublic();
 

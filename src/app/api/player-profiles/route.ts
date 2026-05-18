@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { createPlayerProfile, listPlayerProfiles } from "@/lib/repositories/playerProfile.repository";
 import { requireRouteAccess } from "@/services/auth/routeGuard";
 
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
     battingStyle?: string;
     bowlingStyle?: string;
     role?: string;
-    statsSnapshot?: Record<string, unknown>;
+    statsSnapshot?: Prisma.InputJsonValue;
   };
 
   const displayName = body.displayName?.trim();

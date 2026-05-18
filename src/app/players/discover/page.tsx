@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { listPlayerProfiles } from "@/lib/repositories/playerProfile.repository";
 
+export const dynamic = "force-dynamic";
+
 export default async function DiscoverPlayersPage() {
   const players = await listPlayerProfiles();
 

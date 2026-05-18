@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTournamentById } from "@/lib/repositories/tournament.repository";
 
+export const dynamic = "force-dynamic";
+
 export default async function TournamentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const tournament = await getTournamentById(id);

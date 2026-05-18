@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { listTeams } from "@/lib/repositories/team.repository";
 
+export const dynamic = "force-dynamic";
+
 export default async function TeamsPage() {
   const teams = await listTeams();
 

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import TeamEngagementButtons from "@/components/teams/TeamEngagementButtons";
 import { getTeamById } from "@/lib/repositories/team.repository";
 
+export const dynamic = "force-dynamic";
+
 export default async function TeamProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const team = await getTeamById(id);

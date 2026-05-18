@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { getPlayerProfileById } from "@/lib/repositories/playerProfile.repository";
 
+export const dynamic = "force-dynamic";
+
 export default async function PlayerProfileDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const profile = await getPlayerProfileById(id);

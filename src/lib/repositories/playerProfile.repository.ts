@@ -1,4 +1,4 @@
-import type { PlayerProfile } from "@prisma/client";
+import { Prisma, type PlayerProfile } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 
 export type CreatePlayerProfileInput = {
@@ -7,7 +7,7 @@ export type CreatePlayerProfileInput = {
   battingStyle?: string;
   bowlingStyle?: string;
   role?: string;
-  statsSnapshot?: Record<string, unknown>;
+  statsSnapshot?: Prisma.InputJsonValue;
 };
 
 export async function createPlayerProfile(input: CreatePlayerProfileInput): Promise<PlayerProfile> {

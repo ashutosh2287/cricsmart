@@ -146,9 +146,16 @@ export default function MatchGraphExplorer({
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ChartTab>("winProbability");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("both");
+  const effectiveWinProbabilityData = useMemo(
+    () =>
+      winProbabilityData.length
+        ? winProbabilityData
+        : [{ over: 0, batting: 50, bowling: 50 }],
+    [winProbabilityData]
+  );
 
-  const latestWinPoint = winProbabilityData.length
-    ? winProbabilityData[winProbabilityData.length - 1]
+  const latestWinPoint = effectiveWinProbabilityData.length
+    ? effectiveWinProbabilityData[effectiveWinProbabilityData.length - 1]
     : null;
   const latestMomentum = momentumData.length
     ? momentumData[momentumData.length - 1]?.score ?? 0
@@ -230,7 +237,7 @@ export default function MatchGraphExplorer({
             onClick={() => setIsOpen(true)}
             className="inline-flex items-center justify-center rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-raised)]/70 px-4 py-2 text-sm font-medium text-[var(--text-primary)] transition hover:bg-[var(--bg-raised)]"
           >
-            View graph ›
+            View Graphs ›
           </button>
         </div>
 
@@ -410,7 +417,7 @@ export default function MatchGraphExplorer({
                   description="Tracks the likely winner over time. The green line represents the current batting side and the red line represents the bowling side."
                 >
                   <WinProbabilityChart
-                    data={winProbabilityData}
+                    data={effectiveWinProbabilityData}
                     team1={currentBattingTeam}
                     team2={currentBowlingTeam}
                   />

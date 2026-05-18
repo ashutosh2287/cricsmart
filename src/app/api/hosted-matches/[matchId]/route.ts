@@ -8,9 +8,9 @@ import {
 import { requireRouteAccess } from "@/services/auth/routeGuard";
 import { getAuthSessionFromRequest } from "@/services/auth/sessionStore";
 
-export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const { id } = await context.params;
-  const hostedMatch = await getHostedMatchById(id);
+export async function GET(req: NextRequest, context: { params: Promise<{ matchId: string }> }) {
+  const { matchId } = await context.params;
+  const hostedMatch = await getHostedMatchById(matchId);
 
   if (!hostedMatch) {
     return NextResponse.json({ success: false, error: "Hosted match not found" }, { status: 404 });
@@ -22,23 +22,26 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       return NextResponse.json({ success: false, error: "Hosted match not available" }, { status: 404 });
     }
 
-    const canAccess = await hasHostedMatchControlAccess(id, session.userId, session.role);
+    const canAccess =
+      session.user.role === "admin" ||
+      session.user.role === "internal" ||
+      (await hasHostedMatchControlAccess(matchId, session.userId, session.role));
     if (!canAccess) {
       return NextResponse.json({ success: false, error: "Hosted match not available" }, { status: 404 });
     }
   }
 
-  return NextResponse.json({ success: true, data: hostedMatch });
+  return NextResponse.json({ success: true, data: hostedMatch, hostedMatch });
 }
 
-export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function PATCH(req: NextRequest, context: { params: Promise<{ matchId: string }> }) {
   const access = await requireRouteAccess({ req, scope: "creator" });
   if (!access.ok) return access.response;
   if (!access.session) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await context.params;
+  const { matchId } = await context.params;
   const body = (await req.json()) as {
     title?: string;
     format?: string;
@@ -49,7 +52,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     scoringMode?: string;
   };
 
-  const updated = await updateHostedMatchByOwner(id, access.session.userId, {
+  const updated = await updateHostedMatchByOwner(matchId, access.session.userId, {
     title: body.title,
     format: body.format,
     venue: body.venue,
@@ -66,15 +69,15 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
   return NextResponse.json({ success: true, data: updated });
 }
 
-export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, context: { params: Promise<{ matchId: string }> }) {
   const access = await requireRouteAccess({ req, scope: "creator" });
   if (!access.ok) return access.response;
   if (!access.session) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await context.params;
-  const deleted = await deleteHostedMatchByOwner(id, access.session.userId);
+  const { matchId } = await context.params;
+  const deleted = await deleteHostedMatchByOwner(matchId, access.session.userId);
 
   if (!deleted) {
     return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });

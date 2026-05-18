@@ -7,15 +7,15 @@ import {
 } from "@/lib/repositories/hostedMatch.repository";
 import { requireRouteAccess } from "@/services/auth/routeGuard";
 
-export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, context: { params: Promise<{ matchId: string }> }) {
   const access = await requireRouteAccess({ req, scope: "creator" });
   if (!access.ok) return access.response;
   if (!access.session) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await context.params;
-  const hostedMatch = await getHostedMatchById(id);
+  const { matchId } = await context.params;
+  const hostedMatch = await getHostedMatchById(matchId);
 
   if (!hostedMatch || hostedMatch.createdById !== access.session.userId) {
     return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   }
 
   const member = await upsertHostedMatchMember({
-    hostedMatchId: id,
+    hostedMatchId: matchId,
     userId: targetUser.id,
     role,
   });
@@ -43,15 +43,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   return NextResponse.json({ success: true, data: member });
 }
 
-export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, context: { params: Promise<{ matchId: string }> }) {
   const access = await requireRouteAccess({ req, scope: "creator" });
   if (!access.ok) return access.response;
   if (!access.session) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await context.params;
-  const hostedMatch = await getHostedMatchById(id);
+  const { matchId } = await context.params;
+  const hostedMatch = await getHostedMatchById(matchId);
 
   if (!hostedMatch || hostedMatch.createdById !== access.session.userId) {
     return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
@@ -64,6 +64,6 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
   }
 
-  await removeHostedMatchMember(id, userId);
+  await removeHostedMatchMember(matchId, userId);
   return NextResponse.json({ success: true });
 }

@@ -14,6 +14,18 @@ export type RealtimeEvent = {
   };
 };
 
+function dispatchCricUpdate(type: string, data: RealtimeEvent["data"]) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent("CRIC_UPDATE", {
+      detail: {
+        type,
+        ...(data && typeof data === "object" ? data : {}),
+      },
+    })
+  );
+}
+
 export function routeRealtimeEvent(payload: RealtimeEvent) {
   const { type, matchId, data } = payload;
 
@@ -37,6 +49,7 @@ export function routeRealtimeEvent(payload: RealtimeEvent) {
 
   // ✅ Here data IS MatchState
   setMatchState(matchId, data as MatchState);
+  dispatchCricUpdate(type, data);
   break;
 }
 
@@ -69,6 +82,7 @@ export function routeRealtimeEvent(payload: RealtimeEvent) {
   });
 
   setMatchState(matchId, committedState);
+  dispatchCricUpdate(type, data);
   break;
 }
 
@@ -79,6 +93,7 @@ export function routeRealtimeEvent(payload: RealtimeEvent) {
     */
     case "MATCH_ENDED":
       console.log("🏁 MATCH ENDED");
+      dispatchCricUpdate(type, data);
       break;
   }
 }

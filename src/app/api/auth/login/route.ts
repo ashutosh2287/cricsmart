@@ -10,12 +10,18 @@ import { toAuthRole } from "@/services/auth/roles";
 import { createAuthSession, setAuthSessionCookie } from "@/services/auth/sessionStore";
 
 function failureResponse(status = 401) {
-  return NextResponse.json({ success: false, error: "Invalid credentials" }, { status });
+  return NextResponse.json(
+    { success: false, error: "Invalid credentials" },
+    { status }
+  );
 }
 
 export async function POST(req: NextRequest) {
   if (!isAuthEnabled()) {
-    return NextResponse.json({ success: false, error: "Authentication disabled" }, { status: 404 });
+    return NextResponse.json(
+      { success: false, error: "Authentication disabled" },
+      { status: 404 }
+    );
   }
 
   try {
@@ -23,26 +29,42 @@ export async function POST(req: NextRequest) {
     try {
       body = await req.json();
     } catch {
-      return NextResponse.json({ success: false, error: "Invalid request payload" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Invalid request payload" },
+        { status: 400 }
+      );
     }
 
     const payload = parseLoginPayload(body);
     if (!payload.success) {
-      return NextResponse.json({ success: false, error: payload.error }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: payload.error },
+        { status: 400 }
+      );
     }
 
     if (await isAuthRouteRateLimited("login", req)) {
-      logger.warn("AUTH", "login_rate_limited", { identifier: payload.data.identifier });
+      logger.warn("AUTH", "login_rate_limited", {
+        identifier: payload.data.identifier,
+      });
       return NextResponse.json(
-        { success: false, error: "Too many login attempts. Please try again in 15 minutes." },
+        {
+          success: false,
+          error: "Too many login attempts. Please try again in 15 minutes.",
+        },
         { status: 429 }
       );
     }
 
     const user = await findByEmailOrUsername(payload.data.identifier);
-    const isValid = user ? await verifyPassword(payload.data.password, user.passwordHash) : false;
+    const isValid = user
+      ? await verifyPassword(payload.data.password, user.passwordHash)
+      : false;
+
     if (!user || !isValid) {
-      logger.warn("AUTH", "login_failed", { identifier: payload.data.identifier });
+      logger.warn("AUTH", "login_failed", {
+        identifier: payload.data.identifier,
+      });
       return failureResponse();
     }
 
@@ -73,6 +95,9 @@ export async function POST(req: NextRequest) {
     logger.error("AUTH", "login_error", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Authentication failed" },
+      { status: 500 }
+    );
   }
 }

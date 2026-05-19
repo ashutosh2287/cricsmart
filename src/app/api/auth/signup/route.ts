@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthEnabled } from "@/config/auth";
-import { createUser, findByEmail, findByUsername } from "@/lib/repositories/user.repository";
+import {
+  createUser,
+  findByEmail,
+  findByUsername,
+} from "@/lib/repositories/user.repository";
 import { logger } from "@/lib/logger";
 import { isAuthRouteRateLimited } from "@/services/auth/authRateLimit";
 import { parseSignupPayload } from "@/services/auth/authValidation";
@@ -14,7 +18,10 @@ function errorResponse(error: string, status = 400) {
 
 export async function POST(req: NextRequest) {
   if (!isAuthEnabled()) {
-    return NextResponse.json({ success: false, error: "Authentication disabled" }, { status: 404 });
+    return NextResponse.json(
+      { success: false, error: "Authentication disabled" },
+      { status: 404 }
+    );
   }
 
   try {
@@ -31,7 +38,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (await isAuthRouteRateLimited("signup", req)) {
-      return errorResponse("Too many signup attempts. Please try again in 15 minutes.", 429);
+      return errorResponse(
+        "Too many signup attempts. Please try again in 15 minutes.",
+        429
+      );
     }
 
     const [existingByEmail, existingByUsername] = await Promise.all([
@@ -39,13 +49,8 @@ export async function POST(req: NextRequest) {
       findByUsername(payload.data.username),
     ]);
 
-    if (existingByEmail) {
-      return errorResponse("Email already exists", 409);
-    }
-
-    if (existingByUsername) {
-      return errorResponse("Username already exists", 409);
-    }
+    if (existingByEmail) return errorResponse("Email already exists", 409);
+    if (existingByUsername) return errorResponse("Username already exists", 409);
 
     const passwordHash = await hashPassword(payload.data.password);
     const user = await createUser({
@@ -76,6 +81,9 @@ export async function POST(req: NextRequest) {
     logger.error("AUTH", "signup_error", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ success: false, error: "Authentication failed" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Authentication failed" },
+      { status: 500 }
+    );
   }
 }

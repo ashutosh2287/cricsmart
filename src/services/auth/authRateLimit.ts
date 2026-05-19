@@ -26,11 +26,11 @@ function normalizeRedisResult(result: unknown): unknown {
 function createUpstashRedisAdapter(redis: IORedis): UpstashCompatibleRedis {
   return {
     async evalsha<TData = unknown>(sha: string, keys: string[], args: unknown[]) {
-      const result = await redis.evalsha(sha, keys.length, ...keys, ...args.map((value) => String(value)));
+      const result = await redis.evalsha(sha, keys.length, ...keys, ...args.map((v) => String(v)));
       return normalizeRedisResult(result) as TData;
     },
     async eval<TData = unknown>(script: string, keys: string[], args: unknown[]) {
-      const result = await redis.eval(script, keys.length, ...keys, ...args.map((value) => String(value)));
+      const result = await redis.eval(script, keys.length, ...keys, ...args.map((v) => String(v)));
       return normalizeRedisResult(result) as TData;
     },
     async get<TData = string>(key: string) {
@@ -63,6 +63,9 @@ function getRateLimiters(): Record<AuthRateLimitRoute, AuthRouteLimiter> {
   return rateLimiters;
 }
 
-export async function isAuthRouteRateLimited(route: AuthRateLimitRoute, req: Request): Promise<boolean> {
+export async function isAuthRouteRateLimited(
+  route: AuthRateLimitRoute,
+  req: Request
+): Promise<boolean> {
   return await isRateLimitedForRoute(route, req, getRateLimiters());
 }

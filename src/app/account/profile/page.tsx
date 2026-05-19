@@ -3,7 +3,7 @@ import { findById } from "@/lib/repositories/user.repository";
 import { getRequiredRequestAuthSession } from "@/services/auth/serverRequestContext";
 
 export default async function AccountProfilePage() {
-  const session = await getRequiredRequestAuthSession();
+  const session = await getRequiredRequestAuthSession("/account/profile");
   const user = await findById(session.userId);
 
   return (

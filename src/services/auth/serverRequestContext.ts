@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import type { AuthSession } from "@/services/auth/authTypes";
 import { readAuthSessionFromHeaders } from "@/services/auth/requestContext";
 
@@ -7,10 +8,14 @@ export async function getRequestAuthSession(): Promise<AuthSession | null> {
   return readAuthSessionFromHeaders(headerStore);
 }
 
-export async function getRequiredRequestAuthSession(): Promise<AuthSession> {
+function resolveLoginRedirectTarget(path: string): string {
+  return `/login?redirect=${encodeURIComponent(path)}`;
+}
+
+export async function getRequiredRequestAuthSession(redirectPath = "/"): Promise<AuthSession> {
   const session = await getRequestAuthSession();
   if (!session) {
-    throw new Error("Missing authenticated request context");
+    redirect(resolveLoginRedirectTarget(redirectPath));
   }
   return session;
 }

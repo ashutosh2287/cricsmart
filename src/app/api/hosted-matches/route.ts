@@ -53,9 +53,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: "Invalid teams" }, { status: 400 });
   }
 
-  if (teamA.ownerId !== access.session.userId || teamB.ownerId !== access.session.userId) {
+  const ownsTeamA = teamA.ownerId === access.session.userId;
+  const ownsTeamB = teamB.ownerId === access.session.userId;
+  if (!ownsTeamA || !ownsTeamB) {
     return NextResponse.json(
-      { success: false, error: "Only team owners can assign teams to a hosted match" },
+      { success: false, error: "You must own both participating teams to create this hosted match" },
       { status: 403 },
     );
   }

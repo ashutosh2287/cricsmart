@@ -1,4 +1,4 @@
-import { Prisma, TeamMemberRole, TeamVisibility, type Team } from "@prisma/client";
+import { Prisma, TeamMemberRole, TeamVisibility, type Team, type TeamMember } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { generateUniqueSlug } from "@/lib/utils/slug";
 
@@ -267,7 +267,7 @@ export async function isTeamMember(teamId: string, userId: string): Promise<bool
   return team.members.length > 0;
 }
 
-async function addTeamMember(teamId: string, userId: string) {
+async function addTeamMember(teamId: string, userId: string): Promise<TeamMember> {
   return prisma.teamMember.create({
     data: {
       teamId,

@@ -15,17 +15,16 @@ import { getWinProbabilityTimeline } from "@/services/analytics/winProbabilityTi
 import { processMomentumEvent } from "@/services/analytics/momentumTimelineEngine";
 import { computeWinProbability } from "@/services/winProbabilityEngine";
 import { getAnalytics } from "@/services/analytics/liveAnalyticsStore";
-import { getBroadcastInsights } from "./broadcast/broadcastInsightEngine";
-import { getCommentary } from "@/services/commentary/commentaryStore";
 import { clearPlayerRegistry } from "./player/playerRegistry";
 import { updatePlayerRegistry } from "./playerRegistryEngine";
-import { broadcast } from "@/services/realtime/eventBus";
-import { appendEventTimeline, resetEventTimeline } from "@/services/replay/eventTimeline";
-import { appendCommentaryTimeline, resetCommentaryTimeline } from "@/services/commentary/commentaryTimelineStore";
+import { resetEventTimeline } from "@/services/replay/eventTimeline";
+import { resetCommentaryTimeline } from "@/services/commentary/commentaryTimelineStore";
 import { recordBallEvent } from "@/services/recording/eventRecorder";
 import { resetPredictionStabilityMetrics } from "@/services/ml/smoothing/stabilityMetrics";
 import { clearPredictionSnapshots } from "@/services/ml/snapshots/featureSnapshotStore";
 import { processCommentaryPipeline, resetCommentaryPipelineState } from "@/services/commentary/orchestration/commentary-pipeline";
+import { emitDomainEvent } from "@/domain/eventBus";
+import { ensureDomainConsumersRegistered } from "@/domain/consumers";
 
 
 
@@ -180,6 +179,8 @@ export const temporalIndex: Record<
   string,
   { index: number; innings: number; over: number }[]
 > = {};
+
+ensureDomainConsumersRegistered();
 
 function cloneState(state: MatchState): MatchState {
   return {
@@ -1252,7 +1253,6 @@ for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [prim
 
 // 🧠 INSIGHTS
 generateBroadcastInsights(matchId);
-const insights = getBroadcastInsights(matchId) || [];
 // 🔥 WIN PROBABILITY (REAL ENGINE)
 const win = computeWinProbability(state);
 
@@ -1286,92 +1286,58 @@ setAnalytics(matchId, {
   })),
 });
 // ========================================
-// 🔥 FINAL BROADCAST (CLEAN & SINGLE)
+// ✅ DOMAIN EVENTS ONLY (NO DIRECT SSE)
 // ========================================
 
 const updatedState = getMatchState(matchId);
 
 if (!updatedState) {
-  console.error("❌ Missing state before broadcast");
+  console.error("❌ Missing state before domain events");
   return {
     ok: false,
     reason: "INVALID_EVENT",
   };
 }
 
-// 📊 FINAL DATA SNAPSHOT
-const analytics = getAnalytics(matchId);
-const commentaryList = getCommentary(matchId);
 const sequence = eventStreams[matchId]?.length ?? 0;
 const eventMeta = {
   eventId: ballEvent.id,
   sequence,
   timestamp: ballEvent.timestamp,
-  matchId,
+  runtimeMatchId: matchId,
   innings: state.currentInningsIndex,
   over: currentInningsState.over,
   ball: currentInningsState.ball,
   eventType: ballEvent.type,
 } as const;
 
-appendEventTimeline(matchId, eventMeta);
-for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent]) {
-  appendCommentaryTimeline({
-    matchId,
-    eventId: commentaryEvent.eventId,
-    sequence,
-    timestamp: commentaryEvent.timestamp,
-    text: commentaryEvent.text,
-    source: "ENGINE",
-  });
-
-  broadcast(matchId, {
-    type: "commentary.generated",
-    matchId,
-    data: commentaryEvent,
-  });
-}
-
-// 📡 BROADCAST BALL EVENT
-broadcast(matchId, {
-  type: "BALL_EVENT",
-  matchId,
-  data: {
-    committedState: updatedState,
-    engineEvent: {
-      id: ballEvent.id,
-    },
-    eventMeta,
-    commentary: commentaryList ?? [],
-    insights: insights ?? [],
-    analytics: analytics ?? null,
-  },
+emitDomainEvent("BALL", {
+  type: "BALL",
+  runtimeMatchId: matchId,
+  state: updatedState,
+  ballEvent,
+  eventMeta,
+  commentaryEvents: commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent],
 });
 
-// 🏁 MATCH END EVENT
-if (updatedState.matchEnded) {
-  broadcast(matchId, {
-    type: "MATCH_ENDED",
-    matchId,
-    data: {
-      winner: updatedState.winner,
-      winBy: updatedState.winBy,
-    },
+if (ballEvent.type === "WICKET") {
+  emitDomainEvent("WICKET", {
+    type: "WICKET",
+    runtimeMatchId: matchId,
+    state: updatedState,
+    ballEvent,
+    eventMeta,
   });
 }
-  
-// ========================================
-// 🏁 MATCH END
-// ========================================
 
 if (updatedState.matchEnded) {
-  broadcast(matchId, {
-    type: "MATCH_ENDED",
-    matchId,
-    data: {
-      winner: updatedState.winner,
-      winBy: updatedState.winBy,
-    },
+  emitDomainEvent("MATCH_FINISHED", {
+    type: "MATCH_FINISHED",
+    runtimeMatchId: matchId,
+    state: updatedState,
+    winner: updatedState.winner,
+    winBy: updatedState.winBy,
+    timestamp: ballEvent.timestamp,
   });
 }
 

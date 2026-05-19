@@ -24,6 +24,14 @@ type RealtimeEvent =
       type: "BALL_EVENT";
       matchId: string;
       data: {
+        type?: "BALL";
+        runtimeMatchId?: string;
+        score?: number;
+        wickets?: number;
+        over?: number;
+        ball?: number;
+        runs?: number;
+        timestamp?: number;
         committedState: MatchState;
         engineEvent?: { id: string };
         eventMeta?: {
@@ -59,11 +67,37 @@ type RealtimeEvent =
       data?: null;
     }
   | {
+      type: "MATCH_FINISHED";
+      matchId: string;
+      data: {
+        type?: "MATCH_FINISHED";
+        runtimeMatchId?: string;
+        winner: string | null;
+        winBy: string | null;
+        timestamp?: number;
+      };
+    }
+  | {
       type: "MATCH_ENDED";
       matchId: string;
       data: {
         winner: string | null;
         winBy: string | null;
+      };
+    }
+  | {
+      type: "WICKET";
+      matchId: string;
+      data: {
+        type?: "WICKET";
+        runtimeMatchId?: string;
+        score: number;
+        wickets: number;
+        over: number;
+        ball: number;
+        dismissedBatsman: string;
+        dismissalKind: string;
+        timestamp: number;
       };
     }
   | {
@@ -118,7 +152,11 @@ export function broadcast(matchId: string, event: RealtimeEvent) {
     clients.delete(dead as never);
   }
 
-  if (event.type === "CONNECTED" || event.type === "MATCH_ENDED") {
+  if (
+    event.type === "CONNECTED" ||
+    event.type === "MATCH_FINISHED" ||
+    event.type === "MATCH_ENDED"
+  ) {
     console.log(
       `MATCH LIFECYCLE: ${event.type} sent to ${activeClients} client(s) for ${matchId}`
     );

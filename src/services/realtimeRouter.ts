@@ -86,11 +86,19 @@ export function routeRealtimeEvent(payload: RealtimeEvent) {
   break;
 }
 
+    case "WICKET":
+      dispatchCricUpdate(type, data);
+      break;
+
     /*
     ========================================
     MATCH ENDED
     ========================================
     */
+    case "MATCH_FINISHED":
+      console.log("🏁 MATCH FINISHED");
+      dispatchCricUpdate(type, data);
+      break;
     case "MATCH_ENDED":
       console.log("🏁 MATCH ENDED");
       dispatchCricUpdate(type, data);

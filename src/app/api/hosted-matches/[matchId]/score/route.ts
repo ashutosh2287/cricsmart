@@ -30,6 +30,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ matchI
     return NextResponse.json({ success: false, error: "Match teams not configured" }, { status: 400 });
   }
 
+  if (!hostedMatch.runtimeMatchId) {
+    return NextResponse.json({ success: false, error: "Match has not been started" }, { status: 409 });
+  }
+
   const body = (await req.json()) as {
     type?: string;
     runs?: number;
@@ -86,13 +90,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ matchI
   event.eventSource = "MANUAL";
   event.timestamp = Date.now();
 
-  const result = dispatchBallEvent(hostedMatch.slug, event);
+  const result = dispatchBallEvent(hostedMatch.runtimeMatchId, event);
   if (!result.ok) {
     return NextResponse.json({ success: false, error: result.reason }, { status: 400 });
   }
 
   const storage = new RedisSimulationStorage();
-  await storage.save(hostedMatch.slug, result.state, {
+  await storage.save(hostedMatch.runtimeMatchId, result.state, {
     isRunning: true,
     isPaused: false,
     speed: 1,

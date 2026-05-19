@@ -1,4 +1,4 @@
-import type { HostedMatch, HostedMatchMember } from "@prisma/client";
+import type { HostedMatch, HostedMatchMember, MatchStatus } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { createTeam } from "@/lib/repositories/team.repository";
 
@@ -11,7 +11,7 @@ export type CreateHostedMatchInput = {
   createdById: string;
   teamAId: string;
   teamBId: string;
-  status?: string;
+  status?: MatchStatus;
   visibility?: string;
   scoringMode?: string;
 };
@@ -21,7 +21,7 @@ export type UpdateHostedMatchInput = {
   format?: string;
   venue?: string | null;
   startTime?: Date;
-  status?: string;
+  status?: MatchStatus;
   visibility?: string;
   scoringMode?: string;
 };

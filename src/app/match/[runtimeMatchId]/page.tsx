@@ -1665,16 +1665,16 @@ function MatchInnerPage({
 export default function MatchDetailPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ runtimeMatchId: string }>;
 }) {
   const resolvedParams = use(params);
 
   const matchId: string | undefined = useMemo(() => {
-    const slug = resolvedParams.slug;
-    if (typeof slug === "string") return slug;
-    if (Array.isArray(slug)) return slug[0];
+    const runtimeMatchId = resolvedParams.runtimeMatchId;
+    if (typeof runtimeMatchId === "string") return runtimeMatchId;
+    if (Array.isArray(runtimeMatchId)) return runtimeMatchId[0];
     return undefined;
-  }, [resolvedParams.slug]);
+  }, [resolvedParams.runtimeMatchId]);
 
   // ✅ Only non-reactive metadata lives here
   const [match, setMatch] = useState<Match | undefined>();

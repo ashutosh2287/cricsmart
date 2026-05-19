@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { TeamVisibility } from "@prisma/client";
 import { createTeam, listTeams } from "@/lib/repositories/team.repository";
 import { requireRouteAccess } from "@/services/auth/routeGuard";
 
@@ -19,13 +20,16 @@ export async function POST(req: NextRequest) {
     shortName?: string;
     city?: string;
     logoUrl?: string;
+    description?: string;
+    visibility?: TeamVisibility;
   };
 
   const name = body.name?.trim();
   const shortName = body.shortName?.trim();
+  const visibility = body.visibility === TeamVisibility.PRIVATE ? TeamVisibility.PRIVATE : TeamVisibility.PUBLIC;
 
-  if (!name || !shortName) {
-    return NextResponse.json({ success: false, error: "name and shortName are required" }, { status: 400 });
+  if (!name) {
+    return NextResponse.json({ success: false, error: "name is required" }, { status: 400 });
   }
 
   const team = await createTeam({
@@ -34,7 +38,9 @@ export async function POST(req: NextRequest) {
     shortName,
     city: body.city,
     logoUrl: body.logoUrl,
+    description: body.description,
+    visibility,
   });
 
-  return NextResponse.json({ success: true, data: team }, { status: 201 });
+  return NextResponse.json({ success: true, data: team, team }, { status: 201 });
 }

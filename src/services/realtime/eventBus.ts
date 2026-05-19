@@ -67,6 +67,21 @@ type RealtimeEvent =
       };
     }
   | {
+      type: "BALL";
+      matchId: string;
+      data: unknown;
+    }
+  | {
+      type: "WICKET";
+      matchId: string;
+      data: unknown;
+    }
+  | {
+      type: "MATCH_FINISHED";
+      matchId: string;
+      data: unknown;
+    }
+  | {
       type: "commentary.generated";
       matchId: string;
       data: CommentaryEvent;

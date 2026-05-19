@@ -1,4 +1,9 @@
 import { BallEvent } from "@/types/ballEvent";
+import type { BallEvent as DomainBallEvent } from "@/domain/events/BallEvent";
+import type { MatchFinishedEvent } from "@/domain/events/MatchFinishedEvent";
+import type { WicketEvent } from "@/domain/events/WicketEvent";
+import { eventBus } from "@/domain/eventBus";
+import { initDomainConsumers } from "@/domain/consumers";
 import { pushToTimeline } from "./broadcastTimeline";
 import { getMatchConfig } from "./matchFormat";
 import { advanceClock } from "./timeEngine";
@@ -20,9 +25,8 @@ import { getCommentary } from "@/services/commentary/commentaryStore";
 import { clearPlayerRegistry } from "./player/playerRegistry";
 import { updatePlayerRegistry } from "./playerRegistryEngine";
 import { broadcast } from "@/services/realtime/eventBus";
-import { appendEventTimeline, resetEventTimeline } from "@/services/replay/eventTimeline";
+import { resetEventTimeline } from "@/services/replay/eventTimeline";
 import { appendCommentaryTimeline, resetCommentaryTimeline } from "@/services/commentary/commentaryTimelineStore";
-import { recordBallEvent } from "@/services/recording/eventRecorder";
 import { resetPredictionStabilityMetrics } from "@/services/ml/smoothing/stabilityMetrics";
 import { clearPredictionSnapshots } from "@/services/ml/snapshots/featureSnapshotStore";
 import { processCommentaryPipeline, resetCommentaryPipelineState } from "@/services/commentary/orchestration/commentary-pipeline";
@@ -31,17 +35,6 @@ import { processCommentaryPipeline, resetCommentaryPipelineState } from "@/servi
 
 
 
-
-type StorageModuleType = typeof import("@/services/storage/eventStorage");
-
-let storageModule: StorageModuleType | null = null;
-
-async function getStorageModule(): Promise<StorageModuleType> {
-  if (!storageModule) {
-    storageModule = await import("@/services/storage/eventStorage");
-  }
-  return storageModule;
-}
 
 export type CorrectionEvent =
   | { type: "CORRECTION_UNDO_LAST" }
@@ -176,6 +169,7 @@ const matches = new Map<string, MatchState>();
 const eventStreams: Record<string, BallEvent[]> = {};
 const matchListeners: Record<string, Set<(state: MatchState) => void>> = {};
 const snapshotMap: Record<string, Record<string, MatchState>> = {};
+let domainConsumersInitialized = false;
 export const temporalIndex: Record<
   string,
   { index: number; innings: number; over: number }[]
@@ -624,6 +618,92 @@ const finalBowler = bowler || "Unknown Bowler";
     default:
       throw new Error(`❌ Unsupported scoring event ${(event as { type?: string }).type}`);
   }
+}
+
+function toOverAndBall(overFloat: number) {
+  const over = Math.floor(overFloat);
+  const ball = Math.round((overFloat - over) * 10);
+  return { over, ball };
+}
+
+function buildDomainBallEvent(
+  runtimeMatchId: string,
+  state: MatchState,
+  ballEvent: BallEvent
+): DomainBallEvent {
+  const innings = ballEvent.innings ?? state.currentInningsIndex;
+  const inningsState = state.innings[innings];
+  const { over, ball } = toOverAndBall(ballEvent.over);
+
+  return {
+    type: "BALL",
+    runtimeMatchId,
+    innings,
+    over,
+    ball,
+    battingTeamId: inningsState?.battingTeam,
+    bowlingTeamId: inningsState?.bowlingTeam,
+    strikerId: ballEvent.batsman,
+    nonStrikerId: ballEvent.nonStriker,
+    bowlerId: ballEvent.bowler,
+    runs: ballEvent.totalRuns ?? 0,
+    extras: ballEvent.extraRuns ?? 0,
+    totalScore: inningsState?.runs ?? 0,
+    wickets: inningsState?.wickets ?? 0,
+    isBoundary: ballEvent.type === "FOUR" || ballEvent.type === "SIX",
+    isWicket: ballEvent.wicket,
+    timestamp: ballEvent.timestamp,
+  };
+}
+
+function buildWicketEvent(
+  runtimeMatchId: string,
+  state: MatchState,
+  ballEvent: BallEvent
+): WicketEvent {
+  const innings = ballEvent.innings ?? state.currentInningsIndex;
+  const inningsState = state.innings[innings];
+  const { over, ball } = toOverAndBall(ballEvent.over);
+
+  return {
+    type: "WICKET",
+    runtimeMatchId,
+    innings,
+    over,
+    ball,
+    wicketType: ballEvent.dismissalKind ?? "UNKNOWN",
+    batterOutId: ballEvent.dismissedBatsman,
+    bowlerId: ballEvent.bowler,
+    totalScore: inningsState?.runs ?? 0,
+    wickets: inningsState?.wickets ?? 0,
+    timestamp: ballEvent.timestamp,
+  };
+}
+
+function buildMatchFinishedEvent(
+  runtimeMatchId: string,
+  state: MatchState,
+  timestamp: number
+): MatchFinishedEvent {
+  const first = state.innings[0];
+  const second = state.innings[1];
+  const finalScore =
+    first && second ? `${first.runs}/${first.wickets} & ${second.runs}/${second.wickets}` : undefined;
+
+  return {
+    type: "MATCH_FINISHED",
+    runtimeMatchId,
+    winnerTeamId: state.winner ?? undefined,
+    result: state.winBy ? `${state.winner ?? "Result"} ${state.winBy}` : "Match finished",
+    finalScore,
+    timestamp,
+  };
+}
+
+function ensureDomainConsumersInitialized() {
+  if (domainConsumersInitialized) return;
+  initDomainConsumers();
+  domainConsumersInitialized = true;
 }
 
 export function initMatch(
@@ -1101,6 +1181,8 @@ export function dispatchBallEvent(
   matchId: string,
   event: EngineBallEvent
 ): DispatchBallEventResult {
+  ensureDomainConsumersInitialized();
+
   let current = matches.get(matchId);
 
   if (current?.matchEnded) {
@@ -1228,6 +1310,20 @@ updatePlayerRegistry(matchId);
   matches.set(matchId, freshState);
   setMatchState(matchId, freshState);
 
+  const domainBallEvent = buildDomainBallEvent(matchId, freshState, ballEvent);
+  eventBus.emit("BALL", domainBallEvent);
+
+  if (ballEvent.wicket) {
+    eventBus.emit("WICKET", buildWicketEvent(matchId, freshState, ballEvent));
+  }
+
+  if (freshState.matchEnded) {
+    eventBus.emit(
+      "MATCH_FINISHED",
+      buildMatchFinishedEvent(matchId, freshState, ballEvent.timestamp)
+    );
+  }
+
   // ==============================
 // ✅ ANALYTICS + COMMENTARY PIPELINE (FIXED)
 // ==============================
@@ -1314,10 +1410,9 @@ const eventMeta = {
   eventType: ballEvent.type,
 } as const;
 
-appendEventTimeline(matchId, eventMeta);
-for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent]) {
-  appendCommentaryTimeline({
-    matchId,
+  for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent]) {
+    appendCommentaryTimeline({
+      matchId,
     eventId: commentaryEvent.eventId,
     sequence,
     timestamp: commentaryEvent.timestamp,
@@ -1382,13 +1477,6 @@ if (updatedState.matchEnded) {
   */
 
   
-
-  getStorageModule()
-    .then(async ({ appendEvent }) => {
-      await appendEvent(matchId, ballEvent);
-      await recordBallEvent(matchId, ballEvent);
-    })
-    .catch(console.error);
 
   /*
   ========================================

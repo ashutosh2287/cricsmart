@@ -1,5 +1,6 @@
 import type { HostedMatch, HostedMatchMember } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { createTeam } from "@/lib/repositories/team.repository";
 
 export type CreateHostedMatchInput = {
   slug: string;
@@ -142,12 +143,10 @@ export async function upsertHostedLiveMatch(input: UpsertHostedLiveMatchInput): 
 
     if (existing) return existing;
 
-    return prisma.team.create({
-      data: {
-        ownerId: input.createdById,
-        name,
-        shortName: shortCode(name),
-      },
+    return createTeam({
+      ownerId: input.createdById,
+      name,
+      shortName: shortCode(name),
     });
   };
 

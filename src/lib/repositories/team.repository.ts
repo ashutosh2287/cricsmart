@@ -76,21 +76,26 @@ async function resolveUniqueTeamSlug(name: string): Promise<string> {
   const base = toSlug(name) || "team";
   let candidate = base;
   let counter = 2;
+  let searching = true;
 
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
+  while (searching) {
     const existing = await prisma.team.findUnique({
       where: { slug: candidate },
       select: { id: true },
     });
 
-    if (!existing) return candidate;
+    if (!existing) {
+      searching = false;
+      break;
+    }
 
     const suffix = `-${counter}`;
     const maxBaseLength = Math.max(1, 80 - suffix.length);
     candidate = `${base.slice(0, maxBaseLength)}${suffix}`;
     counter += 1;
   }
+
+  return candidate;
 }
 
 export async function createTeam(input: CreateTeamInput): Promise<Team> {

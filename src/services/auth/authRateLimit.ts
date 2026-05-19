@@ -1,19 +1,16 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import type { Redis as IORedis } from "ioredis";
-import type { NextRequest } from "next/server";
 import { getRedis } from "@/services/storage/redisClient";
+import { isRateLimitedForRoute, type AuthRateLimitRoute, type AuthRouteLimiter } from "./authRateLimitCore";
 
 const LOGIN_LIMIT_ATTEMPTS = 10;
 const LOGIN_LIMIT_WINDOW = "15 m";
 
-type RouteName = "login" | "signup";
-type Limiter = Pick<Ratelimit, "limit">;
-
 type UpstashCompatibleRedis = {
-  evalsha: (sha: string, keys: string[], args: (string | number)[]) => Promise<unknown>;
-  eval: (script: string, keys: string[], args: (string | number)[]) => Promise<unknown>;
-  get: (key: string) => Promise<string | null>;
-  set: (key: string, value: string) => Promise<unknown>;
+  evalsha: <TData = unknown>(sha: string, keys: string[], args: unknown[]) => Promise<TData>;
+  eval: <TData = unknown>(script: string, keys: string[], args: unknown[]) => Promise<TData>;
+  get: <TData = string>(key: string) => Promise<TData | null>;
+  set: <TData = unknown>(key: string, value: unknown) => Promise<"OK" | TData | null>;
 };
 
 function normalizeRedisResult(result: unknown): unknown {
@@ -28,26 +25,26 @@ function normalizeRedisResult(result: unknown): unknown {
 
 function createUpstashRedisAdapter(redis: IORedis): UpstashCompatibleRedis {
   return {
-    async evalsha(sha, keys, args) {
+    async evalsha<TData = unknown>(sha: string, keys: string[], args: unknown[]) {
       const result = await redis.evalsha(sha, keys.length, ...keys, ...args.map((value) => String(value)));
-      return normalizeRedisResult(result);
+      return normalizeRedisResult(result) as TData;
     },
-    async eval(script, keys, args) {
+    async eval<TData = unknown>(script: string, keys: string[], args: unknown[]) {
       const result = await redis.eval(script, keys.length, ...keys, ...args.map((value) => String(value)));
-      return normalizeRedisResult(result);
+      return normalizeRedisResult(result) as TData;
     },
-    async get(key) {
-      return await redis.get(key);
+    async get<TData = string>(key: string) {
+      return (await redis.get(key)) as TData | null;
     },
-    async set(key, value) {
-      return await redis.set(key, value);
+    async set<TData = unknown>(key: string, value: unknown) {
+      return (await redis.set(key, String(value))) as "OK" | TData | null;
     },
   };
 }
 
-let rateLimiters: Record<RouteName, Limiter> | null = null;
+let rateLimiters: Record<AuthRateLimitRoute, AuthRouteLimiter> | null = null;
 
-function getRateLimiters(): Record<RouteName, Limiter> {
+function getRateLimiters(): Record<AuthRateLimitRoute, AuthRouteLimiter> {
   if (rateLimiters) return rateLimiters;
 
   const redisAdapter = createUpstashRedisAdapter(getRedis());
@@ -66,25 +63,6 @@ function getRateLimiters(): Record<RouteName, Limiter> {
   return rateLimiters;
 }
 
-export function readClientIp(req: NextRequest | Request): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) return first;
-  }
-
-  const realIp = req.headers.get("x-real-ip")?.trim();
-  if (realIp) return realIp;
-
-  return "unknown";
-}
-
-export async function isAuthRouteRateLimited(route: RouteName, req: NextRequest | Request): Promise<boolean> {
-  const ip = readClientIp(req);
-  const result = await getRateLimiters()[route].limit(ip);
-  return !result.success;
-}
-
-export function setAuthRateLimitersForTest(limiters: Record<RouteName, Limiter> | null): void {
-  rateLimiters = limiters;
+export async function isAuthRouteRateLimited(route: AuthRateLimitRoute, req: Request): Promise<boolean> {
+  return await isRateLimitedForRoute(route, req, getRateLimiters());
 }

@@ -87,7 +87,12 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
+    "/api/teams",
+    "/api/teams/:slug/members",
+    "/api/teams/:slug/members/:userId",
+  ],
 };
 
 export const runtime = "nodejs";

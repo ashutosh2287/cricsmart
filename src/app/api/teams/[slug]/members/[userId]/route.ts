@@ -9,7 +9,7 @@ import { getRequiredRequestAuthSession } from "@/services/auth/serverRequestCont
 type RouteContext = { params: Promise<{ slug: string; userId: string }> };
 
 export async function DELETE(_req: NextRequest, context: RouteContext) {
-  const session = await getRequiredRequestAuthSession();
+  const session = await getRequiredRequestAuthSession("/api/teams");
 
   try {
     const { slug, userId } = await context.params;

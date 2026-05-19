@@ -46,7 +46,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
 }
 
 export async function PATCH(req: NextRequest, context: RouteContext) {
-  const session = await getRequiredRequestAuthSession();
+  const session = await getRequiredRequestAuthSession("/api/teams");
 
   try {
     const { slug } = await context.params;
@@ -83,7 +83,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 }
 
 export async function DELETE(_req: NextRequest, context: RouteContext) {
-  const session = await getRequiredRequestAuthSession();
+  const session = await getRequiredRequestAuthSession("/api/teams");
 
   try {
     const { slug } = await context.params;

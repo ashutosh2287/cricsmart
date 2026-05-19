@@ -77,18 +77,14 @@ async function resolveUniqueTeamSlug(name: string): Promise<string> {
   const base = toSlug(name) || "team";
   let candidate = base;
   let counter = 2;
-  let searching = true;
 
-  while (searching) {
+  while (true) {
     const existing = await prisma.team.findUnique({
       where: { slug: candidate },
       select: { id: true },
     });
 
-    if (!existing) {
-      searching = false;
-      break;
-    }
+    if (!existing) break;
 
     const suffix = `-${counter}`;
     const maxBaseLength = Math.max(1, 80 - suffix.length);

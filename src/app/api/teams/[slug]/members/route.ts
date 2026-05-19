@@ -15,7 +15,7 @@ import { addMemberSchema } from "@/services/teams/teamValidation";
 type RouteContext = { params: Promise<{ slug: string }> };
 
 export async function POST(req: NextRequest, context: RouteContext) {
-  const session = await getRequiredRequestAuthSession();
+  const session = await getRequiredRequestAuthSession("/api/teams");
 
   try {
     const { slug } = await context.params;

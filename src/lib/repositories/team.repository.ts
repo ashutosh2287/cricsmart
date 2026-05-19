@@ -17,6 +17,8 @@ export type UpdateTeamInput = {
   shortName?: string;
   city?: string | null;
   logoUrl?: string | null;
+  description?: string | null;
+  visibility?: TeamVisibility;
 };
 
 export type TeamWithOwner = Prisma.TeamGetPayload<{
@@ -120,12 +122,6 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
       visibility: input.visibility ?? TeamVisibility.PUBLIC,
       city: toNullableTrimmedString(input.city),
       logoUrl: toNullableTrimmedString(input.logoUrl),
-      members: {
-        create: {
-          userId: input.ownerId,
-          role: TeamMemberRole.OWNER,
-        },
-      },
     },
   });
 }
@@ -217,11 +213,69 @@ export async function getTeamBySlug(slug: string): Promise<TeamWithMembers | nul
   });
 }
 
+export async function findTeamBySlugOrId(slugOrId: string): Promise<Team | null> {
+  return prisma.team.findFirst({
+    where: {
+      OR: [{ slug: slugOrId }, { id: slugOrId }],
+    },
+  });
+}
+
+export async function isTeamOwner(teamId: string, userId: string): Promise<boolean> {
+  const team = await prisma.team.findUnique({
+    where: { id: teamId },
+    select: { ownerId: true },
+  });
+  return team?.ownerId === userId;
+}
+
+export async function isTeamMember(teamId: string, userId: string): Promise<boolean> {
+  const team = await prisma.team.findUnique({
+    where: { id: teamId },
+    select: {
+      ownerId: true,
+      members: {
+        where: { userId },
+        select: { id: true },
+        take: 1,
+      },
+    },
+  });
+
+  if (!team) return false;
+  if (team.ownerId === userId) return true;
+  return team.members.length > 0;
+}
+
+export async function addTeamMember(teamId: string, userId: string) {
+  return prisma.teamMember.create({
+    data: {
+      teamId,
+      userId,
+      role: TeamMemberRole.MEMBER,
+    },
+  });
+}
+
 export async function getTeamWithOwnerById(id: string): Promise<TeamWithOwner | null> {
   return prisma.team.findUnique({
     where: { id },
     include: {
       owner: true,
+    },
+  });
+}
+
+export async function updateTeam(id: string, input: UpdateTeamInput): Promise<Team> {
+  return prisma.team.update({
+    where: { id },
+    data: {
+      ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+      ...(input.shortName !== undefined ? { shortName: input.shortName.trim() } : {}),
+      ...(input.city !== undefined ? { city: toNullableTrimmedString(input.city) } : {}),
+      ...(input.logoUrl !== undefined ? { logoUrl: toNullableTrimmedString(input.logoUrl) } : {}),
+      ...(input.description !== undefined ? { description: toNullableTrimmedString(input.description) } : {}),
+      ...(input.visibility !== undefined ? { visibility: input.visibility } : {}),
     },
   });
 }
@@ -246,9 +300,26 @@ export async function updateTeamByOwner(id: string, ownerId: string, input: Upda
   });
 }
 
+export async function deleteTeam(id: string): Promise<void> {
+  await prisma.team.delete({ where: { id } });
+}
+
 export async function deleteTeamByOwner(id: string, ownerId: string): Promise<boolean> {
   const deleted = await prisma.team.deleteMany({
     where: { id, ownerId },
+  });
+  return deleted.count > 0;
+}
+
+export async function removeTeamMember(teamId: string, userId: string): Promise<boolean> {
+  const deleted = await prisma.teamMember.deleteMany({
+    where: {
+      teamId,
+      userId,
+      role: {
+        not: TeamMemberRole.OWNER,
+      },
+    },
   });
   return deleted.count > 0;
 }

@@ -53,9 +53,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: "Invalid teams" }, { status: 400 });
   }
 
-  if (teamA.ownerId !== access.session.userId && teamB.ownerId !== access.session.userId) {
+  if (teamA.ownerId !== access.session.userId || teamB.ownerId !== access.session.userId) {
     return NextResponse.json(
-      { success: false, error: "You must own at least one participating team" },
+      { success: false, error: "Only team owners can assign teams to a hosted match" },
       { status: 403 },
     );
   }

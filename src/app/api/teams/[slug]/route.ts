@@ -30,7 +30,9 @@ export async function GET(_req: NextRequest, context: RouteContext) {
 
     if (team.visibility === "PRIVATE") {
       const session = await getRequestAuthSession();
-      const isMember = team.members.some((member) => member.userId === session?.userId);
+      const isMember =
+        team.ownerId === session?.userId ||
+        team.members.some((member) => member.userId === session?.userId);
       if (!isMember) {
         return NextResponse.json(
           { success: false, error: "Team not found" },

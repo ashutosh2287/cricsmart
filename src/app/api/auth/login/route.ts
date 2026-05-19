@@ -1,41 +1,16 @@
-import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getAuthRateLimitMaxAttempts,
-  getAuthRateLimitWindowSeconds,
-  isAuthEnabled,
-} from "@/config/auth";
+import { isAuthEnabled } from "@/config/auth";
 import { logger } from "@/lib/logger";
 import { findByEmailOrUsername } from "@/lib/repositories/user.repository";
+import { isAuthRouteRateLimited } from "@/services/auth/authRateLimit";
+import { parseLoginPayload } from "@/services/auth/authValidation";
 import { logAuthSensitiveAction } from "@/services/auth/routeGuard";
 import { verifyPassword } from "@/services/auth/password";
 import { toAuthRole } from "@/services/auth/roles";
 import { createAuthSession, setAuthSessionCookie } from "@/services/auth/sessionStore";
-import { getRedis } from "@/services/storage/redisClient";
 
-function failureResponse() {
-  return NextResponse.json({ success: false, error: "Invalid credentials" }, { status: 401 });
-}
-
-function limitKeyForRequest(req: NextRequest, username: string): string {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const fingerprint = `${ip}:${username.trim().toLowerCase()}`;
-  const hash = createHash("sha256").update(fingerprint).digest("hex");
-  return `auth:rate_limit:login:${hash}`;
-}
-
-async function hitRateLimit(req: NextRequest, username: string): Promise<boolean> {
-  const redis = getRedis();
-  const key = limitKeyForRequest(req, username);
-  const ttl = getAuthRateLimitWindowSeconds();
-  const maxAttempts = getAuthRateLimitMaxAttempts();
-
-  const attempts = await redis.incr(key);
-  if (attempts === 1) {
-    await redis.expire(key, ttl);
-  }
-
-  return attempts > maxAttempts;
+function failureResponse(status = 401) {
+  return NextResponse.json({ success: false, error: "Invalid credentials" }, { status });
 }
 
 export async function POST(req: NextRequest) {
@@ -44,23 +19,30 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = (await req.json()) as { identifier?: string; username?: string; email?: string; password?: string };
-    const identifier = body?.identifier?.trim() || body?.username?.trim() || body?.email?.trim() || "";
-    const password = body?.password ?? "";
-
-    if (!identifier || !password) {
-      return failureResponse();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ success: false, error: "Invalid request payload" }, { status: 400 });
     }
 
-    if (await hitRateLimit(req, identifier)) {
-      logger.warn("AUTH", "login_rate_limited", { identifier });
-      return NextResponse.json({ success: false, error: "Too many attempts" }, { status: 429 });
+    const payload = parseLoginPayload(body);
+    if (!payload.success) {
+      return NextResponse.json({ success: false, error: payload.error }, { status: 400 });
     }
 
-    const user = await findByEmailOrUsername(identifier);
-    const isValid = user ? await verifyPassword(password, user.passwordHash) : false;
+    if (await isAuthRouteRateLimited("login", req)) {
+      logger.warn("AUTH", "login_rate_limited", { identifier: payload.data.identifier });
+      return NextResponse.json(
+        { success: false, error: "Too many login attempts. Please try again in 15 minutes." },
+        { status: 429 }
+      );
+    }
+
+    const user = await findByEmailOrUsername(payload.data.identifier);
+    const isValid = user ? await verifyPassword(payload.data.password, user.passwordHash) : false;
     if (!user || !isValid) {
-      logger.warn("AUTH", "login_failed", { identifier });
+      logger.warn("AUTH", "login_failed", { identifier: payload.data.identifier });
       return failureResponse();
     }
 

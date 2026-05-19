@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { isAuthEnabled } from "@/config/auth";
+import { getAuthCookieName, isAuthEnabled } from "@/config/auth";
 import { logger } from "@/lib/logger";
 import { logAuthSensitiveAction } from "@/services/auth/routeGuard";
 import {
   clearAuthSessionCookie,
   deleteAuthSessionById,
   getAuthSessionFromRequest,
-  readSessionIdFromRequest,
 } from "@/services/auth/sessionStore";
+import { readSessionIdFromRequest } from "@/services/auth/sessionLookup";
 
 export async function POST(req: Request) {
   if (!isAuthEnabled()) {
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   }
 
   const session = await getAuthSessionFromRequest(req);
-  const sessionId = session?.sessionId ?? readSessionIdFromRequest(req);
+  const sessionId = session?.sessionId ?? readSessionIdFromRequest(req, getAuthCookieName());
   if (sessionId) {
     try {
       await deleteAuthSessionById(sessionId);

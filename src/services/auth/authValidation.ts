@@ -92,8 +92,8 @@ export function parseSignupPayload(input: unknown): { success: true; data: Signu
   return {
     success: true,
     data: {
-      username: parsed.data.username.trim().toLowerCase(),
-      email: parsed.data.email.trim().toLowerCase(),
+      username: parsed.data.username.toLowerCase(),
+      email: parsed.data.email.toLowerCase(),
       password: parsed.data.password,
       confirmPassword: parsed.data.confirmPassword,
     },

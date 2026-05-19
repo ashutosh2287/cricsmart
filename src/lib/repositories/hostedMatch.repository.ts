@@ -1,5 +1,6 @@
-import type { HostedMatch, HostedMatchMember } from "@prisma/client";
+import { TeamMemberRole, type HostedMatch, type HostedMatchMember } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { generateUniqueSlug } from "@/lib/utils/slug";
 
 export type CreateHostedMatchInput = {
   slug: string;
@@ -142,11 +143,26 @@ export async function upsertHostedLiveMatch(input: UpsertHostedLiveMatchInput): 
 
     if (existing) return existing;
 
+    const slug = await generateUniqueSlug(name, async (candidate) => {
+      const team = await prisma.team.findUnique({
+        where: { slug: candidate },
+        select: { id: true },
+      });
+      return Boolean(team);
+    });
+
     return prisma.team.create({
       data: {
         ownerId: input.createdById,
         name,
+        slug,
         shortName: shortCode(name),
+        members: {
+          create: {
+            userId: input.createdById,
+            role: TeamMemberRole.OWNER,
+          },
+        },
       },
     });
   };

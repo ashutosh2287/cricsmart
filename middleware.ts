@@ -20,6 +20,7 @@ const ROUTE_POLICY: RoutePolicyRule[] = [
   { access: "admin", match: /^\/admin(?:\/.*)?$/ },
   { access: "authenticated", match: /^\/account(?:\/.*)?$/ },
   { access: "creator", match: /^\/teams\/create$/ },
+  { access: "creator", match: /^\/teams\/[^/]+\/manage$/ },
   { access: "creator", match: /^\/tournaments\/create$/ },
   { access: "creator", match: /^\/host\/matches\/create$/ },
   { access: "creator", match: /^\/hosted-matches\/[^/]+\/control$/ },
@@ -87,7 +88,7 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: ["/teams/:slug/manage", "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };
 
 export const runtime = "nodejs";

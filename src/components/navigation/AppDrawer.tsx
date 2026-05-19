@@ -89,6 +89,11 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
           href: "/account/settings",
           icon: icon("M6 10a4 4 0 118 0 4 4 0 01-8 0zm4-6v2m0 8v2m6-6h-2M6 10H4"),
         },
+        {
+          label: "My Teams",
+          href: "/account/teams",
+          icon: icon("M4 15a3 3 0 016 0m2 0a3 3 0 016 0M7 8a2 2 0 110-4 2 2 0 010 4zm6 0a2 2 0 110-4 2 2 0 010 4z"),
+        },
       ]
     : [
         {

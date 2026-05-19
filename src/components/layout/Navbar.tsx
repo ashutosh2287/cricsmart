@@ -62,6 +62,7 @@ type GroupedMatches = {
 
 const quickLinks = [
   { name: "Home", href: "/" },
+  { name: "Teams", href: "/account/teams" },
   { name: "Players", href: "/players" },
   { name: "Analytics", href: "/analytics" },
 ];

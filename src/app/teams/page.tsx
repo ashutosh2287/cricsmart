@@ -22,7 +22,7 @@ export default async function TeamsPage() {
           teams.map((team) => (
             <Link
               key={team.id}
-              href={`/teams/${team.id}`}
+              href={`/teams/${team.slug}`}
               className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4"
             >
               <p className="text-base font-semibold text-[var(--text-primary)]">{team.name}</p>

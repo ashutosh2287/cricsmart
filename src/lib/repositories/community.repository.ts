@@ -79,7 +79,18 @@ export async function listFavoriteTeams(userId: string) {
   return prisma.favoriteTeam.findMany({
     where: { userId },
     include: {
-      team: true,
+      team: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logoUrl: true,
+          shortName: true,
+          ownerId: true,
+          city: true,
+          createdAt: true,
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });

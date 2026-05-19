@@ -58,16 +58,17 @@ function toSlug(input: string): string {
 }
 
 function toShortName(input: string): string {
-  const parts = input
+  const initials = input
     .replace(/[^a-zA-Z0-9 ]+/g, " ")
     .trim()
     .split(/\s+/)
     .filter(Boolean)
-    .slice(0, 3)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
+    .slice(0, 3);
 
-  if (parts.length >= 2) return parts;
+  if (initials.length >= 2) {
+    return initials.map((part) => part[0]?.toUpperCase() ?? "").join("");
+  }
+
   const fallback = input.replace(/[^a-zA-Z0-9]+/g, "").slice(0, 3).toUpperCase();
   return fallback || "TEAM";
 }

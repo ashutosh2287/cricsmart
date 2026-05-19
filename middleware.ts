@@ -19,6 +19,9 @@ const ADMIN_ROLES = new Set(["operator", "admin", "internal"]);
 const ROUTE_POLICY: RoutePolicyRule[] = [
   { access: "admin", match: /^\/admin(?:\/.*)?$/ },
   { access: "authenticated", match: /^\/account(?:\/.*)?$/ },
+  { access: "authenticated", match: /^\/api\/teams$/ },
+  { access: "authenticated", match: /^\/api\/teams\/[^/]+\/members$/ },
+  { access: "authenticated", match: /^\/api\/teams\/[^/]+\/members\/[^/]+$/ },
   { access: "creator", match: /^\/teams\/create$/ },
   { access: "creator", match: /^\/tournaments\/create$/ },
   { access: "creator", match: /^\/host\/matches\/create$/ },
@@ -90,8 +93,7 @@ export const config = {
   matcher: [
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
     "/api/teams",
-    "/api/teams/:slug/members",
-    "/api/teams/:slug/members/:userId",
+    "/api/teams/:path*",
   ],
 };
 

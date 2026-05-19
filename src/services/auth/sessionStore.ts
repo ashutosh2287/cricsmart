@@ -114,6 +114,7 @@ export async function getAuthSessionFromServerCookies(): Promise<AuthSession | n
 }
 
 export const getAuthSessionById = getAuthSessionByIdFromStore;
+export { readSessionIdFromRequest };
 
 export async function setAuthSessionCookie(session: AuthSession): Promise<void> {
   const jar = await cookies();

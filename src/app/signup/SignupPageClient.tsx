@@ -35,6 +35,14 @@ export default function SignupPageClient() {
     }
   }, [loading, isAuthenticated, redirectTarget, router]);
 
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-md rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 text-sm text-[var(--text-secondary)]">
+        Checking your session...
+      </div>
+    );
+  }
+
   if (!loading && !authEnabled) {
     return (
       <div className="mx-auto max-w-md rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 text-sm text-[var(--text-secondary)]">
@@ -64,6 +72,8 @@ export default function SignupPageClient() {
       }
       await refreshSession();
       router.replace(redirectTarget);
+    } catch {
+      setError("Unable to create account right now. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -81,6 +91,7 @@ export default function SignupPageClient() {
             className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]"
             autoComplete="username"
             required
+            disabled={submitting}
           />
         </label>
 
@@ -93,6 +104,7 @@ export default function SignupPageClient() {
             className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]"
             autoComplete="email"
             required
+            disabled={submitting}
           />
         </label>
 
@@ -105,6 +117,7 @@ export default function SignupPageClient() {
             className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]"
             autoComplete="new-password"
             required
+            disabled={submitting}
           />
         </label>
 
@@ -117,6 +130,7 @@ export default function SignupPageClient() {
             className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]"
             autoComplete="new-password"
             required
+            disabled={submitting}
           />
         </label>
 
@@ -143,4 +157,3 @@ export default function SignupPageClient() {
     </div>
   );
 }
-

@@ -29,9 +29,17 @@ export default function LoginPageClient() {
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      router.replace(redirectTarget);
+      router.replace("/account");
     }
-  }, [loading, isAuthenticated, redirectTarget, router]);
+  }, [loading, isAuthenticated, router]);
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-md rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 text-sm text-[var(--text-secondary)]">
+        Checking your session...
+      </div>
+    );
+  }
 
   if (!loading && !authEnabled) {
     return (
@@ -52,10 +60,12 @@ export default function LoginPageClient() {
     try {
       const result = await login(identifier, password);
       if (!result.success) {
-        setError("Invalid credentials");
+        setError(result.error ?? "Invalid credentials");
         return;
       }
       router.replace(redirectTarget);
+    } catch {
+      setError("Unable to sign in right now. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -73,6 +83,7 @@ export default function LoginPageClient() {
             className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]"
             autoComplete="username"
             required
+            disabled={submitting}
           />
         </label>
 
@@ -85,6 +96,7 @@ export default function LoginPageClient() {
             className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]"
             autoComplete="current-password"
             required
+            disabled={submitting}
           />
         </label>
 
@@ -111,4 +123,3 @@ export default function LoginPageClient() {
     </div>
   );
 }
-

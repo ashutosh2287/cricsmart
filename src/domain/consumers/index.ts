@@ -1,15 +1,14 @@
-import { initAnalyticsConsumer } from "@/domain/consumers/analyticsConsumer";
-import { initReplayConsumer } from "@/domain/consumers/replayConsumer";
-import { initSseConsumer } from "@/domain/consumers/sseConsumer";
+import { registerReplayConsumer } from "@/domain/consumers/replayConsumer";
+import { registerSseConsumer } from "@/domain/consumers/sseConsumer";
 
-let initialized = false;
+let domainConsumersRegistered = false;
 
-export function initDomainConsumers() {
-  if (initialized) return;
+export function ensureDomainConsumersRegistered(): void {
+  if (domainConsumersRegistered) return;
+  if (typeof window !== "undefined") return;
 
-  initReplayConsumer();
-  initSseConsumer();
-  initAnalyticsConsumer();
+  registerReplayConsumer();
+  registerSseConsumer();
 
-  initialized = true;
+  domainConsumersRegistered = true;
 }

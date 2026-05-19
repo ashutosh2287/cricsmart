@@ -1,38 +1,42 @@
-import type { BallEvent } from "@/domain/events/BallEvent";
-import type { MatchFinishedEvent } from "@/domain/events/MatchFinishedEvent";
-import type { WicketEvent } from "@/domain/events/WicketEvent";
+import type { DomainEvent, DomainEventByType, DomainEventType } from "@/domain/events";
 
-type DomainEventMap = {
-  BALL: BallEvent;
-  WICKET: WicketEvent;
-  MATCH_FINISHED: MatchFinishedEvent;
+type Handler<T extends DomainEventType> = (event: DomainEventByType<T>) => void;
+
+type HandlerMap = {
+  [K in DomainEventType]: Set<Handler<K>>;
 };
 
-type EventType = keyof DomainEventMap;
-type EventHandler<T> = (event: T) => void;
+const handlers: HandlerMap = {
+  BALL: new Set(),
+  WICKET: new Set(),
+  MATCH_FINISHED: new Set(),
+};
 
-class EventBus {
-  private handlers: {
-    [K in EventType]?: EventHandler<DomainEventMap[K]>[];
-  } = {};
-
-  on<T extends EventType>(type: T, handler: EventHandler<DomainEventMap[T]>) {
-    const existing = this.handlers[type] ?? [];
-    this.handlers[type] = [...existing, handler];
-
-    return () => {
-      const current = this.handlers[type] ?? [];
-      this.handlers[type] = current.filter((candidate) => candidate !== handler);
-    };
-  }
-
-  emit<T extends EventType>(type: T, event: DomainEventMap[T]) {
-    const handlers = this.handlers[type] ?? [];
-
-    for (const handler of handlers) {
-      handler(event);
-    }
-  }
+export function subscribeDomainEvent<T extends DomainEventType>(
+  type: T,
+  handler: Handler<T>
+): () => void {
+  const typedHandlers = handlers[type] as Set<Handler<T>>;
+  typedHandlers.add(handler);
+  return () => {
+    typedHandlers.delete(handler);
+  };
 }
 
-export const eventBus = new EventBus();
+export function emitDomainEvent<T extends DomainEventType>(
+  type: T,
+  event: DomainEventByType<T>
+): void {
+  const typedHandlers = handlers[type] as Set<Handler<T>>;
+  typedHandlers.forEach((handler) => {
+    try {
+      handler(event);
+    } catch (error) {
+      console.error("DOMAIN_EVENT_HANDLER_ERROR", { type, error });
+    }
+  });
+}
+
+export function emitDomainEventObject(event: DomainEvent): void {
+  emitDomainEvent(event.type, event as never);
+}

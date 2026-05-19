@@ -1,8 +1,5 @@
 import type { MatchState } from "@/services/matchEngine";
 import type { CommentaryEvent } from "@/services/commentary/types/commentary.types";
-import type { BallEvent as DomainBallEvent } from "@/domain/events/BallEvent";
-import type { MatchFinishedEvent } from "@/domain/events/MatchFinishedEvent";
-import type { WicketEvent } from "@/domain/events/WicketEvent";
 
 // ✅ Use the SAME client registry that the SSE route writes to
 // (SSE route → realtimeController → clientStore → getClients)
@@ -27,6 +24,14 @@ type RealtimeEvent =
       type: "BALL_EVENT";
       matchId: string;
       data: {
+        type?: "BALL";
+        runtimeMatchId?: string;
+        score?: number;
+        wickets?: number;
+        over?: number;
+        ball?: number;
+        runs?: number;
+        timestamp?: number;
         committedState: MatchState;
         engineEvent?: { id: string };
         eventMeta?: {
@@ -62,6 +67,17 @@ type RealtimeEvent =
       data?: null;
     }
   | {
+      type: "MATCH_FINISHED";
+      matchId: string;
+      data: {
+        type?: "MATCH_FINISHED";
+        runtimeMatchId?: string;
+        winner: string | null;
+        winBy: string | null;
+        timestamp?: number;
+      };
+    }
+  | {
       type: "MATCH_ENDED";
       matchId: string;
       data: {
@@ -70,19 +86,19 @@ type RealtimeEvent =
       };
     }
   | {
-      type: "BALL";
-      matchId: string;
-      data: DomainBallEvent;
-    }
-  | {
       type: "WICKET";
       matchId: string;
-      data: WicketEvent;
-    }
-  | {
-      type: "MATCH_FINISHED";
-      matchId: string;
-      data: MatchFinishedEvent;
+      data: {
+        type?: "WICKET";
+        runtimeMatchId?: string;
+        score: number;
+        wickets: number;
+        over: number;
+        ball: number;
+        dismissedBatsman: string;
+        dismissalKind: string;
+        timestamp: number;
+      };
     }
   | {
       type: "commentary.generated";
@@ -136,7 +152,11 @@ export function broadcast(matchId: string, event: RealtimeEvent) {
     clients.delete(dead as never);
   }
 
-  if (event.type === "CONNECTED" || event.type === "MATCH_ENDED") {
+  if (
+    event.type === "CONNECTED" ||
+    event.type === "MATCH_FINISHED" ||
+    event.type === "MATCH_ENDED"
+  ) {
     console.log(
       `MATCH LIFECYCLE: ${event.type} sent to ${activeClients} client(s) for ${matchId}`
     );

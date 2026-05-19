@@ -1,9 +1,4 @@
 import { BallEvent } from "@/types/ballEvent";
-import type { BallEvent as DomainBallEvent } from "@/domain/events/BallEvent";
-import type { MatchFinishedEvent } from "@/domain/events/MatchFinishedEvent";
-import type { WicketEvent } from "@/domain/events/WicketEvent";
-import { eventBus } from "@/domain/eventBus";
-import { initDomainConsumers } from "@/domain/consumers";
 import { pushToTimeline } from "./broadcastTimeline";
 import { getMatchConfig } from "./matchFormat";
 import { advanceClock } from "./timeEngine";
@@ -20,21 +15,32 @@ import { getWinProbabilityTimeline } from "@/services/analytics/winProbabilityTi
 import { processMomentumEvent } from "@/services/analytics/momentumTimelineEngine";
 import { computeWinProbability } from "@/services/winProbabilityEngine";
 import { getAnalytics } from "@/services/analytics/liveAnalyticsStore";
-import { getBroadcastInsights } from "./broadcast/broadcastInsightEngine";
-import { getCommentary } from "@/services/commentary/commentaryStore";
 import { clearPlayerRegistry } from "./player/playerRegistry";
 import { updatePlayerRegistry } from "./playerRegistryEngine";
-import { broadcast } from "@/services/realtime/eventBus";
 import { resetEventTimeline } from "@/services/replay/eventTimeline";
-import { appendCommentaryTimeline, resetCommentaryTimeline } from "@/services/commentary/commentaryTimelineStore";
+import { resetCommentaryTimeline } from "@/services/commentary/commentaryTimelineStore";
+import { recordBallEvent } from "@/services/recording/eventRecorder";
 import { resetPredictionStabilityMetrics } from "@/services/ml/smoothing/stabilityMetrics";
 import { clearPredictionSnapshots } from "@/services/ml/snapshots/featureSnapshotStore";
 import { processCommentaryPipeline, resetCommentaryPipelineState } from "@/services/commentary/orchestration/commentary-pipeline";
+import { emitDomainEvent } from "@/domain/eventBus";
+import { ensureDomainConsumersRegistered } from "@/domain/consumers";
 
 
 
 
 
+
+type StorageModuleType = typeof import("@/services/storage/eventStorage");
+
+let storageModule: StorageModuleType | null = null;
+
+async function getStorageModule(): Promise<StorageModuleType> {
+  if (!storageModule) {
+    storageModule = await import("@/services/storage/eventStorage");
+  }
+  return storageModule;
+}
 
 export type CorrectionEvent =
   | { type: "CORRECTION_UNDO_LAST" }
@@ -169,11 +175,12 @@ const matches = new Map<string, MatchState>();
 const eventStreams: Record<string, BallEvent[]> = {};
 const matchListeners: Record<string, Set<(state: MatchState) => void>> = {};
 const snapshotMap: Record<string, Record<string, MatchState>> = {};
-let domainConsumersInitialized = false;
 export const temporalIndex: Record<
   string,
   { index: number; innings: number; over: number }[]
 > = {};
+
+ensureDomainConsumersRegistered();
 
 function cloneState(state: MatchState): MatchState {
   return {
@@ -618,92 +625,6 @@ const finalBowler = bowler || "Unknown Bowler";
     default:
       throw new Error(`❌ Unsupported scoring event ${(event as { type?: string }).type}`);
   }
-}
-
-function toOverAndBall(overFloat: number) {
-  const over = Math.floor(overFloat);
-  const ball = Math.round((overFloat - over) * 10);
-  return { over, ball };
-}
-
-function buildDomainBallEvent(
-  runtimeMatchId: string,
-  state: MatchState,
-  ballEvent: BallEvent
-): DomainBallEvent {
-  const innings = ballEvent.innings ?? state.currentInningsIndex;
-  const inningsState = state.innings[innings];
-  const { over, ball } = toOverAndBall(ballEvent.over);
-
-  return {
-    type: "BALL",
-    runtimeMatchId,
-    innings,
-    over,
-    ball,
-    battingTeamId: inningsState?.battingTeam,
-    bowlingTeamId: inningsState?.bowlingTeam,
-    strikerId: ballEvent.batsman,
-    nonStrikerId: ballEvent.nonStriker,
-    bowlerId: ballEvent.bowler,
-    runs: ballEvent.totalRuns ?? 0,
-    extras: ballEvent.extraRuns ?? 0,
-    totalScore: inningsState?.runs ?? 0,
-    wickets: inningsState?.wickets ?? 0,
-    isBoundary: ballEvent.type === "FOUR" || ballEvent.type === "SIX",
-    isWicket: ballEvent.wicket,
-    timestamp: ballEvent.timestamp,
-  };
-}
-
-function buildWicketEvent(
-  runtimeMatchId: string,
-  state: MatchState,
-  ballEvent: BallEvent
-): WicketEvent {
-  const innings = ballEvent.innings ?? state.currentInningsIndex;
-  const inningsState = state.innings[innings];
-  const { over, ball } = toOverAndBall(ballEvent.over);
-
-  return {
-    type: "WICKET",
-    runtimeMatchId,
-    innings,
-    over,
-    ball,
-    wicketType: ballEvent.dismissalKind ?? "UNKNOWN",
-    batterOutId: ballEvent.dismissedBatsman,
-    bowlerId: ballEvent.bowler,
-    totalScore: inningsState?.runs ?? 0,
-    wickets: inningsState?.wickets ?? 0,
-    timestamp: ballEvent.timestamp,
-  };
-}
-
-function buildMatchFinishedEvent(
-  runtimeMatchId: string,
-  state: MatchState,
-  timestamp: number
-): MatchFinishedEvent {
-  const first = state.innings[0];
-  const second = state.innings[1];
-  const finalScore =
-    first && second ? `${first.runs}/${first.wickets} & ${second.runs}/${second.wickets}` : undefined;
-
-  return {
-    type: "MATCH_FINISHED",
-    runtimeMatchId,
-    winnerTeamId: state.winner ?? undefined,
-    result: state.winBy ? `${state.winner ?? "Result"} ${state.winBy}` : "Match finished",
-    finalScore,
-    timestamp,
-  };
-}
-
-function ensureDomainConsumersInitialized() {
-  if (domainConsumersInitialized) return;
-  initDomainConsumers();
-  domainConsumersInitialized = true;
 }
 
 export function initMatch(
@@ -1181,8 +1102,6 @@ export function dispatchBallEvent(
   matchId: string,
   event: EngineBallEvent
 ): DispatchBallEventResult {
-  ensureDomainConsumersInitialized();
-
   let current = matches.get(matchId);
 
   if (current?.matchEnded) {
@@ -1310,20 +1229,6 @@ updatePlayerRegistry(matchId);
   matches.set(matchId, freshState);
   setMatchState(matchId, freshState);
 
-  const domainBallEvent = buildDomainBallEvent(matchId, freshState, ballEvent);
-  eventBus.emit("BALL", domainBallEvent);
-
-  if (ballEvent.wicket) {
-    eventBus.emit("WICKET", buildWicketEvent(matchId, freshState, ballEvent));
-  }
-
-  if (freshState.matchEnded) {
-    eventBus.emit(
-      "MATCH_FINISHED",
-      buildMatchFinishedEvent(matchId, freshState, ballEvent.timestamp)
-    );
-  }
-
   // ==============================
 // ✅ ANALYTICS + COMMENTARY PIPELINE (FIXED)
 // ==============================
@@ -1348,7 +1253,6 @@ for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [prim
 
 // 🧠 INSIGHTS
 generateBroadcastInsights(matchId);
-const insights = getBroadcastInsights(matchId) || [];
 // 🔥 WIN PROBABILITY (REAL ENGINE)
 const win = computeWinProbability(state);
 
@@ -1382,91 +1286,58 @@ setAnalytics(matchId, {
   })),
 });
 // ========================================
-// 🔥 FINAL BROADCAST (CLEAN & SINGLE)
+// ✅ DOMAIN EVENTS ONLY (NO DIRECT SSE)
 // ========================================
 
 const updatedState = getMatchState(matchId);
 
 if (!updatedState) {
-  console.error("❌ Missing state before broadcast");
+  console.error("❌ Missing state before domain events");
   return {
     ok: false,
     reason: "INVALID_EVENT",
   };
 }
 
-// 📊 FINAL DATA SNAPSHOT
-const analytics = getAnalytics(matchId);
-const commentaryList = getCommentary(matchId);
 const sequence = eventStreams[matchId]?.length ?? 0;
 const eventMeta = {
   eventId: ballEvent.id,
   sequence,
   timestamp: ballEvent.timestamp,
-  matchId,
+  runtimeMatchId: matchId,
   innings: state.currentInningsIndex,
   over: currentInningsState.over,
   ball: currentInningsState.ball,
   eventType: ballEvent.type,
 } as const;
 
-  for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent]) {
-    appendCommentaryTimeline({
-      matchId,
-    eventId: commentaryEvent.eventId,
-    sequence,
-    timestamp: commentaryEvent.timestamp,
-    text: commentaryEvent.text,
-    source: "ENGINE",
-  });
-
-  broadcast(matchId, {
-    type: "commentary.generated",
-    matchId,
-    data: commentaryEvent,
-  });
-}
-
-// 📡 BROADCAST BALL EVENT
-broadcast(matchId, {
-  type: "BALL_EVENT",
-  matchId,
-  data: {
-    committedState: updatedState,
-    engineEvent: {
-      id: ballEvent.id,
-    },
-    eventMeta,
-    commentary: commentaryList ?? [],
-    insights: insights ?? [],
-    analytics: analytics ?? null,
-  },
+emitDomainEvent("BALL", {
+  type: "BALL",
+  runtimeMatchId: matchId,
+  state: updatedState,
+  ballEvent,
+  eventMeta,
+  commentaryEvents: commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent],
 });
 
-// 🏁 MATCH END EVENT
-if (updatedState.matchEnded) {
-  broadcast(matchId, {
-    type: "MATCH_ENDED",
-    matchId,
-    data: {
-      winner: updatedState.winner,
-      winBy: updatedState.winBy,
-    },
+if (ballEvent.type === "WICKET") {
+  emitDomainEvent("WICKET", {
+    type: "WICKET",
+    runtimeMatchId: matchId,
+    state: updatedState,
+    ballEvent,
+    eventMeta,
   });
 }
-  
-// ========================================
-// 🏁 MATCH END
-// ========================================
 
 if (updatedState.matchEnded) {
-  broadcast(matchId, {
-    type: "MATCH_ENDED",
-    matchId,
-    data: {
-      winner: updatedState.winner,
-      winBy: updatedState.winBy,
-    },
+  emitDomainEvent("MATCH_FINISHED", {
+    type: "MATCH_FINISHED",
+    runtimeMatchId: matchId,
+    state: updatedState,
+    winner: updatedState.winner,
+    winBy: updatedState.winBy,
+    timestamp: ballEvent.timestamp,
   });
 }
 
@@ -1477,6 +1348,13 @@ if (updatedState.matchEnded) {
   */
 
   
+
+  getStorageModule()
+    .then(async ({ appendEvent }) => {
+      await appendEvent(matchId, ballEvent);
+      await recordBallEvent(matchId, ballEvent);
+    })
+    .catch(console.error);
 
   /*
   ========================================

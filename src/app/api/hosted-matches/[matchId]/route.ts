@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { MatchStatus } from "@prisma/client";
 import {
   deleteHostedMatchByOwner,
   getHostedMatchById,
@@ -52,12 +53,18 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ match
     scoringMode?: string;
   };
 
+  const status = body.status?.trim().toUpperCase();
+  const normalizedStatus =
+    status === MatchStatus.DRAFT || status === MatchStatus.LIVE || status === MatchStatus.COMPLETED
+      ? status
+      : undefined;
+
   const updated = await updateHostedMatchByOwner(matchId, access.session.userId, {
     title: body.title,
     format: body.format,
     venue: body.venue,
     startTime: body.startTime ? new Date(body.startTime) : undefined,
-    status: body.status,
+    status: normalizedStatus,
     visibility: body.visibility,
     scoringMode: body.scoringMode,
   });

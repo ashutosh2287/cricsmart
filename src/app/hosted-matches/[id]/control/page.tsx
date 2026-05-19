@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 type HostedMatch = {
   id: string;
   slug: string;
   title: string;
-  status: string;
+  status: "DRAFT" | "LIVE" | "COMPLETED";
+  runtimeMatchId?: string | null;
   teamA: { name: string };
   teamB: { name: string };
 };
@@ -16,6 +17,7 @@ type HostedMatch = {
 export default function HostedMatchControlPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const router = useRouter();
   const [hostedMatch, setHostedMatch] = useState<HostedMatch | null>(null);
   const [identifier, setIdentifier] = useState("");
   const [memberRole, setMemberRole] = useState("SCORER");
@@ -38,13 +40,22 @@ export default function HostedMatchControlPage() {
 
   async function startHostedMatch() {
     setMessage(null);
-    const res = await fetch(`/api/hosted-matches/${id}/start`, { method: "POST" });
-    const body = (await res.json()) as { success?: boolean; error?: string; data?: { matchCenterUrl?: string } };
+    const res = await fetch(`/api/matches/${id}/start`, { method: "POST" });
+    const body = (await res.json()) as { success?: boolean; error?: string; runtimeMatchId?: string; data?: { runtimeMatchId?: string; matchCenterUrl?: string } };
     if (!res.ok || !body.success) {
       setMessage(body.error ?? "Failed to start match");
       return;
     }
-    setMessage(`Match started. Open ${body.data?.matchCenterUrl ?? "match center"}`);
+
+    const runtimeMatchId = body.runtimeMatchId ?? body.data?.runtimeMatchId;
+    if (!runtimeMatchId) {
+      setMessage("Match started but runtime link is missing");
+      return;
+    }
+
+    setHostedMatch((prev) => (prev ? { ...prev, runtimeMatchId, status: "LIVE" } : prev));
+    setMessage(`Match started. Opening ${body.data?.matchCenterUrl ?? `/match/${runtimeMatchId}`}`);
+    router.push(`/match/${runtimeMatchId}`);
   }
 
   async function addMember(event: FormEvent) {
@@ -79,15 +90,29 @@ export default function HostedMatchControlPage() {
         <p className="mt-1 text-xs text-[var(--text-muted)]">Status: {hostedMatch.status}</p>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <button onClick={startHostedMatch} className="rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-white">
+          <button
+            onClick={startHostedMatch}
+            disabled={Boolean(hostedMatch.runtimeMatchId)}
+            className="rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
             Start Live Match
           </button>
           <Link href={`/hosted-matches/${id}/score`} className="rounded-md border border-[var(--border-subtle)] px-4 py-2 text-sm text-[var(--text-primary)]">
             Open Scoring Console
           </Link>
-          <Link href={`/match/${hostedMatch.slug}`} className="rounded-md border border-[var(--border-subtle)] px-4 py-2 text-sm text-[var(--text-primary)]">
-            Open Match Center
-          </Link>
+          {hostedMatch.runtimeMatchId ? (
+            <Link href={`/match/${hostedMatch.runtimeMatchId}`} className="rounded-md border border-[var(--border-subtle)] px-4 py-2 text-sm text-[var(--text-primary)]">
+              Open Match Center
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="rounded-md border border-[var(--border-subtle)] px-4 py-2 text-sm text-[var(--text-secondary)] opacity-70"
+            >
+              Open Match Center
+            </button>
+          )}
         </div>
       </div>
 

@@ -21,9 +21,19 @@ export default async function HostedMatchPage({ params }: { params: Promise<{ id
       <p className="text-xs text-[var(--text-muted)]">{hostedMatch.format} · {hostedMatch.venue ?? "Venue TBD"}</p>
 
       <div className="flex flex-wrap gap-2">
-        <Link href={`/match/${hostedMatch.slug}`} className="rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-primary)]">
-          Open Match Center
-        </Link>
+        {hostedMatch.runtimeMatchId ? (
+          <Link href={`/match/${hostedMatch.runtimeMatchId}`} className="rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-primary)]">
+            Open Match Center
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-secondary)] opacity-70"
+          >
+            Open Match Center
+          </button>
+        )}
         <Link href={`/hosted-matches/${hostedMatch.id}/control`} className="rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-primary)]">
           Control Center
         </Link>

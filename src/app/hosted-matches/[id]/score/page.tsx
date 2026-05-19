@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const EVENT_TYPES = ["RUN", "FOUR", "SIX", "WICKET", "WD", "NB", "BYE", "LB"] as const;
 
@@ -15,6 +15,45 @@ export default function HostedMatchScorePage() {
   const [nonStriker, setNonStriker] = useState("");
   const [bowler, setBowler] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [runtimeMatchId, setRuntimeMatchId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      const res = await fetch(`/api/hosted-matches/${id}`, { cache: "no-store" });
+      const body = (await res.json()) as { data?: { runtimeMatchId?: string | null } };
+      if (!cancelled) {
+        setRuntimeMatchId(body.data?.runtimeMatchId ?? null);
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  async function startHostedMatch() {
+    setMessage(null);
+
+    const res = await fetch(`/api/matches/${id}/start`, { method: "POST" });
+    const body = (await res.json()) as {
+      success?: boolean;
+      error?: string;
+      runtimeMatchId?: string;
+      data?: { runtimeMatchId?: string };
+    };
+
+    if (!res.ok || !body.success) {
+      setMessage(body.error ?? "Failed to start match");
+      return;
+    }
+
+    const runtime = body.runtimeMatchId ?? body.data?.runtimeMatchId ?? null;
+    setRuntimeMatchId(runtime);
+    setMessage("Match started");
+  }
 
   async function submitEvent() {
     setMessage(null);
@@ -44,6 +83,32 @@ export default function HostedMatchScorePage() {
     <div className="mx-auto w-full max-w-2xl space-y-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
       <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Scoring Console</h1>
       <p className="text-sm text-[var(--text-secondary)]">Ball-by-ball scoring publishes directly into MatchEngine and SSE.</p>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={startHostedMatch}
+          disabled={Boolean(runtimeMatchId)}
+          className="rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Start Match
+        </button>
+        {runtimeMatchId ? (
+          <a
+            href={`/match/${runtimeMatchId}`}
+            className="rounded-md border border-[var(--border-subtle)] px-4 py-2 text-sm text-[var(--text-primary)]"
+          >
+            Open Match Center
+          </a>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="rounded-md border border-[var(--border-subtle)] px-4 py-2 text-sm text-[var(--text-secondary)] opacity-70"
+          >
+            Open Match Center
+          </button>
+        )}
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-sm">

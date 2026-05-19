@@ -197,9 +197,7 @@ export async function getTeamById(id: string): Promise<TeamWithEngagementCounts 
 
 export async function getTeamBySlug(slug: string): Promise<TeamWithMembers | null> {
   return prisma.team.findFirst({
-    where: {
-      OR: [{ slug }, { id: slug }],
-    },
+    where: { slug },
     include: {
       owner: {
         select: {

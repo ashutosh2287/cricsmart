@@ -4,10 +4,10 @@ import { useState } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 
 type Props = {
-  teamId: string;
+  teamSlug: string;
 };
 
-export default function TeamEngagementButtons({ teamId }: Props) {
+export default function TeamEngagementButtons({ teamSlug }: Props) {
   const { authEnabled, isAuthenticated, loading } = useAuth();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -44,7 +44,7 @@ export default function TeamEngagementButtons({ teamId }: Props) {
         <button
           type="button"
           disabled={busy}
-          onClick={() => runAction(`/api/teams/${teamId}/follow`, "POST", "Following team")}
+          onClick={() => runAction(`/api/teams/${teamSlug}/follow`, "POST", "Following team")}
           className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-1.5 text-sm text-[var(--text-primary)] disabled:opacity-50"
         >
           Follow
@@ -52,7 +52,7 @@ export default function TeamEngagementButtons({ teamId }: Props) {
         <button
           type="button"
           disabled={busy}
-          onClick={() => runAction(`/api/teams/${teamId}/favorite`, "POST", "Added to favorites")}
+          onClick={() => runAction(`/api/teams/${teamSlug}/favorite`, "POST", "Added to favorites")}
           className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-1.5 text-sm text-[var(--text-primary)] disabled:opacity-50"
         >
           Favorite

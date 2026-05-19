@@ -58,7 +58,7 @@ export function ManageTeamClient({ team, currentUserId }: Props) {
     setError(null);
 
     try {
-      const res = await fetch(`/api/teams/${team.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/teams/${team.slug}`, { method: "DELETE" });
       const data = (await res.json()) as { error?: string };
 
       if (!res.ok) {

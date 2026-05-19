@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAuthEnabled } from "@/config/auth";
+import { getAuthCookieName, isAuthEnabled } from "@/config/auth";
 import { logger } from "@/lib/logger";
 import { logAuthSensitiveAction } from "@/services/auth/routeGuard";
 import {
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   }
 
   const session = await getAuthSessionFromRequest(req);
-  const sessionId = session?.sessionId ?? readSessionIdFromRequest(req);
+  const sessionId = session?.sessionId ?? readSessionIdFromRequest(req, getAuthCookieName());
   if (sessionId) {
     try {
       await deleteAuthSessionById(sessionId);
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
   logAuthSensitiveAction("logout", {
     route: "/api/auth/logout",
-    sessionId,
+    sessionId: sessionId ?? undefined,
     role: session?.role,
     username: session?.username,
   });

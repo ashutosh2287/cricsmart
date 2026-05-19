@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { listHostedMatchesByCreator } from "@/lib/repositories/hostedMatch.repository";
-import { requireAuthenticatedPageSession } from "@/services/auth/pageAuth";
+import { getRequiredRequestAuthSession } from "@/services/auth/serverRequestContext";
 
 export default async function AccountHostedMatchesPage() {
-  const session = await requireAuthenticatedPageSession("/account/hosted-matches");
+  const session = await getRequiredRequestAuthSession();
   const hostedMatches = await listHostedMatchesByCreator(session.userId);
 
   return (

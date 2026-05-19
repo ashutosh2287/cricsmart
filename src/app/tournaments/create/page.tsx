@@ -1,12 +1,10 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/providers/AuthProvider";
 
 export default function CreateTournamentPage() {
   const router = useRouter();
-  const { authEnabled, isAuthenticated, loading } = useAuth();
   const [name, setName] = useState("");
   const [format, setFormat] = useState("T20");
   const [location, setLocation] = useState("");
@@ -46,14 +44,6 @@ export default function CreateTournamentPage() {
       setBusy(false);
     }
   }
-
-  useEffect(() => {
-    if (!loading && authEnabled && !isAuthenticated) {
-      router.push(`/login?redirect=${encodeURIComponent("/tournaments/create")}`);
-    }
-  }, [authEnabled, isAuthenticated, loading, router]);
-
-  if (!loading && authEnabled && !isAuthenticated) return null;
 
   return (
     <form onSubmit={handleSubmit} className="mx-auto w-full max-w-xl space-y-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">

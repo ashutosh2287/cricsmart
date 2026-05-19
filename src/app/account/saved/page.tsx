@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { listFavoriteTeams, listSavedMatches } from "@/lib/repositories/community.repository";
-import { requireAuthenticatedPageSession } from "@/services/auth/pageAuth";
+import { getRequiredRequestAuthSession } from "@/services/auth/serverRequestContext";
 
 export default async function AccountSavedPage() {
-  const session = await requireAuthenticatedPageSession("/account/saved");
+  const session = await getRequiredRequestAuthSession();
   const [favoriteTeams, savedMatches] = await Promise.all([
     listFavoriteTeams(session.userId),
     listSavedMatches(session.userId),

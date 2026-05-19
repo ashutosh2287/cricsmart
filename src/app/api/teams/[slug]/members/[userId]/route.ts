@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   isTeamOwner,
-  removeTeamMember,
+  leaveTeam,
+  removeTeamMemberByOwner,
 } from "@/lib/repositories/team.repository";
 import { handleTeamError, requireTeam } from "@/lib/repositories/teamGuards";
 import { getRequiredRequestAuthSession } from "@/services/auth/serverRequestContext";
@@ -35,7 +36,25 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
       );
     }
 
-    await removeTeamMember(team.id, userId);
+    if (isSelf) {
+      const left = await leaveTeam(team.id, session.userId);
+      if (!left) {
+        return NextResponse.json(
+          { success: false, error: "Failed to leave team" },
+          { status: 400 },
+        );
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    const removed = await removeTeamMemberByOwner(team.id, session.userId, userId);
+    if (!removed) {
+      return NextResponse.json(
+        { success: false, error: "Failed to remove member" },
+        { status: 400 },
+      );
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleTeamError(error);

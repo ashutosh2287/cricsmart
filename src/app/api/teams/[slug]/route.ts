@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  deleteTeam,
+  deleteTeamByOwner,
   getTeamBySlug,
-  updateTeam,
+  updateTeamByOwner,
 } from "@/lib/repositories/team.repository";
 import {
   handleTeamError,
@@ -77,7 +77,13 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       );
     }
 
-    const updated = await updateTeam(team.id, parsed.data);
+    const updated = await updateTeamByOwner(team.id, session.userId, parsed.data);
+    if (!updated) {
+      return NextResponse.json(
+        { success: false, error: "Permission denied" },
+        { status: 403 },
+      );
+    }
     return NextResponse.json({ success: true, team: updated });
   } catch (error) {
     return handleTeamError(error);
@@ -92,7 +98,13 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     const team = await requireTeam(slug);
     await requireTeamOwner(team.id, session.userId);
 
-    await deleteTeam(team.id);
+    const deleted = await deleteTeamByOwner(team.id, session.userId);
+    if (!deleted) {
+      return NextResponse.json(
+        { success: false, error: "Permission denied" },
+        { status: 403 },
+      );
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleTeamError(error);

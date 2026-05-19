@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  addTeamMember,
+  addTeamMemberByOwner,
   isTeamMember,
 } from "@/lib/repositories/team.repository";
 import {
@@ -60,8 +60,15 @@ export async function POST(req: NextRequest, context: RouteContext) {
       );
     }
 
-    const member = await addTeamMember(team.id, parsed.data.userId);
-    return NextResponse.json({ success: true, member }, { status: 201 });
+    const added = await addTeamMemberByOwner(team.id, session.userId, parsed.data.userId);
+    if (!added) {
+      return NextResponse.json(
+        { success: false, error: "Permission denied" },
+        { status: 403 },
+      );
+    }
+
+    return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
     return handleTeamError(error);
   }

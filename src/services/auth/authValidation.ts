@@ -34,7 +34,7 @@ const signupSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["confirmPassword"],
-        message: "Password mismatch",
+        message: "Passwords do not match",
       });
     }
   });

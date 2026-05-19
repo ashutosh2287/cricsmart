@@ -34,12 +34,33 @@ function normalizeOptional(value?: string | null): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function deriveShortName(name: string): string {
+  const normalized = name.trim().toUpperCase();
+  if (!normalized) return "TEAM";
+  if (normalized.length >= 3) return normalized.slice(0, 3);
+  return normalized.padEnd(3, "X");
+}
+
 function toSlug(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  const input = value.trim().toLowerCase();
+  let slug = "";
+  let wasDash = false;
+
+  for (const char of input) {
+    const isAlphaNum = (char >= "a" && char <= "z") || (char >= "0" && char <= "9");
+    if (isAlphaNum) {
+      slug += char;
+      wasDash = false;
+      continue;
+    }
+
+    if (!wasDash && slug.length > 0) {
+      slug += "-";
+      wasDash = true;
+    }
+  }
+
+  return slug.endsWith("-") ? slug.slice(0, -1) : slug;
 }
 
 async function ensureUniqueTeamSlug(base: string, options?: { excludeTeamId?: string }): Promise<string> {
@@ -70,7 +91,7 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
       slug,
       description: normalizeOptional(input.description),
       visibility: input.visibility ?? "PUBLIC",
-      shortName: normalizeOptional(input.shortName) ?? name.slice(0, 3).toUpperCase(),
+      shortName: normalizeOptional(input.shortName) ?? deriveShortName(name),
       city: normalizeOptional(input.city),
       logoUrl: normalizeOptional(input.logoUrl),
     },
@@ -91,9 +112,7 @@ export async function addTeamMember(input: AddTeamMemberInput): Promise<TeamMemb
         userId: input.userId,
       },
     },
-    update: {
-      role: input.role ?? "MEMBER",
-    },
+    update: input.role ? { role: input.role } : {},
     create: {
       teamId: input.teamId,
       userId: input.userId,
@@ -147,6 +166,10 @@ export async function updateTeamByOwner(id: string, ownerId: string, input: Upda
   const nextSlug = input.slug
     ? await ensureUniqueTeamSlug(toSlug(input.slug), { excludeTeamId: id })
     : undefined;
+  const nextShortName =
+    input.shortName !== undefined
+      ? normalizeOptional(input.shortName) ?? deriveShortName(input.name?.trim() ?? existing.name)
+      : undefined;
 
   return prisma.team.update({
     where: { id },
@@ -155,7 +178,7 @@ export async function updateTeamByOwner(id: string, ownerId: string, input: Upda
       ...(input.description !== undefined ? { description: normalizeOptional(input.description) } : {}),
       ...(input.visibility !== undefined ? { visibility: input.visibility } : {}),
       ...(nextSlug !== undefined ? { slug: nextSlug } : {}),
-      ...(input.shortName !== undefined ? { shortName: input.shortName.trim() } : {}),
+      ...(nextShortName !== undefined ? { shortName: nextShortName } : {}),
       ...(input.city !== undefined ? { city: normalizeOptional(input.city) } : {}),
       ...(input.logoUrl !== undefined ? { logoUrl: normalizeOptional(input.logoUrl) } : {}),
     },

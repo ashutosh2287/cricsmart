@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
   logAuthSensitiveAction("logout", {
     route: "/api/auth/logout",
-    sessionId: session?.sessionId ?? sessionId,
+    sessionId: sessionId ?? session?.sessionId,
     role: session?.role,
     username: session?.username,
   });

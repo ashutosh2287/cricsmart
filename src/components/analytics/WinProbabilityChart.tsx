@@ -41,10 +41,7 @@ function WinProbabilityChart({
   team2
 }: Props) {
   const hasLivePoints = data.length > 0;
-  const chartData = useMemo(
-    () => (hasLivePoints ? data : [{ over: 0, batting: 50, bowling: 50 }]),
-    [data, hasLivePoints]
-  );
+  const chartData = useMemo(() => data, [data]);
   const lastPoint = useMemo(
     () => chartData[chartData.length - 1] ?? null,
     [chartData]
@@ -93,8 +90,6 @@ function WinProbabilityChart({
     );
   }, []);
 
-  if (!lastPoint) return null;
-
   return (
     <AnalyticsErrorBoundary fallbackTitle="Win probability chart is temporarily unavailable.">
       <div className="theme-chart-shell rounded-xl p-4">
@@ -109,14 +104,14 @@ function WinProbabilityChart({
         <div className="text-xs flex gap-3">
 
           <span className="font-semibold text-[var(--chart-positive)]">
-            {team1 ?? "BAT"} {lastPoint.batting.toFixed(1)}%
+            {team1 ?? "BAT"} {(lastPoint?.batting ?? 0).toFixed(1)}%
           </span>
 
           <span className="font-semibold text-[var(--chart-negative)]">
-            {team2 ?? "BOWL"} {lastPoint.bowling.toFixed(1)}%
+            {team2 ?? "BOWL"} {(lastPoint?.bowling ?? 0).toFixed(1)}%
           </span>
 
-          {lastPoint.confidence !== undefined ? (
+          {lastPoint?.confidence !== undefined ? (
             <span className="font-semibold text-[var(--text-secondary)]">
               Confidence {(lastPoint.confidence * 100).toFixed(0)}%
             </span>
@@ -127,10 +122,11 @@ function WinProbabilityChart({
       </div>
       {!hasLivePoints ? (
         <p className="mb-3 text-xs text-[var(--text-secondary)]">
-          Waiting for simulation events — showing neutral 50/50 baseline.
+          Waiting for replay events.
         </p>
       ) : null}
 
+      {hasLivePoints ? (
       <ResponsiveContainer width="100%" height={260}>
 
         <LineChart data={chartData}>
@@ -193,6 +189,7 @@ function WinProbabilityChart({
         </LineChart>
 
       </ResponsiveContainer>
+      ) : null}
 
       </div>
     </AnalyticsErrorBoundary>

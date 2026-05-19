@@ -146,13 +146,7 @@ export default function MatchGraphExplorer({
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ChartTab>("winProbability");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("both");
-  const effectiveWinProbabilityData = useMemo(
-    () =>
-      winProbabilityData.length
-        ? winProbabilityData
-        : [{ over: 0, batting: 50, bowling: 50 }],
-    [winProbabilityData]
-  );
+  const effectiveWinProbabilityData = useMemo(() => winProbabilityData, [winProbabilityData]);
 
   const latestWinPoint = effectiveWinProbabilityData.length
     ? effectiveWinProbabilityData[effectiveWinProbabilityData.length - 1]
@@ -163,11 +157,13 @@ export default function MatchGraphExplorer({
 
   const progression = useMemo(() => buildProgressionData(innings), [innings]);
 
-  const battingWin = latestWinPoint?.batting ?? 50;
-  const bowlingWin = latestWinPoint?.bowling ?? 50;
+  const battingWin = latestWinPoint?.batting ?? 0;
+  const bowlingWin = latestWinPoint?.bowling ?? 0;
   const confidence = latestWinPoint?.confidence;
   const leader =
-    battingWin === bowlingWin
+      !latestWinPoint
+        ? "Awaiting replay events"
+        : battingWin === bowlingWin
       ? "Match evenly balanced"
       : battingWin > bowlingWin
         ? `${currentBattingTeam} slightly ahead`
@@ -283,6 +279,11 @@ export default function MatchGraphExplorer({
                 />
               </div>
             </div>
+            {!latestWinPoint ? (
+              <p className="mt-3 text-xs text-[var(--text-secondary)]">
+                No replay events yet.
+              </p>
+            ) : null}
             <p className="mt-4 text-sm text-[var(--text-secondary)]">
               {leader}. Pressure shifting ball-by-ball.
             </p>

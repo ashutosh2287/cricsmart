@@ -72,6 +72,36 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
   const drawerRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<number | null>(null);
   const { isAuthenticated } = useAuth();
+  const accountItems: DrawerMenuItem[] = isAuthenticated
+    ? [
+        {
+          label: "My Account",
+          href: "/account",
+          icon: icon("M10 11a4 4 0 100-8 4 4 0 000 8zm-6 6a6 6 0 0112 0"),
+        },
+        {
+          label: "Profile",
+          href: "/account/profile",
+          icon: icon("M10 11a4 4 0 100-8 4 4 0 000 8"),
+        },
+        {
+          label: "Settings",
+          href: "/account/settings",
+          icon: icon("M6 10a4 4 0 118 0 4 4 0 01-8 0zm4-6v2m0 8v2m6-6h-2M6 10H4"),
+        },
+      ]
+    : [
+        {
+          label: "Login",
+          href: `/login?redirect=${encodeURIComponent(pathname || "/")}`,
+          icon: icon("M11 6l4 4-4 4M15 10H7m-2 5h6a2 2 0 002-2V7a2 2 0 00-2-2H5"),
+        },
+        {
+          label: "Signup",
+          href: `/signup?redirect=${encodeURIComponent(pathname || "/")}`,
+          icon: icon("M10 5v10M5 10h10"),
+        },
+      ];
 
   useEffect(() => {
     if (!isOpen || !drawerRef.current) {
@@ -170,23 +200,7 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
           <nav className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label="Primary navigation">
             <MenuSection
               title="My Account"
-              items={[
-                {
-                  label: "My Account",
-                  href: isAuthenticated ? "/account" : `/login?redirect=${encodeURIComponent("/account")}`,
-                  icon: icon("M10 11a4 4 0 100-8 4 4 0 000 8zm-6 6a6 6 0 0112 0"),
-                },
-                {
-                  label: "My Teams",
-                  href: isAuthenticated ? "/account/teams" : `/login?redirect=${encodeURIComponent("/account/teams")}`,
-                  icon: icon("M4 15a3 3 0 016 0m2 0a3 3 0 016 0"),
-                },
-                {
-                  label: "Host Match",
-                  href: isAuthenticated ? "/host/matches/create" : `/login?redirect=${encodeURIComponent("/host/matches/create")}`,
-                  icon: icon("M4 10h12M10 4v12"),
-                },
-              ]}
+              items={accountItems}
               pathname={pathname}
               onNavigate={onClose}
             />

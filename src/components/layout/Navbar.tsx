@@ -346,22 +346,40 @@ export default function Navbar() {
                 {matchesPanelOpen ? "Matches" : activeLink?.name ?? "Cricket"}
               </span>
               <ThemeToggle />
-              <Link
-                href={
-                  !authLoading && authEnabled && isAuthenticated
-                    ? "/account/profile"
-                    : `/login?redirect=${encodeURIComponent(pathname || "/")}`
-                }
-                aria-label={!authLoading && authEnabled && isAuthenticated ? "Open profile" : "Open login"}
-                className="inline-flex items-center justify-center rounded-full transition hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brand)]/80"
-              >
-                <UserAvatar
-                  username={user?.username}
-                  avatarUrl={user?.avatarUrl}
-                  sizeClassName="h-9 w-9"
-                  textSizeClassName="text-xs"
-                />
-              </Link>
+              {authLoading ? (
+                <span className="inline-flex h-9 w-20 animate-pulse rounded-md border border-[var(--border-subtle)] bg-[var(--bg-raised)]/50" />
+              ) : authEnabled && isAuthenticated ? (
+                <Link
+                  href="/account/profile"
+                  aria-label="Open account profile"
+                  className="inline-flex items-center gap-2 rounded-full transition hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brand)]/80"
+                >
+                  <UserAvatar
+                    username={user?.username}
+                    avatarUrl={user?.avatarUrl}
+                    sizeClassName="h-9 w-9"
+                    textSizeClassName="text-xs"
+                  />
+                  <span className="hidden max-w-24 truncate text-sm font-medium text-[var(--text-primary)] md:inline">
+                    {user?.username}
+                  </span>
+                </Link>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/login?redirect=${encodeURIComponent(pathname || "/")}`}
+                    className="rounded-md border border-[var(--border-subtle)] px-2.5 py-1.5 text-sm text-[var(--text-primary)] transition hover:border-[var(--accent-brand)]/70"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href={`/signup?redirect=${encodeURIComponent(pathname || "/")}`}
+                    className="rounded-md bg-[var(--accent-brand)] px-2.5 py-1.5 text-sm font-medium text-white transition hover:opacity-90"
+                  >
+                    Signup
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </nav>

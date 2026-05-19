@@ -59,6 +59,11 @@ export async function middleware(req: NextRequest) {
   const sessionId = req.cookies.get(getAuthCookieName())?.value;
   const session = sessionId ? await getAuthSessionById(sessionId) : null;
 
+  if (session && normalizePathname(req.nextUrl.pathname) === "/login") {
+    const accountUrl = new URL("/account", req.url);
+    return NextResponse.redirect(accountUrl);
+  }
+
   if (session && isAuthorizedForRoute(access, session.user.role)) {
     applyAuthSessionToRequestHeaders(requestHeaders, session);
     return NextResponse.next({

@@ -20,6 +20,10 @@ function normalizeRedirectPath(path: string): string {
   if (!decodedPath.startsWith("/")) return "/";
   const normalizedPath = decodedPath.replace(/\\/g, "/");
   if (normalizedPath.startsWith("//")) return "/";
+  if (normalizedPath.includes("://")) return "/";
+  const pathname = normalizedPath.split("?")[0].split("#")[0];
+  const hasTraversalSegment = pathname.split("/").some((segment) => segment === "." || segment === "..");
+  if (hasTraversalSegment) return "/";
   return normalizedPath;
 }
 

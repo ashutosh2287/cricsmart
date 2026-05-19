@@ -9,15 +9,28 @@ export async function getRequestAuthSession(): Promise<AuthSession | null> {
 }
 
 function normalizeRedirectPath(path: string): string {
-  if (!path || !path.startsWith("/")) return "/";
-  if (path.startsWith("//")) return "/";
-  return path;
+  if (!path) return "/";
+  const decodedPath = (() => {
+    try {
+      return decodeURIComponent(path);
+    } catch {
+      return path;
+    }
+  })().trim();
+  if (!decodedPath.startsWith("/")) return "/";
+  const normalizedPath = decodedPath.replace(/\\/g, "/");
+  if (normalizedPath.startsWith("//")) return "/";
+  return normalizedPath;
 }
 
 function resolveLoginRedirectTarget(path: string): string {
   return `/login?redirect=${encodeURIComponent(normalizeRedirectPath(path))}`;
 }
 
+/**
+ * Returns the authenticated request session, or redirects unauthenticated requests to login.
+ * `redirectPath` should be an internal app-relative path; invalid values are normalized to `/`.
+ */
 export async function getRequiredRequestAuthSession(redirectPath = "/"): Promise<AuthSession> {
   const session = await getRequestAuthSession();
   if (!session) {

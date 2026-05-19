@@ -103,7 +103,7 @@ export async function deleteAuthSessionById(sessionId: string): Promise<void> {
   await redis.del(getSessionKey(sessionId));
 }
 
-async function refreshAuthSession(session: StoredSession): Promise<AuthSession> {
+async function refreshAuthSession(session: StoredSession): Promise<AuthSession | null> {
   try {
     const redis = getRedis();
     const ttlSeconds = getAuthSessionTtlSeconds();
@@ -120,7 +120,7 @@ async function refreshAuthSession(session: StoredSession): Promise<AuthSession> 
       sessionId: session.sessionId,
       error: error instanceof Error ? error.message : String(error),
     });
-    return toAuthSession(session);
+    return null;
   }
 }
 

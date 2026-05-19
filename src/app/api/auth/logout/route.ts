@@ -14,8 +14,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   }
 
-  const sessionId = readSessionIdFromRequest(req);
   const session = await getAuthSessionFromRequest(req);
+  const sessionId = session?.sessionId ?? readSessionIdFromRequest(req);
   if (sessionId) {
     try {
       await deleteAuthSessionById(sessionId);

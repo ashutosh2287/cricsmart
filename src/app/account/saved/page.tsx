@@ -18,7 +18,7 @@ export default async function AccountSavedPage() {
             <p className="text-sm text-[var(--text-secondary)]">No favorite teams yet.</p>
           ) : (
             favoriteTeams.map((favorite) => (
-              <Link key={favorite.id} href={`/teams/${favorite.teamId}`} className="block text-sm text-[var(--text-primary)]">
+              <Link key={favorite.id} href={`/teams/${favorite.team.slug}`} className="block text-sm text-[var(--text-primary)]">
                 {favorite.team.name}
               </Link>
             ))

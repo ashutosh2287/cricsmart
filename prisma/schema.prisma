@@ -7,6 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum TeamMemberRole {
+  OWNER
+  MEMBER
+}
+
+enum TeamVisibility {
+  PUBLIC
+  PRIVATE
+}
+
 model User {
   id           String   @id @default(cuid())
   username     String   @unique
@@ -17,7 +27,8 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  teams                 Team[]
+  ownedTeams            Team[]             @relation("TeamOwner")
+  teamMemberships       TeamMember[]       @relation("TeamMemberships")
   hostedMatches         HostedMatch[]       @relation("HostedMatchCreator")
   hostedMatchRoles      HostedMatchMember[]
   tournaments           Tournament[]        @relation("TournamentOrganizer")
@@ -31,18 +42,41 @@ model User {
 model Team {
   id        String   @id @default(cuid())
   name      String
+  slug      String   @unique
+  description String?
+  visibility TeamVisibility @default(PUBLIC)
   shortName String
   logoUrl   String?
   ownerId   String
   city      String?
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  owner           User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner           User                @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members         TeamMember[]
   hostedMatchesA  HostedMatch[]       @relation("HostedMatchTeamA")
   hostedMatchesB  HostedMatch[]       @relation("HostedMatchTeamB")
   tournamentTeams TournamentTeam[]
   followers       TeamFollow[]
   favorites       FavoriteTeam[]
+
+  @@index([ownerId])
+  @@index([slug])
+}
+
+model TeamMember {
+  id       String         @id @default(cuid())
+  role     TeamMemberRole @default(MEMBER)
+  teamId   String
+  userId   String
+  joinedAt DateTime       @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation("TeamMemberships", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+  @@index([teamId])
 }
 
 model PlayerProfile {

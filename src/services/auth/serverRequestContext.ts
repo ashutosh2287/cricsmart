@@ -8,8 +8,14 @@ export async function getRequestAuthSession(): Promise<AuthSession | null> {
   return readAuthSessionFromHeaders(headerStore);
 }
 
+function normalizeRedirectPath(path: string): string {
+  if (!path || !path.startsWith("/")) return "/";
+  if (path.startsWith("//")) return "/";
+  return path;
+}
+
 function resolveLoginRedirectTarget(path: string): string {
-  return `/login?redirect=${encodeURIComponent(path)}`;
+  return `/login?redirect=${encodeURIComponent(normalizeRedirectPath(path))}`;
 }
 
 export async function getRequiredRequestAuthSession(redirectPath = "/"): Promise<AuthSession> {

@@ -17,7 +17,6 @@ import { getRedis } from "@/services/storage/redisClient";
 import type { AuthSession } from "./authTypes";
 
 const SESSION_KEY_PREFIX = "session:";
-const SESSION_REFRESH_GRACE_SECONDS = 15;
 
 function getSessionKey(id: string): string {
   return `${SESSION_KEY_PREFIX}${id}`;
@@ -104,16 +103,25 @@ export async function deleteAuthSessionById(sessionId: string): Promise<void> {
   await redis.del(getSessionKey(sessionId));
 }
 
-async function refreshAuthSession(session: StoredSession): Promise<AuthSession> {
-  const redis = getRedis();
-  const ttlSeconds = getAuthSessionTtlSeconds();
-  const refreshed: StoredSession = {
-    ...session,
-    lastSeenAt: now(),
-    expiresAt: now() + ttlSeconds * 1000,
-  };
-  await redis.set(getSessionKey(session.sessionId), JSON.stringify(refreshed), "EX", ttlSeconds);
-  return toAuthSession(refreshed);
+async function refreshAuthSession(session: StoredSession): Promise<AuthSession | null> {
+  try {
+    const redis = getRedis();
+    const ttlSeconds = getAuthSessionTtlSeconds();
+    const timestamp = now();
+    const refreshed: StoredSession = {
+      ...session,
+      lastSeenAt: timestamp,
+      expiresAt: timestamp + ttlSeconds * 1000,
+    };
+    await redis.set(getSessionKey(session.sessionId), JSON.stringify(refreshed), "EX", ttlSeconds);
+    return toAuthSession(refreshed);
+  } catch (error) {
+    logger.warn("AUTH", "session_refresh_failed", {
+      sessionId: session.sessionId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
 }
 
 export async function rotateAuthSession(session: AuthSession): Promise<AuthSession> {
@@ -149,21 +157,34 @@ export async function getAuthSessionById(sessionId: string): Promise<AuthSession
   if (!isAuthEnabled()) return null;
   if (!sessionId) return null;
 
-  const redis = getRedis();
-  const raw = await redis.get(getSessionKey(sessionId));
-  const session = parseStoredSession(raw);
-  if (!session) return null;
-
-  if (now() > session.expiresAt) {
-    await deleteAuthSessionById(session.sessionId);
+  let session: StoredSession | null = null;
+  try {
+    const redis = getRedis();
+    const raw = await redis.get(getSessionKey(sessionId));
+    session = parseStoredSession(raw);
+  } catch (error) {
+    logger.warn("AUTH", "session_lookup_failed", {
+      sessionId,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return null;
   }
 
-  if (now() - session.lastSeenAt >= SESSION_REFRESH_GRACE_SECONDS * 1000) {
-    return await refreshAuthSession(session);
+  if (!session) return null;
+
+  if (now() > session.expiresAt) {
+    try {
+      await deleteAuthSessionById(session.sessionId);
+    } catch (error) {
+      logger.warn("AUTH", "session_expired_cleanup_failed", {
+        sessionId: session.sessionId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return null;
   }
 
-  return toAuthSession(session);
+  return await refreshAuthSession(session);
 }
 
 export function readSessionIdFromCookieHeader(cookieHeader: string | null): string | null {

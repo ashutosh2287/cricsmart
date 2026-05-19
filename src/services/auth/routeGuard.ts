@@ -85,6 +85,7 @@ export function logAuthSensitiveAction(
   data: {
     matchId?: string;
     route: string;
+    sessionId?: string;
     role?: string;
     username?: string;
   }

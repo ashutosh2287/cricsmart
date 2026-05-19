@@ -1,8 +1,4 @@
-import { requireAuthenticatedPageSession } from "@/services/auth/pageAuth";
-
 export default async function AccountActivityPage() {
-  await requireAuthenticatedPageSession("/account/activity");
-
   return (
     <div className="mx-auto w-full max-w-2xl rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
       <h1 className="text-xl font-semibold text-[var(--text-primary)]">Activity Feed</h1>

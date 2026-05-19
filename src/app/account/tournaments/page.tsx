@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { listTournamentsByOrganizer } from "@/lib/repositories/tournament.repository";
-import { requireAuthenticatedPageSession } from "@/services/auth/pageAuth";
+import { getRequiredRequestAuthSession } from "@/services/auth/serverRequestContext";
 
 export default async function AccountTournamentsPage() {
-  const session = await requireAuthenticatedPageSession("/account/tournaments");
+  const session = await getRequiredRequestAuthSession();
   const tournaments = await listTournamentsByOrganizer(session.userId);
 
   return (

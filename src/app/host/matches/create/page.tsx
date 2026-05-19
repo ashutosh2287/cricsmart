@@ -2,13 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/providers/AuthProvider";
 
 type Team = { id: string; name: string; shortName: string };
 
 export default function HostMatchCreatePage() {
   const router = useRouter();
-  const { authEnabled, isAuthenticated, loading } = useAuth();
   const [teams, setTeams] = useState<Team[]>([]);
   const [title, setTitle] = useState("");
   const [format, setFormat] = useState("T20");
@@ -69,14 +67,6 @@ export default function HostMatchCreatePage() {
       setBusy(false);
     }
   }
-
-  useEffect(() => {
-    if (!loading && authEnabled && !isAuthenticated) {
-      router.push(`/login?redirect=${encodeURIComponent("/host/matches/create")}`);
-    }
-  }, [authEnabled, isAuthenticated, loading, router]);
-
-  if (!loading && authEnabled && !isAuthenticated) return null;
 
   return (
     <form onSubmit={handleSubmit} className="mx-auto w-full max-w-2xl space-y-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">

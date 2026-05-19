@@ -1,9 +1,9 @@
 import UserAvatar from "@/components/account/UserAvatar";
 import { findById } from "@/lib/repositories/user.repository";
-import { requireAuthenticatedPageSession } from "@/services/auth/pageAuth";
+import { getRequiredRequestAuthSession } from "@/services/auth/serverRequestContext";
 
 export default async function AccountProfilePage() {
-  const session = await requireAuthenticatedPageSession("/account/profile");
+  const session = await getRequiredRequestAuthSession();
   const user = await findById(session.userId);
 
   return (
@@ -62,4 +62,3 @@ export default async function AccountProfilePage() {
     </div>
   );
 }
-

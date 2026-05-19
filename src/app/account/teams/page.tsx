@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { listTeamsByOwner } from "@/lib/repositories/team.repository";
-import { requireAuthenticatedPageSession } from "@/services/auth/pageAuth";
+import { getRequiredRequestAuthSession } from "@/services/auth/serverRequestContext";
 
 export default async function AccountTeamsPage() {
-  const session = await requireAuthenticatedPageSession("/account/teams");
+  const session = await getRequiredRequestAuthSession();
   const teams = await listTeamsByOwner(session.userId);
 
   return (

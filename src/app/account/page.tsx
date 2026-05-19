@@ -1,13 +1,10 @@
 import Link from "next/link";
 import AccountLogoutButton from "@/components/account/AccountLogoutButton";
-import { requireAuthenticatedPageSession } from "@/services/auth/pageAuth";
 
 const cardClass =
   "block rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 transition hover:border-[var(--accent-brand)]/70 hover:bg-[var(--bg-raised)]";
 
 export default async function AccountDashboardPage() {
-  await requireAuthenticatedPageSession("/account");
-
   return (
     <div className="mx-auto w-full max-w-2xl space-y-4">
       <h1 className="text-2xl font-semibold text-[var(--text-primary)]">My Account</h1>

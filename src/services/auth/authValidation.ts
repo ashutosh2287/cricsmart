@@ -52,11 +52,7 @@ export type SignupPayload = {
 };
 
 function sanitizeLoginIdentifier(value: string): string {
-  const trimmed = value.trim();
-  if (trimmed.includes("@")) {
-    return trimmed.toLowerCase();
-  }
-  return trimmed.toLowerCase();
+  return value.trim().toLowerCase();
 }
 
 export function parseLoginPayload(input: unknown): { success: true; data: LoginPayload } | { success: false; error: string } {

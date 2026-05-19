@@ -1,5 +1,8 @@
 import type { MatchState } from "@/services/matchEngine";
 import type { CommentaryEvent } from "@/services/commentary/types/commentary.types";
+import type { BallEvent as DomainBallEvent } from "@/domain/events/BallEvent";
+import type { MatchFinishedEvent } from "@/domain/events/MatchFinishedEvent";
+import type { WicketEvent } from "@/domain/events/WicketEvent";
 
 // ✅ Use the SAME client registry that the SSE route writes to
 // (SSE route → realtimeController → clientStore → getClients)
@@ -69,17 +72,17 @@ type RealtimeEvent =
   | {
       type: "BALL";
       matchId: string;
-      data: unknown;
+      data: DomainBallEvent;
     }
   | {
       type: "WICKET";
       matchId: string;
-      data: unknown;
+      data: WicketEvent;
     }
   | {
       type: "MATCH_FINISHED";
       matchId: string;
-      data: unknown;
+      data: MatchFinishedEvent;
     }
   | {
       type: "commentary.generated";

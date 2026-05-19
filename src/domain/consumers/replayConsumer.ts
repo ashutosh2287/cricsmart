@@ -3,6 +3,7 @@ import type { BallEvent } from "@/domain/events/BallEvent";
 import { appendEventTimeline } from "@/services/replay/eventTimeline";
 
 const replaySequenceByMatch = new Map<string, number>();
+const canPersistReplayStream = typeof window === "undefined";
 
 function nextSequence(runtimeMatchId: string) {
   const current = replaySequenceByMatch.get(runtimeMatchId) ?? 0;
@@ -11,9 +12,14 @@ function nextSequence(runtimeMatchId: string) {
   return next;
 }
 
-async function appendReplayStream(event: BallEvent, sequence: number) {
-  if (typeof window !== "undefined") return;
+function resolveReplayEventType(event: BallEvent) {
+  if (event.isWicket) return "WICKET";
+  if (event.isBoundary && event.runs >= 6) return "SIX";
+  if (event.isBoundary && event.runs >= 4) return "FOUR";
+  return "RUN";
+}
 
+async function appendReplayStream(event: BallEvent, sequence: number) {
   try {
     const { getRedis } = await import("@/services/storage/redisClient");
     const redis = getRedis();
@@ -39,9 +45,11 @@ export function initReplayConsumer() {
       innings: event.innings,
       over: event.over,
       ball: event.ball,
-      eventType: event.type,
+      eventType: resolveReplayEventType(event),
     });
 
-    appendReplayStream(event, sequence).catch(console.error);
+    if (canPersistReplayStream) {
+      appendReplayStream(event, sequence).catch(console.error);
+    }
   });
 }

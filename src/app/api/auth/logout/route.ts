@@ -5,6 +5,7 @@ import { logAuthSensitiveAction } from "@/services/auth/routeGuard";
 import {
   clearAuthSessionCookie,
   deleteAuthSessionById,
+  getAuthSessionFromRequest,
   readSessionIdFromRequest,
 } from "@/services/auth/sessionStore";
 
@@ -14,11 +15,13 @@ export async function POST(req: Request) {
   }
 
   const sessionId = readSessionIdFromRequest(req);
+  const session = await getAuthSessionFromRequest(req);
   if (sessionId) {
     try {
       await deleteAuthSessionById(sessionId);
     } catch (error) {
       logger.warn("AUTH", "logout_session_delete_failed", {
+        sessionId,
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -26,6 +29,9 @@ export async function POST(req: Request) {
 
   logAuthSensitiveAction("logout", {
     route: "/api/auth/logout",
+    sessionId: session?.sessionId ?? sessionId,
+    role: session?.role,
+    username: session?.username,
   });
 
   await clearAuthSessionCookie();

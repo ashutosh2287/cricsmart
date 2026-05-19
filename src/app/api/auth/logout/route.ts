@@ -5,6 +5,7 @@ import {
   clearAuthSessionCookie,
   deleteAuthSessionById,
   getAuthSessionFromRequest,
+  readSessionIdFromRequest,
 } from "@/services/auth/sessionStore";
 
 export async function POST(req: Request) {
@@ -13,12 +14,13 @@ export async function POST(req: Request) {
   }
 
   const session = await getAuthSessionFromRequest(req);
-  if (session?.sessionId) {
-    await deleteAuthSessionById(session.sessionId);
+  const sessionId = session?.sessionId ?? readSessionIdFromRequest(req);
+  if (sessionId) {
+    await deleteAuthSessionById(sessionId);
     logAuthSensitiveAction("logout", {
       route: "/api/auth/logout",
-      role: session.role,
-      username: session.username,
+      role: session?.role,
+      username: session?.username,
     });
   }
 

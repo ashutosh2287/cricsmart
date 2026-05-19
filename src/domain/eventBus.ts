@@ -12,24 +12,22 @@ type EventType = keyof DomainEventMap;
 type EventHandler<T> = (event: T) => void;
 
 class EventBus {
-  private handlers = new Map<EventType, EventHandler<any>[]>();
+  private handlers: {
+    [K in EventType]?: EventHandler<DomainEventMap[K]>[];
+  } = {};
 
   on<T extends EventType>(type: T, handler: EventHandler<DomainEventMap[T]>) {
-    const existing = this.handlers.get(type) ?? [];
-    existing.push(handler);
-    this.handlers.set(type, existing);
+    const existing = this.handlers[type] ?? [];
+    this.handlers[type] = [...existing, handler];
 
     return () => {
-      const current = this.handlers.get(type) ?? [];
-      this.handlers.set(
-        type,
-        current.filter((candidate) => candidate !== handler)
-      );
+      const current = this.handlers[type] ?? [];
+      this.handlers[type] = current.filter((candidate) => candidate !== handler);
     };
   }
 
   emit<T extends EventType>(type: T, event: DomainEventMap[T]) {
-    const handlers = this.handlers.get(type) ?? [];
+    const handlers = this.handlers[type] ?? [];
 
     for (const handler of handlers) {
       handler(event);

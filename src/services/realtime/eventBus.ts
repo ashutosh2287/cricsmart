@@ -111,6 +111,7 @@ type RealtimeEvent =
 type Client = {
   id: string;
   send: (data: string) => void;
+  afterSequence?: number;
 };
 
 // ─────────────────────────────────────────────
@@ -126,6 +127,11 @@ export function broadcast(matchId: string, event: RealtimeEvent) {
   }
 
   let payload: string;
+  const sequenceNumber =
+    event.type === "BALL_EVENT" &&
+    typeof event.data?.eventMeta?.sequence === "number"
+      ? event.data.eventMeta.sequence
+      : null;
 
   try {
     // ✅ Correct SSE frame: "event: TYPE\ndata: JSON\n\n"
@@ -141,6 +147,13 @@ export function broadcast(matchId: string, event: RealtimeEvent) {
 
   clients.forEach((client) => {
     try {
+      if (
+        typeof sequenceNumber === "number" &&
+        typeof client.afterSequence === "number" &&
+        sequenceNumber <= client.afterSequence
+      ) {
+        return;
+      }
       client.send(payload);
       activeClients++;
     } catch (err) {

@@ -18,6 +18,7 @@ export type ConnectRealtimeOptions = {
 export type RealtimeConnectionState = {
   socket: EventSource | null;
   activeMatchId: string | null;
+  lastSequenceNumber: number;
   manuallyClosed: boolean;
   subscribers: number;
   subscriberIds: Set<string>;
@@ -29,6 +30,7 @@ export type RealtimeConnectionState = {
 const state: RealtimeConnectionState = {
   socket: null,
   activeMatchId: null,
+  lastSequenceNumber: 0,
   manuallyClosed: false,
   subscribers: 0,
   subscriberIds: new Set(),
@@ -107,6 +109,7 @@ function cleanupSocket(options?: { preserveMatchId?: boolean }) {
   clearReconnectTimer();
   if (!options?.preserveMatchId) {
     state.activeMatchId = null;
+    state.lastSequenceNumber = 0;
   }
 }
 
@@ -168,6 +171,9 @@ function openSocket(matchId: string) {
     `/api/realtime/${encodeURIComponent(matchId)}`,
     window.location.origin
   );
+  if (state.lastSequenceNumber > 0) {
+    url.searchParams.set("afterSequence", String(state.lastSequenceNumber));
+  }
 
   function handleEvent(event: MessageEvent) {
     if (!event?.data) {
@@ -177,6 +183,17 @@ function openSocket(matchId: string) {
 
     try {
       const payload = JSON.parse(event.data) as RealtimeEvent;
+      const eventSequence =
+        payload?.data &&
+        typeof payload.data === "object" &&
+        "eventMeta" in payload.data &&
+        typeof (payload.data as { eventMeta?: { sequence?: unknown } }).eventMeta
+          ?.sequence === "number"
+          ? (payload.data as { eventMeta: { sequence: number } }).eventMeta.sequence
+          : null;
+      if (typeof eventSequence === "number" && eventSequence > state.lastSequenceNumber) {
+        state.lastSequenceNumber = eventSequence;
+      }
       routeRealtimeEvent(payload);
     } catch (error) {
       console.error("SSE ERROR: failed to parse SSE event", error, event.data);

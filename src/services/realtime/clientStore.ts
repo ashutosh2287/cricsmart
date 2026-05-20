@@ -1,6 +1,7 @@
 type Client = {
   id: string;
   send: (data: string) => void;
+  afterSequence?: number;
 };
 
 type GlobalStore = typeof globalThis & {

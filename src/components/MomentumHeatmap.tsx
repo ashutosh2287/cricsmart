@@ -93,11 +93,11 @@ export default function MomentumHeatmap({ data }: Props) {
             style={{ gridTemplateColumns: `96px repeat(${normalized.length}, minmax(38px, 1fr))` }}
           >
             <div />
-            {normalized.map((point) => (
-               <div key={`head-${point.over}`} className="text-center text-[10px] text-[var(--text-secondary)]">
-                 {point.over}
-               </div>
-             ))}
+            {normalized.map((point, index) => (
+               <div key={`head-${point.over}-${index}`} className="text-center text-[10px] text-[var(--text-secondary)]">
+                  {point.over}
+                </div>
+              ))}
           </div>
 
           {lanes.map((lane) => (

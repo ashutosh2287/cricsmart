@@ -10,6 +10,7 @@ const handlers: HandlerMap = {
   BALL: new Set(),
   WICKET: new Set(),
   MATCH_FINISHED: new Set(),
+  WIN_PROBABILITY: new Set(),
 };
 
 export function subscribeDomainEvent<T extends DomainEventType>(

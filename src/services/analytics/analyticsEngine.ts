@@ -14,9 +14,6 @@ import {
   updateNarrative
 } from "./matchAnalyticsAggregator";
 import {
-  updateWinProbability
-} from "../analytics/winProbabilityTimelineEngine";
-import {
   processMomentumEvent
 } from "./momentumTimelineEngine";
 
@@ -133,12 +130,6 @@ export function processAnalyticsEvent(
     });
 
   }
-
-  const matchState = getMatchState(matchId);
-
-if (matchState) {
-  updateWinProbability(matchId, matchState);
-}
 
 }
 

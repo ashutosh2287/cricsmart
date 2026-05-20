@@ -1,10 +1,10 @@
-import { eventBus } from "@/domain/eventBus";
-import type { BallEvent } from "@/domain/events/BallEvent";
+import { subscribeDomainEvent } from "@/domain/eventBus";
+import type { BallDomainEvent } from "@/domain/events";
 
-const latestBallByMatch = new Map<string, BallEvent>();
+const latestBallByMatch = new Map<string, BallDomainEvent>();
 
 export function initAnalyticsConsumer() {
-  eventBus.on("BALL", (event) => {
+  subscribeDomainEvent("BALL", (event) => {
     latestBallByMatch.set(event.runtimeMatchId, event);
   });
 }

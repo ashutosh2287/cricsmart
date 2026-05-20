@@ -1,125 +1,111 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { BallEvent } from "@/types/ballEvent";
-import type { MatchDomainEvent } from "@/services/match/events/matchEvents";
 
-type UseReplayEventsOptions = {
-  runtimeMatchId: string;
-  includeHistory?: boolean;
+export type ReplayEvent = Record<string, unknown> & {
+  type?: string;
+  timestamp?: number;
 };
 
-type UseReplayEventsResult = {
-  events: MatchDomainEvent[];
-  connected: boolean;
-  error: string | null;
+type WinProbabilityReplayEvent = {
+  type: "WIN_PROBABILITY";
+  homeWinPct: number;
+  awayWinPct: number;
+  over: number;
+  ball: number;
+  timestamp: number;
 };
 
-function toDomainEvent(runtimeMatchId: string, event: BallEvent, sequence: number): MatchDomainEvent {
-  const type = event.type === "WICKET" ? "WICKET" : "BALL";
-  return {
-    type,
-    runtimeMatchId,
-    timestamp: event.timestamp ?? Date.now(),
-    eventMeta: {
-      eventId: event.id ?? `${runtimeMatchId}-${sequence}`,
-      sequence,
-      timestamp: event.timestamp ?? Date.now(),
-      runtimeMatchId,
-      innings: event.innings,
-      over: Number.isFinite(event.over) ? Math.floor(event.over) : undefined,
-      eventType: event.type,
-    },
-    ballEvent: event,
-  };
+function isBallLikeEvent(event: ReplayEvent): event is BallEvent {
+  return typeof event.type === "string" && event.type !== "WIN_PROBABILITY";
 }
 
-export function useReplayEvents({
-  runtimeMatchId,
-  includeHistory = true,
-}: UseReplayEventsOptions): UseReplayEventsResult {
-  const [events, setEvents] = useState<MatchDomainEvent[]>([]);
-  const [connected, setConnected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const sourceRef = useRef<EventSource | null>(null);
-  const requestRef = useRef(0);
+function isWinProbabilityEvent(event: ReplayEvent): event is WinProbabilityReplayEvent {
+  return event.type === "WIN_PROBABILITY" && typeof event.homeWinPct === "number";
+}
+
+export function useReplayEvents(matchId?: string) {
+  const [events, setEvents] = useState<ReplayEvent[]>([]);
 
   useEffect(() => {
-    if (!runtimeMatchId) {
-      setEvents([]);
-      setConnected(false);
-      setError(null);
-      return;
-    }
-
+    if (!matchId) return;
     let cancelled = false;
-    const requestId = ++requestRef.current;
 
-    const loadHistory = async () => {
-      try {
-        const res = await fetch(
-          `/api/events?matchId=${encodeURIComponent(runtimeMatchId)}`,
-          { cache: "no-store" }
-        );
-
-        if (!res.ok) {
-          throw new Error(`Failed to fetch replay events (${res.status})`);
-        }
-
-        const payload = (await res.json()) as BallEvent[];
-        if (cancelled || requestRef.current !== requestId) return;
-
-        const normalized = (Array.isArray(payload) ? payload : []).map((event, index) =>
-          toDomainEvent(runtimeMatchId, event, index)
-        );
-        setEvents(normalized);
-        setError(null);
-      } catch (err) {
-        if (cancelled || requestRef.current !== requestId) return;
-        setError(err instanceof Error ? err.message : "Failed to fetch replay events");
-      }
-    };
-
-    setEvents([]);
-    setConnected(false);
-    setError(null);
-
-    if (includeHistory) {
-      void loadHistory();
-    }
-
-    if (typeof window === "undefined") {
-      return () => {};
-    }
-
-    const source = new EventSource(`/api/realtime/${encodeURIComponent(runtimeMatchId)}`);
-    sourceRef.current = source;
-
-    const handleRefresh = () => {
-      if (!includeHistory) return;
-      void loadHistory();
-    };
-
-    source.addEventListener("CONNECTED", () => {
-      if (cancelled) return;
-      setConnected(true);
-      setError(null);
-    });
-    source.addEventListener("BALL_EVENT", handleRefresh);
-    source.addEventListener("WICKET", handleRefresh);
-    source.addEventListener("MATCH_FINISHED", handleRefresh);
-    source.onerror = () => {
-      if (cancelled) return;
-      setConnected(false);
-      setError("Replay stream disconnected");
-    };
+    fetch(`/api/events?matchId=${encodeURIComponent(matchId)}`, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((payload: unknown) => {
+        if (cancelled) return;
+        setEvents(Array.isArray(payload) ? (payload as ReplayEvent[]) : []);
+      })
+      .catch(() => {
+        if (!cancelled) setEvents([]);
+      })
+      .finally(() => {});
 
     return () => {
       cancelled = true;
-      source.close();
-      sourceRef.current = null;
     };
-  }, [runtimeMatchId, includeHistory]);
+  }, [matchId]);
 
-  return { events, connected, error };
+  const byType = useMemo(() => {
+    return (type: string) => events.filter((event) => event.type === type);
+  }, [events]);
+
+  return { events, loading: false, byType };
+}
+
+export function getWinProbabilityData(events: ReplayEvent[]) {
+  return events
+    .filter(isWinProbabilityEvent)
+    .map((event) => ({
+      over: event.over + event.ball / 10,
+      value: event.homeWinPct,
+      timestamp: event.timestamp,
+    }));
+}
+
+export function getWormData(events: ReplayEvent[]) {
+  let score = 0;
+  return events
+    .filter(isBallLikeEvent)
+    .filter((event) => typeof event.over === "number" && typeof event.runs === "number")
+    .map((event) => {
+      score += Number(event.runs ?? 0);
+      return {
+        over: Number(event.over),
+        score,
+      };
+    });
+}
+
+export function getMomentumData(events: ReplayEvent[]) {
+  const points: Array<{ over: number; score: number }> = [];
+  let momentum = 0;
+  for (const event of events.filter(isBallLikeEvent)) {
+    const over = typeof event.over === "number" ? event.over : 0;
+    const runs = typeof event.runs === "number" ? event.runs : 0;
+    const wicket = event.type === "WICKET" ? 1 : 0;
+    momentum = Math.max(-10, Math.min(10, momentum * 0.85 + runs * 0.8 - wicket * 2.5));
+    points.push({ over, score: momentum });
+  }
+  return points;
+}
+
+export function getRunRateData(events: ReplayEvent[]) {
+  let runs = 0;
+  let legalBalls = 0;
+  return events
+    .filter(isBallLikeEvent)
+    .map((event) => {
+      runs += typeof event.runs === "number" ? event.runs : 0;
+      if (event.isLegalDelivery !== false) {
+        legalBalls += 1;
+      }
+      const over = legalBalls / 6;
+      return {
+        over,
+        runRate: legalBalls > 0 ? (runs * 6) / legalBalls : 0,
+      };
+    });
 }

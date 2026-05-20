@@ -1,5 +1,6 @@
 import { registerReplayConsumer } from "@/domain/consumers/replayConsumer";
 import { registerSseConsumer } from "@/domain/consumers/sseConsumer";
+import { registerWinProbabilityConsumer } from "@/domain/consumers/winProbabilityConsumer";
 
 let domainConsumersRegistered = false;
 
@@ -9,6 +10,7 @@ export function ensureDomainConsumersRegistered(): void {
 
   registerReplayConsumer();
   registerSseConsumer();
+  registerWinProbabilityConsumer();
 
   domainConsumersRegistered = true;
 }

@@ -11,7 +11,6 @@ import { addCommentary } from "@/services/commentary/commentaryStore";
 import { setAnalytics } from "@/services/analytics/liveAnalyticsStore";
 import { getMomentumTimeline } from "@/services/analytics/momentumTimelineEngine";
 import { generateBroadcastInsights } from "./broadcast/broadcastInsightEngine";
-import { getWinProbabilityTimeline } from "@/services/analytics/winProbabilityTimelineEngine";
 import { processMomentumEvent } from "@/services/analytics/momentumTimelineEngine";
 import { computeWinProbability } from "@/services/winProbabilityEngine";
 import { getAnalytics } from "@/services/analytics/liveAnalyticsStore";
@@ -25,23 +24,6 @@ import { clearPredictionSnapshots } from "@/services/ml/snapshots/featureSnapsho
 import { processCommentaryPipeline, resetCommentaryPipelineState } from "@/services/commentary/orchestration/commentary-pipeline";
 import { emitDomainEvent } from "@/domain/eventBus";
 import { ensureDomainConsumersRegistered } from "@/domain/consumers";
-
-
-
-
-
-
-type StorageModuleType = typeof import("@/services/storage/eventStorage");
-
-let storageModule: StorageModuleType | null = null;
-
-async function getStorageModule(): Promise<StorageModuleType> {
-  if (!storageModule) {
-    storageModule = await import("@/services/storage/eventStorage");
-  }
-  return storageModule;
-}
-
 export type CorrectionEvent =
   | { type: "CORRECTION_UNDO_LAST" }
   | { type: "CORRECTION_DELETE"; targetEventId: string }
@@ -1253,9 +1235,6 @@ for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [prim
 
 // 🧠 INSIGHTS
 generateBroadcastInsights(matchId);
-// 🔥 WIN PROBABILITY (REAL ENGINE)
-const win = computeWinProbability(state);
-
 // 📊 MOMENTUM TIMELINE
 const momentumTimeline = getMomentumTimeline(matchId);
 
@@ -1266,20 +1245,9 @@ const prevAnalytics = getAnalytics(matchId) || {
   momentum: [],
 };
 
-// 🔥 APPEND (DO NOT REPLACE)
-const updatedWinProbability = win
-  ? [
-      ...prevAnalytics.winProbability,
-      {
-        over: currentInningsState.over + currentInningsState.ball / 10,
-        value: win.battingWinProbability,
-      },
-    ]
-  : prevAnalytics.winProbability;
-
 // 📦 STORE ANALYTICS
 setAnalytics(matchId, {
-  winProbability: updatedWinProbability,
+  winProbability: prevAnalytics.winProbability,
   momentum: momentumTimeline.map(p => ({
     over: Math.floor(p.ballIndex / 6),
     score: p.momentum,
@@ -1349,12 +1317,7 @@ if (updatedState.matchEnded) {
 
   
 
-  getStorageModule()
-    .then(async ({ appendEvent }) => {
-      await appendEvent(matchId, ballEvent);
-      await recordBallEvent(matchId, ballEvent);
-    })
-    .catch(console.error);
+  void recordBallEvent(matchId, ballEvent).catch(console.error);
 
   /*
   ========================================

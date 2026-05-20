@@ -39,10 +39,22 @@ export type MatchFinishedDomainEvent = {
   timestamp: number;
 };
 
+export type WinProbabilityDomainEvent = {
+  type: "WIN_PROBABILITY";
+  runtimeMatchId: string;
+  homeWinPct: number;
+  awayWinPct: number;
+  innings: number;
+  over: number;
+  ball: number;
+  timestamp: number;
+};
+
 export type DomainEvent =
   | BallDomainEvent
   | WicketDomainEvent
-  | MatchFinishedDomainEvent;
+  | MatchFinishedDomainEvent
+  | WinProbabilityDomainEvent;
 
 export type DomainEventType = DomainEvent["type"];
 export type DomainEventByType<T extends DomainEventType> = Extract<DomainEvent, { type: T }>;

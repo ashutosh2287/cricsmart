@@ -65,16 +65,17 @@ import {
 } from "@/services/simulation/lineup";
 import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
 import WagonWheel from "@/components/analytics/WagonWheel";
+import { calculateWinProbability } from "@/services/analytics/calculateWinProbability";
 import { setMatchMeta } from "@/store/matchStore";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
 import AnimatedScore from "@/components/ui/AnimatedScore";
 import ConnectionStatus from "@/components/ui/ConnectionStatus";
-import { useReplayEvents } from "@/hooks/useReplayEvents";
 import {
-  selectReplayGraphData,
-  type ReplayGraphData,
-} from "@/services/analytics/replayAnalyticsSelectors";
+  getMomentumData,
+  getWinProbabilityData,
+  useReplayEvents,
+} from "@/hooks/useReplayEvents";
 
 // ─────────────────────────────────────────────
 // Types
@@ -357,7 +358,6 @@ function StickyInsightsRail({
 function TabsArea({
   match,
   analytics,
-  replayGraphData,
   insights,
   sessionMeta,
 }: {
@@ -366,7 +366,6 @@ function TabsArea({
     winProbability: { over: number; value: number }[];
     momentum: { over: number; score: number }[];
   };
-  replayGraphData: ReplayGraphData;
   insights: BroadcastInsight[];
   sessionMeta?: MatchSessionMeta | null;
 }) {
@@ -410,7 +409,10 @@ function TabsArea({
 
   const effectiveIsRunning = isStarting || isRunning || hasLiveMatchState;
   const [selectedInnings, setSelectedInnings] = useState<number | null>(null);
-  const winProbabilityData = replayGraphData.winProbabilityData;
+  const winProbabilityData = useMemo(
+    () => calculateWinProbability(analytics.winProbability),
+    [analytics.winProbability]
+  );
   const latestWinPoint = winProbabilityData.length
     ? winProbabilityData[winProbabilityData.length - 1]
     : null;
@@ -684,8 +686,8 @@ function TabsArea({
                   currentBowlingTeam={overviewBowlingTeam}
                   currentOver={displayOver}
                   currentRunRate={inningsRunRate}
-                  innings={replayGraphData.innings}
-                  momentumData={replayGraphData.momentumData}
+                  innings={currentEngineState?.innings ?? []}
+                  momentumData={analytics.momentum}
                   winProbabilityData={winProbabilityData}
                 />
               </GlassPanel>
@@ -772,22 +774,16 @@ function TabsArea({
                   <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
                     <div className="rounded-lg border border-emerald-400/25 bg-emerald-500/10 px-3 py-2">
                       <p className="text-[10px] uppercase tracking-[0.12em] text-emerald-200/85">Batting Win</p>
-                      <p className="text-sm font-semibold text-emerald-100">{(latestWinPoint?.batting ?? 0).toFixed(0)}%</p>
+                      <p className="text-sm font-semibold text-emerald-100">{(latestWinPoint?.batting ?? 50).toFixed(0)}%</p>
                     </div>
                     <div className="rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2">
                       <p className="text-[10px] uppercase tracking-[0.12em] text-red-200/85">Bowling Win</p>
-                      <p className="text-sm font-semibold text-red-100">{(latestWinPoint?.bowling ?? 0).toFixed(0)}%</p>
+                      <p className="text-sm font-semibold text-red-100">{(latestWinPoint?.bowling ?? 50).toFixed(0)}%</p>
                     </div>
                     <div className="rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2">
                       <p className="text-[10px] uppercase tracking-[0.12em] text-amber-200/85">Pressure</p>
                       <p className="text-sm font-semibold text-amber-100">
-                        {latestWinPoint
-                          ? latestWinPoint.batting > 60
-                            ? "Batting control"
-                            : latestWinPoint.batting < 40
-                              ? "Bowling control"
-                              : "Balanced"
-                          : "No data"}
+                        {(latestWinPoint?.batting ?? 50) > 60 ? "Batting control" : (latestWinPoint?.batting ?? 50) < 40 ? "Bowling control" : "Balanced"}
                       </p>
                     </div>
                   </div>
@@ -803,14 +799,14 @@ function TabsArea({
                           currentBowlingTeam={overviewBowlingTeam}
                           currentOver={displayOver}
                           currentRunRate={inningsRunRate}
-                          innings={replayGraphData.innings}
-                          momentumData={replayGraphData.momentumData}
+                          innings={currentEngineState?.innings ?? []}
+                          momentumData={analytics.momentum}
                           winProbabilityData={winProbabilityData}
                         />
                       </div>
                       <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
                         <SectionHeader eyebrow="Momentum" title="Compact Heatmap" />
-                        <MomentumHeatmap data={replayGraphData.momentumData} />
+                        <MomentumHeatmap data={analytics.momentum} />
                       </div>
                     </div>
                     <div className="space-y-3">
@@ -1396,7 +1392,6 @@ function TabsArea({
 function MatchInnerPage({
   match,
   analytics,
-  replayGraphData,
   insights,
   sessionMeta,
 }: {
@@ -1405,7 +1400,6 @@ function MatchInnerPage({
     winProbability: { over: number; value: number }[];
     momentum: { over: number; score: number }[];
   };
-  replayGraphData: ReplayGraphData;
   insights: BroadcastInsight[];
   sessionMeta?: MatchSessionMeta | null;
 }) {
@@ -1659,7 +1653,6 @@ function MatchInnerPage({
         <TabsArea
           match={match}
           analytics={analytics}
-          replayGraphData={replayGraphData}
           insights={insights}
           sessionMeta={sessionMeta}
         />
@@ -1708,14 +1701,15 @@ export default function MatchDetailPage({
     winProbability: WinPoint[];
     momentum: MomentumPoint[];
   }>({ winProbability: [], momentum: [] });
-  const { events: replayEvents } = useReplayEvents({
-    runtimeMatchId: matchId ?? "",
-    includeHistory: true,
-  });
-  const replayGraphData = useMemo(
-    () => selectReplayGraphData(replayEvents),
-    [replayEvents]
-  );
+  const { events: replayEvents } = useReplayEvents(matchId);
+  const replayHydratedAnalytics = useMemo(() => {
+    const replayWinProbability = getWinProbabilityData(replayEvents);
+    const replayMomentum = getMomentumData(replayEvents);
+    return {
+      winProbability: replayWinProbability.length ? replayWinProbability : analytics.winProbability,
+      momentum: replayMomentum.length ? replayMomentum : analytics.momentum,
+    };
+  }, [analytics.momentum, analytics.winProbability, replayEvents]);
 
   // One-time inits
   useEffect(() => {
@@ -1821,6 +1815,13 @@ export default function MatchDetailPage({
     const handler = (e: Event) => {
       const customEvent = e as CustomEvent<{
         type: string;
+        probability?: number;
+        awayProbability?: number;
+        over?: number;
+        ball?: number;
+        innings?: number;
+        timestamp?: number;
+        modelVersion?: string;
         insights?: BroadcastInsight[];
         analytics?: {
           winProbability: WinPoint[];
@@ -1843,6 +1844,26 @@ export default function MatchDetailPage({
       if (data.type === "BALL_EVENT") {
         if (data.insights) setInsights(data.insights);
         if (data.analytics) setAnalytics(data.analytics);
+      } else if (
+        data.type === "WIN_PROBABILITY_UPDATE" &&
+        typeof data.probability === "number" &&
+        typeof data.over === "number" &&
+        typeof data.ball === "number"
+      ) {
+        const over = data.over;
+        const ball = data.ball;
+        const probability = Number(data.probability);
+        setAnalytics((prev) => ({
+          ...prev,
+          winProbability: [
+            ...prev.winProbability,
+            {
+              over: over + ball / 10,
+              value: probability,
+              timestamp: typeof data.timestamp === "number" ? data.timestamp : Date.now(),
+            },
+          ],
+        }));
       }
     };
 
@@ -1872,8 +1893,7 @@ export default function MatchDetailPage({
           {match ? (
             <MatchInnerPage
               match={match}
-              analytics={analytics}
-              replayGraphData={replayGraphData}
+              analytics={replayHydratedAnalytics}
               insights={insights}
               sessionMeta={sessionMeta}
             />

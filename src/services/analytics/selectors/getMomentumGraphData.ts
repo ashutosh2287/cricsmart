@@ -13,6 +13,7 @@ export type MomentumPoint = {
  * Output: [{ over, score }]  — score clamped to [-10, 10]
  */
 export function getMomentumGraphData(events: ReplayEvent[]): MomentumPoint[] {
+  if (!Array.isArray(events) || events.length === 0) return [];
   const points: MomentumPoint[] = [];
   let momentum = 0;
 

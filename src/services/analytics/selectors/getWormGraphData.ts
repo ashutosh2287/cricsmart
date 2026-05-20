@@ -13,6 +13,7 @@ export type WormPoint = {
  * Output: [{ over, score }]  — score is cumulative runs up to that ball
  */
 export function getWormGraphData(events: ReplayEvent[]): WormPoint[] {
+  if (!Array.isArray(events) || events.length === 0) return [];
   let score = 0;
   const points: WormPoint[] = [];
 

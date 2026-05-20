@@ -17,6 +17,7 @@ export type WinProbabilityChartPoint = {
 export function getWinProbabilityData(
   events: ReplayEvent[]
 ): WinProbabilityChartPoint[] {
+  if (!Array.isArray(events) || events.length === 0) return [];
   return events
     .filter(
       (e) =>

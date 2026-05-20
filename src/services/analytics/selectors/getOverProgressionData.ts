@@ -24,6 +24,9 @@ export type OverProgressionData = {
 export function getOverProgressionData(
   events: ReplayEvent[]
 ): OverProgressionData {
+  if (!Array.isArray(events) || events.length === 0) {
+    return { overs: [], runRate: [], worm: [] };
+  }
   // Only count events that originate from a BallEvent (they always have totalRuns)
   const ballEvents = events.filter(
     (e) =>

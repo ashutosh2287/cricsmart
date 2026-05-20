@@ -1,8 +1,9 @@
 import { routeRealtimeEvent } from "../realtimeRouter";
 import type { RealtimeEvent } from "../realtimeRouter";
-import { getMatchMeta } from "@/store/matchStore";
-import { hydrateMatchState } from "@/services/matchEngine";
+import { getMatchMeta, setMatchMeta } from "@/store/matchStore";
+import { getMatchState, hydrateMatchState } from "@/services/matchEngine";
 import { setMatchState } from "@/lib/eventStore";
+import type { MatchMetadata } from "@/types/matchMetadata";
 
 const MAX_BACKOFF_MS = 10000;
 const BASE_BACKOFF_MS = 500;
@@ -35,6 +36,58 @@ const state: RealtimeConnectionState = {
   reconnectAttempts: 0,
   autoStartSimulation: true,
 };
+
+function getTeamIdOrSlug(existingId: unknown, name: string) {
+  if (typeof existingId === "string" && existingId.trim()) {
+    return existingId;
+  }
+  return name.toLowerCase().trim().replace(/\s+/g, "-");
+}
+
+function buildMatchMetadata(
+  matchId: string,
+  payload?: {
+    teamA?: { id?: string; name?: string };
+    teamB?: { id?: string; name?: string };
+    tossWinner?: string;
+    tossDecision?: "BAT" | "BOWL";
+  }
+): MatchMetadata | null {
+  const teamAName = payload?.teamA?.name;
+  const teamBName = payload?.teamB?.name;
+  if (!teamAName || !teamBName) return null;
+
+  const teamA = {
+    id: getTeamIdOrSlug(payload?.teamA?.id, teamAName),
+    name: teamAName,
+  };
+  const teamB = {
+    id: getTeamIdOrSlug(payload?.teamB?.id, teamBName),
+    name: teamBName,
+  };
+
+  const tossWinner = payload?.tossWinner;
+  const tossDecision = payload?.tossDecision;
+
+  return {
+    matchId,
+    runtimeMatchId: matchId,
+    homeTeam: teamA,
+    awayTeam: teamB,
+    teamA,
+    teamB,
+    ...(tossWinner && tossDecision
+      ? {
+          tossWinner,
+          tossDecision,
+          toss: {
+            winner: tossWinner,
+            decision: tossDecision,
+          },
+        }
+      : {}),
+  };
+}
 
 function clearReconnectTimer() {
   if (state.reconnectTimer !== null && typeof window !== "undefined") {
@@ -94,6 +147,16 @@ async function refreshLatestSnapshot(matchId: string) {
 
   hydrateMatchState(matchId, body.match);
   setMatchState(matchId, body.match);
+
+  const metadata = buildMatchMetadata(matchId, {
+    teamA: body.match.teamA,
+    teamB: body.match.teamB,
+    tossWinner: body.match.tossWinner,
+    tossDecision: body.match.tossDecision,
+  });
+  if (metadata) {
+    setMatchMeta(metadata);
+  }
 }
 
 function openSocket(matchId: string) {
@@ -147,7 +210,9 @@ function openSocket(matchId: string) {
 
   if (shouldStartSimulation) {
     setTimeout(() => {
-      const matchMeta = getMatchMeta(matchId);
+      const matchMeta =
+        getMatchMeta(matchId) ??
+        buildMatchMetadata(matchId, getMatchState(matchId));
       if (!matchMeta) {
         console.error("ENGINE ERROR: missing match metadata");
         return;

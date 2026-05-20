@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { ReplayEvent } from "@/hooks/useReplayEvents";
-import { getWinProbabilityData } from "@/services/analytics/selectors/getWinProbabilityData";
-import { getMomentumGraphData } from "@/services/analytics/selectors/getMomentumGraphData";
-import { getOverProgressionData } from "@/services/analytics/selectors/getOverProgressionData";
+import type { InningsState } from "@/services/matchEngine";
+import type { BallEvent } from "@/types/ballEvent";
+import type { MatchMetadata } from "@/types/matchMetadata";
 import MomentumHeatmap from "@/components/MomentumHeatmap";
 import WinProbabilityChart from "@/components/analytics/WinProbabilityChart";
 import {
@@ -21,12 +20,28 @@ import {
   YAxis,
 } from "recharts";
 
+type WinProbabilityPoint = {
+  over: number;
+  batting: number;
+  bowling: number;
+  confidence?: number;
+  marker?: "WICKET" | "SIX" | "FOUR" | "SWING" | "TURNING_POINT";
+};
+
+type MomentumPoint = {
+  over: number;
+  score: number;
+};
+
 type Props = {
   currentBowlingTeam: string;
   currentBattingTeam: string;
   currentOver: string;
   currentRunRate: string;
-  replayEvents: ReplayEvent[];
+  innings: InningsState[];
+  momentumData: MomentumPoint[];
+  winProbabilityData: WinProbabilityPoint[];
+  metadata?: MatchMetadata;
 };
 
 type ChartTab =
@@ -41,6 +56,65 @@ type TeamFilter = "both" | "batting" | "bowling";
 
 const MOMENTUM_POSITIVE_THRESHOLD = 1.5;
 const MOMENTUM_NEGATIVE_THRESHOLD = -1.5;
+
+type ProgressionPoint = {
+  label: string;
+  batting: number | null;
+  bowling: number | null;
+};
+
+function getBallTotalRuns(ball: BallEvent) {
+  return ball.totalRuns ?? ball.runs ?? 0;
+}
+
+function buildProgressionData(innings: InningsState[]) {
+  const overs: ProgressionPoint[] = [];
+  const runRate: ProgressionPoint[] = [];
+  const worm: ProgressionPoint[] = [];
+
+  innings.forEach((inningsState, inningsIndex) => {
+    const overKeys = Object.keys(inningsState.overs ?? {})
+      .map(Number)
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => a - b);
+
+    let cumulativeRuns = 0;
+    let legalBalls = 0;
+
+    overKeys.forEach((overNumber) => {
+      const deliveries = inningsState.overs[overNumber] ?? [];
+      const overRuns = deliveries.reduce(
+        (sum, delivery) => sum + getBallTotalRuns(delivery),
+        0
+      );
+
+      cumulativeRuns += overRuns;
+      legalBalls += deliveries.filter((delivery) => delivery.isLegalDelivery).length;
+
+      const rate = legalBalls > 0 ? Number(((cumulativeRuns / legalBalls) * 6).toFixed(2)) : 0;
+      const label = `I${inningsIndex + 1}.${overNumber + 1}`;
+      const isBattingSeries = inningsIndex === 0;
+
+      overs.push({
+        label,
+        batting: isBattingSeries ? overRuns : null,
+        bowling: isBattingSeries ? null : overRuns,
+      });
+      runRate.push({
+        label,
+        batting: isBattingSeries ? rate : null,
+        bowling: isBattingSeries ? null : rate,
+      });
+      worm.push({
+        label,
+        batting: isBattingSeries ? cumulativeRuns : null,
+        bowling: isBattingSeries ? null : cumulativeRuns,
+      });
+    });
+  });
+
+  return { overs, runRate, worm };
+}
 
 function ChartShell({
   title,
@@ -67,42 +141,38 @@ export default function MatchGraphExplorer({
   currentBattingTeam,
   currentOver,
   currentRunRate,
-  replayEvents,
+  innings,
+  momentumData,
+  winProbabilityData,
+  metadata,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ChartTab>("winProbability");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("both");
+  const effectiveWinProbabilityData = useMemo(() => winProbabilityData, [winProbabilityData]);
 
-  const winProbabilityData = useMemo(
-    () => getWinProbabilityData(replayEvents),
-    [replayEvents]
-  );
-  const momentumData = useMemo(
-    () => getMomentumGraphData(replayEvents),
-    [replayEvents]
-  );
-  const progression = useMemo(
-    () => getOverProgressionData(replayEvents),
-    [replayEvents]
-  );
-
-  const latestWinPoint = winProbabilityData.length
-    ? winProbabilityData[winProbabilityData.length - 1]
+  const latestWinPoint = effectiveWinProbabilityData.length
+    ? effectiveWinProbabilityData[effectiveWinProbabilityData.length - 1]
     : null;
   const latestMomentum = momentumData.length
     ? momentumData[momentumData.length - 1]?.score ?? 0
     : 0;
 
+  const progression = useMemo(() => buildProgressionData(innings), [innings]);
+
   const battingWin = latestWinPoint?.batting ?? 0;
   const bowlingWin = latestWinPoint?.bowling ?? 0;
+  const confidence = latestWinPoint?.confidence;
+  const battingTeamLabel = metadata?.teamA?.name ?? currentBattingTeam;
+  const bowlingTeamLabel = metadata?.teamB?.name ?? currentBowlingTeam;
   const leader =
       !latestWinPoint
         ? "Awaiting replay events"
-        : battingWin === bowlingWin
+      : battingWin === bowlingWin
       ? "Match evenly balanced"
       : battingWin > bowlingWin
-        ? `${currentBattingTeam} slightly ahead`
-        : `${currentBowlingTeam} applying pressure`;
+        ? `${battingTeamLabel} slightly ahead`
+        : `${bowlingTeamLabel} applying pressure`;
   const pressureSnapshot =
     latestMomentum >= MOMENTUM_POSITIVE_THRESHOLD
       ? {
@@ -178,15 +248,21 @@ export default function MatchGraphExplorer({
               WIN PROBABILITY
             </p>
             <div className="mt-3 flex items-center justify-between gap-3 text-sm font-medium text-[var(--text-primary)]">
-              <span aria-label={`${currentBattingTeam} win probability ${battingWin.toFixed(0)} percent`}>
-                <span>{currentBattingTeam}</span>{" "}
+              <span aria-label={`${battingTeamLabel} win probability ${battingWin.toFixed(0)} percent`}>
+                <span>{battingTeamLabel}</span>{" "}
                 <span className="tabular-nums">{battingWin.toFixed(0)}%</span>
               </span>
-              <span aria-label={`${currentBowlingTeam} win probability ${bowlingWin.toFixed(0)} percent`}>
-                <span>{currentBowlingTeam}</span>{" "}
+              <span aria-label={`${bowlingTeamLabel} win probability ${bowlingWin.toFixed(0)} percent`}>
+                <span>{bowlingTeamLabel}</span>{" "}
                 <span className="tabular-nums">{bowlingWin.toFixed(0)}%</span>
               </span>
             </div>
+
+            {confidence !== undefined ? (
+              <p className="mt-2 text-xs text-[var(--text-secondary)]">
+                Model confidence {(confidence * 100).toFixed(0)}%
+              </p>
+            ) : null}
 
             <div className="mt-3 h-3 overflow-hidden rounded-full bg-[var(--overlay-soft)]">
               <div className="flex h-full">
@@ -347,7 +423,7 @@ export default function MatchGraphExplorer({
                   description="Tracks the likely winner over time. The green line represents the current batting side and the red line represents the bowling side."
                 >
                   <WinProbabilityChart
-                    data={winProbabilityData}
+                    data={effectiveWinProbabilityData}
                     team1={currentBattingTeam}
                     team2={currentBowlingTeam}
                   />

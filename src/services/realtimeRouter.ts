@@ -1,6 +1,7 @@
 import { setMatchState } from "@/lib/eventStore";
 import type { MatchState } from "@/services/matchEngine";
 import type { BallEvent } from "@/types/ballEvent";
+import { emitCommentary } from "@/services/commentary/commentaryBus";
 
 export type RealtimeEvent = {
   type: string;
@@ -18,8 +19,37 @@ export type RealtimeEvent = {
     commentary?: unknown[];
     insights?: unknown[];
     analytics?: unknown;
+    commentaryId?: string;
+    text?: string;
+    tone?: string;
+    importance?: string;
+    isBoundary?: boolean;
+    isWicket?: boolean;
   };
 };
+
+function isCommentaryRealtimeData(
+  data: RealtimeEvent["data"]
+): data is {
+  runtimeMatchId: string;
+  commentaryId: string;
+  text: string;
+  importance?: string;
+  isWicket?: boolean;
+} {
+  return Boolean(
+    data &&
+      typeof data === "object" &&
+      "runtimeMatchId" in data &&
+      typeof data.runtimeMatchId === "string" &&
+      "commentaryId" in data &&
+      typeof data.commentaryId === "string" &&
+      "text" in data &&
+      typeof data.text === "string" &&
+      (!("importance" in data) || typeof data.importance === "string") &&
+      (!("isWicket" in data) || typeof data.isWicket === "boolean")
+  );
+}
 
 function dispatchCricUpdate(type: string, data: RealtimeEvent["data"]) {
   if (typeof window === "undefined") return;
@@ -97,6 +127,20 @@ export function routeRealtimeEvent(payload: RealtimeEvent) {
       dispatchCricUpdate(type, data);
       break;
     case "WIN_PROBABILITY_UPDATE":
+      dispatchCricUpdate(type, data);
+      break;
+    case "COMMENTARY":
+      if (isCommentaryRealtimeData(data)) {
+        emitCommentary({
+          matchId,
+          text: data.text,
+          eventId: data.commentaryId,
+          category:
+            data.isWicket || data.importance === "high"
+              ? "INSIGHT"
+              : "BALL",
+        });
+      }
       dispatchCricUpdate(type, data);
       break;
 

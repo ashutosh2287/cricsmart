@@ -192,7 +192,7 @@ function openSocket(matchId: string) {
   es.addEventListener("BALL_EVENT", handleEvent);
   es.addEventListener("WIN_PROBABILITY_UPDATE", handleEvent);
   es.addEventListener("WICKET", handleEvent);
-  es.addEventListener("commentary.generated", handleEvent);
+  es.addEventListener("COMMENTARY", handleEvent);
   es.addEventListener("MATCH_ENDED", handleEvent);
   es.addEventListener("MATCH_FINISHED", handleEvent);
   es.addEventListener("SIMULATION_STATE_UPDATE", handleEvent);

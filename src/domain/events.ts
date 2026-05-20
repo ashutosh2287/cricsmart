@@ -1,6 +1,5 @@
 import type { BallEvent, WicketBallEvent } from "@/types/ballEvent";
 import type { MatchState } from "@/services/matchEngine";
-import type { CommentaryEvent } from "@/services/commentary/types/commentary.types";
 
 export type MatchEventMeta = {
   eventId: string;
@@ -19,7 +18,6 @@ export type BallDomainEvent = {
   state: MatchState;
   ballEvent: BallEvent;
   eventMeta: MatchEventMeta;
-  commentaryEvents: CommentaryEvent[];
 };
 
 export type WicketDomainEvent = {
@@ -50,11 +48,26 @@ export type WinProbabilityDomainEvent = {
   timestamp: number;
 };
 
+export type CommentaryEvent = {
+  type: "COMMENTARY";
+  runtimeMatchId: string;
+  commentaryId: string;
+  over: number;
+  ball: number;
+  text: string;
+  tone?: string;
+  importance?: string;
+  isBoundary?: boolean;
+  isWicket?: boolean;
+  timestamp: number;
+};
+
 export type DomainEvent =
   | BallDomainEvent
   | WicketDomainEvent
   | MatchFinishedDomainEvent
-  | WinProbabilityDomainEvent;
+  | WinProbabilityDomainEvent
+  | CommentaryEvent;
 
 export type DomainEventType = DomainEvent["type"];
 export type DomainEventByType<T extends DomainEventType> = Extract<DomainEvent, { type: T }>;

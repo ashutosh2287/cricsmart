@@ -31,17 +31,6 @@ export function registerReplayConsumer(): void {
       eventType: event.eventMeta.eventType,
     });
 
-    event.commentaryEvents.forEach((commentaryEvent) => {
-      appendCommentaryTimeline({
-        matchId: event.runtimeMatchId,
-        eventId: commentaryEvent.eventId,
-        sequence: event.eventMeta.sequence,
-        timestamp: commentaryEvent.timestamp,
-        text: commentaryEvent.text,
-        source: "ENGINE",
-      });
-    });
-
     void appendReplayEvent(event.runtimeMatchId, event.ballEvent);
   });
 
@@ -80,6 +69,19 @@ export function registerReplayConsumer(): void {
   });
 
   subscribeDomainEvent("WIN_PROBABILITY", (event) => {
+    void appendReplayEvent(event.runtimeMatchId, event);
+  });
+
+  subscribeDomainEvent("COMMENTARY", (event) => {
+    appendCommentaryTimeline({
+      matchId: event.runtimeMatchId,
+      eventId: event.commentaryId,
+      sequence: event.timestamp,
+      timestamp: event.timestamp,
+      text: event.text,
+      source: "ENGINE",
+    });
+
     void appendReplayEvent(event.runtimeMatchId, event);
   });
 }

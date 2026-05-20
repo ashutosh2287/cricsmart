@@ -28,7 +28,7 @@ export default function BroadcastLiveView({ match }: Props) {
 />
 
       {/* Live commentary */}
-      <LiveCommentaryFeed />
+      <LiveCommentaryFeed matchId={match.slug} />
 
       {/* Cinematic broadcast overlay */}
       <BroadcastOverlay />

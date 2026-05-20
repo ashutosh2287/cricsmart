@@ -1,6 +1,7 @@
 import { setMatchState } from "@/lib/eventStore";
 import type { MatchState } from "@/services/matchEngine";
 import type { BallEvent } from "@/types/ballEvent";
+import { emitCommentary } from "@/services/commentary/commentaryBus";
 
 export type RealtimeEvent = {
   type: string;
@@ -18,6 +19,12 @@ export type RealtimeEvent = {
     commentary?: unknown[];
     insights?: unknown[];
     analytics?: unknown;
+    commentaryId?: string;
+    text?: string;
+    tone?: string;
+    importance?: string;
+    isBoundary?: boolean;
+    isWicket?: boolean;
   };
 };
 
@@ -97,6 +104,20 @@ export function routeRealtimeEvent(payload: RealtimeEvent) {
       dispatchCricUpdate(type, data);
       break;
     case "WIN_PROBABILITY_UPDATE":
+      dispatchCricUpdate(type, data);
+      break;
+    case "COMMENTARY":
+      if (data && typeof data === "object" && "text" in data && "commentaryId" in data) {
+        emitCommentary({
+          matchId,
+          text: String(data.text ?? ""),
+          eventId: String(data.commentaryId ?? ""),
+          category:
+            data.isWicket || data.importance === "high"
+              ? "INSIGHT"
+              : "BALL",
+        });
+      }
       dispatchCricUpdate(type, data);
       break;
 

@@ -4,15 +4,12 @@ import { getMatchConfig } from "./matchFormat";
 import { advanceClock } from "./timeEngine";
 import { processMatchIntelligence } from "./matchIntelligenceEngine";
 import { v4 as uuidv4 } from "uuid";
-import { emitCommentary } from "@/services/commentary/commentaryBus";
 import { emitCommand } from "./commandBus";
 import { setMatchState as setUIState } from "@/lib/eventStore";
-import { addCommentary } from "@/services/commentary/commentaryStore";
 import { setAnalytics } from "@/services/analytics/liveAnalyticsStore";
 import { getMomentumTimeline } from "@/services/analytics/momentumTimelineEngine";
 import { generateBroadcastInsights } from "./broadcast/broadcastInsightEngine";
 import { processMomentumEvent } from "@/services/analytics/momentumTimelineEngine";
-import { computeWinProbability } from "@/services/winProbabilityEngine";
 import { getAnalytics } from "@/services/analytics/liveAnalyticsStore";
 import { clearPlayerRegistry } from "./player/playerRegistry";
 import { updatePlayerRegistry } from "./playerRegistryEngine";
@@ -21,7 +18,7 @@ import { resetCommentaryTimeline } from "@/services/commentary/commentaryTimelin
 import { recordBallEvent } from "@/services/recording/eventRecorder";
 import { resetPredictionStabilityMetrics } from "@/services/ml/smoothing/stabilityMetrics";
 import { clearPredictionSnapshots } from "@/services/ml/snapshots/featureSnapshotStore";
-import { processCommentaryPipeline, resetCommentaryPipelineState } from "@/services/commentary/orchestration/commentary-pipeline";
+import { resetCommentaryPipelineState } from "@/services/commentary/orchestration/commentary-pipeline";
 import { emitDomainEvent } from "@/domain/eventBus";
 import { ensureDomainConsumersRegistered } from "@/domain/consumers";
 export type CorrectionEvent =
@@ -1143,54 +1140,6 @@ export function dispatchBallEvent(
     });
   }
 
-  const generatedCommentary = (() => {
-    try {
-      return processCommentaryPipeline({
-        matchId,
-        branchId: next.activeBranchId,
-        ballEvent,
-        state: next,
-        probabilityState: {
-          previousWinProbability: computeWinProbability(current)?.battingWinProbability,
-          currentWinProbability: computeWinProbability(next)?.battingWinProbability,
-        },
-      });
-    } catch {
-      return null;
-    }
-  })();
-
-  const commentaryEvents = generatedCommentary?.emittedEvents ?? [];
-  const primaryCommentaryEvent =
-    generatedCommentary?.primaryEvent ??
-    ({
-      type: "commentary.generated",
-      matchId,
-      eventId: `${ballEvent.id}:ball`,
-      commentaryType: "ball",
-      narrativeType: "fallback",
-      text: "No significant update on that delivery.",
-      tone: "neutral",
-      importance: "low",
-      over: next.innings[next.currentInningsIndex]?.over ?? 0,
-      ball: next.innings[next.currentInningsIndex]?.ball ?? 0,
-      innings: next.currentInningsIndex + 1,
-      timestamp: ballEvent.timestamp,
-      templateKey: "single_rotation",
-    } as const);
-
-  const commentaryText = primaryCommentaryEvent.text;
-
-  for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent]) {
-    emitCommentary({
-      matchId,
-      text: commentaryEvent.text,
-      eventId: commentaryEvent.eventId,
-      category: commentaryEvent.commentaryType === "ball" ? "BALL" : "SUMMARY",
-      generatedEvent: commentaryEvent,
-    });
-  }
-
 // ✅ ADD THIS (MOVE HERE)
 if (!eventStreams[matchId]) {
   eventStreams[matchId] = [];
@@ -1198,8 +1147,6 @@ if (!eventStreams[matchId]) {
 eventStreams[matchId].push(ballEvent);
 
 updatePlayerRegistry(matchId);
-
-  ballEvent.commentary = commentaryText;
 
   /*
   ========================================
@@ -1227,11 +1174,6 @@ const ballIndex =
 
 // ⚡ MOMENTUM UPDATE
 processMomentumEvent(matchId, ballEvent, ballIndex);
-
-// 📝 COMMENTARY STORE
-for (const commentaryEvent of commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent]) {
-  addCommentary(matchId, commentaryEvent.text);
-}
 
 // 🧠 INSIGHTS
 generateBroadcastInsights(matchId);
@@ -1279,13 +1221,12 @@ const eventMeta = {
   eventType: ballEvent.type,
 } as const;
 
-emitDomainEvent("BALL", {
+  emitDomainEvent("BALL", {
   type: "BALL",
   runtimeMatchId: matchId,
   state: updatedState,
   ballEvent,
   eventMeta,
-  commentaryEvents: commentaryEvents.length ? commentaryEvents : [primaryCommentaryEvent],
 });
 
 if (ballEvent.type === "WICKET") {
@@ -1327,7 +1268,6 @@ if (updatedState.matchEnded) {
 
   pushToTimeline({
     ...ballEvent,
-    commentary: commentaryText,
   });
 
   advanceClock(matchId);

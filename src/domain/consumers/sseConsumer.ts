@@ -128,4 +128,18 @@ export function registerSseConsumer(): void {
 
     broadcast(event.runtimeMatchId, payload);
   });
+
+  subscribeDomainEvent("COMMENTARY", (event) => {
+    const payload = {
+      type: "COMMENTARY",
+      matchId: event.runtimeMatchId,
+      data: event,
+    } as const;
+
+    if (isDev()) {
+      console.log("[SSE_BROADCAST]", payload);
+    }
+
+    broadcast(event.runtimeMatchId, payload);
+  });
 }

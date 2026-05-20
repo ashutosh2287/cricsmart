@@ -146,18 +146,19 @@ export default function MatchGraphExplorer({
   winProbabilityData,
   metadata,
 }: Props) {
-  const safeInnings = Array.isArray(innings) ? innings : [];
-  const safeMomentumData = Array.isArray(momentumData) ? momentumData : [];
-  const safeWinProbabilityData = Array.isArray(winProbabilityData)
-    ? winProbabilityData
-    : [];
+  const safeInnings = useMemo(() => (Array.isArray(innings) ? innings : []), [innings]);
+  const safeMomentumData = useMemo(
+    () => (Array.isArray(momentumData) ? momentumData : []),
+    [momentumData]
+  );
+  const safeWinProbabilityData = useMemo(
+    () => (Array.isArray(winProbabilityData) ? winProbabilityData : []),
+    [winProbabilityData]
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ChartTab>("winProbability");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("both");
-  const effectiveWinProbabilityData = useMemo(
-    () => safeWinProbabilityData,
-    [safeWinProbabilityData]
-  );
+  const effectiveWinProbabilityData = safeWinProbabilityData;
 
   const latestWinPoint = effectiveWinProbabilityData.length
     ? effectiveWinProbabilityData[effectiveWinProbabilityData.length - 1]

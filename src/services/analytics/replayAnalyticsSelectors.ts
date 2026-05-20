@@ -58,7 +58,7 @@ function buildInnings(events: BallEvent[]): InningsState[] {
 
     innings.overs[overKey] = [...(innings.overs[overKey] ?? []), event];
     innings.runs += event.totalRuns ?? event.runs ?? 0;
-    if (event.wicket || event.type === "WICKET") {
+    if (event.wicket) {
       innings.wickets += 1;
     }
 
@@ -81,7 +81,7 @@ function buildMomentum(events: BallEvent[]): ReplayMomentumPoint[] {
 
   return sorted.map((event) => {
     const runs = event.totalRuns ?? event.runs ?? 0;
-    const wicketImpact = event.wicket || event.type === "WICKET" ? -3 : 0;
+    const wicketImpact = event.wicket ? -3 : 0;
     const dotImpact = event.isLegalDelivery && runs === 0 ? -1 : 0;
     momentum = clamp(momentum * 0.9 + runs + wicketImpact + dotImpact, -10, 10);
 
@@ -103,7 +103,7 @@ function buildWinProbability(events: BallEvent[]): ReplayWinProbabilityPoint[] {
 
   return sorted.map((event) => {
     const runs = event.totalRuns ?? event.runs ?? 0;
-    const wicketImpact = event.wicket || event.type === "WICKET" ? -8 : 0;
+    const wicketImpact = event.wicket ? -8 : 0;
     const dotImpact = event.isLegalDelivery && runs === 0 ? -1 : 0;
     probability = clamp(probability + runs * 1.4 + wicketImpact + dotImpact, 1, 99);
 
@@ -115,14 +115,7 @@ function buildWinProbability(events: BallEvent[]): ReplayWinProbabilityPoint[] {
       over,
       batting: Number(probability.toFixed(2)),
       bowling: Number((100 - probability).toFixed(2)),
-      marker:
-        event.type === "WICKET"
-          ? "WICKET"
-          : event.type === "SIX"
-            ? "SIX"
-            : event.type === "FOUR"
-              ? "FOUR"
-              : undefined,
+      marker: event.wicket ? "WICKET" : event.type === "SIX" ? "SIX" : event.type === "FOUR" ? "FOUR" : undefined,
     };
   });
 }

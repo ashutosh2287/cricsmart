@@ -75,6 +75,7 @@ import {
   getMomentumData,
   getWinProbabilityData,
   useReplayEvents,
+  type ReplayEvent,
 } from "@/hooks/useReplayEvents";
 
 // ─────────────────────────────────────────────
@@ -360,6 +361,7 @@ function TabsArea({
   analytics,
   insights,
   sessionMeta,
+  replayEvents,
 }: {
   match: Match;
   analytics: {
@@ -368,6 +370,7 @@ function TabsArea({
   };
   insights: BroadcastInsight[];
   sessionMeta?: MatchSessionMeta | null;
+  replayEvents: ReplayEvent[];
 }) {
   const isAdmin = true;
   const { state: currentEngineState } = useMatch();
@@ -686,9 +689,7 @@ function TabsArea({
                   currentBowlingTeam={overviewBowlingTeam}
                   currentOver={displayOver}
                   currentRunRate={inningsRunRate}
-                  innings={currentEngineState?.innings ?? []}
-                  momentumData={analytics.momentum}
-                  winProbabilityData={winProbabilityData}
+                  replayEvents={replayEvents}
                 />
               </GlassPanel>
 
@@ -799,9 +800,7 @@ function TabsArea({
                           currentBowlingTeam={overviewBowlingTeam}
                           currentOver={displayOver}
                           currentRunRate={inningsRunRate}
-                          innings={currentEngineState?.innings ?? []}
-                          momentumData={analytics.momentum}
-                          winProbabilityData={winProbabilityData}
+                          replayEvents={replayEvents}
                         />
                       </div>
                       <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
@@ -1394,6 +1393,7 @@ function MatchInnerPage({
   analytics,
   insights,
   sessionMeta,
+  replayEvents,
 }: {
   match: Match;
   analytics: {
@@ -1402,6 +1402,7 @@ function MatchInnerPage({
   };
   insights: BroadcastInsight[];
   sessionMeta?: MatchSessionMeta | null;
+  replayEvents: ReplayEvent[];
 }) {
   // ✅ Single reactive source — no local engineState
   const { state: currentEngineState } = useMatch();
@@ -1655,6 +1656,7 @@ function MatchInnerPage({
           analytics={analytics}
           insights={insights}
           sessionMeta={sessionMeta}
+          replayEvents={replayEvents}
         />
       </div>
     </main>
@@ -1896,6 +1898,7 @@ export default function MatchDetailPage({
               analytics={replayHydratedAnalytics}
               insights={insights}
               sessionMeta={sessionMeta}
+              replayEvents={replayEvents}
             />
           ) : (
             <div className="p-10 text-center text-white">

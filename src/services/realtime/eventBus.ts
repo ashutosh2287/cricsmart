@@ -54,9 +54,11 @@ type RealtimeEvent =
       matchId: string;
       data: {
         probability: number;
+        awayProbability?: number;
         delta: number;
         over: number;
         ball: number;
+        innings?: number;
         timestamp: number;
         modelVersion: string;
       };

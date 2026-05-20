@@ -7,5 +7,9 @@ export async function loadHistoricalMatch(
 
   const events = await getMatchEvents(matchId);
 
-  return events ?? [];
+  return (events ?? []).filter((event) =>
+    typeof event?.runs === "number" &&
+    typeof event?.batsman === "string" &&
+    typeof event?.bowler === "string"
+  );
 }

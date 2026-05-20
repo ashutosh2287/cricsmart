@@ -71,6 +71,11 @@ import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
 import AnimatedScore from "@/components/ui/AnimatedScore";
 import ConnectionStatus from "@/components/ui/ConnectionStatus";
+import {
+  getMomentumData,
+  getWinProbabilityData,
+  useReplayEvents,
+} from "@/hooks/useReplayEvents";
 
 // ─────────────────────────────────────────────
 // Types
@@ -1696,6 +1701,17 @@ export default function MatchDetailPage({
     winProbability: WinPoint[];
     momentum: MomentumPoint[];
   }>({ winProbability: [], momentum: [] });
+  const { events: replayEvents } = useReplayEvents(matchId);
+
+  useEffect(() => {
+    if (!replayEvents.length) return;
+    const replayWinProbability = getWinProbabilityData(replayEvents);
+    const replayMomentum = getMomentumData(replayEvents);
+    setAnalytics((prev) => ({
+      winProbability: replayWinProbability.length ? replayWinProbability : prev.winProbability,
+      momentum: replayMomentum.length ? replayMomentum : prev.momentum,
+    }));
+  }, [replayEvents]);
 
   // One-time inits
   useEffect(() => {
@@ -1801,6 +1817,13 @@ export default function MatchDetailPage({
     const handler = (e: Event) => {
       const customEvent = e as CustomEvent<{
         type: string;
+        probability?: number;
+        awayProbability?: number;
+        over?: number;
+        ball?: number;
+        innings?: number;
+        timestamp?: number;
+        modelVersion?: string;
         insights?: BroadcastInsight[];
         analytics?: {
           winProbability: WinPoint[];
@@ -1823,6 +1846,23 @@ export default function MatchDetailPage({
       if (data.type === "BALL_EVENT") {
         if (data.insights) setInsights(data.insights);
         if (data.analytics) setAnalytics(data.analytics);
+      } else if (
+        data.type === "WIN_PROBABILITY_UPDATE" &&
+        typeof data.probability === "number" &&
+        typeof data.over === "number" &&
+        typeof data.ball === "number"
+      ) {
+        setAnalytics((prev) => ({
+          ...prev,
+          winProbability: [
+            ...prev.winProbability,
+            {
+              over: data.over + data.ball / 10,
+              value: data.probability,
+              timestamp: typeof data.timestamp === "number" ? data.timestamp : Date.now(),
+            },
+          ],
+        }));
       }
     };
 

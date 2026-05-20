@@ -34,7 +34,6 @@ import { generateMatchInsights } from "./analytics/matchInsightsEngine";
 
 import { updatePlayerForm } from "./analytics/playerFormEngine";
 
-import { updateWinProbability } from "./analytics/winProbabilityTimelineEngine";
 
 import { generateAIInsights } from "./analytics/aiInsightEngine";
 
@@ -76,9 +75,7 @@ processAnalyticsEvent(matchId, ballEvent);
 
 processMomentumEvent(matchId, ballEvent, ballIndex);
 
-updateWinProbability(matchId, state, ballEvent);
-
-updatePlayerRegistry(matchId);
+  updatePlayerRegistry(matchId);
 updatePlayerStats(matchId);
 updatePlayerImpact(matchId);
 updatePlayerForm(matchId);

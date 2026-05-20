@@ -100,4 +100,27 @@ export function registerSseConsumer(): void {
 
     broadcast(event.runtimeMatchId, payload);
   });
+
+  subscribeDomainEvent("WIN_PROBABILITY", (event) => {
+    const payload = {
+      type: "WIN_PROBABILITY_UPDATE",
+      matchId: event.runtimeMatchId,
+      data: {
+        probability: event.homeWinPct,
+        awayProbability: event.awayWinPct,
+        delta: 0,
+        over: event.over,
+        ball: event.ball,
+        innings: event.innings,
+        timestamp: event.timestamp,
+        modelVersion: "domain-win-probability-consumer",
+      },
+    } as const;
+
+    if (isDev()) {
+      console.log("[SSE_BROADCAST]", payload);
+    }
+
+    broadcast(event.runtimeMatchId, payload);
+  });
 }

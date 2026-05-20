@@ -1,5 +1,5 @@
 import { BallEvent } from "@/types/ballEvent";
-import { getEventStream, getMatchState } from "../matchEngine";
+import { getEventStream } from "../matchEngine";
 import { calculateRunRate } from "./metrics/runRate";
 import { calculateMomentum } from "./metrics/momentum";
 import { emitDirectorSignal } from "../directorSignalBus";
@@ -13,9 +13,6 @@ import {
   updateMomentum,
   updateNarrative
 } from "./matchAnalyticsAggregator";
-import {
-  updateWinProbability
-} from "../analytics/winProbabilityTimelineEngine";
 import {
   processMomentumEvent
 } from "./momentumTimelineEngine";
@@ -133,12 +130,6 @@ export function processAnalyticsEvent(
     });
 
   }
-
-  const matchState = getMatchState(matchId);
-
-if (matchState) {
-  updateWinProbability(matchId, matchState);
-}
 
 }
 

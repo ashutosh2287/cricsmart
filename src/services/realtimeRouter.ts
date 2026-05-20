@@ -8,6 +8,13 @@ export type RealtimeEvent = {
   data?: MatchState | {
     committedState?: MatchState;
     event?: BallEvent;
+    probability?: number;
+    awayProbability?: number;
+    over?: number;
+    ball?: number;
+    innings?: number;
+    timestamp?: number;
+    modelVersion?: string;
     commentary?: unknown[];
     insights?: unknown[];
     analytics?: unknown;
@@ -87,6 +94,9 @@ export function routeRealtimeEvent(payload: RealtimeEvent) {
 }
 
     case "WICKET":
+      dispatchCricUpdate(type, data);
+      break;
+    case "WIN_PROBABILITY_UPDATE":
       dispatchCricUpdate(type, data);
       break;
 

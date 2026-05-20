@@ -13,6 +13,7 @@ export type RunRatePoint = {
  * Output: [{ over, runRate }]  — runRate = (totalRuns * 6) / legalBalls
  */
 export function getRunRateData(events: ReplayEvent[]): RunRatePoint[] {
+  if (!Array.isArray(events) || events.length === 0) return [];
   let totalRuns = 0;
   let legalBalls = 0;
   const points: RunRatePoint[] = [];

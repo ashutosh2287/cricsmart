@@ -146,19 +146,27 @@ export default function MatchGraphExplorer({
   winProbabilityData,
   metadata,
 }: Props) {
+  const safeInnings = Array.isArray(innings) ? innings : [];
+  const safeMomentumData = Array.isArray(momentumData) ? momentumData : [];
+  const safeWinProbabilityData = Array.isArray(winProbabilityData)
+    ? winProbabilityData
+    : [];
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ChartTab>("winProbability");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("both");
-  const effectiveWinProbabilityData = useMemo(() => winProbabilityData, [winProbabilityData]);
+  const effectiveWinProbabilityData = useMemo(
+    () => safeWinProbabilityData,
+    [safeWinProbabilityData]
+  );
 
   const latestWinPoint = effectiveWinProbabilityData.length
     ? effectiveWinProbabilityData[effectiveWinProbabilityData.length - 1]
     : null;
-  const latestMomentum = momentumData.length
-    ? momentumData[momentumData.length - 1]?.score ?? 0
+  const latestMomentum = safeMomentumData.length
+    ? safeMomentumData[safeMomentumData.length - 1]?.score ?? 0
     : 0;
 
-  const progression = useMemo(() => buildProgressionData(innings), [innings]);
+  const progression = useMemo(() => buildProgressionData(safeInnings), [safeInnings]);
 
   const battingWin = latestWinPoint?.batting ?? 0;
   const bowlingWin = latestWinPoint?.bowling ?? 0;
@@ -557,7 +565,7 @@ export default function MatchGraphExplorer({
                 >
                   <div className="h-[420px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={momentumData}>
+                      <LineChart data={safeMomentumData}>
                         <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
                         <XAxis dataKey="over" stroke="var(--chart-axis)" />
                         <YAxis stroke="var(--chart-axis)" />
@@ -581,7 +589,7 @@ export default function MatchGraphExplorer({
                   title="Momentum map"
                   description="A heat-strip view of pressure across the innings. Green blocks favour the batting side, red blocks favour the bowling side, and yellow means the game is stable."
                 >
-                  <MomentumHeatmap data={momentumData} />
+                  <MomentumHeatmap data={safeMomentumData} />
                 </ChartShell>
               ) : null}
             </div>

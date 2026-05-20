@@ -40,8 +40,9 @@ function WinProbabilityChart({
   team1,
   team2
 }: Props) {
-  const hasLivePoints = data.length > 0;
-  const chartData = useMemo(() => data, [data]);
+  const safeData = Array.isArray(data) ? data : [];
+  const hasLivePoints = safeData.length > 0;
+  const chartData = useMemo(() => safeData, [safeData]);
   const lastPoint = useMemo(
     () => chartData[chartData.length - 1] ?? null,
     [chartData]

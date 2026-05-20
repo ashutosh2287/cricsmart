@@ -43,7 +43,7 @@ export default function RuntimeMatchPageClient({ runtimeMatchId }: Props) {
         </p>
         <p className="text-sm text-[var(--text-secondary)]">Overs: {score.overs}</p>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
-          striker: {batters?.striker || "—"} · non-striker: {batters?.nonStriker || "—"}
+          Striker: {batters?.striker || "—"} · Non-striker: {batters?.nonStriker || "—"}
         </p>
       </section>
 

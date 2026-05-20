@@ -3,7 +3,7 @@ import { processCommentaryPipeline } from "@/services/commentary/orchestration/c
 import { computeWinProbability } from "@/services/winProbabilityEngine";
 
 let commentaryConsumerRegistered = false;
-const processedBallIds = new Set<string>();
+const processedBallIdsByMatch = new Map<string, Set<string>>();
 const lastWinProbabilityByMatch = new Map<string, number | null>();
 
 function processBallCommentary(input: {
@@ -13,10 +13,12 @@ function processBallCommentary(input: {
   state: Parameters<typeof processCommentaryPipeline>[0]["state"];
   eventId: string;
 }) {
-  if (processedBallIds.has(input.eventId)) {
+  const processedForMatch = processedBallIdsByMatch.get(input.runtimeMatchId) ?? new Set<string>();
+  if (processedForMatch.has(input.eventId)) {
     return;
   }
-  processedBallIds.add(input.eventId);
+  processedForMatch.add(input.eventId);
+  processedBallIdsByMatch.set(input.runtimeMatchId, processedForMatch);
 
   const previousWinProbability = lastWinProbabilityByMatch.get(input.runtimeMatchId) ?? null;
   const currentWinProbability = computeWinProbability(input.state)?.battingWinProbability ?? null;
@@ -80,5 +82,10 @@ export function registerCommentaryConsumer(): void {
       state: event.state,
       eventId: event.eventMeta.eventId,
     });
+  });
+
+  subscribeDomainEvent("MATCH_FINISHED", (event) => {
+    processedBallIdsByMatch.delete(event.runtimeMatchId);
+    lastWinProbabilityByMatch.delete(event.runtimeMatchId);
   });
 }

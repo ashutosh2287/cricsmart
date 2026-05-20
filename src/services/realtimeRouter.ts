@@ -28,6 +28,29 @@ export type RealtimeEvent = {
   };
 };
 
+function isCommentaryRealtimeData(
+  data: RealtimeEvent["data"]
+): data is {
+  runtimeMatchId: string;
+  commentaryId: string;
+  text: string;
+  importance?: string;
+  isWicket?: boolean;
+} {
+  return Boolean(
+    data &&
+      typeof data === "object" &&
+      "runtimeMatchId" in data &&
+      typeof data.runtimeMatchId === "string" &&
+      "commentaryId" in data &&
+      typeof data.commentaryId === "string" &&
+      "text" in data &&
+      typeof data.text === "string" &&
+      (!("importance" in data) || typeof data.importance === "string") &&
+      (!("isWicket" in data) || typeof data.isWicket === "boolean")
+  );
+}
+
 function dispatchCricUpdate(type: string, data: RealtimeEvent["data"]) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
@@ -107,11 +130,11 @@ export function routeRealtimeEvent(payload: RealtimeEvent) {
       dispatchCricUpdate(type, data);
       break;
     case "COMMENTARY":
-      if (data && typeof data === "object" && "text" in data && "commentaryId" in data) {
+      if (isCommentaryRealtimeData(data)) {
         emitCommentary({
           matchId,
-          text: String(data.text ?? ""),
-          eventId: String(data.commentaryId ?? ""),
+          text: data.text,
+          eventId: data.commentaryId,
           category:
             data.isWicket || data.importance === "high"
               ? "INSIGHT"

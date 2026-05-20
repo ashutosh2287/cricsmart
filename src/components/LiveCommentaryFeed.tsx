@@ -21,7 +21,7 @@ function matchFilter(commentary: CommentaryFeedEvent, filter: FeedFilter) {
   if (filter === "wickets") return Boolean(commentary.isWicket);
   if (filter === "boundaries") return /\bFOUR\b|\bSIX\b|boundary|maxim/i.test(commentary.text);
   if (filter === "insights") return commentary.importance === "high";
-  if (filter === "milestones") return false;
+  if (filter === "milestones") return /\bmilestone\b|\bfifty\b|\bcentury\b|\bpartnership\b/i.test(commentary.text);
   if (filter === "summaries") return commentary.importance === "medium";
 
   return true;
@@ -31,7 +31,7 @@ function LiveCommentaryFeed({ matchId }: { matchId: string }) {
   const comments = useCommentary(matchId);
   const [filter, setFilter] = useState<FeedFilter>("all");
   const filtered = useMemo(
-    () => comments.filter((item) => matchFilter(item, filter)).slice().reverse(),
+    () => comments.filter((item) => matchFilter(item, filter)),
     [comments, filter]
   );
 

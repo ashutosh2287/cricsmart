@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 export type CommentaryFeedEvent = {
   type: "COMMENTARY";
@@ -35,26 +35,23 @@ function upsertCommentary(
   if (previous.some((entry) => entry.commentaryId === next.commentaryId)) {
     return previous;
   }
-  return [...previous, next];
+  return [next, ...previous];
 }
 
 export function useCommentary(matchId?: string) {
   const [commentary, setCommentary] = useState<CommentaryFeedEvent[]>([]);
 
   useEffect(() => {
-    if (!matchId) {
-      setCommentary([]);
-      return;
-    }
+    if (!matchId) return;
 
     let cancelled = false;
 
-    fetch(`/api/events?matchId=${encodeURIComponent(matchId)}`, { cache: "no-store" })
+    fetch(`/api/events?matchId=${encodeURIComponent(matchId)}`)
       .then((res) => (res.ok ? res.json() : []))
       .then((payload: unknown) => {
         if (cancelled) return;
         const parsed = Array.isArray(payload)
-          ? payload.filter(isCommentaryEvent).sort((a, b) => a.timestamp - b.timestamp)
+          ? payload.filter(isCommentaryEvent).sort((a, b) => b.timestamp - a.timestamp)
           : [];
         setCommentary(parsed);
       })
@@ -85,5 +82,5 @@ export function useCommentary(matchId?: string) {
     return () => window.removeEventListener("CRIC_UPDATE", handleRealtimeUpdate);
   }, [matchId]);
 
-  return useMemo(() => commentary, [commentary]);
+  return matchId ? commentary : [];
 }

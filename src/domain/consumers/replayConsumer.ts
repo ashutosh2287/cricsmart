@@ -48,17 +48,6 @@ export function registerReplayConsumer(): void {
       eventType: event.eventMeta.eventType,
     });
 
-    event.commentaryEvents.forEach((commentaryEvent) => {
-      appendCommentaryTimeline({
-        matchId: event.runtimeMatchId,
-        eventId: commentaryEvent.eventId,
-        sequence: event.eventMeta.sequence,
-        timestamp: commentaryEvent.timestamp,
-        text: commentaryEvent.text,
-        source: "ENGINE",
-      });
-    });
-
     void appendReplayEvent(event.runtimeMatchId, {
       id: event.eventMeta.eventId || event.ballEvent.id || crypto.randomUUID(),
       sequenceNumber: event.eventMeta.sequence,
@@ -83,6 +72,17 @@ export function registerReplayConsumer(): void {
       ball: event.eventMeta.ball,
         eventType: "WICKET",
       });
+  });
+
+  subscribeDomainEvent("COMMENTARY", (event) => {
+    appendCommentaryTimeline({
+      matchId: event.runtimeMatchId,
+      eventId: event.commentaryId,
+      sequence: event.timestamp,
+      timestamp: event.timestamp,
+      text: event.text,
+      source: "ENGINE",
+    });
   });
 
   subscribeDomainEvent("MATCH_FINISHED", (event) => {

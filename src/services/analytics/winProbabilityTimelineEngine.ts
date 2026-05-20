@@ -19,13 +19,16 @@ const winProbStore: Record<string, WinProbState> = {};
 const domainBallStreamStore: Record<string, BallEvent[]> = {};
 
 function getSource(ballEvent?: BallEvent): PredictionSource {
-  return ballEvent?.eventSource === "LIVE_INGESTION"
-    ? "LIVE"
-    : ballEvent?.eventSource === "MOCK_INGESTION"
-      ? "MOCK"
-      : ballEvent?.eventSource === "REPLAY"
-        ? "REPLAY"
-        : "SIMULATION";
+  switch (ballEvent?.eventSource) {
+    case "LIVE_INGESTION":
+      return "LIVE";
+    case "MOCK_INGESTION":
+      return "MOCK";
+    case "REPLAY":
+      return "REPLAY";
+    default:
+      return "SIMULATION";
+  }
 }
 
 function appendPoint(input: {

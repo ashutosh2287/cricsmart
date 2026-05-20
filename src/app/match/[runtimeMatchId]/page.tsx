@@ -1702,16 +1702,14 @@ export default function MatchDetailPage({
     momentum: MomentumPoint[];
   }>({ winProbability: [], momentum: [] });
   const { events: replayEvents } = useReplayEvents(matchId);
-
-  useEffect(() => {
-    if (!replayEvents.length) return;
+  const replayHydratedAnalytics = useMemo(() => {
     const replayWinProbability = getWinProbabilityData(replayEvents);
     const replayMomentum = getMomentumData(replayEvents);
-    setAnalytics((prev) => ({
-      winProbability: replayWinProbability.length ? replayWinProbability : prev.winProbability,
-      momentum: replayMomentum.length ? replayMomentum : prev.momentum,
-    }));
-  }, [replayEvents]);
+    return {
+      winProbability: replayWinProbability.length ? replayWinProbability : analytics.winProbability,
+      momentum: replayMomentum.length ? replayMomentum : analytics.momentum,
+    };
+  }, [analytics.momentum, analytics.winProbability, replayEvents]);
 
   // One-time inits
   useEffect(() => {
@@ -1852,13 +1850,16 @@ export default function MatchDetailPage({
         typeof data.over === "number" &&
         typeof data.ball === "number"
       ) {
+        const over = data.over;
+        const ball = data.ball;
+        const probability = Number(data.probability);
         setAnalytics((prev) => ({
           ...prev,
           winProbability: [
             ...prev.winProbability,
             {
-              over: data.over + data.ball / 10,
-              value: data.probability,
+              over: over + ball / 10,
+              value: probability,
               timestamp: typeof data.timestamp === "number" ? data.timestamp : Date.now(),
             },
           ],
@@ -1892,7 +1893,7 @@ export default function MatchDetailPage({
           {match ? (
             <MatchInnerPage
               match={match}
-              analytics={analytics}
+              analytics={replayHydratedAnalytics}
               insights={insights}
               sessionMeta={sessionMeta}
             />

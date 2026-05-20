@@ -5,10 +5,11 @@ import { appendCommentaryTimeline } from "@/services/commentary/commentaryTimeli
 let replayConsumerRegistered = false;
 
 async function appendReplayEvent(matchId: string, payload: unknown) {
+  // Domain replay persistence is server-side only.
   if (typeof window !== "undefined") return;
   try {
-    const { getRedis } = await import("@/services/storage/redisClient");
-    await getRedis().rpush(`match:${matchId}:events`, JSON.stringify(payload));
+    const { appendEvent } = await import("@/services/storage/eventStorage");
+    await appendEvent(matchId, payload as never);
   } catch (error) {
     console.error("REPLAY_EVENT_APPEND_FAILED", { matchId, error });
   }

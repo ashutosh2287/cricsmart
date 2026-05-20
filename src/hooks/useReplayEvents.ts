@@ -27,12 +27,10 @@ function isWinProbabilityEvent(event: ReplayEvent): event is WinProbabilityRepla
 
 export function useReplayEvents(matchId?: string) {
   const [events, setEvents] = useState<ReplayEvent[]>([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!matchId) return;
     let cancelled = false;
-    setLoading(true);
 
     fetch(`/api/events?matchId=${encodeURIComponent(matchId)}`, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : []))
@@ -43,9 +41,7 @@ export function useReplayEvents(matchId?: string) {
       .catch(() => {
         if (!cancelled) setEvents([]);
       })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      .finally(() => {});
 
     return () => {
       cancelled = true;
@@ -56,7 +52,7 @@ export function useReplayEvents(matchId?: string) {
     return (type: string) => events.filter((event) => event.type === type);
   }, [events]);
 
-  return { events, loading, byType };
+  return { events, loading: false, byType };
 }
 
 export function getWinProbabilityData(events: ReplayEvent[]) {

@@ -2,6 +2,7 @@ import { subscribeDomainEvent } from "@/domain/eventBus";
 import { broadcast } from "@/services/realtime/eventBus";
 
 let sseConsumerRegistered = false;
+const lastWinProbabilityByMatch = new Map<string, number>();
 
 function isDev() {
   return process.env.NODE_ENV !== "production";
@@ -102,13 +103,17 @@ export function registerSseConsumer(): void {
   });
 
   subscribeDomainEvent("WIN_PROBABILITY", (event) => {
+    const previous = lastWinProbabilityByMatch.get(event.runtimeMatchId);
+    const delta = previous === undefined ? 0 : event.homeWinPct - previous;
+    lastWinProbabilityByMatch.set(event.runtimeMatchId, event.homeWinPct);
+
     const payload = {
       type: "WIN_PROBABILITY_UPDATE",
       matchId: event.runtimeMatchId,
       data: {
         probability: event.homeWinPct,
         awayProbability: event.awayWinPct,
-        delta: 0,
+        delta,
         over: event.over,
         ball: event.ball,
         innings: event.innings,

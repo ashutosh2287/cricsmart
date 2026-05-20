@@ -1,5 +1,5 @@
 import { BallEvent } from "@/types/ballEvent";
-import { getEventStream } from "../matchEngine";
+import { getEventStream, getMatchState } from "../matchEngine";
 import { calculateRunRate } from "./metrics/runRate";
 import { calculateMomentum } from "./metrics/momentum";
 import { emitDirectorSignal } from "../directorSignalBus";

@@ -18,14 +18,19 @@ type WinProbabilityReplayEvent = {
   timestamp: number;
 };
 
-function isBallLikeEvent(event: ReplayEvent): event is BallEvent {
+function isBallLikeEvent(event: ReplayEvent): boolean {
   return event.type !== "WIN_PROBABILITY";
 }
 
-function isWinProbabilityEvent(event: ReplayEvent): event is WinProbabilityReplayEvent {
+function isWinProbabilityEvent(event: ReplayEvent): boolean {
   if (event.type !== "WIN_PROBABILITY") return false;
   const payload = event.payload as Partial<WinProbabilityReplayEvent> | undefined;
   return typeof payload?.homeWinPct === "number";
+}
+
+function getWinProbabilityPayload(event: ReplayEvent): WinProbabilityReplayEvent | null {
+  if (!isWinProbabilityEvent(event)) return null;
+  return event.payload as WinProbabilityReplayEvent;
 }
 
 function getBallEventPayload(event: ReplayEvent): BallEvent | null {
@@ -73,8 +78,8 @@ export function useReplayEvents(matchId?: string) {
 
 export function getWinProbabilityData(events: ReplayEvent[]) {
   return events
-    .filter(isWinProbabilityEvent)
-    .map((event) => event.payload as WinProbabilityReplayEvent)
+    .map(getWinProbabilityPayload)
+    .filter((event): event is WinProbabilityReplayEvent => Boolean(event))
     .map((event) => ({
       over: event.over + event.ball / 10,
       value: event.homeWinPct,

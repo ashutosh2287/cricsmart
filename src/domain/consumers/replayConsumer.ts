@@ -11,13 +11,6 @@ function toObjectPayload(payload: unknown) {
     : {};
 }
 
-async function nextReplaySequence(matchId: string) {
-  const { getRedis } = await import("@/services/storage/redisClient");
-  const redis = getRedis();
-  const sequence = await redis.incr(`match:${matchId}:replay_sequence`);
-  return Number(sequence);
-}
-
 async function appendReplayEvent(
   matchId: string,
   event: Omit<ReplayEvent, "sequenceNumber"> & { sequenceNumber?: number }
@@ -31,7 +24,7 @@ async function appendReplayEvent(
       sequenceNumber:
         typeof event.sequenceNumber === "number"
           ? event.sequenceNumber
-          : await nextReplaySequence(matchId),
+          : Date.now(),
     };
     await appendEvent(matchId, replayEvent as never);
   } catch (error) {

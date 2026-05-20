@@ -76,6 +76,7 @@ import {
   getWinProbabilityData,
   useReplayEvents,
 } from "@/hooks/useReplayEvents";
+import { dedupeReplayEvents } from "@/services/replay/replayEventUtils";
 
 // ─────────────────────────────────────────────
 // Types
@@ -1702,14 +1703,18 @@ export default function MatchDetailPage({
     momentum: MomentumPoint[];
   }>({ winProbability: [], momentum: [] });
   const { events: replayEvents } = useReplayEvents(matchId);
+  const normalizedReplayEvents = useMemo(
+    () => dedupeReplayEvents(replayEvents),
+    [replayEvents]
+  );
   const replayHydratedAnalytics = useMemo(() => {
-    const replayWinProbability = getWinProbabilityData(replayEvents);
-    const replayMomentum = getMomentumData(replayEvents);
+    const replayWinProbability = getWinProbabilityData(normalizedReplayEvents);
+    const replayMomentum = getMomentumData(normalizedReplayEvents);
     return {
       winProbability: replayWinProbability.length ? replayWinProbability : analytics.winProbability,
       momentum: replayMomentum.length ? replayMomentum : analytics.momentum,
     };
-  }, [analytics.momentum, analytics.winProbability, replayEvents]);
+  }, [analytics.momentum, analytics.winProbability, normalizedReplayEvents]);
 
   // One-time inits
   useEffect(() => {

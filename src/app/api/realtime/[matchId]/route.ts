@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 type RealtimeClient = {
   id: string;
   send: (data: string) => void;
+  afterSequence?: number;
 };
 
 export async function GET(
@@ -25,6 +26,8 @@ export async function GET(
   }
 
   const { matchId } = await context.params; // ✅ FIXED
+  const afterSequenceParam = req.nextUrl.searchParams.get("afterSequence");
+  const afterSequence = afterSequenceParam ? Number(afterSequenceParam) : undefined;
 
   console.log("🧠 SSE ROUTE MATCH ID:", matchId);
 
@@ -80,6 +83,10 @@ export async function GET(
       // ✅ CREATE CLIENT
       client = {
         id: crypto.randomUUID(),
+        afterSequence:
+          typeof afterSequence === "number" && Number.isFinite(afterSequence)
+            ? afterSequence
+            : undefined,
         send: (data: string) => {
           safeEnqueue(data);
         },

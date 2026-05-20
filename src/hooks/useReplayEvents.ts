@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { BallEvent } from "@/types/ballEvent";
-
-export type ReplayEvent = Record<string, unknown> & {
-  type?: string;
-  timestamp?: number;
-};
+import type { ReplayEvent } from "@/types/replayEvent";
+import {
+  dedupeReplayEvents,
+  mergeReplayEvents,
+  normalizeReplayEvent,
+} from "@/services/replay/replayEventUtils";
 
 type WinProbabilityReplayEvent = {
   type: "WIN_PROBABILITY";
@@ -18,11 +19,21 @@ type WinProbabilityReplayEvent = {
 };
 
 function isBallLikeEvent(event: ReplayEvent): event is BallEvent {
-  return typeof event.type === "string" && event.type !== "WIN_PROBABILITY";
+  return event.type !== "WIN_PROBABILITY";
 }
 
 function isWinProbabilityEvent(event: ReplayEvent): event is WinProbabilityReplayEvent {
-  return event.type === "WIN_PROBABILITY" && typeof event.homeWinPct === "number";
+  if (event.type !== "WIN_PROBABILITY") return false;
+  const payload = event.payload as Partial<WinProbabilityReplayEvent> | undefined;
+  return typeof payload?.homeWinPct === "number";
+}
+
+function getBallEventPayload(event: ReplayEvent): BallEvent | null {
+  if (!isBallLikeEvent(event)) return null;
+  const payload = event.payload as BallEvent | undefined;
+  if (!payload || typeof payload !== "object") return null;
+  if (typeof payload.type !== "string") return null;
+  return payload;
 }
 
 export function useReplayEvents(matchId?: string) {
@@ -36,7 +47,10 @@ export function useReplayEvents(matchId?: string) {
       .then((res) => (res.ok ? res.json() : []))
       .then((payload: unknown) => {
         if (cancelled) return;
-        setEvents(Array.isArray(payload) ? (payload as ReplayEvent[]) : []);
+        const incoming = Array.isArray(payload)
+          ? payload.map((event, index) => normalizeReplayEvent(event, index + 1))
+          : [];
+        setEvents((prev) => mergeReplayEvents(prev, incoming));
       })
       .catch(() => {
         if (!cancelled) setEvents([]);
@@ -48,16 +62,19 @@ export function useReplayEvents(matchId?: string) {
     };
   }, [matchId]);
 
-  const byType = useMemo(() => {
-    return (type: string) => events.filter((event) => event.type === type);
-  }, [events]);
+  const normalizedEvents = useMemo(() => dedupeReplayEvents(events), [events]);
 
-  return { events, loading: false, byType };
+  const byType = useMemo(() => {
+    return (type: string) => normalizedEvents.filter((event) => event.type === type);
+  }, [normalizedEvents]);
+
+  return { events: normalizedEvents, loading: false, byType };
 }
 
 export function getWinProbabilityData(events: ReplayEvent[]) {
   return events
     .filter(isWinProbabilityEvent)
+    .map((event) => event.payload as WinProbabilityReplayEvent)
     .map((event) => ({
       over: event.over + event.ball / 10,
       value: event.homeWinPct,
@@ -68,7 +85,8 @@ export function getWinProbabilityData(events: ReplayEvent[]) {
 export function getWormData(events: ReplayEvent[]) {
   let score = 0;
   return events
-    .filter(isBallLikeEvent)
+    .map(getBallEventPayload)
+    .filter((event): event is BallEvent => Boolean(event))
     .filter((event) => typeof event.over === "number" && typeof event.runs === "number")
     .map((event) => {
       score += Number(event.runs ?? 0);
@@ -82,7 +100,7 @@ export function getWormData(events: ReplayEvent[]) {
 export function getMomentumData(events: ReplayEvent[]) {
   const points: Array<{ over: number; score: number }> = [];
   let momentum = 0;
-  for (const event of events.filter(isBallLikeEvent)) {
+  for (const event of events.map(getBallEventPayload).filter((e): e is BallEvent => Boolean(e))) {
     const over = typeof event.over === "number" ? event.over : 0;
     const runs = typeof event.runs === "number" ? event.runs : 0;
     const wicket = event.type === "WICKET" ? 1 : 0;
@@ -96,7 +114,8 @@ export function getRunRateData(events: ReplayEvent[]) {
   let runs = 0;
   let legalBalls = 0;
   return events
-    .filter(isBallLikeEvent)
+    .map(getBallEventPayload)
+    .filter((event): event is BallEvent => Boolean(event))
     .map((event) => {
       runs += typeof event.runs === "number" ? event.runs : 0;
       if (event.isLegalDelivery !== false) {

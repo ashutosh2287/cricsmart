@@ -10,8 +10,8 @@ export type MatchMetadata = {
   venue?: string;
   homeTeam?: MatchMetadataTeam;
   awayTeam?: MatchMetadataTeam;
-  teamA?: MatchMetadataTeam;
-  teamB?: MatchMetadataTeam;
+  teamA: MatchMetadataTeam;
+  teamB: MatchMetadataTeam;
   tossWinner?: string;
   tossDecision?: "BAT" | "BOWL";
   toss?: {

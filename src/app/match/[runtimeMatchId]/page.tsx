@@ -76,6 +76,7 @@ import {
   getWinProbabilityData,
   useReplayEvents,
 } from "@/hooks/useReplayEvents";
+import type { MatchMetadata } from "@/types/matchMetadata";
 
 // ─────────────────────────────────────────────
 // Types
@@ -372,7 +373,7 @@ function TabsArea({
   const isAdmin = true;
   const { state: currentEngineState } = useMatch();
   const [, forceMatchStoreUpdate] = useState(0);
-  const [matchMeta, setLocalMatchMeta] = useState(() =>
+  const [matchMeta, setLocalMatchMeta] = useState<MatchMetadata | null>(() =>
     getMatchMeta(match.slug)
   );
   const router = useRouter();
@@ -689,6 +690,7 @@ function TabsArea({
                   innings={currentEngineState?.innings ?? []}
                   momentumData={analytics.momentum}
                   winProbabilityData={winProbabilityData}
+                  metadata={matchMeta ?? undefined}
                 />
               </GlassPanel>
 
@@ -802,6 +804,7 @@ function TabsArea({
                           innings={currentEngineState?.innings ?? []}
                           momentumData={analytics.momentum}
                           winProbabilityData={winProbabilityData}
+                          metadata={matchMeta ?? undefined}
                         />
                       </div>
                       <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
@@ -1213,8 +1216,11 @@ function TabsArea({
                     onStart={(teamA, teamB) => {
                       const nextMeta = {
                         matchId: match.slug,
+                        runtimeMatchId: match.slug,
                         teamA: { id: teamA.short, name: teamA.name },
                         teamB: { id: teamB.short, name: teamB.name },
+                        homeTeam: { id: teamA.short, name: teamA.name },
+                        awayTeam: { id: teamB.short, name: teamB.name },
                       };
                       setMatchMeta(nextMeta);
                       setLocalMatchMeta(nextMeta);
@@ -1237,6 +1243,8 @@ function TabsArea({
                         setTossData({ winner, decision });
                         const nextMeta = {
                           ...matchMeta,
+                          tossWinner: winner.name,
+                          tossDecision: decision,
                           toss: { winner: winner.name, decision },
                         };
                         setMatchMeta(nextMeta);
@@ -1765,6 +1773,7 @@ export default function MatchDetailPage({
         if (teamAName && teamBName) {
           setMatchMeta({
             matchId: id,
+            runtimeMatchId: id,
             teamA: {
               id: getTeamIdOrSlug(data.match.teamA?.id, teamAName),
               name: teamAName,
@@ -1773,8 +1782,23 @@ export default function MatchDetailPage({
               id: getTeamIdOrSlug(data.match.teamB?.id, teamBName),
               name: teamBName,
             },
+            homeTeam: {
+              id: getTeamIdOrSlug(data.match.teamA?.id, teamAName),
+              name: teamAName,
+            },
+            awayTeam: {
+              id: getTeamIdOrSlug(data.match.teamB?.id, teamBName),
+              name: teamBName,
+            },
             ...(data.match.tossWinner && data.match.tossDecision
-              ? { toss: { winner: data.match.tossWinner, decision: data.match.tossDecision } }
+              ? {
+                  tossWinner: data.match.tossWinner,
+                  tossDecision: data.match.tossDecision,
+                  toss: {
+                    winner: data.match.tossWinner,
+                    decision: data.match.tossDecision,
+                  },
+                }
               : {}),
           });
         }

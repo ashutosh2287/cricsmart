@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { InningsState } from "@/services/matchEngine";
 import type { BallEvent } from "@/types/ballEvent";
+import type { MatchMetadata } from "@/types/matchMetadata";
 import MomentumHeatmap from "@/components/MomentumHeatmap";
 import WinProbabilityChart from "@/components/analytics/WinProbabilityChart";
 import {
@@ -40,6 +41,7 @@ type Props = {
   innings: InningsState[];
   momentumData: MomentumPoint[];
   winProbabilityData: WinProbabilityPoint[];
+  metadata?: MatchMetadata;
 };
 
 type ChartTab =
@@ -142,6 +144,7 @@ export default function MatchGraphExplorer({
   innings,
   momentumData,
   winProbabilityData,
+  metadata,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ChartTab>("winProbability");
@@ -160,14 +163,16 @@ export default function MatchGraphExplorer({
   const battingWin = latestWinPoint?.batting ?? 0;
   const bowlingWin = latestWinPoint?.bowling ?? 0;
   const confidence = latestWinPoint?.confidence;
+  const battingTeamLabel = metadata?.teamA?.name ?? currentBattingTeam;
+  const bowlingTeamLabel = metadata?.teamB?.name ?? currentBowlingTeam;
   const leader =
       !latestWinPoint
         ? "Awaiting replay events"
-        : battingWin === bowlingWin
+      : battingWin === bowlingWin
       ? "Match evenly balanced"
       : battingWin > bowlingWin
-        ? `${currentBattingTeam} slightly ahead`
-        : `${currentBowlingTeam} applying pressure`;
+        ? `${battingTeamLabel} slightly ahead`
+        : `${bowlingTeamLabel} applying pressure`;
   const pressureSnapshot =
     latestMomentum >= MOMENTUM_POSITIVE_THRESHOLD
       ? {
@@ -243,12 +248,12 @@ export default function MatchGraphExplorer({
               WIN PROBABILITY
             </p>
             <div className="mt-3 flex items-center justify-between gap-3 text-sm font-medium text-[var(--text-primary)]">
-              <span aria-label={`${currentBattingTeam} win probability ${battingWin.toFixed(0)} percent`}>
-                <span>{currentBattingTeam}</span>{" "}
+              <span aria-label={`${battingTeamLabel} win probability ${battingWin.toFixed(0)} percent`}>
+                <span>{battingTeamLabel}</span>{" "}
                 <span className="tabular-nums">{battingWin.toFixed(0)}%</span>
               </span>
-              <span aria-label={`${currentBowlingTeam} win probability ${bowlingWin.toFixed(0)} percent`}>
-                <span>{currentBowlingTeam}</span>{" "}
+              <span aria-label={`${bowlingTeamLabel} win probability ${bowlingWin.toFixed(0)} percent`}>
+                <span>{bowlingTeamLabel}</span>{" "}
                 <span className="tabular-nums">{bowlingWin.toFixed(0)}%</span>
               </span>
             </div>

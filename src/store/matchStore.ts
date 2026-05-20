@@ -4,6 +4,7 @@ import {
   MatchEvent,
   nextMatchState,
 } from "@/services/matchStateMachine";
+import type { MatchMetadata } from "@/types/matchMetadata";
 
 type Listener = () => void;
 
@@ -14,15 +15,7 @@ export type MatchWithRuntimeState = Match & {
   currentWickets?: number;
 };
 
-type MatchMeta = {
-  matchId: string;
-  teamA: { id: string; name: string };
-  teamB: { id: string; name: string };
-  toss?: {
-    winner: string;
-    decision: "BAT" | "BOWL";
-  };
-};
+export type MatchMeta = MatchMetadata;
 
 const matchMetaStore: Record<string, MatchMeta> = {};
 

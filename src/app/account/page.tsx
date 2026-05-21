@@ -25,7 +25,7 @@ export default async function AccountDashboardPage() {
           <p className="mt-1 text-sm text-[var(--text-secondary)]">Create and manage owned teams</p>
         </Link>
 
-        <Link href="/account/hosted-matches" className={cardClass}>
+        <Link href="/account/matches" className={cardClass}>
           <p className="text-base font-semibold text-[var(--text-primary)]">Hosted Matches</p>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">Create hosted matches and scoring controls</p>
         </Link>

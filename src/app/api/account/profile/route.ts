@@ -1,49 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findByUsername, updateUsername } from "@/lib/repositories/user.repository";
-import { requireRouteAccess } from "@/services/auth/routeGuard";
+import { z } from "zod";
+import { prisma } from "@/lib/db/prisma";
+import { getRequiredRequestAuthSession } from "@/services/auth/serverRequestContext";
 
-const USERNAME_MIN = 3;
-
-function isValidDisplayName(displayName: string): boolean {
-  return displayName.length >= USERNAME_MIN && /^[a-z0-9_]+$/.test(displayName);
-}
+const schema = z
+  .object({
+    username: z.string().trim().min(2).max(30).regex(/^[a-z0-9_]+$/).optional(),
+    avatarUrl: z.string().url().nullable().optional(),
+  })
+  .strict();
 
 export async function PATCH(req: NextRequest) {
-  const access = await requireRouteAccess({ req, scope: "creator" });
-  if (!access.ok) return access.response;
-  if (!access.session) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-  }
+  const session = await getRequiredRequestAuthSession("/account/profile");
 
   try {
-    const body = (await req.json()) as { displayName?: string };
-    const normalizedDisplayName = body.displayName?.trim().toLowerCase() ?? "";
-
-    if (!isValidDisplayName(normalizedDisplayName)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Display name must be at least 3 characters and contain only lowercase letters, numbers, or underscores",
-        },
-        { status: 400 },
-      );
+    const body = await req.json();
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: "Validation failed" }, { status: 400 });
     }
 
-    const existing = await findByUsername(normalizedDisplayName);
-    if (existing && existing.id !== access.session.userId) {
-      return NextResponse.json({ success: false, error: "Display name already taken" }, { status: 409 });
+    if (parsed.data.username) {
+      const existing = await prisma.user.findUnique({
+        where: { username: parsed.data.username },
+      });
+
+      if (existing && existing.id !== session.userId) {
+        return NextResponse.json({ success: false, error: "Username already taken" }, { status: 409 });
+      }
     }
 
-    const updated = await updateUsername(access.session.userId, normalizedDisplayName);
-    return NextResponse.json({
-      success: true,
-      user: {
-        userId: updated.id,
-        displayName: updated.username,
-        email: updated.email,
-        avatarUrl: updated.avatarUrl,
+    const user = await prisma.user.update({
+      where: { id: session.userId },
+      data: {
+        ...(parsed.data.username && { username: parsed.data.username }),
+        ...(parsed.data.avatarUrl !== undefined && { avatarUrl: parsed.data.avatarUrl }),
       },
     });
+
+    return NextResponse.json({ success: true, user });
   } catch {
     return NextResponse.json({ success: false, error: "Failed to update profile" }, { status: 500 });
   }

@@ -2,10 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { getRequiredRequestAuthSession } from "@/services/auth/serverRequestContext";
+import {
+  PROFILE_USERNAME_MAX_LENGTH,
+  PROFILE_USERNAME_MESSAGE,
+  PROFILE_USERNAME_MIN_LENGTH,
+  PROFILE_USERNAME_REGEX,
+} from "@/lib/validation/profile";
 
 const schema = z
   .object({
-    username: z.string().trim().min(2).max(30).regex(/^[a-z0-9_]+$/).optional(),
+    username: z
+      .string()
+      .trim()
+      .min(PROFILE_USERNAME_MIN_LENGTH)
+      .max(PROFILE_USERNAME_MAX_LENGTH)
+      .regex(PROFILE_USERNAME_REGEX, PROFILE_USERNAME_MESSAGE)
+      .optional(),
     avatarUrl: z.string().url().nullable().optional(),
   })
   .strict();

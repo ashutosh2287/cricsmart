@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  PROFILE_USERNAME_MAX_LENGTH,
+  PROFILE_USERNAME_MIN_LENGTH,
+  PROFILE_USERNAME_PATTERN,
+} from "@/lib/validation/profile";
 
 type Props = {
   user: {
@@ -57,9 +62,9 @@ export function ProfileClient({ user }: Props) {
             onChange={(event) => setUsername(event.target.value)}
             className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]"
             autoComplete="username"
-            pattern="^[a-z0-9_]+$"
-            minLength={2}
-            maxLength={30}
+            pattern={PROFILE_USERNAME_PATTERN}
+            minLength={PROFILE_USERNAME_MIN_LENGTH}
+            maxLength={PROFILE_USERNAME_MAX_LENGTH}
             required
             disabled={saving}
           />

@@ -7,7 +7,6 @@
     "postinstall": "prisma generate",
     "predev": "prisma generate",
     "prebuild": "prisma generate",
-    "prestart": "prisma generate",
     "dev": "tsx server/index.ts",
     "build": "next build",
     "start": "next start",

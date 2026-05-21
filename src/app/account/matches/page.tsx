@@ -27,8 +27,8 @@ export default async function HostedMatchesPage() {
   });
 
   const live = matches.filter((match) => match.status === "LIVE");
-  const upcoming = matches.filter((match) => match.status === "DRAFT");
-  const completed = matches.filter((match) => match.status === "COMPLETED");
+  const upcoming = matches.filter((match) => ["DRAFT", "SCHEDULED"].includes(match.status));
+  const completed = matches.filter((match) => ["COMPLETED", "ARCHIVED"].includes(match.status));
 
   return (
     <main className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)]">

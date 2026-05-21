@@ -1,32 +1,47 @@
 import Link from "next/link";
-import { listTournamentsByOrganizer } from "@/lib/repositories/tournament.repository";
-import { getRequiredRequestAuthSession } from "@/services/auth/serverRequestContext";
+import { redirect } from "next/navigation";
+import { getRequestAuthSession } from "@/services/auth/serverRequestContext";
 
-export default async function AccountTournamentsPage() {
-  const session = await getRequiredRequestAuthSession();
-  const tournaments = await listTournamentsByOrganizer(session.userId);
+export const metadata = { title: "My Tournaments — CricSmart" };
+
+export default async function TournamentsPage() {
+  const session = await getRequestAuthSession();
+  if (!session) redirect("/login?redirect=/account/tournaments");
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">My Tournaments</h1>
-        <Link href="/tournaments/create" className="rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-primary)]">
-          Create Tournament
-        </Link>
-      </div>
-
-      {tournaments.length === 0 ? (
-        <p className="text-sm text-[var(--text-secondary)]">You have not created tournaments yet.</p>
-      ) : (
-        <div className="space-y-3">
-          {tournaments.map((tournament) => (
-            <Link key={tournament.id} href={`/tournaments/${tournament.id}`} className="block rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
-              <p className="text-base font-semibold text-[var(--text-primary)]">{tournament.name}</p>
-              <p className="text-sm text-[var(--text-secondary)]">{tournament.format ?? "Format TBD"}</p>
-            </Link>
-          ))}
+    <main className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)]">
+      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-10">
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent-brand)]">Account</p>
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">My Tournaments</h1>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            Tournament management is in progress and will ship in an upcoming phase.
+          </p>
         </div>
-      )}
-    </div>
+
+        <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
+          <p className="text-3xl">🏆</p>
+          <h2 className="mt-2 text-lg font-semibold text-[var(--text-primary)]">Coming soon</h2>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            You&apos;ll soon be able to create tournaments, manage participants, and schedule fixtures here.
+          </p>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href="/host/matches/create"
+              className="rounded-lg border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-secondary)] transition hover:border-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            >
+              Host a match
+            </Link>
+            <Link
+              href="/account"
+              className="rounded-lg border border-[var(--accent-brand)]/35 px-3 py-1.5 text-sm text-[var(--accent-brand)] transition hover:border-[var(--accent-brand)]/65"
+            >
+              Back to account
+            </Link>
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }

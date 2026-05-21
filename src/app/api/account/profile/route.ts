@@ -33,9 +33,11 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: message }, { status: 400 });
     }
 
-    if (parsed.data.username) {
+    const normalizedUsername = parsed.data.username?.toLowerCase();
+
+    if (normalizedUsername) {
       const existing = await prisma.user.findUnique({
-        where: { username: parsed.data.username },
+        where: { username: normalizedUsername },
       });
 
       if (existing && existing.id !== session.userId) {
@@ -46,7 +48,7 @@ export async function PATCH(req: NextRequest) {
     const user = await prisma.user.update({
       where: { id: session.userId },
       data: {
-        ...(parsed.data.username && { username: parsed.data.username }),
+        ...(normalizedUsername && { username: normalizedUsername }),
         ...(parsed.data.avatarUrl !== undefined && { avatarUrl: parsed.data.avatarUrl }),
       },
     });

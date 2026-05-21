@@ -55,9 +55,10 @@ export function ProfileClient({ user }: Props) {
     <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
       <h2 className="text-lg font-semibold text-[var(--text-primary)]">Profile Details</h2>
       <form onSubmit={handleSave} className="mt-4 space-y-4">
-        <label className="block text-sm">
+        <label htmlFor="profile-username" className="block text-sm">
           <span className="mb-1 block text-[var(--text-secondary)]">Username</span>
           <input
+            id="profile-username"
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]"
@@ -70,18 +71,20 @@ export function ProfileClient({ user }: Props) {
           />
         </label>
 
-        <label className="block text-sm">
+        <label htmlFor="profile-email" className="block text-sm">
           <span className="mb-1 block text-[var(--text-secondary)]">Email</span>
           <input
+            id="profile-email"
             value={user.email}
             readOnly
             className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-muted)]"
           />
         </label>
 
-        <label className="block text-sm">
+        <label htmlFor="profile-avatar-url" className="block text-sm">
           <span className="mb-1 block text-[var(--text-secondary)]">Avatar URL</span>
           <input
+            id="profile-avatar-url"
             type="url"
             value={avatarUrl}
             onChange={(event) => setAvatarUrl(event.target.value)}

@@ -57,6 +57,9 @@ export function ProfileClient({ user }: Props) {
             onChange={(event) => setUsername(event.target.value)}
             className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]"
             autoComplete="username"
+            pattern="^[a-z0-9_]+$"
+            minLength={2}
+            maxLength={30}
             required
             disabled={saving}
           />
@@ -74,6 +77,7 @@ export function ProfileClient({ user }: Props) {
         <label className="block text-sm">
           <span className="mb-1 block text-[var(--text-secondary)]">Avatar URL</span>
           <input
+            type="url"
             value={avatarUrl}
             onChange={(event) => setAvatarUrl(event.target.value)}
             className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]"

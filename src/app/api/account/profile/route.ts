@@ -17,7 +17,8 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ success: false, error: "Validation failed" }, { status: 400 });
+      const message = parsed.error.issues[0]?.message ?? "Validation failed";
+      return NextResponse.json({ success: false, error: message }, { status: 400 });
     }
 
     if (parsed.data.username) {

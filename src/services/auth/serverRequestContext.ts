@@ -2,10 +2,13 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { AuthSession } from "@/services/auth/authTypes";
 import { readAuthSessionFromHeaders } from "@/services/auth/requestContext";
+import { getAuthSessionFromServerCookies } from "@/services/auth/sessionStore";
 
 export async function getRequestAuthSession(): Promise<AuthSession | null> {
   const headerStore = await headers();
-  return readAuthSessionFromHeaders(headerStore);
+  const sessionFromHeaders = readAuthSessionFromHeaders(headerStore);
+  if (sessionFromHeaders) return sessionFromHeaders;
+  return getAuthSessionFromServerCookies();
 }
 
 function normalizeRedirectPath(path: string): string {

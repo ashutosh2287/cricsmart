@@ -1,4 +1,4 @@
-import PasswordChangeForm from "@/components/account/PasswordChangeForm";
+import SettingsClient from "./SettingsClient";
 
 export default function AccountSettingsPage() {
   return (
@@ -7,7 +7,7 @@ export default function AccountSettingsPage() {
       <p className="mt-2 text-sm text-[var(--text-secondary)]">
         Change your account password securely.
       </p>
-      <PasswordChangeForm />
+      <SettingsClient />
     </div>
   );
 }

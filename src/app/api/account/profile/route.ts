@@ -1,49 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findByUsername, updateUsername } from "@/lib/repositories/user.repository";
-import { requireRouteAccess } from "@/services/auth/routeGuard";
+import { z } from "zod";
+import { prisma } from "@/lib/db/prisma";
+import { getRequiredRequestAuthSession } from "@/services/auth/serverRequestContext";
+import {
+  PROFILE_USERNAME_MAX_LENGTH,
+  PROFILE_USERNAME_MESSAGE,
+  PROFILE_USERNAME_MIN_LENGTH,
+  PROFILE_USERNAME_REGEX,
+} from "@/lib/validation/profile";
 
-const USERNAME_MIN = 3;
-
-function isValidDisplayName(displayName: string): boolean {
-  return displayName.length >= USERNAME_MIN && /^[a-z0-9_]+$/.test(displayName);
-}
+const schema = z
+  .object({
+    username: z
+      .string()
+      .trim()
+      .min(PROFILE_USERNAME_MIN_LENGTH)
+      .max(PROFILE_USERNAME_MAX_LENGTH)
+      .regex(PROFILE_USERNAME_REGEX, PROFILE_USERNAME_MESSAGE)
+      .optional(),
+    avatarUrl: z.string().url().nullable().optional(),
+  })
+  .strict();
 
 export async function PATCH(req: NextRequest) {
-  const access = await requireRouteAccess({ req, scope: "creator" });
-  if (!access.ok) return access.response;
-  if (!access.session) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-  }
+  const session = await getRequiredRequestAuthSession("/account/profile");
 
   try {
-    const body = (await req.json()) as { displayName?: string };
-    const normalizedDisplayName = body.displayName?.trim().toLowerCase() ?? "";
-
-    if (!isValidDisplayName(normalizedDisplayName)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Display name must be at least 3 characters and contain only lowercase letters, numbers, or underscores",
-        },
-        { status: 400 },
-      );
+    const body = await req.json();
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message ?? "Validation failed";
+      return NextResponse.json({ success: false, error: message }, { status: 400 });
     }
 
-    const existing = await findByUsername(normalizedDisplayName);
-    if (existing && existing.id !== access.session.userId) {
-      return NextResponse.json({ success: false, error: "Display name already taken" }, { status: 409 });
+    const normalizedUsername = parsed.data.username?.toLowerCase();
+
+    if (normalizedUsername) {
+      const existing = await prisma.user.findUnique({
+        where: { username: normalizedUsername },
+      });
+
+      if (existing && existing.id !== session.userId) {
+        return NextResponse.json({ success: false, error: "Username already taken" }, { status: 409 });
+      }
     }
 
-    const updated = await updateUsername(access.session.userId, normalizedDisplayName);
-    return NextResponse.json({
-      success: true,
-      user: {
-        userId: updated.id,
-        displayName: updated.username,
-        email: updated.email,
-        avatarUrl: updated.avatarUrl,
+    const user = await prisma.user.update({
+      where: { id: session.userId },
+      data: {
+        ...(normalizedUsername && { username: normalizedUsername }),
+        ...(parsed.data.avatarUrl !== undefined && { avatarUrl: parsed.data.avatarUrl }),
       },
     });
+
+    return NextResponse.json({ success: true, user });
   } catch {
     return NextResponse.json({ success: false, error: "Failed to update profile" }, { status: 500 });
   }

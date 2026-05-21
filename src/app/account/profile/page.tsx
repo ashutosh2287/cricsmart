@@ -1,23 +1,52 @@
-import ProfileForm from "@/components/account/ProfileForm";
+import { redirect } from "next/navigation";
 import { findById } from "@/lib/repositories/user.repository";
-import { getRequiredRequestAuthSession } from "@/services/auth/serverRequestContext";
+import { prisma } from "@/lib/db/prisma";
+import { getRequestAuthSession } from "@/services/auth/serverRequestContext";
+import { ProfileClient } from "./ProfileClient";
 
-export default async function AccountProfilePage() {
-  const session = await getRequiredRequestAuthSession("/account/profile");
+export const metadata = { title: "My Profile — CricSmart" };
+
+export default async function ProfilePage() {
+  const session = await getRequestAuthSession();
+  if (!session) redirect("/login?redirect=/account/profile");
+
   const user = await findById(session.userId);
-  const displayName = user?.username ?? session.username;
-  const email = user?.email ?? "";
+  if (!user) redirect("/login");
+
+  const [ownedTeams, matchesHosted] = await Promise.all([
+    prisma.team.count({ where: { ownerId: session.userId } }),
+    prisma.hostedMatch.count({ where: { createdById: session.userId } }),
+  ]);
 
   return (
-    <div className="mx-auto w-full max-w-2xl rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
-      <div className="mb-6 flex items-center gap-3">
+    <main className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)]">
+      <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-10">
         <div>
-          <h1 className="text-xl font-semibold text-[var(--text-primary)]">My Profile</h1>
-          <p className="text-sm text-[var(--text-secondary)]">Manage your display name and account details</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent-brand)]">Account</p>
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">My Profile</h1>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Manage your username and avatar details.</p>
         </div>
-      </div>
 
-      <ProfileForm initialDisplayName={displayName} email={email} avatarUrl={user?.avatarUrl} />
-    </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
+            <p className="text-xs text-[var(--text-secondary)]">Teams Owned</p>
+            <p className="mt-1 text-2xl font-semibold text-[var(--text-primary)]">{ownedTeams}</p>
+          </div>
+          <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
+            <p className="text-xs text-[var(--text-secondary)]">Matches Hosted</p>
+            <p className="mt-1 text-2xl font-semibold text-[var(--text-primary)]">{matchesHosted}</p>
+          </div>
+        </div>
+
+        <ProfileClient
+          user={{
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            avatarUrl: user.avatarUrl,
+          }}
+        />
+      </div>
+    </main>
   );
 }

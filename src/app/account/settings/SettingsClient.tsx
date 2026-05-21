@@ -148,7 +148,12 @@ export function SettingsClient({ user }: Props) {
           <div className="mb-5 flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-emerald-500/20 text-xl font-bold uppercase text-emerald-400">
               {avatarUrl ? (
-                <img src={avatarUrl} className="h-full w-full object-cover" alt={`${username} avatar`} />
+                <div
+                  className="h-full w-full bg-cover bg-center"
+                  style={{ backgroundImage: `url(${avatarUrl})` }}
+                  aria-label={`${username} avatar`}
+                  role="img"
+                />
               ) : (
                 user.username.slice(0, 2)
               )}

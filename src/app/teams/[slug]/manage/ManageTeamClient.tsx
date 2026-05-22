@@ -256,6 +256,7 @@ export function ManageTeamClient({ team, currentUserId }: Props) {
             className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-sm text-[var(--text-primary)]"
           />
           <select
+            aria-label="Squad role"
             value={playerRole}
             onChange={(e) => setPlayerRole(e.target.value)}
             className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-sm text-[var(--text-primary)]"

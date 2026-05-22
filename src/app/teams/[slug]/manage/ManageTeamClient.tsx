@@ -113,124 +113,126 @@ export function ManageTeamClient({ team, currentUserId }: Props) {
         return;
       }
 
-      async function handleAddSquadMember(event: FormEvent) {
-        event.preventDefault();
-        setError(null);
-        setSquadActionId("new");
-
-        try {
-          const body: { name: string; role: SquadRole; jerseyNo?: number } = {
-            name: newPlayerName.trim(),
-            role: newRole,
-          };
-          const jerseyNoValue = newJerseyNo.trim();
-          if (jerseyNoValue) body.jerseyNo = Number(jerseyNoValue);
-
-          const res = await fetch(`/api/teams/${team.slug}/squad`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-          const data = (await res.json()) as { success?: boolean; error?: string; player?: SquadMember };
-          if (!res.ok || !data.success || !data.player) {
-            setError(data.error ?? "Failed to add squad member");
-            return;
-          }
-
-          setSquad((prev) =>
-            [...prev, data.player].sort((a, b) => {
-              if (a.jerseyNo == null) return 1;
-              if (b.jerseyNo == null) return -1;
-              return a.jerseyNo - b.jerseyNo;
-            }),
-          );
-          setNewPlayerName("");
-          setNewJerseyNo("");
-          setNewRole("BATSMAN");
-        } catch {
-          setError("Failed to add squad member");
-        } finally {
-          setSquadActionId(null);
-        }
-      }
-
-      async function handleRemoveSquadMember(memberId: string) {
-        setError(null);
-        setSquadActionId(memberId);
-
-        try {
-          const res = await fetch(`/api/teams/${team.slug}/squad/${memberId}`, { method: "DELETE" });
-          const data = (await res.json()) as { success?: boolean; error?: string };
-          if (!res.ok || !data.success) {
-            setError(data.error ?? "Failed to remove squad member");
-            return;
-          }
-
-          setSquad((prev) => prev.filter((member) => member.id !== memberId));
-          if (editingSquadId === memberId) setEditingSquadId(null);
-        } catch {
-          setError("Failed to remove squad member");
-        } finally {
-          setSquadActionId(null);
-        }
-      }
-
-      function startEditing(member: SquadMember) {
-        setEditingSquadId(member.id);
-        setEditPlayerName(member.name);
-        setEditJerseyNo(member.jerseyNo?.toString() ?? "");
-        setEditRole(member.role);
-        setError(null);
-      }
-
-      async function handleUpdateSquadMember(event: FormEvent) {
-        event.preventDefault();
-        if (!editingSquadId) return;
-
-        setError(null);
-        setSquadActionId(editingSquadId);
-
-        try {
-          const body: { name: string; role: SquadRole; jerseyNo: number | null } = {
-            name: editPlayerName.trim(),
-            role: editRole,
-            jerseyNo: editJerseyNo.trim() ? Number(editJerseyNo) : null,
-          };
-
-          const res = await fetch(`/api/teams/${team.slug}/squad/${editingSquadId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-          const data = (await res.json()) as { success?: boolean; error?: string; player?: SquadMember };
-          if (!res.ok || !data.success || !data.player) {
-            setError(data.error ?? "Failed to update squad member");
-            return;
-          }
-
-          setSquad((prev) =>
-            prev
-              .map((member) => (member.id === editingSquadId ? data.player! : member))
-              .sort((a, b) => {
-                if (a.jerseyNo == null) return 1;
-                if (b.jerseyNo == null) return -1;
-                return a.jerseyNo - b.jerseyNo;
-              }),
-          );
-          setEditingSquadId(null);
-        } catch {
-          setError("Failed to update squad member");
-        } finally {
-          setSquadActionId(null);
-        }
-      }
-
       router.push("/account/teams");
       router.refresh();
     } catch {
       setError("Something went wrong.");
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleAddSquadMember(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setSquadActionId("new");
+
+    try {
+      const body: { name: string; role: SquadRole; jerseyNo?: number } = {
+        name: newPlayerName.trim(),
+        role: newRole,
+      };
+      const jerseyNoValue = newJerseyNo.trim();
+      if (jerseyNoValue) body.jerseyNo = Number(jerseyNoValue);
+
+      const res = await fetch(`/api/teams/${team.slug}/squad`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json()) as { success?: boolean; error?: string; player?: SquadMember };
+      if (!res.ok || !data.success || !data.player) {
+        setError(data.error ?? "Failed to add squad member");
+        return;
+      }
+      const createdPlayer = data.player;
+
+      setSquad((prev) =>
+        [...prev, createdPlayer].sort((a, b) => {
+          if (a.jerseyNo == null) return 1;
+          if (b.jerseyNo == null) return -1;
+          return a.jerseyNo - b.jerseyNo;
+        }),
+      );
+      setNewPlayerName("");
+      setNewJerseyNo("");
+      setNewRole("BATSMAN");
+    } catch {
+      setError("Failed to add squad member");
+    } finally {
+      setSquadActionId(null);
+    }
+  }
+
+  async function handleRemoveSquadMember(memberId: string) {
+    setError(null);
+    setSquadActionId(memberId);
+
+    try {
+      const res = await fetch(`/api/teams/${team.slug}/squad/${memberId}`, { method: "DELETE" });
+      const data = (await res.json()) as { success?: boolean; error?: string };
+      if (!res.ok || !data.success) {
+        setError(data.error ?? "Failed to remove squad member");
+        return;
+      }
+
+      setSquad((prev) => prev.filter((member) => member.id !== memberId));
+      if (editingSquadId === memberId) setEditingSquadId(null);
+    } catch {
+      setError("Failed to remove squad member");
+    } finally {
+      setSquadActionId(null);
+    }
+  }
+
+  function startEditing(member: SquadMember) {
+    setEditingSquadId(member.id);
+    setEditPlayerName(member.name);
+    setEditJerseyNo(member.jerseyNo?.toString() ?? "");
+    setEditRole(member.role);
+    setError(null);
+  }
+
+  async function handleUpdateSquadMember(event: FormEvent) {
+    event.preventDefault();
+    if (!editingSquadId) return;
+
+    setError(null);
+    setSquadActionId(editingSquadId);
+
+    try {
+      const body: { name: string; role: SquadRole; jerseyNo: number | null } = {
+        name: editPlayerName.trim(),
+        role: editRole,
+        jerseyNo: editJerseyNo.trim() ? Number(editJerseyNo) : null,
+      };
+
+      const res = await fetch(`/api/teams/${team.slug}/squad/${editingSquadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json()) as { success?: boolean; error?: string; player?: SquadMember };
+      if (!res.ok || !data.success || !data.player) {
+        setError(data.error ?? "Failed to update squad member");
+        return;
+      }
+      const updatedPlayer = data.player;
+
+      setSquad((prev) =>
+        prev
+          .map((member) => (member.id === editingSquadId ? updatedPlayer : member))
+          .sort((a, b) => {
+            if (a.jerseyNo == null) return 1;
+            if (b.jerseyNo == null) return -1;
+            return a.jerseyNo - b.jerseyNo;
+          }),
+      );
+      setEditingSquadId(null);
+    } catch {
+      setError("Failed to update squad member");
+    } finally {
+      setSquadActionId(null);
     }
   }
 

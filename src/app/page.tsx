@@ -38,7 +38,7 @@ export default async function HomePage() {
       liveMatchCount={liveMatchCount}
       teamCount={teamCount}
       totalMatchCount={totalMatchCount}
-      liveMatches={liveMatches}
+      liveHostedMatches={liveMatches}
       isLoggedIn={Boolean(session)}
     />
   );

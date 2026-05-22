@@ -47,7 +47,7 @@ type HomePageClientProps = {
   liveMatchCount: number;
   teamCount: number;
   totalMatchCount: number;
-  liveMatches: {
+  liveHostedMatches: {
     id: string;
     runtimeMatchId: string;
     title: string;
@@ -270,7 +270,7 @@ export default function HomePageClient({
   liveMatchCount,
   teamCount,
   totalMatchCount,
-  liveMatches,
+  liveHostedMatches,
   isLoggedIn,
 }: HomePageClientProps) {
   const [matches, setMatches] = useState<Match[]>([]);
@@ -573,7 +573,7 @@ export default function HomePageClient({
             border: "1px solid var(--border-subtle)",
           }}
         >
-          <LiveMatchDropdown count={liveMatchCount} matches={liveMatches} />
+          <LiveMatchDropdown count={liveMatchCount} matches={liveHostedMatches} />
           <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
             <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
               Teams

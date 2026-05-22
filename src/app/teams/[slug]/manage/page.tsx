@@ -19,7 +19,10 @@ export default async function ManageTeamPage({ params }: Props) {
     redirect(`/teams/${team.slug}`);
   }
 
-  const userMembers = team.members.filter((member) => member.userId && member.user);
+  const userMembers = team.members.filter(
+    (member): member is typeof member & { userId: string; user: NonNullable<typeof member.user> } =>
+      Boolean(member.userId && member.user)
+  );
   const ownerPresent = userMembers.some((member) => member.userId === team.ownerId);
   type RosterMember = {
     userId: string;

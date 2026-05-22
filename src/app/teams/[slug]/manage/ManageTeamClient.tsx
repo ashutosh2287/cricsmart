@@ -143,7 +143,8 @@ export function ManageTeamClient({ team, currentUserId }: Props) {
         return;
       }
 
-      setSquad((prev) => [...prev, data.member]);
+      const createdMember = data.member;
+      setSquad((prev) => [...prev, createdMember]);
       setPlayerName("");
       setPlayerJerseyNo("");
       setPlayerRole("BAT");

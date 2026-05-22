@@ -1,86 +1,102 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
-import { getTeamBySlug } from "@/lib/repositories/team.repository";
-import { handleTeamError, requireTeam, requireTeamOwner } from "@/lib/repositories/teamGuards";
+import { getTeamBySlug, isTeamOwner } from "@/lib/repositories/team.repository";
 import { getRequiredRequestAuthSession } from "@/services/auth/serverRequestContext";
 
-type RouteContext = { params: Promise<{ slug: string }> };
-
-const addSquadMemberSchema = z.object({
-  name: z.string().trim().min(1).max(50),
-  jerseyNo: z.number().int().min(1).max(99).optional(),
-  role: z.enum(["BATSMAN", "BOWLER", "ALL_ROUNDER", "WICKET_KEEPER"]).optional(),
-  playerProfileId: z.string().min(1).optional(),
-  userId: z.string().min(1).optional(),
+const createSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(80),
+  jerseyNo: z.coerce.number().int().min(0).max(999).nullable().optional(),
+  role: z.string().trim().min(1, "Role is required").max(30),
 });
 
-export async function GET(_req: NextRequest, context: RouteContext) {
-  try {
-    const { slug } = await context.params;
-    const team = await getTeamBySlug(slug);
-    if (!team) {
-      return NextResponse.json({ success: false, error: "Team not found" }, { status: 404 });
-    }
+export async function GET(_req: NextRequest, context: { params: Promise<{ slug: string }> }) {
+  const { slug } = await context.params;
+  const team = await getTeamBySlug(slug);
 
-    const squad = await prisma.teamSquadMember.findMany({
-      where: { teamId: team.id },
-      orderBy: [{ jerseyNo: "asc" }, { joinedAt: "asc" }],
-    });
-
-    return NextResponse.json({ success: true, squad });
-  } catch (error) {
-    return handleTeamError(error);
+  if (!team) {
+    return NextResponse.json({ success: false, error: "Team not found" }, { status: 404 });
   }
+
+  const squad = await prisma.teamMember.findMany({
+    where: {
+      teamId: team.id,
+      userId: null,
+    },
+    select: {
+      id: true,
+      name: true,
+      jerseyNo: true,
+      playerRole: true,
+      joinedAt: true,
+    },
+    orderBy: [{ joinedAt: "asc" }],
+  });
+
+  return NextResponse.json({
+    success: true,
+    squad: squad.map((member) => ({
+      id: member.id,
+      name: member.name ?? "Unknown Player",
+      jerseyNo: member.jerseyNo,
+      role: member.playerRole ?? "PLAYER",
+    })),
+  });
 }
 
-export async function POST(req: NextRequest, context: RouteContext) {
-  const session = await getRequiredRequestAuthSession("/api/teams");
+export async function POST(req: NextRequest, context: { params: Promise<{ slug: string }> }) {
+  const session = await getRequiredRequestAuthSession("/teams");
+  const { slug } = await context.params;
 
-  try {
-    const { slug } = await context.params;
-    const team = await requireTeam(slug);
-    await requireTeamOwner(team.id, session.userId);
-
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      return NextResponse.json({ success: false, error: "Invalid request payload" }, { status: 400 });
-    }
-
-    const parsed = addSquadMemberSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Validation failed",
-          issues: parsed.error.flatten().fieldErrors,
-        },
-        { status: 400 },
-      );
-    }
-
-    const player = await prisma.teamSquadMember.create({
-      data: {
-        teamId: team.id,
-        name: parsed.data.name,
-        jerseyNo: parsed.data.jerseyNo,
-        role: parsed.data.role ?? "BATSMAN",
-        playerProfileId: parsed.data.playerProfileId,
-        userId: parsed.data.userId,
-      },
-    });
-
-    return NextResponse.json({ success: true, player }, { status: 201 });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return NextResponse.json(
-        { success: false, error: "Jersey number already exists in this squad" },
-        { status: 409 },
-      );
-    }
-    return handleTeamError(error);
+  const team = await getTeamBySlug(slug);
+  if (!team) {
+    return NextResponse.json({ success: false, error: "Team not found" }, { status: 404 });
   }
+
+  const owner = await isTeamOwner(team.id, session.userId);
+  if (!owner) {
+    return NextResponse.json({ success: false, error: "Permission denied" }, { status: 403 });
+  }
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ success: false, error: "Invalid request payload" }, { status: 400 });
+  }
+
+  const parsed = createSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ success: false, error: "Validation failed", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+
+  const created = await prisma.teamMember.create({
+    data: {
+      teamId: team.id,
+      role: "MEMBER",
+      userId: null,
+      name: parsed.data.name,
+      jerseyNo: parsed.data.jerseyNo ?? null,
+      playerRole: parsed.data.role,
+    },
+    select: {
+      id: true,
+      name: true,
+      jerseyNo: true,
+      playerRole: true,
+    },
+  });
+
+  return NextResponse.json(
+    {
+      success: true,
+      member: {
+        id: created.id,
+        name: created.name ?? "Unknown Player",
+        jerseyNo: created.jerseyNo,
+        role: created.playerRole ?? "PLAYER",
+      },
+    },
+    { status: 201 }
+  );
 }

@@ -1,43 +1,57 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { getHostedMatchById } from "@/lib/repositories/hostedMatch.repository";
+import { notFound, redirect } from "next/navigation";
+import { prisma } from "@/lib/db/prisma";
+import { getRequestAuthSession } from "@/services/auth/serverRequestContext";
 
 export const dynamic = "force-dynamic";
 
 export default async function HostedMatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const hostedMatch = await getHostedMatchById(id);
+  const session = await getRequestAuthSession();
 
-  if (!hostedMatch || hostedMatch.visibility !== "PUBLIC") {
-    notFound();
+  const match = await prisma.hostedMatch.findUnique({
+    where: { id },
+    include: {
+      teamA: true,
+      teamB: true,
+      members: true,
+    },
+  });
+
+  if (!match) notFound();
+
+  const isOwner = session?.userId === match.createdById;
+  const isScorerOrOperator = match.members.some((member) => member.userId === session?.userId);
+  const hasControlAccess = Boolean(isOwner || isScorerOrOperator);
+
+  if (!hasControlAccess && match.runtimeMatchId) {
+    redirect(`/match/${match.runtimeMatchId}`);
+  }
+
+  if (hasControlAccess) {
+    redirect(`/hosted-matches/${match.id}/control`);
   }
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
-      <h1 className="text-2xl font-semibold text-[var(--text-primary)]">{hostedMatch.title}</h1>
+      <h1 className="text-2xl font-semibold text-[var(--text-primary)]">{match.title}</h1>
       <p className="text-sm text-[var(--text-secondary)]">
-        {hostedMatch.teamA?.name} vs {hostedMatch.teamB?.name}
+        {match.teamA?.name} vs {match.teamB?.name}
       </p>
-      <p className="text-xs text-[var(--text-muted)]">{hostedMatch.format} · {hostedMatch.venue ?? "Venue TBD"}</p>
+      <p className="text-xs text-[var(--text-muted)]">
+        {match.format} · {match.venue ?? "Venue TBD"}
+      </p>
 
-      <div className="flex flex-wrap gap-2">
-        {hostedMatch.runtimeMatchId ? (
-          <Link href={`/match/${hostedMatch.runtimeMatchId}`} className="rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-primary)]">
-            Open Match Center
-          </Link>
-        ) : (
-          <button
-            type="button"
-            disabled
-            className="rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-secondary)] opacity-70"
-          >
-            Open Match Center
-          </button>
-        )}
-        <Link href={`/hosted-matches/${hostedMatch.id}/control`} className="rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-primary)]">
-          Control Center
+      {match.runtimeMatchId ? (
+        <Link
+          href={`/match/${match.runtimeMatchId}`}
+          className="inline-flex rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--text-primary)]"
+        >
+          Open Match Center
         </Link>
-      </div>
+      ) : (
+        <p className="text-sm text-[var(--text-secondary)]">Match center will be available once the match starts.</p>
+      )}
     </div>
   );
 }

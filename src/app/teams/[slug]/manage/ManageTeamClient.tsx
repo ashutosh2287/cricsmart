@@ -1,12 +1,19 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Member = {
   userId: string;
   role: string;
   user: { id: string; username: string; avatarUrl: string | null };
+};
+
+type SquadMember = {
+  id: string;
+  name: string;
+  jerseyNo: number | null;
+  role: string;
 };
 
 type Team = {
@@ -20,13 +27,6 @@ type Team = {
 };
 
 type Props = { team: Team; currentUserId: string };
-type SquadRole = "BATSMAN" | "BOWLER" | "ALL_ROUNDER" | "WICKET_KEEPER";
-type SquadMember = {
-  id: string;
-  name: string;
-  jerseyNo: number | null;
-  role: SquadRole;
-};
 
 export function ManageTeamClient({ team, currentUserId }: Props) {
   const router = useRouter();
@@ -34,40 +34,35 @@ export function ManageTeamClient({ team, currentUserId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [squad, setSquad] = useState<SquadMember[]>([]);
-  const [squadLoading, setSquadLoading] = useState(true);
-  const [squadActionId, setSquadActionId] = useState<string | null>(null);
-  const [editingSquadId, setEditingSquadId] = useState<string | null>(null);
-  const [newPlayerName, setNewPlayerName] = useState("");
-  const [newJerseyNo, setNewJerseyNo] = useState("");
-  const [newRole, setNewRole] = useState<SquadRole>("BATSMAN");
-  const [editPlayerName, setEditPlayerName] = useState("");
-  const [editJerseyNo, setEditJerseyNo] = useState("");
-  const [editRole, setEditRole] = useState<SquadRole>("BATSMAN");
+  const [loadingSquad, setLoadingSquad] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [playerName, setPlayerName] = useState("");
+  const [playerJerseyNo, setPlayerJerseyNo] = useState("");
+  const [playerRole, setPlayerRole] = useState("BAT");
 
   useEffect(() => {
     let cancelled = false;
-    const loadSquad = async () => {
-      setSquadLoading(true);
+
+    async function loadSquad() {
+      setLoadingSquad(true);
       try {
         const res = await fetch(`/api/teams/${team.slug}/squad`, { cache: "no-store" });
-        const data = (await res.json()) as {
-          success?: boolean;
-          squad?: SquadMember[];
-          error?: string;
-        };
-        if (!res.ok || !data.success) {
-          if (!cancelled) setError(data.error ?? "Failed to load squad");
-          return;
-        }
+        const data = (await res.json()) as { squad?: SquadMember[]; error?: string };
         if (!cancelled) {
+          if (!res.ok) {
+            setError(data.error ?? "Failed to load squad");
+            setSquad([]);
+            return;
+          }
           setSquad(data.squad ?? []);
         }
       } catch {
         if (!cancelled) setError("Failed to load squad");
       } finally {
-        if (!cancelled) setSquadLoading(false);
+        if (!cancelled) setLoadingSquad(false);
       }
-    };
+    }
+
     void loadSquad();
     return () => {
       cancelled = true;
@@ -122,118 +117,84 @@ export function ManageTeamClient({ team, currentUserId }: Props) {
     }
   }
 
-  async function handleAddSquadMember(event: FormEvent) {
-    event.preventDefault();
+  async function handleAddSquadPlayer() {
     setError(null);
-    setSquadActionId("new");
+    const name = playerName.trim();
+    if (!name) {
+      setError("Player name is required");
+      return;
+    }
 
+    setAdding(true);
     try {
-      const body: { name: string; role: SquadRole; jerseyNo?: number } = {
-        name: newPlayerName.trim(),
-        role: newRole,
-      };
-      const jerseyNoValue = newJerseyNo.trim();
-      if (jerseyNoValue) body.jerseyNo = Number(jerseyNoValue);
-
       const res = await fetch(`/api/teams/${team.slug}/squad`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = (await res.json()) as { success?: boolean; error?: string; player?: SquadMember };
-      if (!res.ok || !data.success || !data.player) {
-        setError(data.error ?? "Failed to add squad member");
-        return;
-      }
-      const createdPlayer = data.player;
-
-      setSquad((prev) =>
-        [...prev, createdPlayer].sort((a, b) => {
-          if (a.jerseyNo == null) return 1;
-          if (b.jerseyNo == null) return -1;
-          return a.jerseyNo - b.jerseyNo;
+        body: JSON.stringify({
+          name,
+          jerseyNo: playerJerseyNo.trim() ? Number(playerJerseyNo) : null,
+          role: playerRole,
         }),
-      );
-      setNewPlayerName("");
-      setNewJerseyNo("");
-      setNewRole("BATSMAN");
-    } catch {
-      setError("Failed to add squad member");
-    } finally {
-      setSquadActionId(null);
-    }
-  }
-
-  async function handleRemoveSquadMember(memberId: string) {
-    setError(null);
-    setSquadActionId(memberId);
-
-    try {
-      const res = await fetch(`/api/teams/${team.slug}/squad/${memberId}`, { method: "DELETE" });
-      const data = (await res.json()) as { success?: boolean; error?: string };
-      if (!res.ok || !data.success) {
-        setError(data.error ?? "Failed to remove squad member");
-        return;
-      }
-
-      setSquad((prev) => prev.filter((member) => member.id !== memberId));
-      if (editingSquadId === memberId) setEditingSquadId(null);
-    } catch {
-      setError("Failed to remove squad member");
-    } finally {
-      setSquadActionId(null);
-    }
-  }
-
-  function startEditing(member: SquadMember) {
-    setEditingSquadId(member.id);
-    setEditPlayerName(member.name);
-    setEditJerseyNo(member.jerseyNo?.toString() ?? "");
-    setEditRole(member.role);
-    setError(null);
-  }
-
-  async function handleUpdateSquadMember(event: FormEvent) {
-    event.preventDefault();
-    if (!editingSquadId) return;
-
-    setError(null);
-    setSquadActionId(editingSquadId);
-
-    try {
-      const body: { name: string; role: SquadRole; jerseyNo: number | null } = {
-        name: editPlayerName.trim(),
-        role: editRole,
-        jerseyNo: editJerseyNo.trim() ? Number(editJerseyNo) : null,
-      };
-
-      const res = await fetch(`/api/teams/${team.slug}/squad/${editingSquadId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
       });
-      const data = (await res.json()) as { success?: boolean; error?: string; player?: SquadMember };
-      if (!res.ok || !data.success || !data.player) {
-        setError(data.error ?? "Failed to update squad member");
+
+      const data = (await res.json()) as { member?: SquadMember; error?: string };
+      if (!res.ok || !data.member) {
+        setError(data.error ?? "Failed to add player");
         return;
       }
-      const updatedPlayer = data.player;
 
-      setSquad((prev) =>
-        prev
-          .map((member) => (member.id === editingSquadId ? updatedPlayer : member))
-          .sort((a, b) => {
-            if (a.jerseyNo == null) return 1;
-            if (b.jerseyNo == null) return -1;
-            return a.jerseyNo - b.jerseyNo;
-          }),
-      );
-      setEditingSquadId(null);
+      const createdMember = data.member;
+      setSquad((prev) => [...prev, createdMember]);
+      setPlayerName("");
+      setPlayerJerseyNo("");
+      setPlayerRole("BAT");
     } catch {
-      setError("Failed to update squad member");
+      setError("Failed to add player");
     } finally {
-      setSquadActionId(null);
+      setAdding(false);
     }
+  }
+
+  async function handleRemoveSquadPlayer(memberId: string) {
+    setError(null);
+    const res = await fetch(`/api/teams/${team.slug}/squad/${memberId}`, { method: "DELETE" });
+    const data = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      setError(data.error ?? "Failed to remove player");
+      return;
+    }
+
+    setSquad((prev) => prev.filter((member) => member.id !== memberId));
+  }
+
+  async function handleEditSquadPlayer(member: SquadMember) {
+    const name = window.prompt("Player name", member.name);
+    if (name === null) return;
+
+    const role = window.prompt("Player role", member.role);
+    if (role === null) return;
+
+    const jerseyNoInput = window.prompt(
+      "Jersey number (leave empty for none)",
+      member.jerseyNo === null ? "" : String(member.jerseyNo)
+    );
+    if (jerseyNoInput === null) return;
+
+    const jerseyNo = jerseyNoInput.trim() ? Number(jerseyNoInput) : null;
+
+    const res = await fetch(`/api/teams/${team.slug}/squad/${member.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim(), role: role.trim(), jerseyNo }),
+    });
+
+    const data = (await res.json()) as { member?: SquadMember; error?: string };
+    if (!res.ok || !data.member) {
+      setError(data.error ?? "Failed to update player");
+      return;
+    }
+
+    setSquad((prev) => prev.map((player) => (player.id === data.member!.id ? data.member! : player)));
   }
 
   return (
@@ -244,7 +205,7 @@ export function ManageTeamClient({ team, currentUserId }: Props) {
 
       <section>
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-secondary)]">
-          Squad — {team.members.length} members
+          Team Members — {team.members.length}
         </h2>
         <div className="space-y-2">
           {team.members.map((member) => (
@@ -276,126 +237,76 @@ export function ManageTeamClient({ team, currentUserId }: Props) {
         </div>
       </section>
 
-      <section className="space-y-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5">
-        <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-secondary)]">
-          Squad Management — {squad.length} players
+      <section>
+        <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-secondary)]">
+          Squad Players — {squad.length}
         </h2>
 
-        <form onSubmit={handleAddSquadMember} className="grid gap-2 sm:grid-cols-[1.5fr_100px_1fr_auto]">
+        <div className="mb-3 grid gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 sm:grid-cols-[1fr_auto_auto_auto]">
           <input
-            value={newPlayerName}
-            onChange={(event) => setNewPlayerName(event.target.value)}
+            value={playerName}
+            onChange={(e) => setPlayerName(e.target.value)}
             placeholder="Player name"
-            className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-sm text-[var(--text-primary)]"
-            required
+            className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-sm text-[var(--text-primary)]"
           />
           <input
-            value={newJerseyNo}
-            onChange={(event) => setNewJerseyNo(event.target.value)}
+            value={playerJerseyNo}
+            onChange={(e) => setPlayerJerseyNo(e.target.value)}
             placeholder="Jersey #"
-            type="number"
-            min={1}
-            max={99}
-            className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-sm text-[var(--text-primary)]"
+            className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-sm text-[var(--text-primary)]"
           />
           <select
-            value={newRole}
-            onChange={(event) => setNewRole(event.target.value as SquadRole)}
-            className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-sm text-[var(--text-primary)]"
+            value={playerRole}
+            onChange={(e) => setPlayerRole(e.target.value)}
+            className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-sm text-[var(--text-primary)]"
           >
-            <option value="BATSMAN">Batsman</option>
-            <option value="BOWLER">Bowler</option>
-            <option value="ALL_ROUNDER">All-Rounder</option>
-            <option value="WICKET_KEEPER">Wicket Keeper</option>
+            <option value="BAT">BAT</option>
+            <option value="BOWL">BOWL</option>
+            <option value="AR">AR</option>
+            <option value="WK">WK</option>
           </select>
           <button
-            type="submit"
-            disabled={squadActionId === "new" || deleting}
-            className="rounded-lg bg-[var(--accent-brand)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+            type="button"
+            onClick={handleAddSquadPlayer}
+            disabled={adding}
+            className="rounded-md bg-[var(--accent-brand)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
           >
-            {squadActionId === "new" ? "Adding..." : "Add"}
+            {adding ? "Adding..." : "Add"}
           </button>
-        </form>
+        </div>
 
-        {squadLoading ? (
+        {loadingSquad ? (
           <p className="text-sm text-[var(--text-secondary)]">Loading squad...</p>
-        ) : squad.length === 0 ? (
-          <p className="text-sm text-[var(--text-secondary)]">No squad players yet.</p>
         ) : (
           <div className="space-y-2">
             {squad.map((member) => (
               <div
                 key={member.id}
-                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-base)] px-4 py-3"
+                className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-5 py-3"
               >
-                {editingSquadId === member.id ? (
-                  <form onSubmit={handleUpdateSquadMember} className="grid gap-2 sm:grid-cols-[1.5fr_100px_1fr_auto_auto]">
-                    <input
-                      value={editPlayerName}
-                      onChange={(event) => setEditPlayerName(event.target.value)}
-                      className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-sm text-[var(--text-primary)]"
-                      required
-                    />
-                    <input
-                      value={editJerseyNo}
-                      onChange={(event) => setEditJerseyNo(event.target.value)}
-                      type="number"
-                      min={1}
-                      max={99}
-                      className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-sm text-[var(--text-primary)]"
-                    />
-                    <select
-                      value={editRole}
-                      onChange={(event) => setEditRole(event.target.value as SquadRole)}
-                      className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-sm text-[var(--text-primary)]"
-                    >
-                      <option value="BATSMAN">Batsman</option>
-                      <option value="BOWLER">Bowler</option>
-                      <option value="ALL_ROUNDER">All-Rounder</option>
-                      <option value="WICKET_KEEPER">Wicket Keeper</option>
-                    </select>
-                    <button
-                      type="submit"
-                      disabled={squadActionId === member.id}
-                      className="rounded-lg border border-[var(--border-subtle)] px-3 py-2 text-xs text-[var(--text-primary)] disabled:opacity-40"
-                    >
-                      Save
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingSquadId(null)}
-                      className="rounded-lg border border-[var(--border-subtle)] px-3 py-2 text-xs text-[var(--text-secondary)]"
-                    >
-                      Cancel
-                    </button>
-                  </form>
-                ) : (
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-[var(--text-primary)]">{member.name}</p>
-                      <p className="text-xs text-[var(--text-muted)]">
-                        #{member.jerseyNo ?? "—"} · {member.role.replaceAll("_", " ")}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => startEditing(member)}
-                        className="rounded-lg border border-[var(--border-subtle)] px-3 py-1.5 text-xs text-[var(--text-primary)]"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSquadMember(member.id)}
-                        disabled={squadActionId === member.id}
-                        className="rounded-lg border border-red-500/25 px-3 py-1.5 text-xs text-red-400 disabled:opacity-40"
-                      >
-                        {squadActionId === member.id ? "Removing..." : "Remove"}
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <div>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">
+                    {member.jerseyNo !== null ? `#${member.jerseyNo} ` : ""}
+                    {member.name}
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)]">{member.role}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleEditSquadPlayer(member)}
+                    className="rounded-lg border border-[var(--border-subtle)] px-3 py-1.5 text-xs text-[var(--text-secondary)]"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSquadPlayer(member.id)}
+                    className="rounded-lg border border-red-500/25 px-3 py-1.5 text-xs text-red-400"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             ))}
           </div>

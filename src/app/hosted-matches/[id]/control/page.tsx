@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { TossCard } from "../TossCard";
+import { PlayingXICard } from "../PlayingXICard";
 
 type HostedMatch = {
   id: string;
@@ -10,8 +12,11 @@ type HostedMatch = {
   title: string;
   status: "DRAFT" | "LIVE" | "COMPLETED";
   runtimeMatchId?: string | null;
-  teamA: { name: string };
-  teamB: { name: string };
+  tossWinnerId?: string | null;
+  tossDecision?: "BAT" | "BOWL" | null;
+  battingFirstId?: string | null;
+  teamA: { id: string; slug: string; name: string };
+  teamB: { id: string; slug: string; name: string };
 };
 
 export default function HostedMatchControlPage() {
@@ -19,6 +24,7 @@ export default function HostedMatchControlPage() {
   const id = params.id;
   const router = useRouter();
   const [hostedMatch, setHostedMatch] = useState<HostedMatch | null>(null);
+  const [playingXISet, setPlayingXISet] = useState(false);
   const [identifier, setIdentifier] = useState("");
   const [memberRole, setMemberRole] = useState("SCORER");
   const [message, setMessage] = useState<string | null>(null);
@@ -27,9 +33,15 @@ export default function HostedMatchControlPage() {
     let cancelled = false;
 
     const load = async () => {
-      const res = await fetch(`/api/hosted-matches/${id}`, { cache: "no-store" });
-      const body = (await res.json()) as { data?: HostedMatch };
-      if (!cancelled) setHostedMatch(body.data ?? null);
+      const [matchRes, xiRes] = await Promise.all([
+        fetch(`/api/hosted-matches/${id}`, { cache: "no-store" }),
+        fetch(`/api/hosted-matches/${id}/playing-xi`, { cache: "no-store" }),
+      ]);
+      const body = (await matchRes.json()) as { data?: HostedMatch };
+      if (!cancelled) {
+        setHostedMatch(body.data ?? null);
+        setPlayingXISet(xiRes.ok);
+      }
     };
 
     void load();
@@ -38,10 +50,23 @@ export default function HostedMatchControlPage() {
     };
   }, [id]);
 
+  async function refreshHostedMatch() {
+    const res = await fetch(`/api/hosted-matches/${id}`, { cache: "no-store" });
+    const body = (await res.json()) as { data?: HostedMatch };
+    setHostedMatch(body.data ?? null);
+  }
+
   async function startHostedMatch() {
+    if (!hostedMatch) return;
+
     setMessage(null);
     const res = await fetch(`/api/matches/${id}/start`, { method: "POST" });
-    const body = (await res.json()) as { success?: boolean; error?: string; runtimeMatchId?: string; data?: { runtimeMatchId?: string; matchCenterUrl?: string } };
+    const body = (await res.json()) as {
+      success?: boolean;
+      error?: string;
+      runtimeMatchId?: string;
+      data?: { runtimeMatchId?: string; matchCenterUrl?: string };
+    };
     if (!res.ok || !body.success) {
       setMessage(body.error ?? "Failed to start match");
       return;
@@ -82,22 +107,33 @@ export default function HostedMatchControlPage() {
     return <p className="text-sm text-[var(--text-secondary)]">Loading hosted match...</p>;
   }
 
+  const tossSet = Boolean(hostedMatch.tossWinnerId && hostedMatch.tossDecision && hostedMatch.battingFirstId);
+  const readyForStart = tossSet && playingXISet;
+
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4">
+    <div className="mx-auto w-full max-w-4xl space-y-4">
       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5">
         <h1 className="text-2xl font-semibold text-[var(--text-primary)]">{hostedMatch.title}</h1>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">{hostedMatch.teamA.name} vs {hostedMatch.teamB.name}</p>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          {hostedMatch.teamA.name} vs {hostedMatch.teamB.name}
+        </p>
         <p className="mt-1 text-xs text-[var(--text-muted)]">Status: {hostedMatch.status}</p>
 
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             onClick={startHostedMatch}
-            disabled={Boolean(hostedMatch.runtimeMatchId)}
+            disabled={Boolean(hostedMatch.runtimeMatchId) || !readyForStart}
             className="rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            title={!readyForStart ? "Set toss and Playing XI first" : undefined}
           >
             Start Live Match
           </button>
-          <Link href={`/hosted-matches/${id}/score`} className="rounded-md border border-[var(--border-subtle)] px-4 py-2 text-sm text-[var(--text-primary)]">
+          <Link
+            href={`/hosted-matches/${id}/score`}
+            className={`rounded-md border border-[var(--border-subtle)] px-4 py-2 text-sm ${
+              readyForStart ? "text-[var(--text-primary)]" : "pointer-events-none text-[var(--text-secondary)] opacity-70"
+            }`}
+          >
             Open Scoring Console
           </Link>
           {hostedMatch.runtimeMatchId ? (
@@ -115,6 +151,26 @@ export default function HostedMatchControlPage() {
           )}
         </div>
       </div>
+
+      {!tossSet ? (
+        <TossCard
+          matchId={id}
+          teamA={{ id: hostedMatch.teamA.id, name: hostedMatch.teamA.name }}
+          teamB={{ id: hostedMatch.teamB.id, name: hostedMatch.teamB.name }}
+          onTossSet={() => {
+            void refreshHostedMatch();
+          }}
+        />
+      ) : null}
+
+      {tossSet && !playingXISet ? (
+        <PlayingXICard
+          matchId={id}
+          teamA={{ slug: hostedMatch.teamA.slug, name: hostedMatch.teamA.name }}
+          teamB={{ slug: hostedMatch.teamB.slug, name: hostedMatch.teamB.name }}
+          onPlayingXISet={() => setPlayingXISet(true)}
+        />
+      ) : null}
 
       <form onSubmit={addMember} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5">
         <h2 className="text-lg font-semibold text-[var(--text-primary)]">Scorer / Operator Access</h2>

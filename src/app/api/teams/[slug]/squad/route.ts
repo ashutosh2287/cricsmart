@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { TeamMember } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { getTeamBySlug, isTeamOwner } from "@/lib/repositories/team.repository";
@@ -36,7 +35,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ slug: 
 
   return NextResponse.json({
     success: true,
-    squad: squad.map((member: TeamMember) => ({
+    squad: squad.map((member) => ({
       id: member.id,
       name: member.name ?? "Unknown Player",
       jerseyNo: member.jerseyNo,
@@ -68,7 +67,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ slug: 
 
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ success: false, error: "Validation failed", issues: parsed.error.flatten().fieldErrors }, { status: 400 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Validation failed",
+        issues: parsed.error.flatten().fieldErrors,
+      },
+      { status: 400 }
+    );
   }
 
   const created = await prisma.teamMember.create({

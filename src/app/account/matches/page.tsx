@@ -1,32 +1,35 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getRequestAuthSession } from "@/services/auth/serverRequestContext";
 import { prisma } from "@/lib/db/prisma";
 
 export const metadata = { title: "Hosted Matches — CricSmart" };
 
-type HostedMatchListItem = Prisma.HostedMatchGetPayload<{
-  include: {
-    teamA: true;
-    teamB: true;
-    tossWinner: true;
-  };
-}>;
+type MatchCardMatch = {
+  id: string;
+  title: string | null;
+  status: string;
+  createdAt: Date;
+  runtimeMatchId: string | null;
+  tossDecision: "BAT" | "BOWL" | null;
+  teamA: { id: string; name: string } | null;
+  teamB: { id: string; name: string } | null;
+  tossWinner: { id: string; name: string } | null;
+};
 
 export default async function HostedMatchesPage() {
   const session = await getRequestAuthSession();
   if (!session) redirect("/login?redirect=/account/matches");
 
-  const matches = await prisma.hostedMatch.findMany({
+  const matches = (await prisma.hostedMatch.findMany({
     where: { createdById: session.userId },
     orderBy: { createdAt: "desc" },
     include: {
-      teamA: true,
-      teamB: true,
-      tossWinner: true,
+      teamA: { select: { id: true, name: true } },
+      teamB: { select: { id: true, name: true } },
+      tossWinner: { select: { id: true, name: true } },
     },
-  });
+  })) as MatchCardMatch[];
 
   const live = matches.filter((match) => match.status === "LIVE");
   const upcoming = matches.filter((match) => match.status === "DRAFT");
@@ -64,7 +67,7 @@ export default async function HostedMatchesPage() {
   );
 }
 
-function MatchSection({ title, matches }: { title: string; matches: HostedMatchListItem[] }) {
+function MatchSection({ title, matches }: { title: string; matches: MatchCardMatch[] }) {
   if (matches.length === 0) return null;
 
   return (
@@ -79,7 +82,7 @@ function MatchSection({ title, matches }: { title: string; matches: HostedMatchL
   );
 }
 
-function MatchCard({ match }: { match: HostedMatchListItem }) {
+function MatchCard({ match }: { match: MatchCardMatch }) {
   return (
     <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-5 py-4 transition hover:border-[var(--text-muted)]">
       <div className="flex items-start justify-between gap-4">

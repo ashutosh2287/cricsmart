@@ -24,16 +24,18 @@ export function MatchCardLive({ match }: { match: CuratedMatch }) {
 
     setIsInitializing(true);
     setError(null);
+    const internalMatchId = `live_${match.id}`;
 
     try {
       const res = await fetch("/api/match/init", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          matchId: internalMatchId,
           externalMatchId: match.id,
-          provider: "cricapi",
           teamA,
           teamB,
+          type: "LIVE",
           seriesName: match.seriesName,
           format: match.format,
           scheduledStart: match.startTime,
@@ -42,13 +44,15 @@ export function MatchCardLive({ match }: { match: CuratedMatch }) {
 
       const body = (await res.json()) as Partial<LiveMatchInitResponse> & {
         message?: string;
+        matchId?: string;
       };
 
-      if (!res.ok || !body.success || !body.slug) {
+      if (!res.ok || !body.success) {
         throw new Error(body.message || "Session bootstrap failed");
       }
 
-      router.push(`/match/${body.slug}`);
+      const redirectId = body.matchId ?? body.slug ?? internalMatchId;
+      router.push(`/match/${redirectId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to initialize live session");
       setIsInitializing(false);

@@ -20,6 +20,9 @@ export async function POST(req: NextRequest) {
       externalMatchId,
       tossWinner,
       decision,
+      seriesName,
+      format,
+      scheduledStart,
     } = body as {
       matchId?: string;
       teamA?: string;
@@ -28,21 +31,28 @@ export async function POST(req: NextRequest) {
       externalMatchId?: string;
       tossWinner?: string;
       decision?: "BAT" | "BOWL";
+      seriesName?: string;
+      format?: string;
+      scheduledStart?: string;
     };
 
     if (!matchId || !teamA || !teamB) {
       return NextResponse.json(
-        { success: false, message: "Missing fields" },
+        { success: false, message: "Missing fields: matchId, teamA, teamB required" },
         { status: 400 }
       );
     }
+
+    void seriesName;
+    void format;
+    void scheduledStart;
 
     const initialized = await initializeRuntimeMatch({
       matchId,
       teamA,
       teamB,
       type,
-      externalMatchId,
+      externalMatchId: externalMatchId ?? matchId,
       tossWinner,
       decision,
     });

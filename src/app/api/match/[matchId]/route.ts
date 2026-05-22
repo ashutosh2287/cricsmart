@@ -6,7 +6,6 @@ import {
   cacheMatchSnapshot,
   consumeStaleFallback,
 } from "@/services/runtime/snapshotCache";
-import { prisma } from "@/lib/db/prisma";
 import { initMatch, getMatchState } from "@/services/matchEngine";
 
 function normalizeFormat(format?: string): "T20" | "ODI" | "TEST" {
@@ -158,16 +157,6 @@ export async function GET(
           staleLastUpdatedAt: new Date(stale.cachedAt).toISOString(),
         });
       }
-
-      const hostedMatch = await prisma.hostedMatch.findFirst({
-        where: {
-          OR: [{ runtimeMatchId: matchId }, { id: matchId }],
-        },
-        include: {
-          teamA: { select: { name: true } },
-          teamB: { select: { name: true } },
-        },
-      });
 
       if (!hostedMatch) {
         return NextResponse.json(

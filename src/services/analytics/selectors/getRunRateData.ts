@@ -1,4 +1,4 @@
-import type { ReplayEvent } from "@/hooks/useReplayEvents";
+import type { ReplayEvent } from "@/types/replayEvent";
 
 export type RunRatePoint = {
   over: number;

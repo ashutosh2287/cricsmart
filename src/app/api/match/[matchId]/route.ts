@@ -6,7 +6,6 @@ import {
   cacheMatchSnapshot,
   consumeStaleFallback,
 } from "@/services/runtime/snapshotCache";
-import { prisma } from "@/lib/db/prisma";
 import { initMatch, getMatchState } from "@/services/matchEngine";
 
 function normalizeFormat(format?: string): "T20" | "ODI" | "TEST" {
@@ -101,7 +100,7 @@ export async function GET(
     ]);
 
     if (!data) {
-      const hostedMatch = await prisma.hostedMatch.findFirst({
+      const fallbackHostedMatch = await prisma.hostedMatch.findFirst({
         where: {
           OR: [{ runtimeMatchId: matchId }, { id: matchId }],
         },
@@ -169,14 +168,14 @@ export async function GET(
         },
       });
 
-      if (!hostedMatch) {
+      if (!fallbackHostedMatch) {
         return NextResponse.json(
           { success: false, message: "Match not found" },
           { status: 404 }
         );
       }
 
-      const runtimeMatchId = hostedMatch.runtimeMatchId?.trim() || null;
+      const runtimeMatchId = fallbackHostedMatch.runtimeMatchId?.trim() || null;
       if (runtimeMatchId && runtimeMatchId !== matchId) {
         const [runtimeData, runtimeRegistry] = await Promise.all([
           storage.load(runtimeMatchId),
@@ -227,9 +226,9 @@ export async function GET(
         success: true,
         match: buildUnstartedState({
           runtimeMatchId: runtimeMatchId ?? matchId,
-          format: hostedMatch.format,
-          teamAName: hostedMatch.teamA?.name,
-          teamBName: hostedMatch.teamB?.name,
+          format: fallbackHostedMatch.format,
+          teamAName: fallbackHostedMatch.teamA?.name,
+          teamBName: fallbackHostedMatch.teamB?.name,
         }),
         runtime: {
           isRunning: false,
@@ -237,7 +236,7 @@ export async function GET(
           speed: 1500,
         },
         registry: null,
-        hostedMatchId: hostedMatch.id,
+        hostedMatchId: fallbackHostedMatch.id,
         resolvedRuntimeMatchId: runtimeMatchId,
         started: Boolean(runtimeMatchId),
       });

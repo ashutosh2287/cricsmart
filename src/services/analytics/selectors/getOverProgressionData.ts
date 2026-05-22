@@ -1,4 +1,5 @@
 import type { ReplayEvent } from "@/types/replayEvent";
+import type { BallEvent } from "@/types/ballEvent";
 
 type ProgressionPoint = {
   label: string;
@@ -29,11 +30,19 @@ export function getOverProgressionData(
   }
   // Only count events that originate from a BallEvent (they always have totalRuns)
   const ballEvents = events.filter(
-    (e) =>
-      typeof e.totalRuns === "number" &&
-      typeof e.type === "string" &&
-      e.type !== "WIN_PROBABILITY" &&
-      e.type !== "MATCH_FINISHED"
+    (e) => {
+      const payload =
+        (typeof e.payload === "object" && e.payload !== null
+          ? (e.payload as Partial<BallEvent>)
+          : undefined) ?? (e as unknown as Partial<BallEvent>);
+
+      return (
+        typeof payload.totalRuns === "number" &&
+        typeof e.type === "string" &&
+        e.type !== "WIN_PROBABILITY" &&
+        e.type !== "MATCH_FINISHED"
+      );
+    }
   );
 
   // Group runs and legal-ball counts by innings → over
@@ -43,12 +52,26 @@ export function getOverProgressionData(
   >();
 
   for (const event of ballEvents) {
+    const payload =
+      (typeof event.payload === "object" && event.payload !== null
+        ? (event.payload as Partial<BallEvent>)
+        : undefined) ?? (event as unknown as Partial<BallEvent>);
+
     const inningsIndex =
-      typeof event.innings === "number" ? event.innings : 0;
+      typeof payload.innings === "number"
+        ? payload.innings
+        : typeof event.inning === "number"
+          ? event.inning
+          : 0;
     const overNumber =
-      typeof event.over === "number" ? Math.floor(event.over) : 0;
-    const runs = typeof event.totalRuns === "number" ? event.totalRuns : 0;
-    const isLegal = event.isLegalDelivery !== false;
+      typeof payload.over === "number"
+        ? Math.floor(payload.over)
+        : typeof event.over === "number"
+          ? Math.floor(event.over)
+          : 0;
+    const runs =
+      typeof payload.totalRuns === "number" ? payload.totalRuns : 0;
+    const isLegal = payload.isLegalDelivery !== false;
 
     if (!inningsMap.has(inningsIndex)) {
       inningsMap.set(inningsIndex, new Map());

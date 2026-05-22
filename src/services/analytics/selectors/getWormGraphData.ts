@@ -1,4 +1,5 @@
 import type { ReplayEvent } from "@/types/replayEvent";
+import type { BallEvent } from "@/types/ballEvent";
 
 export type WormPoint = {
   over: number;
@@ -18,6 +19,11 @@ export function getWormGraphData(events: ReplayEvent[]): WormPoint[] {
   const points: WormPoint[] = [];
 
   for (const event of events) {
+    const payload =
+      (typeof event.payload === "object" && event.payload !== null
+        ? (event.payload as Partial<BallEvent>)
+        : undefined) ?? (event as unknown as Partial<BallEvent>);
+
     if (
       typeof event.type !== "string" ||
       event.type === "WIN_PROBABILITY" ||
@@ -29,10 +35,10 @@ export function getWormGraphData(events: ReplayEvent[]): WormPoint[] {
     if (typeof event.over !== "number") continue;
 
     const runs =
-      typeof event.totalRuns === "number"
-        ? event.totalRuns
-        : typeof event.runs === "number"
-          ? event.runs
+      typeof payload.totalRuns === "number"
+        ? payload.totalRuns
+        : typeof payload.runs === "number"
+          ? payload.runs
           : 0;
 
     score += runs;

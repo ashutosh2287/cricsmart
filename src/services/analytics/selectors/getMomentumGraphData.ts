@@ -1,4 +1,5 @@
 import type { ReplayEvent } from "@/types/replayEvent";
+import type { BallEvent } from "@/types/ballEvent";
 
 export type MomentumPoint = {
   over: number;
@@ -18,6 +19,11 @@ export function getMomentumGraphData(events: ReplayEvent[]): MomentumPoint[] {
   let momentum = 0;
 
   for (const event of events) {
+    const payload =
+      (typeof event.payload === "object" && event.payload !== null
+        ? (event.payload as Partial<BallEvent>)
+        : undefined) ?? (event as unknown as Partial<BallEvent>);
+
     if (
       typeof event.type !== "string" ||
       event.type === "WIN_PROBABILITY" ||
@@ -28,10 +34,10 @@ export function getMomentumGraphData(events: ReplayEvent[]): MomentumPoint[] {
 
     const over = typeof event.over === "number" ? event.over : 0;
     const runs =
-      typeof event.totalRuns === "number"
-        ? event.totalRuns
-        : typeof event.runs === "number"
-          ? event.runs
+      typeof payload.totalRuns === "number"
+        ? payload.totalRuns
+        : typeof payload.runs === "number"
+          ? payload.runs
           : 0;
     const wicketPenalty = event.type === "WICKET" ? 2.5 : 0;
     momentum = Math.max(

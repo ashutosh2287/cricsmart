@@ -7,6 +7,11 @@ export type WinProbabilityChartPoint = {
   marker?: "WICKET" | "SIX" | "FOUR" | "SWING" | "TURNING_POINT";
 };
 
+type WinProbabilityPayload = {
+  homeWinPct: number;
+  awayWinPct: number;
+};
+
 /**
  * Pure selector: extracts WIN_PROBABILITY replay events into chart-ready
  * batting/bowling percentage points.
@@ -19,21 +24,28 @@ export function getWinProbabilityData(
 ): WinProbabilityChartPoint[] {
   if (!Array.isArray(events) || events.length === 0) return [];
   return events
+    .map((e) => ({
+      event: e,
+      payload:
+        (typeof e.payload === "object" && e.payload !== null
+          ? (e.payload as Partial<WinProbabilityPayload>)
+          : undefined) ?? (e as unknown as Partial<WinProbabilityPayload>),
+    }))
     .filter(
-      (e) =>
-        e.type === "WIN_PROBABILITY" &&
-        typeof e.homeWinPct === "number" &&
-        typeof e.awayWinPct === "number"
+      ({ event, payload }) =>
+        event.type === "WIN_PROBABILITY" &&
+        typeof payload.homeWinPct === "number" &&
+        typeof payload.awayWinPct === "number"
     )
-    .map((e) => {
+    .map(({ event, payload }) => {
       const over =
-        typeof e.over === "number"
-          ? e.over + (typeof e.ball === "number" ? e.ball / 10 : 0)
+        typeof event.over === "number"
+          ? event.over + (typeof event.ball === "number" ? event.ball / 10 : 0)
           : 0;
       return {
         over,
-        batting: Math.max(0, Math.min(100, Number(e.homeWinPct))),
-        bowling: Math.max(0, Math.min(100, Number(e.awayWinPct))),
+        batting: Math.max(0, Math.min(100, Number(payload.homeWinPct))),
+        bowling: Math.max(0, Math.min(100, Number(payload.awayWinPct))),
       };
     });
 }

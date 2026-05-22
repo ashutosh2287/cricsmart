@@ -23,6 +23,13 @@ enum MatchStatus {
   COMPLETED
 }
 
+enum PlayerRole {
+  BATSMAN
+  BOWLER
+  ALL_ROUNDER
+  WICKET_KEEPER
+}
+
 model User {
   id           String   @id @default(cuid())
   username     String   @unique
@@ -39,6 +46,7 @@ model User {
   hostedMatchRoles      HostedMatchMember[]
   tournaments           Tournament[]        @relation("TournamentOrganizer")
   playerProfile         PlayerProfile?
+  squadMemberships      TeamSquadMember[]
   teamFollows           TeamFollow[]
   favoriteTeams         FavoriteTeam[]
   savedMatches          SavedMatch[]
@@ -65,6 +73,8 @@ model Team {
   tournamentTeams TournamentTeam[]
   followers       TeamFollow[]
   favorites       FavoriteTeam[]
+  squadMembers    TeamSquadMember[]
+  playingXI       PlayingXI[]
 
   @@index([ownerId])
   @@index([slug])
@@ -95,7 +105,45 @@ model PlayerProfile {
   statsSnapshot Json?
   createdAt    DateTime @default(now())
 
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user               User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  squadMemberships   TeamSquadMember[]
+}
+
+model TeamSquadMember {
+  id              String      @id @default(cuid())
+  teamId          String
+  userId          String?
+  playerProfileId String?
+  name            String
+  jerseyNo        Int?
+  role            PlayerRole  @default(BATSMAN)
+  joinedAt        DateTime    @default(now())
+
+  team            Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  playerProfile   PlayerProfile? @relation(fields: [playerProfileId], references: [id], onDelete: SetNull)
+  playingXI       PlayingXI[]
+
+  @@unique([teamId, jerseyNo])
+  @@index([teamId])
+  @@index([userId])
+  @@index([playerProfileId])
+}
+
+model PlayingXI {
+  id            String   @id @default(cuid())
+  teamId        String
+  squadMemberId String
+  position      Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  team         Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  squadMember  TeamSquadMember @relation(fields: [squadMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, position])
+  @@unique([teamId, squadMemberId])
+  @@index([teamId])
 }
 
 model HostedMatch {

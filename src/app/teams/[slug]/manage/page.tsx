@@ -19,17 +19,18 @@ export default async function ManageTeamPage({ params }: Props) {
     redirect(`/teams/${team.slug}`);
   }
 
-  const ownerPresent = team.members.some((member) => member.userId === team.ownerId);
+  const userMembers = team.members.filter((member) => member.userId && member.user);
+  const ownerPresent = userMembers.some((member) => member.userId === team.ownerId);
   type RosterMember = {
     userId: string;
     role: string;
     user: { id: string; username: string; avatarUrl: string | null };
   };
   const roster: RosterMember[] = ownerPresent
-    ? team.members.map((member) => ({
+    ? userMembers.map((member) => ({
         userId: member.userId,
         role: member.role,
-        user: member.user,
+        user: member.user!,
       }))
     : [
         {
@@ -41,7 +42,11 @@ export default async function ManageTeamPage({ params }: Props) {
             avatarUrl: team.owner.avatarUrl,
           },
         },
-        ...team.members,
+        ...userMembers.map((member) => ({
+          userId: member.userId,
+          role: member.role,
+          user: member.user!,
+        })),
       ];
 
   return (

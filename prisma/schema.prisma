@@ -23,6 +23,11 @@ enum MatchStatus {
   COMPLETED
 }
 
+enum TossDecision {
+  BAT
+  BOWL
+}
+
 model User {
   id           String   @id @default(cuid())
   username     String   @unique
@@ -62,6 +67,8 @@ model Team {
   members         TeamMember[]
   hostedMatchesA  HostedMatch[]       @relation("HostedMatchTeamA")
   hostedMatchesB  HostedMatch[]       @relation("HostedMatchTeamB")
+  tossWins        HostedMatch[]       @relation("TossWinner")
+  battingFirstFor HostedMatch[]       @relation("BattingFirst")
   tournamentTeams TournamentTeam[]
   followers       TeamFollow[]
   favorites       FavoriteTeam[]
@@ -74,11 +81,14 @@ model TeamMember {
   id       String         @id @default(cuid())
   role     TeamMemberRole @default(MEMBER)
   teamId   String
-  userId   String
+  userId   String?
+  name     String?
+  jerseyNo Int?
+  playerRole String?
   joinedAt DateTime       @default(now())
 
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user User @relation("TeamMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  user User? @relation("TeamMemberships", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, userId])
   @@index([userId])
@@ -112,12 +122,17 @@ model HostedMatch {
   visibility  String   @default("PUBLIC")
   scoringMode String   @default("LIVE")
   runtimeMatchId String?
+  tossWinnerId String?
+  tossDecision TossDecision?
+  battingFirstId String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   createdBy         User                @relation("HostedMatchCreator", fields: [createdById], references: [id], onDelete: Cascade)
   teamA             Team                @relation("HostedMatchTeamA", fields: [teamAId], references: [id], onDelete: Restrict)
   teamB             Team                @relation("HostedMatchTeamB", fields: [teamBId], references: [id], onDelete: Restrict)
+  tossWinner        Team?               @relation("TossWinner", fields: [tossWinnerId], references: [id], onDelete: SetNull)
+  battingFirst      Team?               @relation("BattingFirst", fields: [battingFirstId], references: [id], onDelete: SetNull)
   members           HostedMatchMember[]
   tournamentMatches TournamentMatch[]
   savedByUsers      SavedMatch[]

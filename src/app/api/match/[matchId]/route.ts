@@ -5,6 +5,8 @@ import {
   cacheMatchSnapshot,
   consumeStaleFallback,
 } from "@/services/runtime/snapshotCache";
+import { prisma } from "@/lib/db/prisma";
+import { initMatch, getMatchState } from "@/services/matchEngine";
 
 export async function GET(
   request: Request,
@@ -27,6 +29,47 @@ export async function GET(
     ]);
 
     if (!data) {
+      const hostedMatch = await prisma.hostedMatch.findFirst({
+        where: {
+          OR: [{ runtimeMatchId: matchId }, { id: matchId }],
+        },
+        include: {
+          teamA: { select: { id: true, name: true } },
+          teamB: { select: { id: true, name: true } },
+          tossWinner: { select: { name: true } },
+        },
+      });
+
+      if (hostedMatch?.runtimeMatchId) {
+        const runtimeId = hostedMatch.runtimeMatchId;
+        initMatch(runtimeId);
+        const initialState = getMatchState(runtimeId);
+        if (initialState) {
+          initialState.teamA = { name: hostedMatch.teamA.name, squad: [] };
+          initialState.teamB = { name: hostedMatch.teamB.name, squad: [] };
+          initialState.tossWinner = hostedMatch.tossWinner?.name ?? hostedMatch.teamA.name;
+          initialState.decision = hostedMatch.tossDecision ?? "BAT";
+
+          await storage.save(runtimeId, initialState, {
+            isRunning: false,
+            isPaused: false,
+            speed: 1500,
+          });
+
+          return NextResponse.json({
+            success: true,
+            match: initialState,
+            runtime: {
+              isRunning: false,
+              isPaused: false,
+              speed: 1500,
+            },
+            registry,
+            fallbackSource: "postgres",
+          });
+        }
+      }
+
       const stale = consumeStaleFallback(matchId);
       if (stale) {
         return NextResponse.json({

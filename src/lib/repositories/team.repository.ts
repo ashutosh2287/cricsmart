@@ -48,6 +48,9 @@ export type TeamWithMembers = Prisma.TeamGetPayload<{
       };
     };
     members: {
+      where: {
+        userId: { not: null },
+      },
       include: {
         user: {
           select: {

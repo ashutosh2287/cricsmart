@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import { useAuth } from "@/providers/AuthProvider";
+import { LiveMatchDropdown } from "@/components/home/LiveMatchDropdown";
 
 // ─────────────────────────────────────────────
 // Types
@@ -46,6 +47,18 @@ type HomePageClientProps = {
   liveMatchCount: number;
   teamCount: number;
   totalMatchCount: number;
+  liveMatches: {
+    id: string;
+    runtimeMatchId: string;
+    title: string;
+    teamA: string;
+    teamB: string;
+    tossWinner?: string;
+    tossDecision?: string;
+    battingTeam?: string;
+    currentScore?: string;
+    currentOvers?: string;
+  }[];
   isLoggedIn: boolean;
 };
 
@@ -257,6 +270,7 @@ export default function HomePageClient({
   liveMatchCount,
   teamCount,
   totalMatchCount,
+  liveMatches,
   isLoggedIn,
 }: HomePageClientProps) {
   const [matches, setMatches] = useState<Match[]>([]);
@@ -559,14 +573,7 @@ export default function HomePageClient({
             border: "1px solid var(--border-subtle)",
           }}
         >
-          <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-            <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
-              Live hosted
-            </p>
-            <p className="mt-1 text-xl font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
-              {liveMatchCount}
-            </p>
-          </div>
+          <LiveMatchDropdown count={liveMatchCount} matches={liveMatches} />
           <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
             <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
               Teams

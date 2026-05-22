@@ -100,7 +100,7 @@ export async function GET(
     ]);
 
     if (!data) {
-      const fallbackHostedMatch = await prisma.hostedMatch.findFirst({
+      const hostedMatch = await prisma.hostedMatch.findFirst({
         where: {
           OR: [{ runtimeMatchId: matchId }, { id: matchId }],
         },
@@ -158,24 +158,14 @@ export async function GET(
         });
       }
 
-      const hostedMatch = await prisma.hostedMatch.findFirst({
-        where: {
-          OR: [{ runtimeMatchId: matchId }, { id: matchId }],
-        },
-        include: {
-          teamA: { select: { name: true } },
-          teamB: { select: { name: true } },
-        },
-      });
-
-      if (!fallbackHostedMatch) {
+      if (!hostedMatch) {
         return NextResponse.json(
           { success: false, message: "Match not found" },
           { status: 404 }
         );
       }
 
-      const runtimeMatchId = fallbackHostedMatch.runtimeMatchId?.trim() || null;
+      const runtimeMatchId = hostedMatch.runtimeMatchId?.trim() || null;
       if (runtimeMatchId && runtimeMatchId !== matchId) {
         const [runtimeData, runtimeRegistry] = await Promise.all([
           storage.load(runtimeMatchId),
@@ -226,9 +216,9 @@ export async function GET(
         success: true,
         match: buildUnstartedState({
           runtimeMatchId: runtimeMatchId ?? matchId,
-          format: fallbackHostedMatch.format,
-          teamAName: fallbackHostedMatch.teamA?.name,
-          teamBName: fallbackHostedMatch.teamB?.name,
+          format: hostedMatch.format,
+          teamAName: hostedMatch.teamA?.name,
+          teamBName: hostedMatch.teamB?.name,
         }),
         runtime: {
           isRunning: false,
@@ -236,7 +226,7 @@ export async function GET(
           speed: 1500,
         },
         registry: null,
-        hostedMatchId: fallbackHostedMatch.id,
+        hostedMatchId: hostedMatch.id,
         resolvedRuntimeMatchId: runtimeMatchId,
         started: Boolean(runtimeMatchId),
       });

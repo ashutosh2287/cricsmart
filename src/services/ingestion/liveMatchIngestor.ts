@@ -1,9 +1,10 @@
-import { ApiBallEvent } from "../api/cricketApiService";
+import { ApiBallEvent, fetchBasicMatchScore } from "../api/cricketApiService";
 import { smartReconcileMatch } from "../reconciliation/smartReconciler";
 import { fetchWithRetry } from "../api/reliableFetch";
 import { pushEvents, flushEvents } from "./eventBuffer";
 import { isMatchActive } from "../match/matchManager";
 import { redis } from "../queue/redisClient";
+import { RedisSimulationStorage } from "../storage/redisSimulationStorage";
 import { registerPlayer } from "../player/playerRegistry";
 import { getMatchState, syncBattingOrder } from "../matchEngine";
 import {
@@ -20,6 +21,7 @@ import {
 } from "@/services/providers/polling/pollingController";
 import { getPollingHealth } from "@/services/providers/polling/pollingRegistry";
 import { getClientCount } from "@/services/realtime/clientStore";
+import { broadcastMatchState } from "@/services/realtime/realtimeController";
 import { getReplayState } from "@/services/replay/replayEngine";
 import { logger } from "@/lib/logger";
 import {
@@ -166,7 +168,115 @@ async function pollAndIngest(matchId: string, externalMatchId: string) {
     }
 
     if (!Array.isArray(events) || events.length === 0) {
-      await touchMatchHeartbeat(matchId);
+      let fallbackHeartbeatUpdated = false;
+
+      try {
+        const basicScore = await fetchBasicMatchScore(externalMatchId);
+
+        if (basicScore && basicScore.innings.length > 0) {
+          const toOverAndBall = (overs: number) => {
+            const wholeOver = Math.floor(overs || 0);
+            const rawBall = Math.round(((overs || 0) - wholeOver) * 10);
+            const ball = Math.max(0, Math.min(6, rawBall));
+            return { over: wholeOver, ball };
+          };
+
+          const normalizedStatus = basicScore.status.toLowerCase();
+          const inningsBreak = normalizedStatus.includes("innings break");
+          const firstInningsOvers = basicScore.innings[0]?.o ?? 0;
+          const secondInningsHasProgress =
+            (basicScore.innings[1]?.o ?? 0) > 0 ||
+            (basicScore.innings[1]?.r ?? 0) > 0 ||
+            (basicScore.innings[1]?.w ?? 0) > 0;
+          const shouldMoveToSecondInnings =
+            secondInningsHasProgress || inningsBreak || firstInningsOvers >= 20;
+
+          const storage = new RedisSimulationStorage();
+          const stored = await storage.load(matchId);
+
+          if (stored) {
+            const updatedState = { ...stored.state };
+
+            basicScore.innings.forEach((inningScore, idx) => {
+              if (!updatedState.innings[idx]) return;
+
+              const { over, ball } = toOverAndBall(inningScore.o);
+              updatedState.innings[idx] = {
+                ...updatedState.innings[idx],
+                runs: inningScore.r,
+                wickets: inningScore.w,
+                over,
+                ball,
+              };
+            });
+
+            if (shouldMoveToSecondInnings && updatedState.innings[1]) {
+              if (updatedState.innings[0]) {
+                updatedState.innings[0] = {
+                  ...updatedState.innings[0],
+                  completed: true,
+                };
+              }
+              updatedState.currentInningsIndex = 1;
+            }
+
+            await storage.save(matchId, updatedState, stored.control ?? {
+              isRunning: true,
+              isPaused: false,
+              speed: 1500,
+            });
+
+            broadcastMatchState(matchId, updatedState);
+
+            const currentInnings =
+              updatedState.innings[updatedState.currentInningsIndex] ??
+              updatedState.innings[0];
+
+            await touchMatchHeartbeat(matchId, {
+              currentRuns: currentInnings?.runs,
+              currentWickets: currentInnings?.wickets,
+              currentOver: currentInnings?.over,
+              currentBall: currentInnings?.ball,
+              score: `${currentInnings?.runs ?? 0}/${currentInnings?.wickets ?? 0}`,
+              overDisplay: `${currentInnings?.over ?? 0}.${currentInnings?.ball ?? 0}`,
+              commentaryPreview: basicScore.status || undefined,
+            });
+            fallbackHeartbeatUpdated = true;
+
+            logger.info("PROVIDER", "basic_score_update", {
+              matchId,
+              score: `${currentInnings?.runs ?? 0}/${currentInnings?.wickets ?? 0}`,
+              overs: `${currentInnings?.over ?? 0}.${currentInnings?.ball ?? 0}`,
+              status: basicScore.status,
+            });
+          } else {
+            const fallbackIndex =
+              shouldMoveToSecondInnings && basicScore.innings[1] ? 1 : 0;
+            const fallbackInnings = basicScore.innings[fallbackIndex];
+            const { over, ball } = toOverAndBall(fallbackInnings?.o ?? 0);
+
+            await touchMatchHeartbeat(matchId, {
+              currentRuns: fallbackInnings?.r ?? 0,
+              currentWickets: fallbackInnings?.w ?? 0,
+              currentOver: over,
+              currentBall: ball,
+              score: `${fallbackInnings?.r ?? 0}/${fallbackInnings?.w ?? 0}`,
+              overDisplay: `${over}.${ball}`,
+              commentaryPreview: basicScore.status || undefined,
+            });
+            fallbackHeartbeatUpdated = true;
+          }
+        }
+      } catch (err) {
+        logger.warn("PROVIDER", "basic_score_fallback_failed", {
+          matchId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      if (!fallbackHeartbeatUpdated) {
+        await touchMatchHeartbeat(matchId);
+      }
       return;
     }
 

@@ -23,6 +23,20 @@ export type ApiBallEvent = {
   replaySourceId?: string;
 }
 
+export type BasicMatchScore = {
+  matchId: string;
+  status: string;
+  matchStarted: boolean;
+  matchEnded: boolean;
+  innings: {
+    inning: string;
+    r: number;
+    w: number;
+    o: number;
+  }[];
+  teams: string[];
+};
+
 type ApiInnings = {
   overs?: {
     over?: number | string
@@ -153,4 +167,55 @@ export async function fetchLiveMatchEvents(
   })
 
   return events
+}
+
+export async function fetchBasicMatchScore(
+  externalMatchId: string,
+  signal?: AbortSignal
+): Promise<BasicMatchScore | null> {
+  const apiKey = process.env.CRICKET_API_KEY
+  if (!apiKey) return null
+
+  const urls = [
+    `${API_BASE}/currentMatches?apikey=${apiKey}&offset=0`,
+    `${API_BASE}/currentMatches?apikey=${apiKey}&offset=25`,
+  ]
+
+  for (const url of urls) {
+    try {
+      const res = await fetchWithTimeout(url, { signal })
+      if (!res.ok) continue
+
+      const data = await res.json()
+      if (!Array.isArray(data?.data)) continue
+
+      const match = data.data.find(
+        (m: { id?: string }) => m.id === externalMatchId
+      )
+
+      if (!match) continue
+
+      return {
+        matchId: externalMatchId,
+        status: typeof match.status === "string" ? match.status : "",
+        matchStarted: Boolean(match.matchStarted),
+        matchEnded: Boolean(match.matchEnded),
+        innings: Array.isArray(match.score)
+          ? match.score.map(
+              (s: { inning?: string; r?: number; w?: number; o?: number }) => ({
+                inning: s.inning ?? "",
+                r: s.r ?? 0,
+                w: s.w ?? 0,
+                o: s.o ?? 0,
+              })
+            )
+          : [],
+        teams: Array.isArray(match.teams) ? match.teams : [],
+      }
+    } catch {
+      continue
+    }
+  }
+
+  return null
 }

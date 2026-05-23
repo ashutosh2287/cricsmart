@@ -161,6 +161,7 @@ export async function GET(
             registry,
             externalMatchId: registry?.externalMatchId,
             seriesName: registry?.seriesName,
+            liveStatus: registry?.commentaryPreview,
             fallbackSource: "postgres",
           });
         }
@@ -179,6 +180,7 @@ export async function GET(
           registry,
           externalMatchId: registry?.externalMatchId,
           seriesName: registry?.seriesName,
+          liveStatus: registry?.commentaryPreview,
           staleSnapshot: true,
           staleBadge: "STALE",
           staleLastUpdatedAt: new Date(stale.cachedAt).toISOString(),
@@ -218,6 +220,7 @@ export async function GET(
             registry: runtimeRegistry,
             externalMatchId: runtimeRegistry?.externalMatchId,
             seriesName: runtimeRegistry?.seriesName,
+            liveStatus: runtimeRegistry?.commentaryPreview,
             resolvedRuntimeMatchId: runtimeMatchId,
           });
         }
@@ -235,6 +238,7 @@ export async function GET(
             registry: runtimeRegistry,
             externalMatchId: runtimeRegistry?.externalMatchId,
             seriesName: runtimeRegistry?.seriesName,
+            liveStatus: runtimeRegistry?.commentaryPreview,
             staleSnapshot: true,
             staleBadge: "STALE",
             staleLastUpdatedAt: new Date(runtimeStale.cachedAt).toISOString(),
@@ -257,6 +261,7 @@ export async function GET(
           speed: 1500,
         },
         registry: null,
+        liveStatus: null,
         hostedMatchId: hostedMatch.id,
         resolvedRuntimeMatchId: runtimeMatchId,
         started: Boolean(runtimeMatchId),
@@ -280,6 +285,7 @@ export async function GET(
       registry,
       externalMatchId: registry?.externalMatchId,
       seriesName: registry?.seriesName,
+      liveStatus: registry?.commentaryPreview,
     });
   } catch (error) {
     console.error("❌ API ERROR:", error);

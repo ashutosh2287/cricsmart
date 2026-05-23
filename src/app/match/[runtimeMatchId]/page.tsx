@@ -362,6 +362,7 @@ function TabsArea({
   analytics,
   insights,
   sessionMeta,
+  liveStatus,
 }: {
   match: Match;
   analytics: {
@@ -370,6 +371,7 @@ function TabsArea({
   };
   insights: BroadcastInsight[];
   sessionMeta?: MatchSessionMeta | null;
+  liveStatus?: string | null;
 }) {
   const isAdmin = true;
   const { state: currentEngineState } = useMatch();
@@ -725,6 +727,11 @@ function TabsArea({
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
             <GlassPanel className="p-3">
               <SectionHeader eyebrow="Ball by ball" title="Live Commentary" />
+              {sessionMeta?.type === "LIVE" ? (
+                <p className="mb-2 rounded-lg border border-sky-300/20 bg-sky-400/10 px-3 py-2 text-xs text-sky-100/90">
+                  Score updates every 60s. Ball-by-ball feed may be limited on free CricAPI tier.
+                </p>
+              ) : null}
               <CommentaryPanel matchId={match.slug} insights={insights} />
             </GlassPanel>
 
@@ -1582,6 +1589,9 @@ function MatchInnerPage({
                       <h1 className="text-xl font-semibold text-white md:text-2xl">
                         {team1Name} vs {team2Name}
                       </h1>
+                      {sessionMeta?.type === "LIVE" && liveStatus ? (
+                        <p className="text-sm text-sky-200/90">{liveStatus}</p>
+                      ) : null}
                       <p className="text-xs text-white/60">
                         Live command center with realtime commentary, analytics, and replay.
                       </p>
@@ -1717,6 +1727,7 @@ export default function MatchDetailPage({
   // ✅ Only non-reactive metadata lives here
   const [match, setMatch] = useState<Match | undefined>();
   const [sessionMeta, setSessionMeta] = useState<MatchSessionMeta | null>(null);
+  const [liveStatus, setLiveStatus] = useState<string | null>(null);
   const [insights, setInsights] = useState<BroadcastInsight[]>([]);
 
   type WinPoint = {
@@ -1793,6 +1804,11 @@ export default function MatchDetailPage({
         hydrateMatchState(id, data.match);
 
         setSessionMeta(data.registry ?? null);
+        setLiveStatus(
+          typeof data.liveStatus === "string" && data.liveStatus.trim()
+            ? data.liveStatus.trim()
+            : null
+        );
 
         // ✅ CRITICAL: also push into eventStore so MatchProvider sees initial state
         setMatchState(id, data.match);
@@ -1949,6 +1965,7 @@ export default function MatchDetailPage({
               analytics={replayHydratedAnalytics}
               insights={insights}
               sessionMeta={sessionMeta}
+              liveStatus={liveStatus}
             />
           ) : (
             <div className="p-10 text-center text-white">

@@ -56,7 +56,7 @@ import {
   getFallOfWickets,
 } from "@/services/analytics/scorecardEngine";
 import { getMatchBySlug } from "@/services/matchService";
-import { connectRealtime } from "@/services/realtime/connectRealtime";
+import { connectRealtime, disconnectRealtime } from "@/services/realtime/connectRealtime";
 import type { MatchReconnectHealth } from "@/services/match/matchRegistry";
 import type { LiveSessionState } from "@/types/liveSession";
 import {
@@ -1764,6 +1764,13 @@ export default function MatchDetailPage({
     if (!matchId) return;
     const id = matchId;
     let cancelled = false;
+    const likelyLiveMatchId = id.startsWith("live_");
+
+    if (likelyLiveMatchId) {
+      connectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID, {
+        autoStartSimulation: false,
+      });
+    }
 
     async function loadMatch() {
       try {
@@ -1831,12 +1838,20 @@ export default function MatchDetailPage({
         // ✅ Auto-connect SSE so live updates flow when returning to the page
         //    while a simulation is still running in the backend.
         const runtime = data.runtime;
-        const isRunning = runtime?.isRunning === true && !data.match.matchEnded;
-        if (!cancelled && isRunning) {
-          // connectRealtime is safe to call if already connected — it's a no-op
-          connectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID, {
-            autoStartSimulation: data.registry?.type !== "LIVE",
-          });
+        const matchNotEnded = !data.match.matchEnded;
+        const isSimulationRunning = runtime?.isRunning === true && matchNotEnded;
+        const isLiveMatch = data.registry?.type === "LIVE";
+        const shouldConnectSSE = (isSimulationRunning || isLiveMatch) && matchNotEnded;
+
+        if (!cancelled) {
+          if (shouldConnectSSE) {
+            // connectRealtime is safe to call if already connected — it's a no-op
+            connectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID, {
+              autoStartSimulation: !isLiveMatch,
+            });
+          } else if (likelyLiveMatchId) {
+            disconnectRealtime(id, AUTO_RECONNECT_SUBSCRIBER_ID);
+          }
         }
       } catch (err) {
         console.error("LOAD MATCH ERROR", err);

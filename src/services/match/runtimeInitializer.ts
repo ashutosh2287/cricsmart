@@ -1,19 +1,14 @@
-import { initMatch, getMatchState, setMatchState } from "@/services/matchEngine";
+import { initMatch, getMatchState } from "@/services/matchEngine";
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 import { SimulationState } from "@/services/simulation/simulationState";
 import { startSimulation } from "@/services/simulation/matchSimulator";
 import { startMatch } from "@/services/match/matchManager";
-import {
-  isLiveMatchIngestorRunning,
-  startLiveMatchIngestor,
-} from "@/services/ingestion/liveMatchIngestor";
-import { startWorker } from "@/services/queue/eventWorker";
 import { initPlayerRegistry } from "@/services/player/playerRegistry";
 import { upsertMatchRegistry } from "@/services/match/matchRegistry";
+import { bootstrapLiveSession } from "@/services/live/liveSessionOrchestrator";
 import { getProviderMode } from "@/config/providerMode";
 import { logger } from "@/lib/logger";
 import type { SessionSourceType } from "@/types/liveSession";
-import { resetPollingInterval } from "@/services/providers/polling/pollingController";
 
 const DEFAULT_SIMULATION_SPEED_MS = 300;
 
@@ -129,9 +124,6 @@ export async function initializeRuntimeMatch(
   if (!state) {
     throw new Error("Failed to initialize match state");
   }
-  state.teamA = { ...state.teamA, name: teamA };
-  state.teamB = { ...state.teamB, name: teamB };
-  setMatchState(matchId, state);
 
   const storage = new RedisSimulationStorage();
   const existing = await storage.load(matchId);
@@ -175,6 +167,21 @@ export async function initializeRuntimeMatch(
   }
 
   if (matchType === "LIVE") {
+    const resolvedExternalMatchId = externalMatchId ?? matchId;
+
+    if (providerMode === "cricketdata") {
+      if (!process.env.CRICKET_API_KEY) {
+        throw new Error("Missing server-side CRICKET_API_KEY for live provider integration");
+      }
+
+      await bootstrapLiveSession({
+        matchId,
+        teamA,
+        teamB,
+        externalMatchId: resolvedExternalMatchId,
+      });
+    }
+
     if (providerMode === "simulation" && !existing) {
       const simState = createInitialSimulationState(teamA, teamB, tossWinner, decision);
       await startSimulation(simState, matchId, DEFAULT_SIMULATION_SPEED_MS);
@@ -182,20 +189,6 @@ export async function initializeRuntimeMatch(
         matchId,
         providerMode,
       });
-    } else {
-      const resolvedExternalMatchId = externalMatchId ?? matchId;
-
-      if (providerMode === "cricketdata" && !process.env.CRICKET_API_KEY) {
-        throw new Error("Missing server-side CRICKET_API_KEY for live provider integration");
-      }
-
-      if (isLiveMatchIngestorRunning(matchId)) {
-        resetPollingInterval(matchId);
-        logger.info("PROVIDER", "polling_interval_reset_on_reinit", { matchId });
-      } else {
-        startWorker(matchId);
-        startLiveMatchIngestor(matchId, resolvedExternalMatchId);
-      }
     }
   }
 

@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       teamA,
       teamB,
       type,
-      externalMatchId,
+      externalMatchId: externalMatchId ?? matchId,
       tossWinner,
       decision,
     });

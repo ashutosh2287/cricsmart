@@ -154,6 +154,17 @@ export async function bootstrapLiveSession(args: BootstrapArgs): Promise<Bootstr
     initPlayerRegistry(args.matchId);
     startMatch(args.matchId);
     initMatch(args.matchId);
+    const currentState = getMatchState(args.matchId);
+    if (currentState) {
+      if (currentState.teamA) {
+        currentState.teamA.name = args.teamA;
+        currentState.teamA.short = args.teamA.slice(0, 3).toUpperCase();
+      }
+      if (currentState.teamB) {
+        currentState.teamB.name = args.teamB;
+        currentState.teamB.short = args.teamB.slice(0, 3).toUpperCase();
+      }
+    }
     await saveRuntimeIfMissing(args.matchId);
 
     const hadPriorLiveSession =
@@ -249,6 +260,13 @@ export async function validateLiveSessionForSse(matchId: string) {
 
   const sessionStatus = registry.liveSessionStatus ?? "degraded";
   const allowSse = LIVE_SSE_ALLOWED_STATES.has(sessionStatus);
+
+  if (sessionStatus === "stopped") {
+    return {
+      allowSse: true,
+      reason: "stopped-allowing-recovery",
+    };
+  }
 
   return {
     allowSse,

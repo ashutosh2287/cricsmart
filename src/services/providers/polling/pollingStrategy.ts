@@ -29,6 +29,7 @@ const MAX_CONCURRENT_LIVE_SESSIONS = Number(
 );
 const SAFE_DAILY_BUDGET = Number(process.env.POLLING_SAFE_DAILY_BUDGET ?? 20000);
 const DANGER_DAILY_BUDGET = Number(process.env.POLLING_DANGER_DAILY_BUDGET ?? 26000);
+const BASE_POLL_INTERVAL = Number(process.env.CRICAPI_POLL_INTERVAL_MS ?? 60_000);
 
 export function getPollingLimits() {
   return {
@@ -57,10 +58,11 @@ function getBaseIntervalMs(ctx: PollingContext): number {
   if (ctx.providerMode === "simulation") return 60_000;
 
   if (ctx.matchCompleted) return 300_000;
-  if (ctx.activeViewers <= 0) return 180_000;
-  if (ctx.isFixturesPage) return 60_000;
-  if (ctx.isDeathOvers) return 8000;
-  return 20_000;
+  if (ctx.activeViewers <= 0) return 5 * 60_000;
+  if (ctx.isDeathOvers) return BASE_POLL_INTERVAL;
+  if (ctx.activeViewers > 0) return 2 * 60_000;
+  if (ctx.isFixturesPage) return 3 * 60_000;
+  return BASE_POLL_INTERVAL;
 }
 
 export function getProjectedRequestsPerDay(ctx: PollingContext): number {

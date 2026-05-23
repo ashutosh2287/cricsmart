@@ -7,6 +7,7 @@ import {
   consumeStaleFallback,
 } from "@/services/runtime/snapshotCache";
 import { initMatch, getMatchState } from "@/services/matchEngine";
+import type { MatchRegistryRecord } from "@/services/match/matchRegistry";
 
 function normalizeFormat(format?: string): "T20" | "ODI" | "TEST" {
   const value = format?.trim().toUpperCase();
@@ -79,6 +80,28 @@ function buildUnstartedState(input: {
   };
 }
 
+function isPlaceholderName(name?: string): boolean {
+  return !name || name === "Team A" || name === "Team B";
+}
+
+function withRegistryTeamFallback<T extends { teamA?: { name?: string }; teamB?: { name?: string } }>(
+  state: T,
+  registry: MatchRegistryRecord | null
+): T {
+  const fallbackTeamA = registry?.teamA ?? "Team A";
+  const fallbackTeamB = registry?.teamB ?? "Team B";
+  const currentTeamAName = state?.teamA?.name;
+  const currentTeamBName = state?.teamB?.name;
+  const teamAName = isPlaceholderName(currentTeamAName) ? fallbackTeamA : currentTeamAName;
+  const teamBName = isPlaceholderName(currentTeamBName) ? fallbackTeamB : currentTeamBName;
+
+  return {
+    ...state,
+    teamA: { ...(state.teamA ?? {}), name: teamAName },
+    teamB: { ...(state.teamB ?? {}), name: teamBName },
+  } as T;
+}
+
 export async function GET(
   request: Request,
   context: { params: Promise<{ matchId: string }> }
@@ -129,13 +152,15 @@ export async function GET(
 
           return NextResponse.json({
             success: true,
-            match: initialState,
+            match: withRegistryTeamFallback(initialState, registry),
             runtime: {
               isRunning: false,
               isPaused: false,
               speed: 1500,
             },
             registry,
+            externalMatchId: registry?.externalMatchId,
+            seriesName: registry?.seriesName,
             fallbackSource: "postgres",
           });
         }
@@ -145,13 +170,15 @@ export async function GET(
       if (stale) {
         return NextResponse.json({
           success: true,
-          match: stale.state,
+          match: withRegistryTeamFallback(stale.state, registry),
           runtime: {
             isRunning: false,
             isPaused: false,
             speed: 1500,
           },
           registry,
+          externalMatchId: registry?.externalMatchId,
+          seriesName: registry?.seriesName,
           staleSnapshot: true,
           staleBadge: "STALE",
           staleLastUpdatedAt: new Date(stale.cachedAt).toISOString(),
@@ -182,13 +209,15 @@ export async function GET(
 
           return NextResponse.json({
             success: true,
-            match: runtimeData.state,
+            match: withRegistryTeamFallback(runtimeData.state, runtimeRegistry),
             runtime: runtimeData.control ?? {
               isRunning: false,
               isPaused: false,
               speed: 1500,
             },
             registry: runtimeRegistry,
+            externalMatchId: runtimeRegistry?.externalMatchId,
+            seriesName: runtimeRegistry?.seriesName,
             resolvedRuntimeMatchId: runtimeMatchId,
           });
         }
@@ -197,13 +226,15 @@ export async function GET(
         if (runtimeStale) {
           return NextResponse.json({
             success: true,
-            match: runtimeStale.state,
+            match: withRegistryTeamFallback(runtimeStale.state, runtimeRegistry),
             runtime: {
               isRunning: false,
               isPaused: false,
               speed: 1500,
             },
             registry: runtimeRegistry,
+            externalMatchId: runtimeRegistry?.externalMatchId,
+            seriesName: runtimeRegistry?.seriesName,
             staleSnapshot: true,
             staleBadge: "STALE",
             staleLastUpdatedAt: new Date(runtimeStale.cachedAt).toISOString(),
@@ -240,13 +271,15 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      match: data.state,
+      match: withRegistryTeamFallback(data.state, registry),
       runtime: data.control ?? {
         isRunning: false,
         isPaused: false,
         speed: 1500,
       },
       registry,
+      externalMatchId: registry?.externalMatchId,
+      seriesName: registry?.seriesName,
     });
   } catch (error) {
     console.error("❌ API ERROR:", error);

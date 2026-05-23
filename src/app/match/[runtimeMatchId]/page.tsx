@@ -1523,6 +1523,7 @@ function MatchInnerPage({
 
   const innings1 = currentEngineState.innings?.[0];
   const innings2 = currentEngineState.innings?.[1];
+  const isSecondInningsChase = (currentEngineState.currentInningsIndex ?? 0) === 1;
   const matchMeta = getMatchMeta(match.slug);
 
   const team1Name =
@@ -1543,7 +1544,7 @@ function MatchInnerPage({
   let ballsLeft = 0;
   let rrr = 0;
 
-  if (innings1 && innings2) {
+  if (innings1 && innings2 && isSecondInningsChase) {
     target = (innings1.runs ?? 0) + 1;
     const currentRuns = innings2.runs ?? 0;
     runsNeeded = target - currentRuns;
@@ -1618,8 +1619,8 @@ function MatchInnerPage({
   matchEnded={currentEngineState.matchEnded}
   winner={currentEngineState.winner}
   winBy={currentEngineState.winBy}
-  target={innings2 ? target : undefined}
-  rrr={innings2 && !currentEngineState.matchEnded ? rrr : undefined}
+  target={isSecondInningsChase && innings2 ? target : undefined}
+  rrr={isSecondInningsChase && innings2 && !currentEngineState.matchEnded ? rrr : undefined}
   crr={crr}
 />
                   </GraphErrorBoundary>
@@ -1650,10 +1651,10 @@ function MatchInnerPage({
                       value={displayOver}
                       tone="amber"
                     />
-                    {innings2 && !currentEngineState.matchEnded && (
+                    {isSecondInningsChase && innings2 && !currentEngineState.matchEnded && (
                       <StatPill label="Target" value={target} tone="neutral" />
                     )}
-                    {innings2 && !currentEngineState.matchEnded && (
+                    {isSecondInningsChase && innings2 && !currentEngineState.matchEnded && (
                       <StatPill
                         label="RRR"
                         value={rrr ? rrr.toFixed(2) : "0.00"}

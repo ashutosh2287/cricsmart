@@ -7,17 +7,10 @@ import { getProviderMode } from "@/config/providerMode";
 import { getMatchProvider } from "@/services/providers/providerFactory";
 
 const CACHE_KEY = "live:fixtures:cache";
-const CACHE_TTL_SECONDS = 60;
-const REQUEST_TIMEOUT_MS = 20000;
+const CACHE_TTL_SECONDS = 300;
+const REQUEST_TIMEOUT_MS = 8000;
 const API_BASE = "https://api.cricapi.com/v1";
 const PRIMARY_PROVIDER_ENDPOINT = "/currentMatches?offset=0";
-const PROVIDER_OFFSET_STEP = 25;
-const FALLBACK_PROVIDER_ENDPOINTS = [
-  `/currentMatches?offset=${PROVIDER_OFFSET_STEP}`,
-  `/currentMatches?offset=${PROVIDER_OFFSET_STEP * 2}`,
-  "/matches?offset=0",
-  `/matches?offset=${PROVIDER_OFFSET_STEP}`,
-];
 const STATUS_COMPLETED_REGEX = /(won|loss|tied|draw|result|abandon|stumps|match over)/i;
 const STATUS_LIVE_REGEX = /(live|innings|in progress|session|day\s*[1-5]|break|chasing|trail|need|required|target)/i;
 const STATUS_UPCOMING_REGEX = /(starts|yet to begin|scheduled|upcoming|toss)/i;
@@ -289,16 +282,6 @@ export async function GET() {
       const mergedMatches: ProviderMatch[] = [];
       if (primary.ok && primary.payload) {
         mergedMatches.push(...getProviderMatches(primary.payload));
-      }
-
-      if (mergedMatches.length === 0) {
-        for (const endpoint of FALLBACK_PROVIDER_ENDPOINTS) {
-          const result = await fetchProviderEndpoint(endpoint, providerKey, controller.signal);
-          endpointResults.push(result);
-          if (result.ok && result.payload) {
-            mergedMatches.push(...getProviderMatches(result.payload));
-          }
-        }
       }
 
       const { deduped: d, dedupeRemoved } = dedupeProviderMatches(mergedMatches);

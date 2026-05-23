@@ -180,6 +180,11 @@ export async function initializeRuntimeMatch(
         teamB,
         externalMatchId: resolvedExternalMatchId,
       });
+
+      return {
+        matchId,
+        alreadyInitialized: Boolean(existing),
+      };
     }
 
     if (providerMode === "simulation" && !existing) {

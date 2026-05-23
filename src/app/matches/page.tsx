@@ -23,7 +23,7 @@ type SimMatch = {
   sessionState?: string;
 };
 
-const FIXTURE_POLL_INTERVAL_MS = 60_000;
+const FIXTURE_POLL_INTERVAL_MS = 5 * 60_000;
 const SIM_POLL_INTERVAL_MS = 5_000;
 
 const EMPTY_DISCOVERY: CuratedDiscoveryPayload = {
@@ -188,7 +188,7 @@ export default function MatchesPage() {
         </div>
       )}
 
-      <MatchSection title="LIVE NOW" subtitle="Auto-refresh: 60s">
+      <MatchSection title="LIVE NOW" subtitle="Auto-refresh: 5m">
         {realLoading ? (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (

@@ -157,12 +157,14 @@ export async function bootstrapLiveSession(args: BootstrapArgs): Promise<Bootstr
     const currentState = getMatchState(args.matchId);
     if (currentState) {
       if (currentState.teamA) {
-        currentState.teamA.name = args.teamA;
-        currentState.teamA.short = args.teamA.slice(0, 3).toUpperCase();
+        const teamAState = currentState.teamA as { name: string; short?: string };
+        teamAState.name = args.teamA;
+        teamAState.short = args.teamA.slice(0, 3).toUpperCase();
       }
       if (currentState.teamB) {
-        currentState.teamB.name = args.teamB;
-        currentState.teamB.short = args.teamB.slice(0, 3).toUpperCase();
+        const teamBState = currentState.teamB as { name: string; short?: string };
+        teamBState.name = args.teamB;
+        teamBState.short = args.teamB.slice(0, 3).toUpperCase();
       }
     }
     await saveRuntimeIfMissing(args.matchId);

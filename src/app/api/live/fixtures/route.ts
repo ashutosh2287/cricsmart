@@ -10,7 +10,8 @@ const CACHE_KEY = "live:fixtures:cache";
 const CACHE_TTL_SECONDS = 300;
 const REQUEST_TIMEOUT_MS = 8000;
 const API_BASE = "https://api.cricapi.com/v1";
-const PRIMARY_PROVIDER_ENDPOINT = "/currentMatches?offset=0";
+const PAGE_1_ENDPOINT = "/currentMatches?offset=0";
+const PAGE_2_ENDPOINT = "/currentMatches?offset=25";
 const STATUS_COMPLETED_REGEX = /(won|loss|tied|draw|result|abandon|stumps|match over)/i;
 const STATUS_LIVE_REGEX = /(live|innings|in progress|session|day\s*[1-5]|break|chasing|trail|need|required|target)/i;
 const STATUS_UPCOMING_REGEX = /(starts|yet to begin|scheduled|upcoming|toss)/i;
@@ -274,14 +275,18 @@ export async function GET() {
         throw new Error("Missing server-side CRICKET_API_KEY for cricketdata provider");
       }
 
-      const endpointResults: ProviderEndpointResult[] = [];
-
-      const primary = await fetchProviderEndpoint(PRIMARY_PROVIDER_ENDPOINT, providerKey, controller.signal);
-      endpointResults.push(primary);
+      const [page1, page2] = await Promise.all([
+        fetchProviderEndpoint(PAGE_1_ENDPOINT, providerKey, controller.signal),
+        fetchProviderEndpoint(PAGE_2_ENDPOINT, providerKey, controller.signal),
+      ]);
+      const endpointResults: ProviderEndpointResult[] = [page1, page2];
 
       const mergedMatches: ProviderMatch[] = [];
-      if (primary.ok && primary.payload) {
-        mergedMatches.push(...getProviderMatches(primary.payload));
+      if (page1.ok && page1.payload) {
+        mergedMatches.push(...getProviderMatches(page1.payload));
+      }
+      if (page2.ok && page2.payload) {
+        mergedMatches.push(...getProviderMatches(page2.payload));
       }
 
       const { deduped: d, dedupeRemoved } = dedupeProviderMatches(mergedMatches);

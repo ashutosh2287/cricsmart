@@ -362,7 +362,6 @@ function TabsArea({
   analytics,
   insights,
   sessionMeta,
-  liveStatus,
 }: {
   match: Match;
   analytics: {
@@ -371,7 +370,6 @@ function TabsArea({
   };
   insights: BroadcastInsight[];
   sessionMeta?: MatchSessionMeta | null;
-  liveStatus?: string | null;
 }) {
   const isAdmin = true;
   const { state: currentEngineState } = useMatch();
@@ -1429,6 +1427,7 @@ function MatchInnerPage({
   analytics,
   insights,
   sessionMeta,
+  liveStatus,
 }: {
   match: Match;
   analytics: {
@@ -1437,6 +1436,7 @@ function MatchInnerPage({
   };
   insights: BroadcastInsight[];
   sessionMeta?: MatchSessionMeta | null;
+  liveStatus?: string | null;
 }) {
   // ✅ Single reactive source — no local engineState
   const { state: currentEngineState } = useMatch();

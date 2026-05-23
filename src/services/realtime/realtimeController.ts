@@ -85,25 +85,25 @@ if (payload.type === "BALL_EVENT" && payload.data) {
       removeClientFromStore(matchId, client);
     }
   }
+}
 
-  export function broadcastMatchState(matchId: string, state: unknown): void {
-    const clients = getClients(matchId);
-    if (!clients || clients.size === 0) return;
+export function broadcastMatchState(matchId: string, state: unknown): void {
+  const clients = getClients(matchId);
+  if (!clients || clients.size === 0) return;
 
-    const payload = JSON.stringify({
-      type: "SIMULATION_STATE_UPDATE",
-      matchId,
-      data: state,
-    });
+  const payload = JSON.stringify({
+    type: "SIMULATION_STATE_UPDATE",
+    matchId,
+    data: state,
+  });
 
-    const message = `event: SIMULATION_STATE_UPDATE\ndata: ${payload}\n\n`;
+  const message = `event: SIMULATION_STATE_UPDATE\ndata: ${payload}\n\n`;
 
-    for (const client of Array.from(clients as Set<Client>)) {
-      try {
-        client.send(message);
-      } catch {
-        removeClientFromStore(matchId, client);
-      }
+  for (const client of Array.from(clients as Set<Client>)) {
+    try {
+      client.send(message);
+    } catch {
+      removeClientFromStore(matchId, client);
     }
   }
 }

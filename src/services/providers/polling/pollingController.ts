@@ -36,6 +36,7 @@ type PollingSessionConfig = {
 type PollingSession = {
   timer: ReturnType<typeof setTimeout> | null;
   running: boolean;
+  execute: (() => Promise<void>) | null;
 };
 
 const sessions = new Map<string, PollingSession>();
@@ -43,6 +44,25 @@ const MIN_JITTER_MS = 2000;
 const MAX_JITTER_MS = 5000;
 const MIN_JITTER_FLOOR_MS = 500;
 const MAX_JITTER_FACTOR = 0.5;
+const BASE_POLL_INTERVAL = Number(process.env.CRICAPI_POLL_INTERVAL_MS ?? 60_000);
+const MAX_POLL_INTERVAL_LIVE = 60_000;
+const MAX_POLL_INTERVAL_DEFAULT = 120_000;
+
+function getOptimalPollInterval(context: PollingContext): number {
+  if (context.activeViewers === 0) {
+    return 5 * 60_000;
+  }
+
+  if (context.activeViewers > 0 && context.isDeathOvers) {
+    return 60_000;
+  }
+
+  if (context.activeViewers > 0) {
+    return 2 * 60_000;
+  }
+
+  return 3 * 60_000;
+}
 
 function applyJitter(delayMs: number): number {
   const baseSpan = MIN_JITTER_MS + Math.random() * (MAX_JITTER_MS - MIN_JITTER_MS);
@@ -82,6 +102,7 @@ export function startPollingSession(config: PollingSessionConfig) {
   const session: PollingSession = {
     timer: null,
     running: true,
+    execute: null,
   };
 
   sessions.set(config.matchId, session);
@@ -114,7 +135,15 @@ export function startPollingSession(config: PollingSessionConfig) {
       return;
     }
 
-    const nextInterval = resolvePollingIntervalMs(context);
+    const strategyInterval = resolvePollingIntervalMs(context);
+    const activityInterval =
+      context.providerMode === "cricketdata" ? getOptimalPollInterval(context) : strategyInterval;
+    const desiredInterval =
+      context.providerMode === "cricketdata"
+        ? Math.max(BASE_POLL_INTERVAL, activityInterval)
+        : strategyInterval;
+    const cap = context.matchCompleted ? MAX_POLL_INTERVAL_DEFAULT : MAX_POLL_INTERVAL_LIVE;
+    const nextInterval = Math.min(desiredInterval, cap);
     const priorityScore = getMatchPriorityScore({
       teamA: context.teamA,
       teamB: context.teamB,
@@ -201,6 +230,7 @@ export function startPollingSession(config: PollingSessionConfig) {
     scheduleNext(config.matchId, applyJitter(nextInterval), execute);
   };
 
+  session.execute = execute;
   scheduleNext(config.matchId, 0, execute);
 }
 
@@ -221,4 +251,23 @@ export function stopPollingSession(matchId: string) {
 
 export function hasPollingSession(matchId: string) {
   return sessions.get(matchId)?.running === true;
+}
+
+export function resetPollingInterval(matchId: string): void {
+  const session = sessions.get(matchId);
+  if (!session) return;
+
+  updatePollingContext(matchId, {
+    pollIntervalMs: BASE_POLL_INTERVAL,
+    status: "active",
+  });
+
+  if (session.running && session.execute) {
+    scheduleNext(matchId, applyJitter(BASE_POLL_INTERVAL), session.execute);
+  }
+
+  logger.info("PROVIDER", "polling_interval_reset", {
+    matchId,
+    interval: BASE_POLL_INTERVAL,
+  });
 }

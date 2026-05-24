@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Player = {
   id: string;
@@ -71,13 +71,13 @@ export function ScoringConsole({ matchId, hostedMatchId }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const resetSelections = () => {
+  const resetSelections = useCallback(() => {
     setStriker("");
     setNonStriker("");
     setBowler("");
-  };
+  }, []);
 
-  async function loadCurrentInningsIndex() {
+  const loadCurrentInningsIndex = useCallback(async () => {
     const res = await fetch(`/api/match/${matchId}`, { cache: "no-store" });
     if (!res.ok) return;
     const data = (await res.json()) as { match?: { currentInningsIndex?: number } };
@@ -88,9 +88,9 @@ export function ScoringConsole({ matchId, hostedMatchId }: Props) {
       }
       return inningsIndex;
     });
-  }
+  }, [matchId, resetSelections]);
 
-  async function loadPlayingXI() {
+  const loadPlayingXI = useCallback(async () => {
     const res = await fetch(`/api/hosted-matches/${hostedMatchId}/playing-xi`, {
       cache: "no-store",
     });
@@ -103,7 +103,7 @@ export function ScoringConsole({ matchId, hostedMatchId }: Props) {
     const data = (await res.json()) as { playingXI?: PlayingXI };
     setPlayingXI(data.playingXI ?? null);
     setError(null);
-  }
+  }, [hostedMatchId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,7 +128,7 @@ export function ScoringConsole({ matchId, hostedMatchId }: Props) {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [hostedMatchId, matchId]);
+  }, [loadCurrentInningsIndex, loadPlayingXI]);
 
   const activeTeams = useMemo(() => {
     if (!playingXI) {

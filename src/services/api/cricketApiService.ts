@@ -1,3 +1,4 @@
+import { getRedis } from "@/services/storage/redisClient"
 import { NonRetryableFetchError } from "./reliableFetch"
 
 // src/services/api/cricketApiService.ts
@@ -24,18 +25,18 @@ export type ApiBallEvent = {
 }
 
 export type BasicMatchScore = {
-  matchId: string;
-  status: string;
-  matchStarted: boolean;
-  matchEnded: boolean;
-  innings: {
-    inning: string;
-    r: number;
-    w: number;
-    o: number;
-  }[];
-  teams: string[];
-};
+  matchId: string
+  status: string
+  matchStarted: boolean
+  matchEnded: boolean
+  innings: Array<{
+    inning: string
+    r: number
+    w: number
+    o: number
+  }>
+  teams: string[]
+}
 
 type ApiInnings = {
   overs?: {
@@ -63,6 +64,46 @@ function generateEventId(
   ball: number
 ) {
   return `${matchId}_${innings}_${over}_${ball}`
+}
+
+export async function fetchBasicMatchScore(
+  externalMatchId: string
+): Promise<BasicMatchScore | null> {
+  try {
+    const redis = getRedis()
+    const raw = await redis.get("live:raw:matches")
+    if (!raw) return null
+
+    const matches = JSON.parse(raw) as Array<{
+      id?: string | number
+      status?: string
+      matchStarted?: boolean
+      matchEnded?: boolean
+      score?: Array<{ inning?: string; r?: number; w?: number; o?: number }>
+      teams?: string[]
+    }>
+
+    const match = matches.find((item) => String(item.id ?? "") === externalMatchId)
+    if (!match) return null
+
+    return {
+      matchId: externalMatchId,
+      status: match.status ?? "",
+      matchStarted: Boolean(match.matchStarted),
+      matchEnded: Boolean(match.matchEnded),
+      innings: Array.isArray(match.score)
+        ? match.score.map((score) => ({
+            inning: score.inning ?? "",
+            r: Number(score.r) || 0,
+            w: Number(score.w) || 0,
+            o: Number(score.o) || 0,
+          }))
+        : [],
+      teams: Array.isArray(match.teams) ? match.teams : [],
+    }
+  } catch {
+    return null
+  }
 }
 
 export async function fetchWithTimeout(
@@ -167,55 +208,4 @@ export async function fetchLiveMatchEvents(
   })
 
   return events
-}
-
-export async function fetchBasicMatchScore(
-  externalMatchId: string,
-  signal?: AbortSignal
-): Promise<BasicMatchScore | null> {
-  const apiKey = process.env.CRICKET_API_KEY
-  if (!apiKey) return null
-
-  const urls = [
-    `${API_BASE}/currentMatches?apikey=${apiKey}&offset=0`,
-    `${API_BASE}/currentMatches?apikey=${apiKey}&offset=25`,
-  ]
-
-  for (const url of urls) {
-    try {
-      const res = await fetchWithTimeout(url, { signal })
-      if (!res.ok) continue
-
-      const data = await res.json()
-      if (!Array.isArray(data?.data)) continue
-
-      const match = data.data.find(
-        (m: { id?: string }) => m.id === externalMatchId
-      )
-
-      if (!match) continue
-
-      return {
-        matchId: externalMatchId,
-        status: typeof match.status === "string" ? match.status : "",
-        matchStarted: Boolean(match.matchStarted),
-        matchEnded: Boolean(match.matchEnded),
-        innings: Array.isArray(match.score)
-          ? match.score.map(
-              (s: { inning?: string; r?: number; w?: number; o?: number }) => ({
-                inning: s.inning ?? "",
-                r: s.r ?? 0,
-                w: s.w ?? 0,
-                o: s.o ?? 0,
-              })
-            )
-          : [],
-        teams: Array.isArray(match.teams) ? match.teams : [],
-      }
-    } catch {
-      continue
-    }
-  }
-
-  return null
 }

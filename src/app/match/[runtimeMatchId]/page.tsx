@@ -34,7 +34,7 @@ import {
   useMatchSelector,
   useScore,
 } from "@/services/matchSelectors";
-import { Team } from "@/data/teams";
+import { teams, Team } from "@/data/teams";
 import { Match } from "@/types/match";
 import { motion } from "framer-motion";
 
@@ -84,6 +84,9 @@ import { GraphErrorBoundary } from "@/components/match/GraphErrorBoundary";
 // ─────────────────────────────────────────────
 
 type AnalysisFilter = "ALL" | "BATTING" | "BOWLING" | "PRESSURE";
+type SquadRole = "BAT" | "BOWL" | "AR" | "WK";
+type SquadPlayer = { name: string; role: SquadRole };
+type EngineStateWithHostedMatchId = MatchState & { hostedMatchId?: string | null };
 type MainTab =
   | "overview"
   | "live"
@@ -151,6 +154,43 @@ function formatOverDisplay(overs?: Record<string, unknown>) {
 
   if (balls >= 6) return lastOverNumber + 1;
   return Number(`${lastOverNumber}.${balls}`);
+}
+
+function resolveHostedMatchId(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function buildFallbackSimulationXI(teamName: string): SquadPlayer[] {
+  const roles: SquadRole[] = [
+    "BAT",
+    "BAT",
+    "BAT",
+    "WK",
+    "BAT",
+    "AR",
+    "AR",
+    "BOWL",
+    "BOWL",
+    "BOWL",
+    "BOWL",
+  ];
+
+  return roles.map((role, index) => ({
+    name: `${teamName} Player ${index + 1}`,
+    role,
+  }));
+}
+
+function buildSimulationPlayingXI(teamName: string): SquadPlayer[] {
+  const knownTeam = teams.find((team) => team.name === teamName);
+  if (knownTeam?.squad?.length) {
+    return knownTeam.squad.slice(0, 11).map((player) => ({
+      name: player.name,
+      role: player.role,
+    }));
+  }
+
+  return buildFallbackSimulationXI(teamName);
 }
 
 // ─────────────────────────────────────────────
@@ -362,6 +402,7 @@ function TabsArea({
   analytics,
   insights,
   sessionMeta,
+  hostedMatchId,
 }: {
   match: Match;
   analytics: {
@@ -370,6 +411,7 @@ function TabsArea({
   };
   insights: BroadcastInsight[];
   sessionMeta?: MatchSessionMeta | null;
+  hostedMatchId?: string | null;
 }) {
   const isAdmin = true;
   const { state: currentEngineState } = useMatch();
@@ -399,6 +441,12 @@ function TabsArea({
   const [startError, setStartError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1500);
   const [showReplayTimeline, setShowReplayTimeline] = useState(false);
+
+  const currentHostedMatchId =
+    resolveHostedMatchId((currentEngineState as EngineStateWithHostedMatchId | undefined)?.hostedMatchId) ??
+    resolveHostedMatchId(hostedMatchId) ??
+    resolveHostedMatchId(matchMeta?.hostedMatchId);
+  const isSimulationMatch = !currentHostedMatchId;
 
   const hasLiveMatchState =
     !!currentEngineState &&
@@ -1232,9 +1280,30 @@ function TabsArea({
                     onStart={(teamA, teamB) => {
                       const nextMeta = {
                         matchId: match.slug,
+                        hostedMatchId: currentHostedMatchId ?? undefined,
                         teamA: { id: teamA.short, name: teamA.name },
                         teamB: { id: teamB.short, name: teamB.name },
                       };
+
+                      if (isSimulationMatch && currentEngineState) {
+                        const teamAXI = buildSimulationPlayingXI(teamA.name);
+                        const teamBXI = buildSimulationPlayingXI(teamB.name);
+                        const nextState: MatchState = {
+                          ...currentEngineState,
+                          tossWinner: teamA.name,
+                          decision: "BAT",
+                          teamA: { ...currentEngineState.teamA, name: teamA.name, squad: teamAXI },
+                          teamB: { ...currentEngineState.teamB, name: teamB.name, squad: teamBXI },
+                          innings: currentEngineState.innings.map((innings, index) => ({
+                            ...innings,
+                            battingTeam: index === 0 ? teamA.name : teamB.name,
+                            bowlingTeam: index === 0 ? teamB.name : teamA.name,
+                          })),
+                        };
+                        hydrateMatchState(match.slug, nextState);
+                        setMatchState(match.slug, nextState);
+                      }
+
                       setMatchMeta(nextMeta);
                       setLocalMatchMeta(nextMeta);
                       setStartError(null);
@@ -1428,6 +1497,7 @@ function MatchInnerPage({
   insights,
   sessionMeta,
   liveStatus,
+  hostedMatchId,
 }: {
   match: Match;
   analytics: {
@@ -1437,6 +1507,7 @@ function MatchInnerPage({
   insights: BroadcastInsight[];
   sessionMeta?: MatchSessionMeta | null;
   liveStatus?: string | null;
+  hostedMatchId?: string | null;
 }) {
   // ✅ Single reactive source — no local engineState
   const { state: currentEngineState } = useMatch();
@@ -1697,6 +1768,7 @@ function MatchInnerPage({
             analytics={analytics}
             insights={insights}
             sessionMeta={sessionMeta}
+            hostedMatchId={hostedMatchId}
           />
         </GraphErrorBoundary>
       </div>
@@ -1727,6 +1799,7 @@ export default function MatchDetailPage({
   // ✅ Only non-reactive metadata lives here
   const [match, setMatch] = useState<Match | undefined>();
   const [sessionMeta, setSessionMeta] = useState<MatchSessionMeta | null>(null);
+  const [hostedMatchId, setHostedMatchId] = useState<string | null>(null);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
   const [insights, setInsights] = useState<BroadcastInsight[]>([]);
 
@@ -1804,6 +1877,10 @@ export default function MatchDetailPage({
         hydrateMatchState(id, data.match);
 
         setSessionMeta(data.registry ?? null);
+        const loadedHostedMatchId =
+          resolveHostedMatchId(data.match.hostedMatchId) ??
+          resolveHostedMatchId(data.hostedMatchId);
+        setHostedMatchId(loadedHostedMatchId);
         setLiveStatus(
           typeof data.liveStatus === "string" && data.liveStatus.trim()
             ? data.liveStatus.trim()
@@ -1826,6 +1903,7 @@ export default function MatchDetailPage({
         if (teamAName && teamBName) {
           setMatchMeta({
             matchId: id,
+            hostedMatchId: loadedHostedMatchId ?? undefined,
             teamA: {
               id: getTeamIdOrSlug(data.match.teamA?.id, teamAName),
               name: teamAName,
@@ -1966,6 +2044,7 @@ export default function MatchDetailPage({
               insights={insights}
               sessionMeta={sessionMeta}
               liveStatus={liveStatus}
+              hostedMatchId={hostedMatchId}
             />
           ) : (
             <div className="p-10 text-center text-white">

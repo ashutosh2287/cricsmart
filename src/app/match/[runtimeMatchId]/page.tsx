@@ -664,10 +664,8 @@ function TabsArea({
 
   const hostedTeamASquad = currentEngineState?.teamA?.squad ?? [];
   const hostedTeamBSquad = currentEngineState?.teamB?.squad ?? [];
-  const simulationFallbackSquads = useMemo(
-    () => deriveSimulationSquadsFromState(currentEngineState),
-    [currentEngineState]
-  );
+  const simulationFallbackSquads =
+    deriveSimulationSquadsFromState(currentEngineState);
   const isSimulationMatch =
     match.isSimulation === true ||
     !(typeof match.hostedMatchId === "string" && match.hostedMatchId.trim().length > 0);

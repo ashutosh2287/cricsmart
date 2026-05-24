@@ -53,6 +53,7 @@ function buildMatchMetadata(
     teamB?: { id?: string; name?: string };
     tossWinner?: string;
     tossDecision?: "BAT" | "BOWL";
+    hostedMatchId?: string | null;
   }
 ): MatchMetadata | null {
   const teamAName = payload?.teamA?.name;
@@ -86,6 +87,11 @@ function buildMatchMetadata(
             winner: tossWinner,
             decision: tossDecision,
           },
+        }
+      : {}),
+    ...(payload?.hostedMatchId
+      ? {
+          hostedMatchId: payload.hostedMatchId,
         }
       : {}),
   };
@@ -155,7 +161,8 @@ async function refreshLatestSnapshot(matchId: string) {
     teamA: body.match.teamA,
     teamB: body.match.teamB,
     tossWinner: body.match.tossWinner,
-    tossDecision: body.match.tossDecision,
+    tossDecision: body.match.tossDecision ?? body.match.decision,
+    hostedMatchId: body.match.hostedMatchId ?? body.hostedMatchId ?? null,
   });
   if (metadata) {
     setMatchMeta(metadata);
@@ -234,7 +241,35 @@ function openSocket(matchId: string) {
         console.error("ENGINE ERROR: missing match metadata");
         return;
       }
-      if (!matchMeta.toss?.winner || !matchMeta.toss?.decision) {
+      const engineState = getMatchState(matchId) as
+        | { hostedMatchId?: string | null }
+        | null;
+      const hostedMatchId =
+        matchMeta.hostedMatchId ??
+        (typeof engineState?.hostedMatchId === "string" && engineState.hostedMatchId.trim()
+          ? engineState.hostedMatchId
+          : undefined);
+      const isSimulation = !hostedMatchId;
+
+      let tossWinner = matchMeta.toss?.winner;
+      let tossDecision = matchMeta.toss?.decision;
+      const missingTossMetadata = !tossWinner || !tossDecision;
+
+      if (isSimulation && missingTossMetadata) {
+        tossWinner = matchMeta.teamA.name;
+        tossDecision = "BAT";
+        setMatchMeta({
+          ...matchMeta,
+          tossWinner,
+          tossDecision,
+          toss: {
+            winner: tossWinner,
+            decision: tossDecision,
+          },
+        });
+      }
+
+      if (!tossWinner || !tossDecision) {
         console.warn("ENGINE WARN: skipping auto-start (missing toss metadata)");
         return;
       }
@@ -246,8 +281,8 @@ function openSocket(matchId: string) {
           matchId,
           teamAName: matchMeta.teamA.name,
           teamBName: matchMeta.teamB.name,
-          tossWinner: matchMeta.toss.winner,
-          tossDecision: matchMeta.toss.decision,
+          tossWinner,
+          tossDecision,
         }),
       })
         .then((res) => res.json())

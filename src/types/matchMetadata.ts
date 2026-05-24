@@ -18,4 +18,5 @@ export type MatchMetadata = {
     winner: string;
     decision: "BAT" | "BOWL";
   };
+  hostedMatchId?: string;
 };

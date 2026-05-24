@@ -1,3 +1,4 @@
+import { getRedis } from "@/services/storage/redisClient"
 import { NonRetryableFetchError } from "./reliableFetch"
 
 // src/services/api/cricketApiService.ts
@@ -21,6 +22,20 @@ export type ApiBallEvent = {
   ingestionTimestamp?: number;
   eventSource?: "LIVE_INGESTION" | "MOCK_INGESTION" | "SIMULATION" | "REPLAY" | "MANUAL";
   replaySourceId?: string;
+}
+
+export type BasicMatchScore = {
+  matchId: string
+  status: string
+  matchStarted: boolean
+  matchEnded: boolean
+  innings: Array<{
+    inning: string
+    r: number
+    w: number
+    o: number
+  }>
+  teams: string[]
 }
 
 type ApiInnings = {
@@ -49,6 +64,46 @@ function generateEventId(
   ball: number
 ) {
   return `${matchId}_${innings}_${over}_${ball}`
+}
+
+export async function fetchBasicMatchScore(
+  externalMatchId: string
+): Promise<BasicMatchScore | null> {
+  try {
+    const redis = getRedis()
+    const raw = await redis.get("live:raw:matches")
+    if (!raw) return null
+
+    const matches = JSON.parse(raw) as Array<{
+      id?: string | number
+      status?: string
+      matchStarted?: boolean
+      matchEnded?: boolean
+      score?: Array<{ inning?: string; r?: number; w?: number; o?: number }>
+      teams?: string[]
+    }>
+
+    const match = matches.find((item) => String(item.id ?? "") === externalMatchId)
+    if (!match) return null
+
+    return {
+      matchId: externalMatchId,
+      status: match.status ?? "",
+      matchStarted: Boolean(match.matchStarted),
+      matchEnded: Boolean(match.matchEnded),
+      innings: Array.isArray(match.score)
+        ? match.score.map((score) => ({
+            inning: score.inning ?? "",
+            r: Number(score.r) || 0,
+            w: Number(score.w) || 0,
+            o: Number(score.o) || 0,
+          }))
+        : [],
+      teams: Array.isArray(match.teams) ? match.teams : [],
+    }
+  } catch {
+    return null
+  }
 }
 
 export async function fetchWithTimeout(

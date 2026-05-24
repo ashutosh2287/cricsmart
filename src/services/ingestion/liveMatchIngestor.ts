@@ -1,11 +1,11 @@
-import { ApiBallEvent } from "../api/cricketApiService";
+import { ApiBallEvent, fetchBasicMatchScore } from "../api/cricketApiService";
 import { smartReconcileMatch } from "../reconciliation/smartReconciler";
 import { fetchWithRetry } from "../api/reliableFetch";
 import { pushEvents, flushEvents } from "./eventBuffer";
 import { isMatchActive } from "../match/matchManager";
 import { redis } from "../queue/redisClient";
 import { registerPlayer } from "../player/playerRegistry";
-import { getMatchState, syncBattingOrder } from "../matchEngine";
+import { getMatchState, setMatchState, syncBattingOrder } from "../matchEngine";
 import {
   getMatchRegistry,
   markMatchDisconnected,
@@ -26,6 +26,7 @@ import {
   markProviderOutageEnded,
   markProviderOutageStarted,
 } from "@/services/runtime/snapshotCache";
+import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 
 type MatchRuntime = {
   abortController: AbortController;
@@ -166,6 +167,106 @@ async function pollAndIngest(matchId: string, externalMatchId: string) {
     }
 
     if (!Array.isArray(events) || events.length === 0) {
+      console.log(`[INGESTOR] No ball events for ${matchId} — trying basic score fallback`);
+
+      try {
+        const basicScore = await fetchBasicMatchScore(externalMatchId);
+        console.log(`[INGESTOR] Basic score result:`, JSON.stringify(basicScore));
+
+        if (basicScore && basicScore.innings.length > 0) {
+          const storage = new RedisSimulationStorage();
+          const stored = await storage.load(matchId);
+          console.log(`[INGESTOR] Stored state found:`, Boolean(stored));
+
+          if (stored) {
+            const updatedState = {
+              ...stored.state,
+              innings: stored.state.innings.map((innings) => ({ ...innings })),
+            };
+
+            basicScore.innings.forEach((inningScore, idx) => {
+              if (updatedState.innings[idx]) {
+                updatedState.innings[idx] = {
+                  ...updatedState.innings[idx],
+                  runs: inningScore.r,
+                  wickets: inningScore.w,
+                  over: Math.floor(inningScore.o),
+                  ball: Math.round((inningScore.o % 1) * 10),
+                };
+              }
+            });
+
+            const statusLower = basicScore.status.toLowerCase();
+            const isInningsBreak =
+              statusLower.includes("innings break") ||
+              statusLower.includes("innings complete");
+
+            if (isInningsBreak && updatedState.innings[0]) {
+              updatedState.innings[0] = {
+                ...updatedState.innings[0],
+                completed: true,
+              };
+              if (updatedState.innings[1]) {
+                updatedState.currentInningsIndex = 1;
+              }
+            }
+
+            await storage.save(matchId, updatedState, stored.control ?? {
+              isRunning: true,
+              isPaused: false,
+              speed: 1500,
+            });
+            setMatchState(matchId, updatedState);
+
+            const currentInnings =
+              updatedState.innings[updatedState.currentInningsIndex];
+            const runs = currentInnings?.runs ?? 0;
+            const wickets = currentInnings?.wickets ?? 0;
+            const over = currentInnings?.over ?? 0;
+            const ball = currentInnings?.ball ?? 0;
+
+            await touchMatchHeartbeat(matchId, {
+              currentRuns: runs,
+              currentWickets: wickets,
+              currentOver: over,
+              currentBall: ball,
+              score: `${runs}/${wickets}`,
+              overDisplay: `${over}.${ball}`,
+              commentaryPreview: basicScore.status,
+            });
+
+            try {
+              const { broadcastMatchState } = await import(
+                "@/services/realtime/realtimeController"
+              );
+              broadcastMatchState(matchId, updatedState);
+              console.log(
+                `[INGESTOR] Broadcast sent for ${matchId} — score: ${runs}/${wickets}`
+              );
+            } catch (broadcastErr) {
+              console.error(`[INGESTOR] Broadcast failed:`, broadcastErr);
+            }
+
+            logger.info("PROVIDER", "basic_score_update", {
+              matchId,
+              score: `${runs}/${wickets}`,
+              overs: `${over}.${ball}`,
+              status: basicScore.status,
+            });
+          } else {
+            console.log(
+              `[INGESTOR] No stored state found for ${matchId} — cannot update`
+            );
+          }
+        } else {
+          console.log(
+            `[INGESTOR] No innings data in basic score for ${externalMatchId}`
+          );
+        }
+      } catch (err) {
+        console.error(`[INGESTOR] Basic score fallback error:`, err);
+      }
+
       await touchMatchHeartbeat(matchId);
       return;
     }

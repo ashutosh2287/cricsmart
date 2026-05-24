@@ -143,6 +143,15 @@ export function routeRealtimeEvent(payload: RealtimeEvent) {
       }
       dispatchCricUpdate(type, data);
       break;
+    case "SIMULATION_STATE_UPDATE":
+      console.log("📡 SIMULATION_STATE_UPDATE received");
+      if (!data) {
+        console.warn("⚠️ SIMULATION_STATE_UPDATE missing data");
+        return;
+      }
+      setMatchState(matchId, data as MatchState);
+      dispatchCricUpdate(type, data);
+      break;
 
     /*
     ========================================

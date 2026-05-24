@@ -86,3 +86,29 @@ if (payload.type === "BALL_EVENT" && payload.data) {
     }
   }
 }
+
+export function broadcastMatchState(matchId: string, state: unknown): void {
+  const clients = getClients(matchId);
+
+  if (!clients || clients.size === 0) {
+    console.log(`[BROADCAST] No clients for ${matchId}`);
+    return;
+  }
+
+  const payload = JSON.stringify({
+    type: "SIMULATION_STATE_UPDATE",
+    matchId,
+    data: state,
+  });
+
+  const message = `event: SIMULATION_STATE_UPDATE\ndata: ${payload}\n\n`;
+  console.log(`[BROADCAST] Sending to ${clients.size} clients for ${matchId}`);
+
+  for (const client of Array.from(clients as Set<Client>)) {
+    try {
+      client.send(message);
+    } catch {
+      removeClientFromStore(matchId, client);
+    }
+  }
+}

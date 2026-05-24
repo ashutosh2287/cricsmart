@@ -7,6 +7,7 @@ import { getProviderMode } from "@/config/providerMode";
 import { getMatchProvider } from "@/services/providers/providerFactory";
 
 const CACHE_KEY = "live:fixtures:cache";
+const RAW_MATCHES_CACHE_KEY = "live:raw:matches";
 const CACHE_TTL_SECONDS = 300;
 const REQUEST_TIMEOUT_MS = 8000;
 const API_BASE = "https://api.cricapi.com/v1";
@@ -287,6 +288,19 @@ export async function GET() {
       }
       if (page2.ok && page2.payload) {
         mergedMatches.push(...getProviderMatches(page2.payload));
+      }
+
+      if (redis && mergedMatches.length > 0) {
+        try {
+          await redis.set(
+            RAW_MATCHES_CACHE_KEY,
+            JSON.stringify(mergedMatches),
+            "EX",
+            CACHE_TTL_SECONDS
+          );
+        } catch {
+          // non-fatal
+        }
       }
 
       const { deduped: d, dedupeRemoved } = dedupeProviderMatches(mergedMatches);

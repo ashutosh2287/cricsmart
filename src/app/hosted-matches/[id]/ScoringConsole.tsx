@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Player = {
   id: string;
@@ -10,6 +10,8 @@ type Player = {
 };
 
 type PlayingXI = {
+  teamAXI: Player[];
+  teamBXI: Player[];
   battingTeam: Player[];
   bowlingTeam: Player[];
   battingTeamName: string;
@@ -60,6 +62,7 @@ function PlayerSelect({
 
 export function ScoringConsole({ matchId, hostedMatchId }: Props) {
   const [playingXI, setPlayingXI] = useState<PlayingXI | null>(null);
+  const [currentInningsIndex, setCurrentInningsIndex] = useState(0);
   const [striker, setStriker] = useState("");
   const [nonStriker, setNonStriker] = useState("");
   const [bowler, setBowler] = useState("");
@@ -68,34 +71,93 @@ export function ScoringConsole({ matchId, hostedMatchId }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const resetSelections = useCallback(() => {
+    setStriker("");
+    setNonStriker("");
+    setBowler("");
+  }, []);
 
-    async function loadPlayingXI() {
-      const res = await fetch(`/api/hosted-matches/${hostedMatchId}/playing-xi`, {
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        if (!cancelled) {
-          setPlayingXI(null);
-          setError("Playing XI not set yet.");
-        }
-        return;
+  const loadCurrentInningsIndex = useCallback(async () => {
+    const res = await fetch(`/api/match/${matchId}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const data = (await res.json()) as { match?: { currentInningsIndex?: number } };
+    const inningsIndex = data.match?.currentInningsIndex ?? 0;
+    setCurrentInningsIndex((prev) => {
+      if (prev !== inningsIndex) {
+        resetSelections();
       }
+      return inningsIndex;
+    });
+  }, [matchId, resetSelections]);
 
-      const data = (await res.json()) as { playingXI?: PlayingXI };
-      if (!cancelled) {
-        setPlayingXI(data.playingXI ?? null);
-        setError(null);
-      }
+  const loadPlayingXI = useCallback(async () => {
+    const res = await fetch(`/api/hosted-matches/${hostedMatchId}/playing-xi`, {
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      setPlayingXI(null);
+      setError("Playing XI not set yet.");
+      return;
     }
 
-    void loadPlayingXI();
+    const data = (await res.json()) as { playingXI?: PlayingXI };
+    setPlayingXI(data.playingXI ?? null);
+    setError(null);
+  }, [hostedMatchId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        await Promise.all([loadPlayingXI(), loadCurrentInningsIndex()]);
+      } catch {
+        if (!cancelled) {
+          setError("Failed to load scoring context");
+        }
+      }
+    };
+
+    void load();
+    const interval = window.setInterval(() => {
+      if (!cancelled) {
+        void loadCurrentInningsIndex();
+      }
+    }, 3000);
 
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
     };
-  }, [hostedMatchId]);
+  }, [loadCurrentInningsIndex, loadPlayingXI]);
+
+  const activeTeams = useMemo(() => {
+    if (!playingXI) {
+      return null;
+    }
+
+    const battingIsTeamA =
+      playingXI.battingTeam[0]?.id !== undefined &&
+      playingXI.teamAXI.some((player) => player.id === playingXI.battingTeam[0].id);
+
+    const firstInningsBatting = battingIsTeamA ? playingXI.teamAXI : playingXI.teamBXI;
+    const firstInningsBowling = battingIsTeamA ? playingXI.teamBXI : playingXI.teamAXI;
+
+    if (currentInningsIndex === 1) {
+      return {
+        battingTeam: firstInningsBowling,
+        bowlingTeam: firstInningsBatting,
+        battingTeamName: playingXI.bowlingTeamName,
+        bowlingTeamName: playingXI.battingTeamName,
+      };
+    }
+
+    return {
+      battingTeam: firstInningsBatting,
+      bowlingTeam: firstInningsBowling,
+      battingTeamName: playingXI.battingTeamName,
+      bowlingTeamName: playingXI.bowlingTeamName,
+    };
+  }, [playingXI, currentInningsIndex]);
 
   const canSubmit = useMemo(() => Boolean(striker && nonStriker && bowler), [striker, nonStriker, bowler]);
 
@@ -125,6 +187,8 @@ export function ScoringConsole({ matchId, hostedMatchId }: Props) {
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
         setError(data.error ?? "Failed to submit ball");
+      } else {
+        await loadCurrentInningsIndex();
       }
     } catch {
       setError("Failed to submit ball");
@@ -133,7 +197,7 @@ export function ScoringConsole({ matchId, hostedMatchId }: Props) {
     }
   }
 
-  if (!playingXI) {
+  if (!playingXI || !activeTeams) {
     return (
       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 text-sm text-[var(--text-secondary)]">
         Loading Playing XI...
@@ -146,29 +210,29 @@ export function ScoringConsole({ matchId, hostedMatchId }: Props) {
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-center">
           <p className="mb-0.5 text-xs text-[var(--text-muted)]">Batting</p>
-          <p className="text-sm font-bold text-emerald-400">{playingXI.battingTeamName}</p>
+          <p className="text-sm font-bold text-emerald-400">{activeTeams.battingTeamName}</p>
         </div>
         <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-center">
           <p className="mb-0.5 text-xs text-[var(--text-muted)]">Bowling</p>
-          <p className="text-sm font-bold text-blue-400">{playingXI.bowlingTeamName}</p>
+          <p className="text-sm font-bold text-blue-400">{activeTeams.bowlingTeamName}</p>
         </div>
       </div>
 
       <PlayerSelect
         label="Striker (Batsman)"
-        players={playingXI.battingTeam}
+        players={activeTeams.battingTeam}
         value={striker}
         onChange={setStriker}
         exclude={[nonStriker]}
       />
       <PlayerSelect
         label="Non-Striker"
-        players={playingXI.battingTeam}
+        players={activeTeams.battingTeam}
         value={nonStriker}
         onChange={setNonStriker}
         exclude={[striker]}
       />
-      <PlayerSelect label="Bowler" players={playingXI.bowlingTeam} value={bowler} onChange={setBowler} />
+      <PlayerSelect label="Bowler" players={activeTeams.bowlingTeam} value={bowler} onChange={setBowler} />
 
       <div className="grid grid-cols-2 gap-3">
         <div>

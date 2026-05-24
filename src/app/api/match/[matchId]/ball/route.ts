@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import type { EngineBallEvent } from "@/services/matchEngine";
 import { dispatchBallEvent } from "@/services/matchEngine";
+import { syncBattingOrder } from "@/services/matchEngine";
 import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorage";
 import { getRedis } from "@/services/storage/redisClient";
 import { prisma } from "@/lib/db/prisma";
@@ -135,9 +136,11 @@ export async function POST(
     return NextResponse.json({ success: false, error: "Bowler must belong to the bowling XI" }, { status: 400 });
   }
 
+  const lookupIds = Array.from(new Set([...battingXI, strikerId, nonStrikerId, bowlerId]));
+
   const playerRows = await prisma.teamMember.findMany({
     where: {
-      id: { in: [strikerId, nonStrikerId, bowlerId] },
+      id: { in: lookupIds },
       userId: null,
     },
     select: {
@@ -147,6 +150,13 @@ export async function POST(
   });
 
   const playerMap = new Map(playerRows.map((player) => [player.id, player.name ?? "Unknown Player"]));
+
+  const battingOrder = battingXI
+    .map((id) => playerMap.get(id)?.trim() ?? "")
+    .filter((name) => Boolean(name));
+  if (battingOrder.length >= 2) {
+    syncBattingOrder(matchId, battingOrder);
+  }
 
   const striker = playerMap.get(strikerId);
   const nonStriker = playerMap.get(nonStrikerId);

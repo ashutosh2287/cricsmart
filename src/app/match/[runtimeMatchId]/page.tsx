@@ -153,6 +153,94 @@ function formatOverDisplay(overs?: Record<string, unknown>) {
   return Number(`${lastOverNumber}.${balls}`);
 }
 
+type SquadPlayerRow = { name: string; role: string };
+type TeamSquadFallback = { teamA: SquadPlayerRow[]; teamB: SquadPlayerRow[] };
+
+function normalizePlayerName(name: unknown): string {
+  return typeof name === "string" ? name.trim() : "";
+}
+
+function deriveSimulationSquadsFromState(state?: MatchState | null): TeamSquadFallback {
+  if (!state) return { teamA: [], teamB: [] };
+
+  const teamAName = state.teamA?.name?.trim() ?? "";
+  const teamBName = state.teamB?.name?.trim() ?? "";
+  const teamAKey = teamAName.toLowerCase();
+  const teamBKey = teamBName.toLowerCase();
+  const teamARoles = new Map<string, Set<"BATTER" | "BOWLER">>();
+  const teamBRoles = new Map<string, Set<"BATTER" | "BOWLER">>();
+
+  const resolveTeamBucket = (teamName?: string) => {
+    const key = teamName?.trim().toLowerCase();
+    if (!key) return null;
+    if (key === teamAKey) return teamARoles;
+    if (key === teamBKey) return teamBRoles;
+    return null;
+  };
+
+  const addPlayerRole = (
+    bucket: Map<string, Set<"BATTER" | "BOWLER">> | null,
+    rawName: unknown,
+    role: "BATTER" | "BOWLER"
+  ) => {
+    if (!bucket) return;
+    const name = normalizePlayerName(rawName);
+    if (!name) return;
+    const existing = bucket.get(name) ?? new Set<"BATTER" | "BOWLER">();
+    existing.add(role);
+    bucket.set(name, existing);
+  };
+
+  for (const innings of state.innings ?? []) {
+    const battingBucket = resolveTeamBucket(innings?.battingTeam);
+    const bowlingBucket = resolveTeamBucket(innings?.bowlingTeam);
+
+    for (const batter of innings?.battingOrder ?? []) {
+      addPlayerRole(battingBucket, batter, "BATTER");
+    }
+
+    for (const record of innings?.battingRecords ?? []) {
+      addPlayerRole(battingBucket, record?.name, "BATTER");
+    }
+
+    addPlayerRole(battingBucket, innings?.striker, "BATTER");
+    addPlayerRole(battingBucket, innings?.nonStriker, "BATTER");
+
+    addPlayerRole(bowlingBucket, innings?.currentBowler, "BOWLER");
+
+    for (const bowlerName of Object.keys(innings?.bowlingStats ?? {})) {
+      addPlayerRole(bowlingBucket, bowlerName, "BOWLER");
+    }
+
+    for (const overBalls of Object.values(innings?.overs ?? {})) {
+      if (!Array.isArray(overBalls)) continue;
+      for (const ball of overBalls) {
+        addPlayerRole(battingBucket, ball?.batsman, "BATTER");
+        addPlayerRole(battingBucket, ball?.nonStriker, "BATTER");
+        addPlayerRole(bowlingBucket, ball?.bowler, "BOWLER");
+      }
+    }
+  }
+
+  const toRows = (
+    roleMap: Map<string, Set<"BATTER" | "BOWLER">>
+  ): SquadPlayerRow[] =>
+    Array.from(roleMap.entries()).map(([name, roles]) => ({
+      name,
+      role:
+        roles.has("BATTER") && roles.has("BOWLER")
+          ? "ALL-ROUNDER"
+          : roles.has("BOWLER")
+            ? "BOWLER"
+            : "BATTER",
+    }));
+
+  return {
+    teamA: toRows(teamARoles),
+    teamB: toRows(teamBRoles),
+  };
+}
+
 // ─────────────────────────────────────────────
 // UI atoms
 // ─────────────────────────────────────────────
@@ -574,8 +662,27 @@ function TabsArea({
     "admin",
   ];
 
-  const teamASquad = currentEngineState?.teamA?.squad ?? [];
-  const teamBSquad = currentEngineState?.teamB?.squad ?? [];
+  const hostedTeamASquad = currentEngineState?.teamA?.squad ?? [];
+  const hostedTeamBSquad = currentEngineState?.teamB?.squad ?? [];
+  const simulationFallbackSquads = useMemo(
+    () => deriveSimulationSquadsFromState(currentEngineState),
+    [currentEngineState]
+  );
+  const isSimulationMatch =
+    match.isSimulation === true ||
+    !(typeof match.hostedMatchId === "string" && match.hostedMatchId.trim().length > 0);
+  const teamASquad =
+    hostedTeamASquad.length > 0
+      ? hostedTeamASquad
+      : isSimulationMatch
+        ? simulationFallbackSquads.teamA
+        : [];
+  const teamBSquad =
+    hostedTeamBSquad.length > 0
+      ? hostedTeamBSquad
+      : isSimulationMatch
+        ? simulationFallbackSquads.teamB
+        : [];
 
   const summaryCards = [
     {
@@ -1200,195 +1307,203 @@ function TabsArea({
         {/* ── Admin ── */}
         {activeTab === "admin" && isAdmin && (
           <div className="space-y-6">
-            <GlassPanel>
-              <SectionHeader eyebrow="Scoring" title="Admin Scoring Panel" />
-              <div className="relative z-[9999] pointer-events-auto">
-                <AdminScoringPanel matchId={match.slug} />
-              </div>
-            </GlassPanel>
+            {/* Hosted-match-only admin blocks: manual scoring + broadcast controls */}
+            {!isSimulationMatch && (
+              <>
+                <GlassPanel>
+                  <SectionHeader eyebrow="Scoring" title="Admin Scoring Panel" />
+                  <div className="relative z-[9999] pointer-events-auto">
+                    <AdminScoringPanel matchId={match.slug} />
+                  </div>
+                </GlassPanel>
 
-            <div className="grid gap-6 xl:grid-cols-2">
-              <GlassPanel>
-                <SectionHeader eyebrow="Broadcast" title="Director Panel" />
-                <BroadcastDirectorPanel />
-              </GlassPanel>
+                <div className="grid gap-6 xl:grid-cols-2">
+                  <GlassPanel>
+                    <SectionHeader eyebrow="Broadcast" title="Director Panel" />
+                    <BroadcastDirectorPanel />
+                  </GlassPanel>
+                  <GlassPanel>
+                    <SectionHeader
+                      eyebrow="Broadcast"
+                      title="Control Dashboard"
+                    />
+                    <BroadcastControlDashboard />
+                  </GlassPanel>
+                </div>
+              </>
+            )}
+
+            {/* Simulation-only admin block: show simulation controls only */}
+            {isSimulationMatch && (
               <GlassPanel>
                 <SectionHeader
-                  eyebrow="Broadcast"
-                  title="Control Dashboard"
+                  eyebrow="Simulation"
+                  title="Simulation Controls"
                 />
-                <BroadcastControlDashboard />
-              </GlassPanel>
-            </div>
-
-            <GlassPanel>
-              <SectionHeader
-                eyebrow="Simulation"
-                title="Simulation Controls"
-              />
-              <div className="flex flex-col gap-4">
-                {!matchMeta ? (
-                  <TeamSelector
-                    onStart={(teamA, teamB) => {
-                      const nextMeta = {
-                        matchId: match.slug,
-                        teamA: { id: teamA.short, name: teamA.name },
-                        teamB: { id: teamB.short, name: teamB.name },
-                      };
-                      setMatchMeta(nextMeta);
-                      setLocalMatchMeta(nextMeta);
-                      setStartError(null);
-                    }}
-                  />
-                ) : (
-                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-300">
-                    Teams Selected: {matchMeta.teamA.name} vs{" "}
-                    {matchMeta.teamB.name}
-                  </div>
-                )}
-
-                {matchMeta && !tossData && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
-                    <TossPanel
-                      teamA={{ name: matchMeta?.teamA.name } as Team}
-                      teamB={{ name: matchMeta?.teamB.name } as Team}
-                      onConfirm={(winner, decision) => {
-                        setTossData({ winner, decision });
+                <div className="flex flex-col gap-4">
+                  {!matchMeta ? (
+                    <TeamSelector
+                      onStart={(teamA, teamB) => {
                         const nextMeta = {
-                          ...matchMeta,
-                          toss: { winner: winner.name, decision },
+                          matchId: match.slug,
+                          teamA: { id: teamA.short, name: teamA.name },
+                          teamB: { id: teamB.short, name: teamB.name },
                         };
                         setMatchMeta(nextMeta);
                         setLocalMatchMeta(nextMeta);
+                        setStartError(null);
                       }}
                     />
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-3">
-                  {/* ▶ START */}
-                  <button
-                    type="button"
-                    disabled={effectiveIsRunning}
-                    onClick={async () => {
-                      const id = match.slug;
-                      if (!id) return setStartError("Missing match id.");
-                      if (!matchMeta)
-                        return setStartError("Please select teams first.");
-                      if (!tossData)
-                        return setStartError("Please complete toss first.");
-                      if (effectiveIsRunning) return;
-                      const latestMeta = getMatchMeta(id);
-                      if (!latestMeta?.teamA?.name || !latestMeta?.teamB?.name)
-                        return setStartError("Please select teams first.");
-                      connectRealtime(id, "match-page-admin-start");
-                    }}
-                    className={cls(
-                      "rounded-xl px-4 py-2.5 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60",
-                      effectiveIsRunning
-                        ? "bg-white/10"
-                        : "bg-emerald-600 hover:bg-emerald-500"
-                    )}
-                  >
-                    {isStarting
-                      ? "Starting..."
-                      : effectiveIsRunning
-                      ? "Running"
-                      : "▶ Start Simulation"}
-                  </button>
-
-                  {startError ? (
-                    <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-                      {startError}
+                  ) : (
+                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-300">
+                      Teams Selected: {matchMeta.teamA.name} vs{" "}
+                      {matchMeta.teamB.name}
                     </div>
-                  ) : null}
+                  )}
 
-                  {/* ⏸ PAUSE / ▶ RESUME */}
-                  {effectiveIsRunning ? (
+                  {matchMeta && !tossData && (
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+                      <TossPanel
+                        teamA={{ name: matchMeta?.teamA.name } as Team}
+                        teamB={{ name: matchMeta?.teamB.name } as Team}
+                        onConfirm={(winner, decision) => {
+                          setTossData({ winner, decision });
+                          const nextMeta = {
+                            ...matchMeta,
+                            toss: { winner: winner.name, decision },
+                          };
+                          setMatchMeta(nextMeta);
+                          setLocalMatchMeta(nextMeta);
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-3">
+                    {/* ▶ START */}
                     <button
                       type="button"
+                      disabled={effectiveIsRunning}
                       onClick={async () => {
-                        try {
-                          const endpoint = isPaused
-                            ? "/api/simulation/resume"
-                            : "/api/simulation/pause";
-                          await fetch(endpoint, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ matchId: match.slug }),
-                          });
-                          setIsPaused(!isPaused);
-                          setStartError(null);
-                        } catch (error) {
-                          setStartError("Failed to update simulation state.");
-                        }
-                      }}
-                      className="rounded-xl bg-amber-500 px-4 py-2.5 font-medium text-slate-950 transition hover:bg-amber-400"
-                    >
-                      {isPaused ? "▶ Resume" : "⏸ Pause"}
-                    </button>
-                  ) : null}
-
-                  {/* ⛔ STOP */}
-                  {effectiveIsRunning ? (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          await fetch("/api/simulation/stop", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ matchId: match.slug }),
-                          });
-                          setIsRunning(false);
-                          setIsPaused(false);
-                        } catch (err) {
-                          console.error("Stop failed", err);
-                        }
-                      }}
-                      className="rounded-xl bg-red-600 px-4 py-2.5 font-medium text-white hover:bg-red-500"
-                    >
-                      ⛔ Stop
-                    </button>
-                  ) : null}
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { label: "1x", value: 1500 },
-                    { label: "2x", value: 700 },
-                    { label: "5x", value: 300 },
-                  ].map((option) => (
-                    <button
-                      key={option.label}
-                      onClick={async () => {
-                        try {
-                          setSpeed(option.value);
-                          await fetch("/api/simulation/speed", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              matchId: match.slug,
-                              speed: option.value,
-                            }),
-                          });
-                        } catch (err) {
-                          console.error("Speed update failed", err);
-                        }
+                        const id = match.slug;
+                        if (!id) return setStartError("Missing match id.");
+                        if (!matchMeta)
+                          return setStartError("Please select teams first.");
+                        if (!tossData)
+                          return setStartError("Please complete toss first.");
+                        if (effectiveIsRunning) return;
+                        const latestMeta = getMatchMeta(id);
+                        if (!latestMeta?.teamA?.name || !latestMeta?.teamB?.name)
+                          return setStartError("Please select teams first.");
+                        connectRealtime(id, "match-page-admin-start");
                       }}
                       className={cls(
-                        "rounded-xl border px-3 py-2 text-sm transition",
-                        speed === option.value
-                          ? "border-sky-400/30 bg-sky-400/20 text-sky-200"
-                          : "border-white/10 bg-white/[0.04] text-gray-300 hover:bg-white/[0.08]"
+                        "rounded-xl px-4 py-2.5 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60",
+                        effectiveIsRunning
+                          ? "bg-white/10"
+                          : "bg-emerald-600 hover:bg-emerald-500"
                       )}
                     >
-                      {option.label}
+                      {isStarting
+                        ? "Starting..."
+                        : effectiveIsRunning
+                        ? "Running"
+                        : "▶ Start Simulation"}
                     </button>
-                  ))}
+
+                    {startError ? (
+                      <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                        {startError}
+                      </div>
+                    ) : null}
+
+                    {/* ⏸ PAUSE / ▶ RESUME */}
+                    {effectiveIsRunning ? (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const endpoint = isPaused
+                              ? "/api/simulation/resume"
+                              : "/api/simulation/pause";
+                            await fetch(endpoint, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ matchId: match.slug }),
+                            });
+                            setIsPaused(!isPaused);
+                            setStartError(null);
+                          } catch (error) {
+                            setStartError("Failed to update simulation state.");
+                          }
+                        }}
+                        className="rounded-xl bg-amber-500 px-4 py-2.5 font-medium text-slate-950 transition hover:bg-amber-400"
+                      >
+                        {isPaused ? "▶ Resume" : "⏸ Pause"}
+                      </button>
+                    ) : null}
+
+                    {/* ⛔ STOP */}
+                    {effectiveIsRunning ? (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await fetch("/api/simulation/stop", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ matchId: match.slug }),
+                            });
+                            setIsRunning(false);
+                            setIsPaused(false);
+                          } catch (err) {
+                            console.error("Stop failed", err);
+                          }
+                        }}
+                        className="rounded-xl bg-red-600 px-4 py-2.5 font-medium text-white hover:bg-red-500"
+                      >
+                        ⛔ Stop
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { label: "1x", value: 1500 },
+                      { label: "2x", value: 700 },
+                      { label: "5x", value: 300 },
+                    ].map((option) => (
+                      <button
+                        key={option.label}
+                        onClick={async () => {
+                          try {
+                            setSpeed(option.value);
+                            await fetch("/api/simulation/speed", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                matchId: match.slug,
+                                speed: option.value,
+                              }),
+                            });
+                          } catch (err) {
+                            console.error("Speed update failed", err);
+                          }
+                        }}
+                        className={cls(
+                          "rounded-xl border px-3 py-2 text-sm transition",
+                          speed === option.value
+                            ? "border-sky-400/30 bg-sky-400/20 text-sky-200"
+                            : "border-white/10 bg-white/[0.04] text-gray-300 hover:bg-white/[0.08]"
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </GlassPanel>
+              </GlassPanel>
+            )}
           </div>
         )}
       </div>
@@ -1841,6 +1956,10 @@ export default function MatchDetailPage({
         }
 
         if (!cancelled) {
+          const hostedMatchId =
+            typeof data.hostedMatchId === "string" && data.hostedMatchId.trim()
+              ? data.hostedMatchId.trim()
+              : undefined;
           setMatch({
             id,
             slug: id,
@@ -1849,6 +1968,12 @@ export default function MatchDetailPage({
             currentOver: 0,
             currentBall: 0,
             status: data.match.matchEnded ? "Completed" : "Live",
+            hostedMatchId,
+            isSimulation:
+              data.registry?.type === "SIMULATION" ||
+              (typeof data.match?.isSimulation === "boolean"
+                ? data.match.isSimulation
+                : !hostedMatchId),
           });
         }
 

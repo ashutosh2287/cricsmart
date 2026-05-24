@@ -163,6 +163,7 @@ export async function GET(
             seriesName: registry?.seriesName,
             liveStatus: registry?.commentaryPreview,
             fallbackSource: "postgres",
+            hostedMatchId: hostedMatch.id,
           });
         }
       }
@@ -222,6 +223,7 @@ export async function GET(
             seriesName: runtimeRegistry?.seriesName,
             liveStatus: runtimeRegistry?.commentaryPreview,
             resolvedRuntimeMatchId: runtimeMatchId,
+            hostedMatchId: hostedMatch.id,
           });
         }
 
@@ -243,6 +245,7 @@ export async function GET(
             staleBadge: "STALE",
             staleLastUpdatedAt: new Date(runtimeStale.cachedAt).toISOString(),
             resolvedRuntimeMatchId: runtimeMatchId,
+            hostedMatchId: hostedMatch.id,
           });
         }
       }
@@ -274,6 +277,13 @@ export async function GET(
       registry?.sourceType ?? (registry?.type === "LIVE" ? "LIVE" : "SIMULATION")
     );
 
+    const hostedMatch = await prisma.hostedMatch.findFirst({
+      where: {
+        OR: [{ runtimeMatchId: matchId }, { id: matchId }],
+      },
+      select: { id: true },
+    });
+
     return NextResponse.json({
       success: true,
       match: withRegistryTeamFallback(data.state, registry),
@@ -286,6 +296,7 @@ export async function GET(
       externalMatchId: registry?.externalMatchId,
       seriesName: registry?.seriesName,
       liveStatus: registry?.commentaryPreview,
+      hostedMatchId: hostedMatch?.id ?? null,
     });
   } catch (error) {
     console.error("❌ API ERROR:", error);

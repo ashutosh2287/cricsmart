@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
+import { useEffect } from "react";
 import AdminScoringPanel from "./AdminScoringPanel";
 import BroadcastDirectorPanel from "@/components/BroadcastDirectorPanel";
 import BroadcastControlDashboard from "@/components/BroadcastControlDashboard";
@@ -26,6 +27,38 @@ const [tossData, setTossData] = useState<TossData | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1500);
+  const [isSimulationMatch, setIsSimulationMatch] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolveMatchMode() {
+      try {
+        const res = await fetch(`/api/match/${matchId}`, { cache: "no-store" });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data || cancelled) return;
+
+        const hostedMatchId =
+          typeof data.hostedMatchId === "string" && data.hostedMatchId.trim()
+            ? data.hostedMatchId.trim()
+            : "";
+        const isSimulationFlag =
+          data.registry?.type === "SIMULATION" ||
+          data.match?.isSimulation === true;
+
+        setIsSimulationMatch(isSimulationFlag || !hostedMatchId);
+      } catch {
+        if (!cancelled) {
+          setIsSimulationMatch(true);
+        }
+      }
+    }
+
+    void resolveMatchMode();
+    return () => {
+      cancelled = true;
+    };
+  }, [matchId]);
 
   async function updateLifecycle(lifecycle: SimulationLifecycleState) {
     await fetch("/api/simulation/lifecycle", {
@@ -39,25 +72,31 @@ const [tossData, setTossData] = useState<TossData | null>(null);
     <div className="space-y-6">
 
       {/* 🧮 SCORING */}
-      <GlassPanel>
-        <h3 className="text-lg font-semibold mb-3">Admin Scoring Panel</h3>
-        <AdminScoringPanel matchId={matchId} />
-      </GlassPanel>
+      {/* Hosted-match-only admin blocks: manual scoring + broadcast controls */}
+      {!isSimulationMatch && (
+        <>
+          <GlassPanel>
+            <h3 className="text-lg font-semibold mb-3">Admin Scoring Panel</h3>
+            <AdminScoringPanel matchId={matchId} />
+          </GlassPanel>
 
-      {/* 📡 BROADCAST */}
-      <div className="grid gap-6 xl:grid-cols-2">
-        <GlassPanel>
-          <h3 className="mb-3 font-semibold">Director Panel</h3>
-          <BroadcastDirectorPanel />
-        </GlassPanel>
+          <div className="grid gap-6 xl:grid-cols-2">
+            <GlassPanel>
+              <h3 className="mb-3 font-semibold">Director Panel</h3>
+              <BroadcastDirectorPanel />
+            </GlassPanel>
 
-        <GlassPanel>
-          <h3 className="mb-3 font-semibold">Broadcast Control</h3>
-          <BroadcastControlDashboard />
-        </GlassPanel>
-      </div>
+            <GlassPanel>
+              <h3 className="mb-3 font-semibold">Broadcast Control</h3>
+              <BroadcastControlDashboard />
+            </GlassPanel>
+          </div>
+        </>
+      )}
 
       {/* 🎮 SIMULATION */}
+      {/* Simulation-only admin block: show simulation controls only */}
+      {isSimulationMatch && (
       <GlassPanel>
         <h3 className="mb-3 font-semibold">Simulation Controls</h3>
 
@@ -123,6 +162,7 @@ const [tossData, setTossData] = useState<TossData | null>(null);
 </button>
 
       </GlassPanel>
+      )}
     </div>
   );
 }

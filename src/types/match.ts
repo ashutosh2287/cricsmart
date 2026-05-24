@@ -17,5 +17,7 @@ export type Match = {
   balls?: number;
 
   externalMatchId?: string;
+  hostedMatchId?: string;
+  isSimulation?: boolean;
   engineState?: MatchState;
 };

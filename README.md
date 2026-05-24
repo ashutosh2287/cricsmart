@@ -80,6 +80,139 @@ CricSmart addresses this gap by combining **simulation + live data + analytics +
 - Account pages for profile, activity, settings, hosted/saved/tournament/teams views
 - Middleware-based route gating for authenticated/creator/admin areas
 
+### 4.7 Detailed Feature Explanation (Complete Feature Catalog)
+
+This section expands every major user-facing and system-facing feature so the README can be directly reused as a report source.
+
+#### Feature A — Home Dashboard and Match Discovery
+- Shows platform-level overview (live match count, team count, total match count).
+- Highlights currently running hosted matches and gives direct entry links.
+- Displays live fixtures pulled from provider-backed endpoints.
+- Gives fast access to key actions (all matches, create simulation, authentication entry points).
+- Business value: creates a single “command center” for users to understand current cricket activity instantly.
+
+#### Feature B — Match Simulation Creation and Control
+- Users can create simulation matches by selecting/entering team names.
+- The platform generates runtime match IDs and routes users to admin control screens.
+- Simulation lifecycle actions include start, pause, resume, stop, speed control, and ball progression.
+- Supports both auto-simulation and granular ball-event driven updates.
+- Business value: enables training, analytics demos, and tactical scenario experimentation without waiting for real matches.
+
+#### Feature C — Live Match Runtime Screen
+- Real-time score, wickets, over/ball progression, and innings state rendering.
+- Continuous update stream from server-side event emitters to clients.
+- Displays context-aware match status and transitions across innings/endgame states.
+- Integrates commentary, probability, and chart modules in one runtime viewing surface.
+- Business value: delivers an immersive live-score and intelligence experience similar to production sports platforms.
+
+#### Feature D — Realtime Streaming and Reconnect Reliability
+- Uses SSE endpoint (`/api/realtime/[matchId]`) for event delivery to clients.
+- Broadcast payloads include typed events (BALL, WICKET, COMMENTARY, probability updates, match finish).
+- Client reconnect flow handles temporary disconnects and resumes synchronized state.
+- Event meta (sequence, over, ball, timestamps) supports ordering and duplication control.
+- Business value: keeps all connected users in near real-time sync with low operational complexity.
+
+#### Feature E — Event-Driven Domain Pipeline
+- Match engine emits domain events (BALL, WICKET, MATCH_FINISHED, WIN_PROBABILITY).
+- Multiple independent consumers process the same stream:
+  - SSE consumer → client broadcasting
+  - Replay consumer → timeline storage
+  - Commentary consumer → generated commentary events
+- Loose coupling allows adding more consumers (alerts, metrics, notifications) without rewriting engine logic.
+- Business value: improves extensibility, reliability, and maintainability of core cricket runtime.
+
+#### Feature F — Commentary Intelligence
+- Commentary is generated from ball/wicket context through commentary orchestration pipeline.
+- Emitted as COMMENTARY domain events, then streamed and stored in timelines.
+- Includes tone/importance dimensions useful for richer UX and narrative layers.
+- Supports both live fan engagement and replay storytelling.
+- Business value: transforms raw scoring events into human-readable cricket narrative.
+
+#### Feature G — Replay Timeline and Event Persistence
+- Replay events are appended with sequence-compatible metadata for reconstruction.
+- Commentary timeline and ball-event timeline can be replayed after live session.
+- Supports review/scrubbing use-cases for analytics, debugging, and educational playback.
+- Handles match-finished and probability events as replay records.
+- Business value: gives historical introspection beyond “current score only” systems.
+
+#### Feature H — Analytics and Performance Visualization
+- Analytics selectors derive chart inputs from replay/event data.
+- Supports momentum trends, run-rate progression, over-wise evolution, and probability movement.
+- Match and player analytics pages expose data in dedicated analytical interfaces.
+- Selector-based architecture keeps analytics calculations reusable and testable.
+- Business value: enables tactical insight, storytelling, and post-match analysis.
+
+#### Feature I — Hosted Matches Ecosystem
+- Users can create and manage hosted matches with metadata (format, venue, schedule, teams).
+- Match-specific actions include toss setup, playing XI management, score updates, and start flow.
+- Supports hosted match members with role mapping for collaborative match operations.
+- Includes save/bookmark interactions for user-level match tracking.
+- Business value: supports local clubs, campus leagues, and community organizers.
+
+#### Feature J — Teams Management
+- Team creation with identity metadata (name, short name, slug, visibility, city, logo).
+- Squad/member management via dedicated APIs and manage page workflows.
+- Social interactions through follow/favorite actions.
+- Team ownership model anchored at `Team.ownerId`.
+- Business value: builds stable team identities and long-term user engagement around clubs/franchises.
+
+#### Feature K — Tournament Management
+- Tournament creation with date range, format, location, and organizer association.
+- Team enrollment into tournaments via mapping entities.
+- Tournament-to-hosted-match linking for fixtures.
+- Membership relation allows role-aware participation at tournament level.
+- Business value: supports multi-match competition structures, not just standalone matches.
+
+#### Feature L — Player Profiles and Discovery
+- Player profile APIs and pages expose player metadata and stats snapshot fields.
+- Discovery pages support browsing player information and profile-level navigation.
+- Enables gradual expansion toward scouting/impact analytics.
+- Business value: strengthens player-centric features alongside team/match-centric modules.
+
+#### Feature M — Authentication, Session, and Access Control
+- Signup/login/logout/me endpoints power account identity lifecycle.
+- Password storage is hash-based; auth payloads are schema-validated.
+- Session model is cookie-driven with backend session store integration.
+- Middleware protects authenticated/creator/admin routes and supports redirect-based guard behavior.
+- Business value: secures operational actions (hosting, admin controls, account data).
+
+#### Feature N — Account Personalization
+- Account module includes profile, activity, settings, teams, tournaments, hosted matches, saved matches.
+- User-specific favorites/saves and participation data are consolidated in account routes.
+- Provides “my cricket space” for continuity across sessions.
+- Business value: improves retention and user ownership of platform activity.
+
+#### Feature O — Live Fixture Ingestion and Runtime Health
+- External fixture endpoints fetch and normalize live cricket data.
+- Runtime health/debug endpoints help validate provider and ingestion behavior.
+- Supports operational diagnostics for stale feeds, missing updates, and runtime readiness.
+- Business value: bridges simulated and real cricket data experiences in one product.
+
+#### Feature P — Debug and Diagnostics Surface
+- Dedicated debug APIs for commentary context/runtime/ML and provider/retrieval inspection.
+- Runtime-check endpoints support deployment and incident troubleshooting.
+- Useful for engineering verification, QA, and demo troubleshooting.
+- Business value: reduces mean time to diagnose production-like data-flow issues.
+
+#### Feature Q — ML Workspace and Intelligence Extension
+- `/ml` workspace includes data ingestion, feature engineering, training, evaluation, and inference scaffolding.
+- Win-probability and commentary intelligence pipelines are versionable and experiment-friendly.
+- Feature flags allow gradual runtime adoption of ML-backed paths.
+- Business value: future-proofs platform for data science enhancements without destabilizing core runtime.
+
+#### Feature R — Deployment and Environment Flexibility
+- Deployment descriptors support both frontend-managed and process-managed hosting styles.
+- Environment-driven configuration controls auth rollout, realtime behavior, integrations, and logging.
+- Scripted Prisma generation on install/dev/build ensures ORM client consistency.
+- Business value: simplifies portability from local development to staging/production targets.
+
+#### Feature S — Security and Operational Safety Controls
+- Route policy segmentation (public/authenticated/creator/admin) reduces unauthorized access risk.
+- Auth-related rate limiting and strict payload validation reduce abuse surface.
+- Session invalidation and centralized middleware policy improve control.
+- Reliability design favors fail-closed auth/session behavior in error scenarios.
+- Business value: protects user data and operational actions in multi-user environments.
+
 ---
 
 ## 5) Technology Stack
@@ -466,4 +599,3 @@ Copy this README into any AI and use prompt:
 ## 26) Conclusion
 
 CricSmart is a comprehensive cricket platform that integrates simulation, live updates, analytics, commentary intelligence, account ecosystem features, and extensible ML workflows in a single, production-oriented architecture. This README is intentionally authored as a complete source for downstream report and presentation generation.
-

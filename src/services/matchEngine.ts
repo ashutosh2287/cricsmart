@@ -154,6 +154,7 @@ const matches = new Map<string, MatchState>();
 const eventStreams: Record<string, BallEvent[]> = {};
 const matchListeners: Record<string, Set<(state: MatchState) => void>> = {};
 const snapshotMap: Record<string, Record<string, MatchState>> = {};
+const MAX_WICKETS = 10;
 export const temporalIndex: Record<
   string,
   { index: number; innings: number; over: number }[]
@@ -647,7 +648,7 @@ function assertValidActiveBatters(
       return;
     }
 
-    if (innings.completed || innings.wickets >= 10) {
+    if (innings.completed || innings.wickets >= MAX_WICKETS) {
       if (striker && nonStriker && striker !== nonStriker) {
         return;
       }
@@ -1019,11 +1020,13 @@ if (
 const nextBatsman = getNextBatsman();
 
 if (!nextBatsman) {
-  innings.wickets = Math.max(innings.wickets, 10);
-  innings.striker = "";
-  innings.nonStriker = "";
-  completeCurrentInnings(next);
-  return { next, ballEvent };
+  if (innings.wickets >= MAX_WICKETS) {
+    innings.striker = "";
+    innings.nonStriker = "";
+    completeCurrentInnings(next);
+    return { next, ballEvent };
+  }
+  throw new Error("❌ Wicket processing failed: missing next batsman before all out");
 }
 
 // 🔥 DEFAULT: striker out → new batsman on strike
@@ -1052,7 +1055,7 @@ updateStrikeAfterBall(innings, ballEvent, event);
 assertValidActiveBatters(
   innings,
   "Post-ball batting state",
-  innings.completed || innings.wickets >= 10
+  innings.completed || innings.wickets >= MAX_WICKETS
 );
 
 // 🔥 FINAL SAFETY — NEVER ALLOW EMPTY PLAYERS
@@ -1067,7 +1070,7 @@ assertValidActiveBatters(
 
   const totalBallsAfter = innings.over * 6 + innings.ball;
 
-  if (innings.wickets >= 10) {
+  if (innings.wickets >= MAX_WICKETS) {
     completeCurrentInnings(next);
   } else if (next.configOvers !== null && totalBallsAfter >= next.configOvers * 6) {
     completeCurrentInnings(next);

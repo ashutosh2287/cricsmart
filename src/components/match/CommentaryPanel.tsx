@@ -403,6 +403,8 @@ function getTagClasses(tag: string | null) {
 export default function CommentaryPanel({ matchId, insights }: Props) {
   const currentInnings = useCurrentInnings(matchId);
   const [lang, setLang] = useState<"EN" | "HI">("EN");
+  const overBlocks = useMemo(() => buildOverBlocks(currentInnings), [currentInnings]);
+  const currentOver = overBlocks[0];
 
   if (!currentInnings) {
     return (
@@ -413,9 +415,6 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
       </div>
     );
   }
-
-  const overBlocks = useMemo(() => buildOverBlocks(currentInnings), [currentInnings]);
-  const currentOver = overBlocks[0];
 
   return (
     <div className="rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.9))] p-3.5">

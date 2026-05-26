@@ -233,7 +233,8 @@ function StickyInsightsRail({
   const teams = useMatchSelector(
     match.slug,
     (state) => {
-      const innings = state.innings[state.currentInningsIndex];
+      if (!state?.innings) return undefined;
+      const innings = state.innings[state.currentInningsIndex ?? 0];
       return {
         battingTeam: innings?.battingTeam ?? "TBD",
         bowlingTeam: innings?.bowlingTeam ?? "TBD",

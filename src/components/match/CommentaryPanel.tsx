@@ -401,10 +401,20 @@ function getTagClasses(tag: string | null) {
 }
 
 export default function CommentaryPanel({ matchId, insights }: Props) {
-  const innings = useCurrentInnings(matchId);
+  const currentInnings = useCurrentInnings(matchId);
   const [lang, setLang] = useState<"EN" | "HI">("EN");
 
-  const overBlocks = useMemo(() => buildOverBlocks(innings), [innings]);
+  if (!currentInnings) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.9))] p-3.5">
+        <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm text-white/55">
+          Waiting for live commentary...
+        </div>
+      </div>
+    );
+  }
+
+  const overBlocks = useMemo(() => buildOverBlocks(currentInnings), [currentInnings]);
   const currentOver = overBlocks[0];
 
   return (

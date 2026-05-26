@@ -66,7 +66,10 @@ export function useMatchSelector<T>(
       : () => () => {},
     () => getFallbackMatchState(matchId),
     () => getFallbackMatchState(matchId),
-    (match) => (match ? selector(match) : undefined),
+    (state) => {
+      if (!state) return undefined;
+      return selector(state);
+    },
     equalityFn ?? Object.is
   );
 }
@@ -79,28 +82,32 @@ BASIC STATS
 
 export function useMatchRuns(matchId: string) {
   return useMatchSelector(matchId, (m) => {
-    const innings = m.innings[m.currentInningsIndex];
+    if (!m?.innings) return 0;
+    const innings = m.innings[m.currentInningsIndex ?? 0];
     return innings?.runs ?? 0;
   });
 }
 
 export function useMatchWickets(matchId: string) {
   return useMatchSelector(matchId, (m) => {
-    const innings = m.innings[m.currentInningsIndex];
+    if (!m?.innings) return 0;
+    const innings = m.innings[m.currentInningsIndex ?? 0];
     return innings?.wickets ?? 0;
   });
 }
 
 export function useMatchOvers(matchId: string) {
   return useMatchSelector(matchId, (m) => {
-    const innings = m.innings[m.currentInningsIndex];
+    if (!m?.innings) return "0.0";
+    const innings = m.innings[m.currentInningsIndex ?? 0];
     return innings ? `${innings.over}.${innings.ball}` : "0.0";
   });
 }
 
 export function useMatchOversDisplay(matchId: string) {
   return useMatchSelector(matchId, (m) => {
-    const innings = m.innings[m.currentInningsIndex];
+    if (!m?.innings) return "0.0";
+    const innings = m.innings[m.currentInningsIndex ?? 0];
     if (!innings) return "0.0";
     return `${innings.over}.${innings.ball}`;
   });
@@ -108,7 +115,8 @@ export function useMatchOversDisplay(matchId: string) {
 
 export function useMatchRunRate(matchId: string) {
   return useMatchSelector(matchId, (m) => {
-    const innings = m.innings[m.currentInningsIndex];
+    if (!m?.innings) return "0.00";
+    const innings = m.innings[m.currentInningsIndex ?? 0];
     if (!innings) return "0.00";
 
     const totalOvers = innings.over + innings.ball / 6;
@@ -127,14 +135,16 @@ export function useMatchRunRate(matchId: string) {
 
 export function useStriker(matchId: string) {
   return useMatchSelector(matchId, (m) => {
-    const innings = m.innings[m.currentInningsIndex];
+    if (!m?.innings) return "";
+    const innings = m.innings[m.currentInningsIndex ?? 0];
     return innings?.striker ?? "";
   });
 }
 
 export function useNonStriker(matchId: string) {
   return useMatchSelector(matchId, (m) => {
-    const innings = m.innings[m.currentInningsIndex];
+    if (!m?.innings) return "";
+    const innings = m.innings[m.currentInningsIndex ?? 0];
     return innings?.nonStriker ?? "";
   });
 }
@@ -147,7 +157,8 @@ export function useNonStriker(matchId: string) {
 
 export function useLastEvent(matchId: string) {
   return useMatchSelector(matchId, (m) => {
-    const innings = m.innings[m.currentInningsIndex];
+    if (!m?.innings) return null;
+    const innings = m.innings[m.currentInningsIndex ?? 0];
     if (!innings) return null;
 
     const overs = innings.overs || {};
@@ -192,12 +203,16 @@ export function useScore(matchId: string) {
 }
 
 export function useCurrentInnings(matchId: string) {
-  return useMatchSelector(matchId, (m) => m.innings[m.currentInningsIndex]);
+  return useMatchSelector(matchId, (m) => {
+    if (!m?.innings) return undefined;
+    return m.innings[m.currentInningsIndex ?? 0];
+  });
 }
 
 export function useCurrentInningsOvers(matchId: string) {
   return useMatchSelector(matchId, (m) => {
-    const innings = m.innings[m.currentInningsIndex];
+    if (!m?.innings) return undefined;
+    const innings = m.innings[m.currentInningsIndex ?? 0];
     return innings?.overs ?? {};
   }, shallowEqual);
 }
@@ -206,7 +221,8 @@ export function useCurrentBatters(matchId: string) {
   return useMatchSelector(
     matchId,
     (m) => {
-      const innings = m.innings[m.currentInningsIndex];
+      if (!m?.innings) return undefined;
+      const innings = m.innings[m.currentInningsIndex ?? 0];
       return {
         striker: innings?.striker ?? "",
         nonStriker: innings?.nonStriker ?? "",
@@ -220,7 +236,8 @@ export function useMomentum(matchId: string) {
   return useMatchSelector(
     matchId,
     (m) => {
-      const innings = m.innings[m.currentInningsIndex];
+      if (!m?.innings) return undefined;
+      const innings = m.innings[m.currentInningsIndex ?? 0];
       const over = innings?.over ?? 0;
       const ball = innings?.ball ?? 0;
       const runs = innings?.runs ?? 0;
@@ -235,11 +252,12 @@ export function useWinProbability(matchId: string) {
   return useMatchSelector(
     matchId,
     (m) => {
-      const innings = m.innings[m.currentInningsIndex];
+      if (!m?.innings) return undefined;
+      const innings = m.innings[m.currentInningsIndex ?? 0];
       const over = innings?.over ?? 0;
       const ball = innings?.ball ?? 0;
       const wickets = innings?.wickets ?? 0;
-      const inningsIndex = m.currentInningsIndex;
+      const inningsIndex = m.currentInningsIndex ?? 0;
       return { inningsIndex, over, ball, wickets };
     },
     shallowEqual

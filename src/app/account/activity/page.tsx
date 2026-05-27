@@ -102,7 +102,7 @@ export default async function ActivityPage() {
       href: `/teams/${membership.team.slug}`,
       timestamp: membership.joinedAt,
       icon: "👤",
-      colorClass: "text-purple-400",
+      colorClass: "text-[var(--accent-brand)]",
     })),
   ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 

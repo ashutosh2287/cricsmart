@@ -12,8 +12,8 @@ export function MatchSection({
   return (
     <section className="space-y-3">
       <div className="flex items-end justify-between gap-2">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-200">{title}</h2>
-        {subtitle ? <p className="text-[11px] text-zinc-500">{subtitle}</p> : null}
+        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-[var(--text-secondary)]">{title}</h2>
+        {subtitle ? <p className="text-[11px] text-[var(--text-muted)]">{subtitle}</p> : null}
       </div>
       {children}
     </section>

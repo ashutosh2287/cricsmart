@@ -241,14 +241,14 @@ if (!innings) return null;
 
         <button
           onClick={() => handleSpeed(0.5)}
-          className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded"
+          className="bg-[var(--accent-brand)] hover:bg-[var(--brand-dark)] px-4 py-2 rounded text-white"
         >
           0.5x
         </button>
 
         <button
           onClick={() => handleSpeed(2)}
-          className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded"
+          className="bg-[var(--accent-brand)] hover:bg-[var(--brand-dark)] px-4 py-2 rounded text-white"
         >
           2x
         </button>

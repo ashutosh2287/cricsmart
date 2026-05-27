@@ -118,7 +118,7 @@ function WagonWheel({ matchId }: Props) {
           let color = "#aaa";
 
           if (shot.runs === 4) color = "#22c55e"; // green
-          else if (shot.runs === 6) color = "#a855f7"; // purple
+          else if (shot.runs === 6) color = "#ef9f27"; // accent
           else if (shot.runs === 0) color = "#555"; // dot
 
           return (

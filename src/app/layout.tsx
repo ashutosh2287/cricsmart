@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Navbar from "@/components/layout/Navbar";
-import localFont from "next/font/local";
 import "./globals.css";
 
 import StadiumOverlay from "@/components/StadiumOverlay";
@@ -28,16 +27,6 @@ const themeInitializerScript = `
 })();
 `;
 
-const geistSans = localFont({
-  src: "../../public/fonts/geist-latin.woff2",
-  variable: "--font-geist-sans",
-});
-
-const geistMono = localFont({
-  src: "../../public/fonts/geist-mono-latin.woff2",
-  variable: "--font-geist-mono",
-});
-
 export const metadata: Metadata = {
   title: "CricSmart",
   description: "Real-Time Cricket Analytics Platform",
@@ -53,9 +42,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitializerScript }} />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className="antialiased">
         <ThemeProvider>
           <AuthProvider>
           {/* ========================================
@@ -67,8 +54,8 @@ export default function RootLayout({
             {/* Blue glow */}
             <div className="cinematic-background__glow cinematic-background__glow--blue absolute top-0 left-1/4 h-[600px] w-[600px] rounded-full blur-[140px]" />
 
-            {/* Purple glow */}
-            <div className="cinematic-background__glow cinematic-background__glow--purple absolute right-1/4 bottom-0 h-[600px] w-[600px] rounded-full blur-[140px]" />
+            {/* Accent glow */}
+            <div className="cinematic-background__glow cinematic-background__glow--accent absolute right-1/4 bottom-0 h-[600px] w-[600px] rounded-full blur-[140px]" />
           </div>
 
           {/* ========================================

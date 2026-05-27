@@ -61,7 +61,7 @@ export default function NarrativeTimeline({ matchId }: Props) {
         {segments.map((s, i) => (
           <div
             key={i}
-            className="px-3 py-1 text-xs bg-purple-600 rounded"
+            className="px-3 py-1 text-xs bg-[var(--accent-brand)] text-white rounded"
           >
             {s.phase}
           </div>

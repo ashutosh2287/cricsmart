@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { CuratedDiscoveryPayload, CuratedMatch } from "@/services/matches/types";
 import { MatchRail } from "@/components/matches/MatchRail";
 import { MatchSection } from "@/components/matches/MatchSection";
 import { MatchCardCompact } from "@/components/matches/MatchCardCompact";
 import { FeaturedSeriesStrip } from "@/components/matches/FeaturedSeriesStrip";
+import { Card } from "@/components/ui/Card";
+import { fadeUp, stagger } from "@/components/ui/motion";
 
 type MatchStatus = "LIVE" | "UPCOMING" | "COMPLETED";
 
@@ -172,23 +175,28 @@ export default function MatchesPage() {
   }, [sections]);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-3 py-5 text-[var(--text-primary)] md:px-4">
-      <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)] md:text-2xl">Matches</h1>
+    <motion.div
+      className="mx-auto max-w-7xl space-y-6 px-3 py-5 text-[var(--text-primary)] md:px-4"
+      variants={stagger}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div variants={fadeUp}>
+        <h1 className="font-display text-xl font-semibold tracking-tight text-[var(--text-primary)] md:text-2xl">
+          Matches
+        </h1>
+      </motion.div>
 
       {discovery.stale && (
-        <div
-          className="rounded-lg px-3 py-2 text-xs"
-          style={{
-            border: "1px solid color-mix(in srgb, var(--accent-amber) 35%, transparent)",
-            background: "color-mix(in srgb, var(--accent-amber) 16%, transparent)",
-            color: "var(--accent-amber)",
-          }}
-        >
-          Scores may be delayed
-        </div>
+        <motion.div variants={fadeUp}>
+          <Card className="px-3 py-2 text-xs" style={{ background: "var(--accent-light)" }}>
+            <span style={{ color: "var(--accent)" }}>Scores may be delayed</span>
+          </Card>
+        </motion.div>
       )}
 
-      <MatchSection title="LIVE NOW" subtitle="Auto-refresh: 5m">
+      <motion.div variants={fadeUp}>
+        <MatchSection title="LIVE NOW" subtitle="Auto-refresh: 5m">
         {realLoading ? (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
@@ -204,40 +212,48 @@ export default function MatchesPage() {
           ) : (
           <MatchRail matches={sections.live} />
         )}
-      </MatchSection>
+        </MatchSection>
+      </motion.div>
 
-      <MatchSection title="UPCOMING MATCHES">
+      <motion.div variants={fadeUp}>
+        <MatchSection title="UPCOMING MATCHES">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {sections.upcoming.length === 0 ? (
-            <p className="text-sm text-[var(--text-muted)]">No upcoming matches in curated sections.</p>
-          ) : (
-            sections.upcoming.map((match) => <MatchCardCompact key={`upcoming-${match.id}`} match={match} />)
-          )}
-        </div>
-      </MatchSection>
+            {sections.upcoming.length === 0 ? (
+              <p className="text-sm text-[var(--text-muted)]">No upcoming matches in curated sections.</p>
+            ) : (
+              sections.upcoming.map((match) => <MatchCardCompact key={`upcoming-${match.id}`} match={match} />)
+            )}
+          </div>
+        </MatchSection>
+      </motion.div>
 
-      <MatchSection title="RECENT RESULTS">
+      <motion.div variants={fadeUp}>
+        <MatchSection title="RECENT RESULTS">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {sections.recent.length === 0 ? (
-            <p className="text-sm text-[var(--text-muted)]">No recent results in curated sections.</p>
-          ) : (
-            sections.recent.map((match) => <MatchCardCompact key={`recent-${match.id}`} match={match} />)
-          )}
-        </div>
-      </MatchSection>
+            {sections.recent.length === 0 ? (
+              <p className="text-sm text-[var(--text-muted)]">No recent results in curated sections.</p>
+            ) : (
+              sections.recent.map((match) => <MatchCardCompact key={`recent-${match.id}`} match={match} />)
+            )}
+          </div>
+        </MatchSection>
+      </motion.div>
 
-      <MatchSection title="FEATURED SERIES">
-        <FeaturedSeriesStrip matches={sections.featured} />
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {sections.featured.length === 0 ? (
-            <p className="text-sm text-[var(--text-muted)]">No featured matches in curated sections.</p>
-          ) : (
-            sections.featured.map((match) => <MatchCardCompact key={`featured-${match.id}`} match={match} />)
-          )}
-        </div>
-      </MatchSection>
+      <motion.div variants={fadeUp}>
+        <MatchSection title="FEATURED SERIES">
+          <FeaturedSeriesStrip matches={sections.featured} />
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {sections.featured.length === 0 ? (
+              <p className="text-sm text-[var(--text-muted)]">No featured matches in curated sections.</p>
+            ) : (
+              sections.featured.map((match) => <MatchCardCompact key={`featured-${match.id}`} match={match} />)
+            )}
+          </div>
+        </MatchSection>
+      </motion.div>
 
-      <MatchSection title="YOUR SIMULATIONS">
+      <motion.div variants={fadeUp}>
+        <MatchSection title="YOUR SIMULATIONS">
         {simLoading ? (
           <p className="text-sm text-[var(--text-secondary)]">Loading simulations...</p>
         ) : simMatches.length === 0 ? (
@@ -249,14 +265,7 @@ export default function MatchesPage() {
               const isDeleting = deletingSimulationId === match.matchId;
 
               return (
-                <div
-                  key={match.matchId}
-                  className="grid grid-cols-[1fr_auto] items-start rounded-lg"
-                  style={{
-                    border: "1px solid var(--border-subtle)",
-                    background: "color-mix(in srgb, var(--bg-surface) 92%, transparent)",
-                  }}
-                >
+                <Card key={match.matchId} className="grid grid-cols-[1fr_auto] items-start rounded-lg">
                   <button
                     onClick={async () => {
                       if (match.type === "LIVE") {
@@ -333,12 +342,13 @@ export default function MatchesPage() {
                       )}
                     </button>
                   </div>
-                </div>
+                </Card>
                );
             })}
           </div>
         )}
       </MatchSection>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

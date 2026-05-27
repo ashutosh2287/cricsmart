@@ -145,7 +145,7 @@ bowlingTeam: matchMeta?.teamB.name || "",
               bowlingTeam: matchMeta?.teamB.name || "",
             })
           }
-          className="bg-purple-600 px-4 py-2 rounded"
+          className="bg-[var(--accent-brand)] px-4 py-2 rounded text-white"
         >
           6
         </button>

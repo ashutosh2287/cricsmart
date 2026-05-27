@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import { useAuth } from "@/providers/AuthProvider";
 import { LiveMatchDropdown } from "@/components/home/LiveMatchDropdown";
+import { Card } from "@/components/ui/Card";
+import { fadeUp, stagger } from "@/components/ui/motion";
 
 // ─────────────────────────────────────────────
 // Types
@@ -110,14 +113,8 @@ function LiveMatchCard({ match }: { match: RealMatch }) {
   const badge = categoryBadgeColor(category);
 
   return (
-    <Link href={`/matches/${match.id}`}>
-      <div
-        className="rounded-xl p-4 transition-colors cursor-pointer group"
-        style={{
-          background: "var(--bg-surface)",
-          border: "1px solid var(--border-subtle)",
-        }}
-      >
+    <Link href={`/matches/${match.id}`} className="block">
+      <Card hover className="p-4 cursor-pointer">
         {/* Top row */}
         <div className="flex items-center justify-between mb-3">
           <span
@@ -126,10 +123,10 @@ function LiveMatchCard({ match }: { match: RealMatch }) {
           >
             {category}
           </span>
-          <span className="flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "#ef4444" }}>
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--danger)" }}>
             <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--danger)] opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--danger)]" />
             </span>
             LIVE
           </span>
@@ -162,14 +159,11 @@ function LiveMatchCard({ match }: { match: RealMatch }) {
 
         {/* Status text */}
         {match.status && (
-          <p
-            className="text-[11px] mt-2 truncate"
-            style={{ color: "var(--text-muted)" }}
-          >
+          <p className="text-[11px] mt-2 truncate" style={{ color: "var(--text-muted)" }}>
             {match.status}
           </p>
         )}
-      </div>
+      </Card>
     </Link>
   );
 }
@@ -191,13 +185,7 @@ function SimulationRow({
       : "var(--accent-brand)";
 
   return (
-    <div
-      className="flex items-center justify-between px-4 py-3 rounded-xl group transition-colors"
-      style={{
-        background: "var(--bg-surface)",
-        border: "1px solid var(--border-subtle)",
-      }}
-    >
+    <Card className="flex items-center justify-between px-4 py-3 rounded-xl group transition-colors">
       <Link
         href={`/match/${match.matchId}`}
         className="flex items-center gap-3 flex-1 min-w-0"
@@ -258,7 +246,7 @@ function SimulationRow({
           {isDeleting ? "…" : "✕"}
         </button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -393,27 +381,30 @@ export default function HomePageClient({
   };
 
   return (
-    <div
+    <motion.div
       className="min-h-screen"
       style={{
         backgroundColor: "var(--bg-base)",
         backgroundImage: "var(--page-hero-gradient)",
         color: "var(--text-primary)",
       }}
+      variants={stagger}
+      initial="hidden"
+      animate="visible"
     >
       <div className="mx-auto w-full max-w-[1100px] px-4 py-8 md:px-6">
 
         {/* ── Top bar ──────────────────────────────────── */}
-        <div className="flex items-center justify-between mb-10">
+        <motion.div className="flex items-center justify-between mb-10" variants={fadeUp}>
           <div>
             <h1
-              className="text-2xl font-bold tracking-tight"
+              className="font-display text-2xl font-semibold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
               CricSmart
             </h1>
             <p
-              className="text-xs mt-0.5"
+              className="text-xs mt-0.5 uppercase tracking-[0.22em]"
               style={{ color: "var(--text-muted)" }}
             >
               Real-Time Cricket Intelligence
@@ -421,21 +412,21 @@ export default function HomePageClient({
           </div>
 
           <div className="flex items-center gap-3">
-  <ThemeToggle />
+            <ThemeToggle />
 
-  <Link
-    href="/matches"
-    className="text-sm px-4 py-2 rounded-lg transition-colors"
-    style={{
-      background: "var(--bg-surface)",
-      color: "var(--text-secondary)",
-      border: "1px solid var(--border-subtle)",
-    }}
-  >
-    All Matches
-  </Link>
+            <Link
+              href="/matches"
+              className="text-sm px-4 py-2 rounded-lg transition-colors"
+              style={{
+                background: "var(--bg-surface)",
+                color: "var(--text-secondary)",
+                border: "1px solid var(--border-subtle)",
+              }}
+            >
+              All Matches
+            </Link>
 
-  <div className="relative" ref={formRef}>
+            <div className="relative" ref={formRef}>
               {(!authLoading && authEnabled && !isAuthenticated) ? (
                 <Link
                   href={`/login?redirect=${encodeURIComponent("/")}`}
@@ -531,298 +522,261 @@ export default function HomePageClient({
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* ── Hero bar ──────────────────────────────────── */}
         {liveMatches.length === 0 && (
-          <section
-            className="mb-6 rounded-2xl p-5 md:p-6"
-            style={{
-              background: "var(--bg-surface)",
-              border: "1px solid var(--border-subtle)",
-            }}
-          >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.15em]" style={{ color: "var(--text-muted)" }}>
-                  Matchday hub
-                </p>
-                <h2 className="mt-1 text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-                  No live matches right now
-                </h2>
-                <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-                  Start a simulation or browse upcoming fixtures while you wait.
-                </p>
+          <motion.section className="mb-6" variants={fadeUp}>
+            <Card className="p-5 md:p-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.15em]" style={{ color: "var(--text-muted)" }}>
+                    Matchday hub
+                  </p>
+                  <h2 className="mt-1 text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+                    No live matches right now
+                  </h2>
+                  <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+                    Start a simulation or browse upcoming fixtures while you wait.
+                  </p>
+                </div>
+                <Link
+                  href="/matches"
+                  className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+                  style={{ background: "var(--accent-brand)", color: "#fff" }}
+                >
+                  Explore fixtures
+                </Link>
               </div>
-              <Link
-                href="/matches"
-                className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-                style={{ background: "var(--accent-brand)", color: "#fff" }}
-              >
-                Explore fixtures
-              </Link>
-            </div>
-          </section>
+            </Card>
+          </motion.section>
         )}
 
         {/* ── Platform stats bar ────────────────────────── */}
-        <section
-          className="mb-10 grid gap-3 rounded-2xl p-4 sm:grid-cols-3"
-          style={{
-            background: "var(--bg-surface)",
-            border: "1px solid var(--border-subtle)",
-          }}
-        >
-          <LiveMatchDropdown count={liveMatchCount} matches={liveHostedMatches} />
-          <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-            <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
-              Teams
-            </p>
-            <p className="mt-1 text-xl font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
-              {teamCount}
-            </p>
-          </div>
-          <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-            <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
-              Hosted matches
-            </p>
-            <p className="mt-1 text-xl font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
-              {totalMatchCount}
-            </p>
-          </div>
-        </section>
+        <motion.section className="mb-10" variants={fadeUp}>
+          <Card className="grid gap-3 p-4 sm:grid-cols-3">
+            <LiveMatchDropdown count={liveMatchCount} matches={liveHostedMatches} />
+            <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
+              <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                Teams
+              </p>
+              <p className="mt-1 text-xl font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                {teamCount}
+              </p>
+            </div>
+            <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
+              <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                Hosted matches
+              </p>
+              <p className="mt-1 text-xl font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                {totalMatchCount}
+              </p>
+            </div>
+          </Card>
+        </motion.section>
 
         {/* ── Live Now ─────────────────────────────────── */}
-        <section
-          className="mb-10 rounded-2xl p-5 md:p-6"
-          style={{
-            background: "var(--bg-surface)",
-            border: "1px solid var(--border-subtle)",
-          }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-              </span>
-              <h2
-                className="text-sm font-semibold uppercase tracking-[0.18em]"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                Live Now
-              </h2>
-              {liveMatches.length > 0 && (
-                <span
-                  className="text-[11px] px-2 py-0.5 rounded-full tabular-nums"
-                  style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}
-                >
-                  {liveMatches.length}
+        <motion.section className="mb-10" variants={fadeUp}>
+          <Card className="p-5 md:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--danger)] opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--danger)]" />
                 </span>
-              )}
+                <h2
+                  className="text-sm font-semibold uppercase tracking-[0.18em]"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Live Now
+                </h2>
+                {liveMatches.length > 0 && (
+                  <span
+                    className="text-[11px] px-2 py-0.5 rounded-full tabular-nums"
+                    style={{ background: "color-mix(in srgb, var(--danger) 14%, transparent)", color: "var(--danger)" }}
+                  >
+                    {liveMatches.length}
+                  </span>
+                )}
+              </div>
+              <Link href="/matches" className="text-xs transition-colors" style={{ color: "var(--text-muted)" }}>
+                View all →
+              </Link>
             </div>
-            <Link
-              href="/matches"
-              className="text-xs transition-colors"
-              style={{ color: "var(--text-muted)" }}
-            >
-              View all →
-            </Link>
-          </div>
 
-          {liveStale && (
-            <p
-              className="text-[11px] mb-3"
-              style={{ color: "var(--accent-amber)" }}
-            >
-              ⚠ Scores may be delayed
-            </p>
-          )}
+            {liveStale && (
+              <p className="text-[11px] mb-3" style={{ color: "var(--accent-amber)" }}>
+                ⚠ Scores may be delayed
+              </p>
+            )}
 
-          {liveMatches.length === 0 ? (
-            <div
-              className="rounded-xl px-4 py-6 text-sm text-center"
-              style={{
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-subtle)",
-                color: "var(--text-muted)",
-              }}
-            >
-              No live matches right now. Check back soon.
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {liveMatches.slice(0, 6).map((m) => (
-                <LiveMatchCard key={m.id} match={m} />
-              ))}
-            </div>
-          )}
-        </section>
+            {liveMatches.length === 0 ? (
+              <div
+                className="rounded-xl px-4 py-6 text-sm text-center"
+                style={{
+                  background: "var(--bg-overlay)",
+                  border: "1px dashed var(--border-subtle)",
+                  color: "var(--text-muted)",
+                }}
+              >
+                No live matches right now. Check back soon.
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {liveMatches.slice(0, 6).map((m) => (
+                  <LiveMatchCard key={m.id} match={m} />
+                ))}
+              </div>
+            )}
+          </Card>
+        </motion.section>
 
         {/* Divider */}
         <div className="mb-10" />
 
         {/* ── Your Simulations ─────────────────────────── */}
-        <section
-          className="rounded-2xl p-5 md:p-6"
-          style={{
-            background: "var(--bg-surface)",
-            border: "1px solid var(--border-subtle)",
-          }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2
-              className="text-sm font-semibold uppercase tracking-[0.18em]"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              Your Simulations
-            </h2>
-            {matches.length > 0 && (
-              <span
-                className="text-[11px] tabular-nums"
-                style={{ color: "var(--text-muted)" }}
+        <motion.section variants={fadeUp}>
+          <Card className="p-5 md:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2
+                className="text-sm font-semibold uppercase tracking-[0.18em]"
+                style={{ color: "var(--text-secondary)" }}
               >
-                {matches.length} match{matches.length !== 1 ? "es" : ""}
-              </span>
-            )}
-          </div>
+                Your Simulations
+              </h2>
+              {matches.length > 0 && (
+                <span className="text-[11px] tabular-nums" style={{ color: "var(--text-muted)" }}>
+                  {matches.length} match{matches.length !== 1 ? "es" : ""}
+                </span>
+              )}
+            </div>
 
-          {matches.length === 0 ? (
-            <div
-              className="rounded-xl px-4 py-8 text-center"
-              style={{
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              <p
-                className="text-sm mb-3"
-                style={{ color: "var(--text-muted)" }}
+            {matches.length === 0 ? (
+              <div
+                className="rounded-xl px-4 py-8 text-center"
+                style={{
+                  background: "var(--bg-overlay)",
+                  border: "1px dashed var(--border-subtle)",
+                }}
               >
-                No simulations yet.
-              </p>
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="text-sm px-4 py-2 rounded-lg font-medium"
-                style={{ background: "var(--accent-brand)", color: "#fff" }}
-              >
-                + Create your first simulation
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {matches.map((m) => (
-                <SimulationRow
-                  key={m.matchId}
-                  match={m}
-                  onDelete={() => handleDelete(m.matchId)}
-                  isDeleting={deletingId === m.matchId}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+                <p className="text-sm mb-3" style={{ color: "var(--text-muted)" }}>
+                  No simulations yet.
+                </p>
+                <button
+                  onClick={() => setShowCreateForm(true)}
+                  className="text-sm px-4 py-2 rounded-lg font-medium"
+                  style={{ background: "var(--accent-brand)", color: "#fff" }}
+                >
+                  + Create your first simulation
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {matches.map((m) => (
+                  <SimulationRow
+                    key={m.matchId}
+                    match={m}
+                    onDelete={() => handleDelete(m.matchId)}
+                    isDeleting={deletingId === m.matchId}
+                  />
+                ))}
+              </div>
+            )}
+          </Card>
+        </motion.section>
 
         {isLoggedIn && (
           <>
             {/* ── Quick actions ───────────────────────────── */}
-            <section
-              className="mt-10 rounded-2xl p-5 md:p-6"
-              style={{
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <h2
-                  className="text-sm font-semibold uppercase tracking-[0.18em]"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  Quick actions
-                </h2>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <Link
-                  href="/host/matches/create"
-                  className="rounded-xl px-4 py-3 text-sm transition-colors"
-                  style={{ background: "var(--bg-overlay)", border: "1px solid var(--border-subtle)" }}
-                >
-                  Host Match
-                </Link>
-                <Link
-                  href="/account/teams"
-                  className="rounded-xl px-4 py-3 text-sm transition-colors"
-                  style={{ background: "var(--bg-overlay)", border: "1px solid var(--border-subtle)" }}
-                >
-                  Manage Teams
-                </Link>
-                <Link
-                  href="/account/tournaments"
-                  className="rounded-xl px-4 py-3 text-sm transition-colors"
-                  style={{ background: "var(--bg-overlay)", border: "1px solid var(--border-subtle)" }}
-                >
-                  Tournaments
-                </Link>
-                <Link
-                  href="/account/saved"
-                  className="rounded-xl px-4 py-3 text-sm transition-colors"
-                  style={{ background: "var(--bg-overlay)", border: "1px solid var(--border-subtle)" }}
-                >
-                  Saved Items
-                </Link>
-              </div>
-            </section>
+            <motion.section className="mt-10" variants={fadeUp}>
+              <Card className="p-5 md:p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2
+                    className="text-sm font-semibold uppercase tracking-[0.18em]"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    Quick actions
+                  </h2>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <Link
+                    href="/host/matches/create"
+                    className="rounded-xl px-4 py-3 text-sm transition-colors"
+                    style={{ background: "var(--bg-overlay)", border: "1px solid var(--border-subtle)" }}
+                  >
+                    Host Match
+                  </Link>
+                  <Link
+                    href="/account/teams"
+                    className="rounded-xl px-4 py-3 text-sm transition-colors"
+                    style={{ background: "var(--bg-overlay)", border: "1px solid var(--border-subtle)" }}
+                  >
+                    Manage Teams
+                  </Link>
+                  <Link
+                    href="/account/tournaments"
+                    className="rounded-xl px-4 py-3 text-sm transition-colors"
+                    style={{ background: "var(--bg-overlay)", border: "1px solid var(--border-subtle)" }}
+                  >
+                    Tournaments
+                  </Link>
+                  <Link
+                    href="/account/saved"
+                    className="rounded-xl px-4 py-3 text-sm transition-colors"
+                    style={{ background: "var(--bg-overlay)", border: "1px solid var(--border-subtle)" }}
+                  >
+                    Saved Items
+                  </Link>
+                </div>
+              </Card>
+            </motion.section>
 
             {/* ── Recent activity snapshot ───────────────── */}
-            <section
-              className="mt-6 rounded-2xl p-5 md:p-6"
-              style={{
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <h2
-                  className="text-sm font-semibold uppercase tracking-[0.18em]"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  Recent activity snapshot
-                </h2>
-                <Link href="/account/activity" className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  Open feed →
-                </Link>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
-                    Live now
-                  </p>
-                  <p className="mt-1 text-lg font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
-                    {liveMatches.length}
-                  </p>
+            <motion.section className="mt-6" variants={fadeUp}>
+              <Card className="p-5 md:p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2
+                    className="text-sm font-semibold uppercase tracking-[0.18em]"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    Recent activity snapshot
+                  </h2>
+                  <Link href="/account/activity" className="text-xs" style={{ color: "var(--text-muted)" }}>
+                    Open feed →
+                  </Link>
                 </div>
-                <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
-                    Simulations
-                  </p>
-                  <p className="mt-1 text-lg font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
-                    {matches.length}
-                  </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
+                    <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                      Live now
+                    </p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                      {liveMatches.length}
+                    </p>
+                  </div>
+                  <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
+                    <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                      Simulations
+                    </p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                      {matches.length}
+                    </p>
+                  </div>
+                  <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
+                    <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                      Feed status
+                    </p>
+                    <p className="mt-1 text-sm font-medium" style={{ color: liveStale ? "var(--accent-amber)" : "var(--text-primary)" }}>
+                      {liveStale ? "Delayed data" : "Up to date"}
+                    </p>
+                  </div>
                 </div>
-                <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
-                    Feed status
-                  </p>
-                  <p className="mt-1 text-sm font-medium" style={{ color: liveStale ? "var(--accent-amber)" : "var(--text-primary)" }}>
-                    {liveStale ? "Delayed data" : "Up to date"}
-                  </p>
-                </div>
-              </div>
-            </section>
+              </Card>
+            </motion.section>
           </>
         )}
 
       </div>
-    </div>
+    </motion.div>
   );
 }

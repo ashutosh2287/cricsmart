@@ -1,88 +1,110 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:ital,wght@0,400;0,500;0,600&display=swap");
 @import "tailwindcss";
 
 :root {
-  color-scheme: dark;
+  --brand: #1d9e75;
+  --brand-dark: #0f6e56;
+  --brand-light: #e1f5ee;
+  --accent: #ef9f27;
+  --accent-light: #faeeda;
+  --danger: #e24b4a;
+  --surface: #ffffff;
+  --surface-2: #f7f8f6;
+  --border: rgba(0, 0, 0, 0.08);
+  --text-1: #111210;
+  --text-2: #5a5c58;
+  --text-3: #9a9c97;
+  --font-display: "DM Serif Display", serif;
+  --font-body: "DM Sans", sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --shadow-hover: 0 4px 20px rgba(29, 158, 117, 0.12);
+
+  color-scheme: light;
 
   /* Surface tokens */
-  --bg-base: #050507;
-  --bg-surface: #0d0d12;
-  --bg-raised: #14141c;
-  --bg-overlay: color-mix(in srgb, #14141c 80%, #050507);
+  --bg-base: var(--surface-2);
+  --bg-surface: var(--surface);
+  --bg-raised: color-mix(in srgb, var(--surface) 92%, var(--brand-light));
+  --bg-overlay: color-mix(in srgb, var(--surface) 85%, var(--brand-light));
 
   /* Accent tokens */
-  --accent-live: #ff4d5a;
-  --accent-danger: #ff4d5a;
-  --accent-amber: #f4b740;
-  --accent-brand: #4f7cff;
-  --accent-glow: #6e5bff;
-  --accent-success: #00b894;
+  --accent-live: var(--danger);
+  --accent-danger: var(--danger);
+  --accent-amber: var(--accent);
+  --accent-brand: var(--brand);
+  --accent-glow: var(--brand-light);
+  --accent-success: var(--brand);
 
   /* Text tokens */
-  --text-primary: #f5f7ff;
-  --text-secondary: #9aa4c7;
-  --text-muted: #6f7aa3;
+  --text-primary: var(--text-1);
+  --text-secondary: var(--text-2);
+  --text-muted: var(--text-3);
 
   /* Border tokens */
-  --border-subtle: color-mix(in srgb, #f5f7ff 10%, transparent);
-  --border-strong: #232336;
+  --border-subtle: var(--border);
+  --border-strong: color-mix(in srgb, var(--brand) 24%, var(--border));
 
   /* Cinematic and nav tokens */
   --gradient-surface: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--accent-brand) 14%, transparent),
-    color-mix(in srgb, var(--accent-glow) 12%, transparent)
+    color-mix(in srgb, var(--brand) 12%, transparent),
+    color-mix(in srgb, var(--accent) 14%, transparent)
   );
-  --cinematic-glow-blue: color-mix(in srgb, var(--accent-brand) 24%, transparent);
-  --cinematic-glow-purple: color-mix(in srgb, var(--accent-glow) 24%, transparent);
-  --cinematic-bg-opacity: 1;
-  --nav-bg: color-mix(in srgb, var(--bg-base) 70%, transparent);
-  --nav-bg-scrolled: color-mix(in srgb, var(--bg-base) 84%, transparent);
-  --nav-border-soft: color-mix(in srgb, var(--text-primary) 8%, transparent);
-  --nav-border-strong: color-mix(in srgb, var(--text-primary) 16%, transparent);
+  --cinematic-glow-blue: color-mix(in srgb, var(--brand) 22%, transparent);
+  --cinematic-glow-purple: color-mix(in srgb, var(--accent) 20%, transparent);
+  --cinematic-bg-opacity: 0.7;
+  --nav-bg: color-mix(in srgb, var(--surface) 88%, transparent);
+  --nav-bg-scrolled: color-mix(in srgb, var(--surface) 96%, transparent);
+  --nav-border-soft: color-mix(in srgb, var(--border) 70%, transparent);
+  --nav-border-strong: color-mix(in srgb, var(--brand) 20%, transparent);
   --page-hero-gradient: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--accent-brand) 8%, var(--bg-base)),
-    var(--bg-base) 280px
+    color-mix(in srgb, var(--brand-light) 55%, var(--surface-2)),
+    var(--surface-2) 320px
   );
-  --modal-backdrop: color-mix(in srgb, var(--bg-base) 86%, transparent);
+  --modal-backdrop: color-mix(in srgb, var(--text-1) 10%, transparent);
 
   /* Chart tokens */
-  --chart-positive: var(--accent-success);
-  --chart-negative: var(--accent-live);
-  --chart-neutral: var(--accent-amber);
-  --chart-batting: var(--accent-brand);
-  --chart-bowling: #ff7a59;
-  --chart-grid: color-mix(in srgb, var(--text-primary) 18%, transparent);
-  --chart-axis: color-mix(in srgb, var(--text-primary) 75%, transparent);
-  --chart-tooltip-bg: var(--bg-surface);
-  --chart-tooltip-border: var(--border-subtle);
-  --chart-tooltip-text: var(--text-primary);
-  --chart-area-positive: color-mix(in srgb, var(--chart-positive) 35%, transparent);
-  --chart-area-negative: color-mix(in srgb, var(--chart-negative) 35%, transparent);
-  --chart-zone-positive: color-mix(in srgb, var(--chart-positive) 14%, transparent);
-  --chart-zone-neutral: color-mix(in srgb, var(--chart-neutral) 11%, transparent);
-  --chart-zone-negative: color-mix(in srgb, var(--chart-negative) 14%, transparent);
-  --chart-marker-default: var(--chart-neutral);
-  --chart-marker-text: var(--text-primary);
-  --chart-marker-stroke: var(--bg-base);
+  --chart-positive: var(--brand);
+  --chart-negative: var(--danger);
+  --chart-neutral: var(--accent);
+  --chart-batting: var(--brand);
+  --chart-bowling: color-mix(in srgb, var(--accent) 72%, #f1843b);
+  --chart-grid: color-mix(in srgb, var(--text-1) 12%, transparent);
+  --chart-axis: color-mix(in srgb, var(--text-1) 60%, transparent);
+  --chart-tooltip-bg: var(--surface);
+  --chart-tooltip-border: var(--border);
+  --chart-tooltip-text: var(--text-1);
+  --chart-area-positive: color-mix(in srgb, var(--brand) 22%, transparent);
+  --chart-area-negative: color-mix(in srgb, var(--danger) 22%, transparent);
+  --chart-zone-positive: color-mix(in srgb, var(--brand) 14%, transparent);
+  --chart-zone-neutral: color-mix(in srgb, var(--accent) 16%, transparent);
+  --chart-zone-negative: color-mix(in srgb, var(--danger) 16%, transparent);
+  --chart-marker-default: var(--accent);
+  --chart-marker-text: var(--text-1);
+  --chart-marker-stroke: var(--surface-2);
 
   /* Overlays */
-  --overlay-soft: color-mix(in srgb, var(--bg-base) 74%, transparent);
-  --overlay-strong: color-mix(in srgb, var(--bg-base) 84%, transparent);
+  --overlay-soft: color-mix(in srgb, var(--text-1) 4%, transparent);
+  --overlay-strong: color-mix(in srgb, var(--text-1) 8%, transparent);
 
   /* Typography tokens */
   --score-display-size: 72px;
-  --score-display-weight: 800;
+  --score-display-weight: 700;
   --score-display-line-height: 0.92;
-  --score-display-tracking: -0.04em;
+  --score-display-tracking: -0.03em;
 
   --score-large-size: 48px;
-  --score-large-weight: 700;
+  --score-large-weight: 600;
   --score-large-line-height: 0.95;
-  --score-large-tracking: -0.03em;
+  --score-large-tracking: -0.02em;
 
   --heading-1-size: 28px;
-  --heading-1-weight: 700;
+  --heading-1-weight: 600;
   --heading-1-line-height: 1.1;
   --heading-1-tracking: -0.02em;
 
@@ -102,7 +124,7 @@
   --body-tracking: 0;
 
   --caption-size: 12px;
-  --caption-weight: 400;
+  --caption-weight: 500;
   --caption-line-height: 1.35;
   --caption-tracking: 0.02em;
 
@@ -127,8 +149,8 @@
   --space-12: 48px;
 
   /* Radius tokens */
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
   --radius-lg: 16px;
   --radius-none: 0;
 
@@ -140,65 +162,65 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  --bg-base: #f5f7fb;
-  --bg-surface: #ffffff;
-  --bg-raised: #f0f3fa;
-  --bg-overlay: color-mix(in srgb, #f0f3fa 90%, #ffffff);
+  --bg-base: var(--surface-2);
+  --bg-surface: var(--surface);
+  --bg-raised: color-mix(in srgb, var(--surface) 94%, var(--brand-light));
+  --bg-overlay: color-mix(in srgb, var(--surface) 90%, var(--brand-light));
 
-  --accent-live: #e63946;
-  --accent-danger: #d7263d;
-  --accent-amber: #c08400;
-  --accent-brand: #3366ff;
-  --accent-glow: #5b4dff;
-  --accent-success: #008a67;
+  --accent-live: var(--danger);
+  --accent-danger: var(--danger);
+  --accent-amber: var(--accent);
+  --accent-brand: var(--brand);
+  --accent-glow: var(--brand-light);
+  --accent-success: var(--brand-dark);
 
-  --text-primary: #111827;
-  --text-secondary: #5b647a;
-  --text-muted: #6b7280;
+  --text-primary: var(--text-1);
+  --text-secondary: var(--text-2);
+  --text-muted: var(--text-3);
 
-  --border-subtle: color-mix(in srgb, #111827 12%, transparent);
-  --border-strong: #dce3f1;
+  --border-subtle: var(--border);
+  --border-strong: color-mix(in srgb, var(--brand) 18%, var(--border));
 
   --gradient-surface: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--accent-brand) 10%, transparent),
-    color-mix(in srgb, var(--accent-glow) 8%, transparent)
+    color-mix(in srgb, var(--brand) 10%, transparent),
+    color-mix(in srgb, var(--accent) 10%, transparent)
   );
-  --cinematic-glow-blue: color-mix(in srgb, var(--accent-brand) 10%, transparent);
-  --cinematic-glow-purple: color-mix(in srgb, var(--accent-glow) 8%, transparent);
-  --cinematic-bg-opacity: 0.38;
-  --nav-bg: color-mix(in srgb, var(--bg-base) 86%, transparent);
-  --nav-bg-scrolled: color-mix(in srgb, var(--bg-base) 92%, transparent);
-  --nav-border-soft: color-mix(in srgb, var(--text-primary) 10%, transparent);
-  --nav-border-strong: color-mix(in srgb, var(--text-primary) 14%, transparent);
+  --cinematic-glow-blue: color-mix(in srgb, var(--brand) 16%, transparent);
+  --cinematic-glow-purple: color-mix(in srgb, var(--accent) 16%, transparent);
+  --cinematic-bg-opacity: 0.5;
+  --nav-bg: color-mix(in srgb, var(--surface) 92%, transparent);
+  --nav-bg-scrolled: color-mix(in srgb, var(--surface) 98%, transparent);
+  --nav-border-soft: color-mix(in srgb, var(--border) 65%, transparent);
+  --nav-border-strong: color-mix(in srgb, var(--brand) 18%, transparent);
   --page-hero-gradient: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--accent-brand) 5%, var(--bg-base)),
-    var(--bg-base) 280px
+    color-mix(in srgb, var(--brand-light) 42%, var(--surface-2)),
+    var(--surface-2) 320px
   );
-  --modal-backdrop: color-mix(in srgb, var(--bg-base) 72%, transparent);
+  --modal-backdrop: color-mix(in srgb, var(--text-1) 8%, transparent);
 
-  --chart-positive: var(--accent-success);
-  --chart-negative: var(--accent-danger);
-  --chart-neutral: var(--accent-amber);
-  --chart-batting: var(--accent-brand);
-  --chart-bowling: #f97316;
-  --chart-grid: color-mix(in srgb, var(--text-primary) 14%, transparent);
-  --chart-axis: color-mix(in srgb, var(--text-primary) 68%, transparent);
-  --chart-tooltip-bg: var(--bg-surface);
-  --chart-tooltip-border: color-mix(in srgb, var(--text-primary) 18%, transparent);
-  --chart-tooltip-text: var(--text-primary);
-  --chart-area-positive: color-mix(in srgb, var(--chart-positive) 20%, transparent);
-  --chart-area-negative: color-mix(in srgb, var(--chart-negative) 18%, transparent);
-  --chart-zone-positive: color-mix(in srgb, var(--chart-positive) 10%, transparent);
-  --chart-zone-neutral: color-mix(in srgb, var(--chart-neutral) 9%, transparent);
-  --chart-zone-negative: color-mix(in srgb, var(--chart-negative) 10%, transparent);
-  --chart-marker-default: var(--chart-neutral);
-  --chart-marker-text: var(--text-primary);
-  --chart-marker-stroke: var(--bg-surface);
+  --chart-positive: var(--brand-dark);
+  --chart-negative: var(--danger);
+  --chart-neutral: var(--accent);
+  --chart-batting: var(--brand);
+  --chart-bowling: color-mix(in srgb, var(--accent) 65%, #f1843b);
+  --chart-grid: color-mix(in srgb, var(--text-1) 10%, transparent);
+  --chart-axis: color-mix(in srgb, var(--text-1) 58%, transparent);
+  --chart-tooltip-bg: var(--surface);
+  --chart-tooltip-border: var(--border);
+  --chart-tooltip-text: var(--text-1);
+  --chart-area-positive: color-mix(in srgb, var(--brand) 18%, transparent);
+  --chart-area-negative: color-mix(in srgb, var(--danger) 18%, transparent);
+  --chart-zone-positive: color-mix(in srgb, var(--brand) 12%, transparent);
+  --chart-zone-neutral: color-mix(in srgb, var(--accent) 12%, transparent);
+  --chart-zone-negative: color-mix(in srgb, var(--danger) 12%, transparent);
+  --chart-marker-default: var(--accent);
+  --chart-marker-text: var(--text-1);
+  --chart-marker-stroke: var(--surface);
 
-  --overlay-soft: color-mix(in srgb, #dce3f1 38%, transparent);
-  --overlay-strong: color-mix(in srgb, #dce3f1 52%, transparent);
+  --overlay-soft: color-mix(in srgb, var(--text-1) 5%, transparent);
+  --overlay-strong: color-mix(in srgb, var(--text-1) 10%, transparent);
 }
 
 @theme inline {
@@ -216,8 +238,8 @@
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
   --color-border-subtle: var(--border-subtle);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-body);
 }
 
 *,
@@ -228,16 +250,16 @@
 }
 
 html {
-  background: var(--bg-base);
-  color: var(--text-primary);
+  background: var(--surface-2);
+  color: var(--text-1);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg-base);
-  color: var(--text-primary);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background: var(--surface-2);
+  color: var(--text-1);
+  font-family: var(--font-body), Arial, Helvetica, sans-serif;
   font-size: var(--body-size);
   font-weight: var(--body-weight);
   line-height: var(--body-line-height);
@@ -295,6 +317,10 @@ body {
 }
 
 .cinematic-background__glow--purple {
+  background: var(--cinematic-glow-purple);
+}
+
+.cinematic-background__glow--accent {
   background: var(--cinematic-glow-purple);
 }
 
@@ -448,6 +474,14 @@ select {
 /* Token helper utilities for later phases */
 .text-tabular {
   font-variant-numeric: tabular-nums;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-body {
+  font-family: var(--font-body);
 }
 
 .broadcast-surface {

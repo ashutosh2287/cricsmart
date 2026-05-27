@@ -112,7 +112,7 @@ export default function MatchStory({ matchId }: Props) {
           )}
 
           {insights.deathDrama && (
-            <p className="text-sm text-purple-400">
+            <p className="text-sm text-[var(--accent-brand)]">
               ⚡ {insights.deathDrama}
             </p>
           )}

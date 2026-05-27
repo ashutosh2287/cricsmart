@@ -163,7 +163,7 @@ function getColor(type: string) {
       return "text-yellow-400";
 
     case "DOMINANT_PARTNERSHIP":
-      return "text-purple-400";
+      return "text-[var(--accent-brand)]";
 
     default:
       return "text-gray-300";

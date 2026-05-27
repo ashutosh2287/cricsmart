@@ -32,37 +32,37 @@ export default function BroadcastDirectorPanel() {
   }
 
   return (
-    <div className="bg-gray-900 text-white p-4 rounded-xl space-y-3">
+    <div className="bg-[var(--bg-surface)] text-[var(--text-primary)] p-4 rounded-xl space-y-3 border border-[var(--border-subtle)] shadow-[var(--shadow-card)]">
 
-      <h2 className="font-bold text-lg">
+      <h2 className="font-display font-semibold text-lg">
         Broadcast Director Panel
       </h2>
 
       <div className="grid grid-cols-2 gap-2">
 
         <button
-          className="bg-red-600 p-2 rounded"
+          className="bg-[var(--danger)] text-white p-2 rounded"
           onClick={cameraShake}
         >
           🎬 Camera Shake
         </button>
 
         <button
-          className="bg-purple-600 p-2 rounded"
+          className="bg-[var(--accent-brand)] text-white p-2 rounded"
           onClick={slowMotion}
         >
           🎥 Slow Motion
         </button>
 
         <button
-          className="bg-orange-600 p-2 rounded"
+          className="bg-[var(--accent-amber)] text-white p-2 rounded"
           onClick={tensionMode}
         >
           🔥 Enter Tension
         </button>
 
         <button
-          className="bg-blue-600 p-2 rounded"
+          className="bg-[var(--brand-dark)] text-white p-2 rounded"
           onClick={showOverlay}
         >
           📺 Show Overlay

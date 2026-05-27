@@ -6,6 +6,7 @@ import { CuratedMatch } from "@/services/matches/types";
 import { MatchMetaRow } from "./MatchMetaRow";
 import { MatchStatusPill } from "./MatchStatusPill";
 import type { LiveMatchInitResponse } from "@/types/liveSession";
+import { Card } from "@/components/ui/Card";
 
 function formatScore(r?: number, w?: number, o?: number): string {
   return `${r ?? 0}/${w ?? 0} (${o ?? 0} ov)`;
@@ -60,23 +61,27 @@ export function MatchCardLive({ match }: { match: CuratedMatch }) {
   }
 
   return (
-    <article className="w-[260px] shrink-0 rounded-lg border border-red-500/25 bg-zinc-900/85 p-3 transition-colors hover:border-red-400/40">
+    <Card
+      hover
+      className="w-[260px] shrink-0 p-3"
+      style={{ borderColor: "color-mix(in srgb, var(--danger) 30%, var(--border-subtle))" }}
+    >
       <div className="mb-2 flex items-start justify-between gap-2">
-        <h3 className="line-clamp-2 text-sm font-semibold text-zinc-100">{match.title}</h3>
+        <h3 className="line-clamp-2 text-sm font-semibold text-[var(--text-primary)]">{match.title}</h3>
         <MatchStatusPill status={match.status} />
       </div>
 
       {match.score.length > 0 ? (
-        <div className="space-y-1 text-xs font-mono text-zinc-200">
+        <div className="space-y-1 text-xs font-mono text-[var(--text-secondary)]">
           {match.score.slice(0, 2).map((entry, idx) => (
             <p key={idx} className="line-clamp-1">
-              {entry.inning ? <span className="text-zinc-400">{entry.inning}: </span> : null}
+              {entry.inning ? <span className="text-[var(--text-muted)]">{entry.inning}: </span> : null}
               {formatScore(entry.r, entry.w, entry.o)}
             </p>
           ))}
         </div>
       ) : (
-        <p className="text-xs text-zinc-400">Live updates incoming</p>
+        <p className="text-xs text-[var(--text-muted)]">Live updates incoming</p>
       )}
 
       <MatchMetaRow match={match} />
@@ -86,17 +91,24 @@ export function MatchCardLive({ match }: { match: CuratedMatch }) {
           type="button"
           onClick={openLiveMatch}
           disabled={isInitializing}
-          className="w-full rounded-md bg-red-500/90 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full rounded-md bg-[var(--danger)] px-3 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-dark)] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isInitializing ? "Initializing live session…" : "Open Live Match"}
         </button>
 
         {error ? (
-          <div className="rounded-md border border-red-500/30 bg-red-950/40 px-3 py-2 text-xs text-red-200">
+          <div
+            className="rounded-md border px-3 py-2 text-xs"
+            style={{
+              borderColor: "color-mix(in srgb, var(--danger) 35%, transparent)",
+              background: "color-mix(in srgb, var(--danger) 12%, transparent)",
+              color: "var(--danger)",
+            }}
+          >
             {error}
           </div>
         ) : null}
       </div>
-    </article>
+    </Card>
   );
 }

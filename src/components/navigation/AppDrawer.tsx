@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import MenuSection, { DrawerMenuItem } from "@/components/navigation/MenuSection";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -71,7 +71,8 @@ const sections: DrawerSection[] = [
 export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<number | null>(null);
-  const { isAuthenticated } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { isAuthenticated, logout } = useAuth();
   const accountItems: DrawerMenuItem[] = isAuthenticated
     ? [
         {
@@ -93,6 +94,21 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
           label: "My Teams",
           href: "/account/teams",
           icon: icon("M4 15a3 3 0 016 0m2 0a3 3 0 016 0M7 8a2 2 0 110-4 2 2 0 010 4zm6 0a2 2 0 110-4 2 2 0 010 4z"),
+        },
+        {
+          label: isLoggingOut ? "Logging out..." : "Logout",
+          icon: icon("M9 6l-4 4 4 4M5 10h8m2 5H9a2 2 0 01-2-2V7a2 2 0 012-2h6"),
+          isLoading: isLoggingOut,
+          onClick: async () => {
+            if (isLoggingOut) return;
+            setIsLoggingOut(true);
+            try {
+              await logout();
+              onClose();
+            } finally {
+              setIsLoggingOut(false);
+            }
+          },
         },
       ]
     : [

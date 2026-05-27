@@ -52,10 +52,16 @@ function MatchInsightsPanel({ matchId }: Props) {
       {/* 🤖 AI INSIGHTS (PREMIUM CARD) */}
       {(aiInsights?.length ?? 0) > 0 && (
 
-        <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/10 
-                        border border-purple-600 rounded-xl p-4 shadow-lg">
+        <div
+          className="rounded-xl border p-4 shadow-[var(--shadow-card)]"
+          style={{
+            borderColor: "color-mix(in srgb, var(--accent-brand) 30%, transparent)",
+            background:
+              "linear-gradient(135deg, color-mix(in srgb, var(--brand-light) 70%, transparent), color-mix(in srgb, var(--accent-light) 60%, transparent))",
+          }}
+        >
 
-          <h3 className="text-xs text-purple-300 uppercase mb-3 tracking-wide">
+          <h3 className="text-xs text-[var(--accent-brand)] uppercase mb-3 tracking-wide">
             🤖 AI Insights
           </h3>
 
@@ -65,8 +71,12 @@ function MatchInsightsPanel({ matchId }: Props) {
 
               <div
                 key={i}
-                className="text-sm text-purple-200 bg-purple-950/40 
-                           px-3 py-2 rounded-md border border-purple-700"
+                className="text-sm px-3 py-2 rounded-md border"
+                style={{
+                  borderColor: "var(--border-subtle)",
+                  background: "var(--bg-overlay)",
+                  color: "var(--text-primary)",
+                }}
               >
                 {insight.text}
               </div>
@@ -80,14 +90,14 @@ function MatchInsightsPanel({ matchId }: Props) {
       )}
 
       {/* ⚡ MATCH INSIGHTS */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
 
-        <h3 className="text-xs text-gray-400 uppercase mb-3 tracking-wide">
+        <h3 className="text-xs text-[var(--text-muted)] uppercase mb-3 tracking-wide">
           ⚡ Match Insights
         </h3>
 
         {insights.length === 0 && (
-          <div className="text-gray-500 text-sm">
+          <div className="text-[var(--text-muted)] text-sm">
             No insights yet
           </div>
         )}
@@ -96,13 +106,10 @@ function MatchInsightsPanel({ matchId }: Props) {
 
           {insights.slice(-5).map((i, index) => (
 
-            <div
-              key={index}
-              className="text-sm text-gray-300 flex items-start gap-2"
-            >
-              <span className="text-green-400">•</span>
-              <span>{i.text}</span>
-            </div>
+              <div key={index} className="text-sm text-[var(--text-secondary)] flex items-start gap-2">
+                <span className="text-[var(--accent-brand)]">•</span>
+                <span>{i.text}</span>
+              </div>
 
           ))}
 

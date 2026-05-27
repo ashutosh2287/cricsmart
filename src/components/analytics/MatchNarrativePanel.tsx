@@ -70,7 +70,7 @@ function MatchNarrativePanel({ matchId }: Props) {
               signal.direction === "BATTING"
                 ? "Momentum favoring batting side"
                 : "Bowling side gaining control",
-            color: "border-purple-500"
+            color: "border-[var(--accent-brand)]"
           };
           break;
 
@@ -96,22 +96,21 @@ function MatchNarrativePanel({ matchId }: Props) {
   }, [matchId]);
 
   return (
-    <div className="bg-[#020617]/80 backdrop-blur-md 
-                    border border-gray-800 rounded-xl p-4 text-white shadow-xl">
+    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 text-[var(--text-primary)] shadow-[var(--shadow-card)]">
 
       {/* HEADER */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">
+        <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide">
           Match Narrative
         </h2>
-        <span className="text-xs text-gray-500">Live</span>
+        <span className="text-xs text-[var(--text-muted)]">Live</span>
       </div>
 
       {/* STORIES */}
       <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
 
         {stories.length === 0 && (
-          <div className="text-gray-500 text-xs">
+          <div className="text-[var(--text-muted)] text-xs">
             Waiting for match story...
           </div>
         )}
@@ -119,15 +118,12 @@ function MatchNarrativePanel({ matchId }: Props) {
         {stories.map((story) => (
           <div
             key={story.id}
-            className={`border-l-4 ${story.color} 
-                        bg-white/5 hover:bg-white/10 
-                        transition-all duration-300 
-                        rounded-lg p-3 animate-fade-in`}
+            className={`border-l-4 ${story.color} bg-[var(--bg-overlay)] transition-all duration-300 rounded-lg p-3 animate-fade-in`}
           >
             <div className="text-sm font-semibold">
               {story.title}
             </div>
-            <div className="text-xs text-gray-400 mt-1">
+            <div className="text-xs text-[var(--text-muted)] mt-1">
               {story.description}
             </div>
           </div>

@@ -295,7 +295,7 @@ export default function Navbar() {
               <MobileMenuButton isOpen={isOpen} onClick={toggleDrawer} />
               <Link
                 href="/"
-                className="text-lg font-bold tracking-tight text-[var(--text-primary)] transition hover:text-[var(--accent-brand)] md:text-xl"
+                className="font-display text-lg font-semibold tracking-tight text-[var(--text-primary)] transition hover:text-[var(--accent-brand)] md:text-xl"
               >
                 CricSmart
               </Link>

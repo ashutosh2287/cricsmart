@@ -169,7 +169,7 @@ export default function MatchTimelineSlider({ matchId }: Props) {
         {highlights.sixes.map((i) => (
           <div
             key={"s" + i}
-            className="absolute top-0 w-1 h-2 bg-purple-400"
+            className="absolute top-0 w-1 h-2 bg-[var(--accent-brand)]"
             style={{
               left: `${(i / maxIndex) * 100}%`,
             }}

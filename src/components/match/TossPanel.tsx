@@ -17,14 +17,17 @@ export default function TossPanel({ teamA, teamB, onConfirm }: Props) {
   };
 
   return (
-    <div className="bg-gray-900 p-4 rounded text-white space-y-4">
+    <div
+      className="p-4 rounded space-y-4"
+      style={{ background: "var(--surface)", border: "0.5px solid var(--border)", color: "var(--text-1)" }}
+    >
 
       <h2 className="text-lg font-semibold">Toss</h2>
 
       {!winner && (
         <button
           onClick={handleToss}
-          className="bg-blue-600 px-4 py-2 rounded"
+          className="bg-blue-600 px-4 py-2 rounded text-[var(--text-inv)]"
         >
           Flip Coin
         </button>
@@ -32,21 +35,23 @@ export default function TossPanel({ teamA, teamB, onConfirm }: Props) {
 
       {winner && (
         <>
-          <p className="text-green-400">
+          <p className="text-[var(--brand)]">
             {winner.name} won the toss 🎉
           </p>
 
           <div className="flex gap-2">
             <button
               onClick={() => setDecision("BAT")}
-              className="bg-gray-700 px-3 py-2 rounded"
+              className="px-3 py-2 rounded"
+              style={{ background: "var(--surface-2)", border: "0.5px solid var(--border)" }}
             >
               Bat
             </button>
 
             <button
               onClick={() => setDecision("BOWL")}
-              className="bg-gray-700 px-3 py-2 rounded"
+              className="px-3 py-2 rounded"
+              style={{ background: "var(--surface-2)", border: "0.5px solid var(--border)" }}
             >
               Bowl
             </button>
@@ -57,7 +62,7 @@ export default function TossPanel({ teamA, teamB, onConfirm }: Props) {
       {winner && decision && (
         <button
           onClick={() => onConfirm(winner, decision)}
-          className="bg-green-600 px-4 py-2 rounded w-full"
+          className="bg-green-600 px-4 py-2 rounded w-full text-[var(--text-inv)]"
         >
           Start Match
         </button>

@@ -89,9 +89,12 @@ function WagonWheel({ matchId }: Props) {
 
   return (
     <AnalyticsErrorBoundary fallbackTitle="Wagon wheel is temporarily unavailable.">
-      <div className="bg-zinc-900 p-4 rounded-xl shadow-lg">
+      <div
+        className="p-4 rounded-xl shadow-lg"
+        style={{ background: "var(--surface)", border: "0.5px solid var(--border)" }}
+      >
 
-      <h3 className="text-lg font-semibold mb-3 text-white">
+      <h3 className="text-lg font-semibold mb-3 text-[var(--text-1)]">
         Wagon Wheel
       </h3>
       
@@ -103,8 +106,8 @@ function WagonWheel({ matchId }: Props) {
           cx={center}
           cy={center}
           r={radius}
-          fill="rgba(255,255,255,0.02)"
-          stroke="#333"
+          fill="var(--surface-3)"
+          stroke="var(--border)"
         />
 
         {/* Shots */}
@@ -115,11 +118,11 @@ function WagonWheel({ matchId }: Props) {
           const x = center + radius * Math.cos(rad);
           const y = center + radius * Math.sin(rad);
 
-          let color = "#aaa";
+          let color = "var(--text-3)";
 
-          if (shot.runs === 4) color = "#22c55e"; // green
-          else if (shot.runs === 6) color = "#a855f7"; // purple
-          else if (shot.runs === 0) color = "#555"; // dot
+          if (shot.runs === 4) color = "var(--brand)";
+          else if (shot.runs === 6) color = "var(--accent)";
+          else if (shot.runs === 0) color = "var(--text-3)";
 
           return (
             <line
@@ -140,7 +143,7 @@ function WagonWheel({ matchId }: Props) {
         })}
 
         {/* Center */}
-        <circle cx={center} cy={center} r={3} fill="#fff" />
+        <circle cx={center} cy={center} r={3} fill="var(--text-1)" />
 
       </svg>
 

@@ -92,7 +92,10 @@ export default function MatchInsightPanel({ matchId }: Props) {
   }, [matchId]);
 
   return (
-    <div className="bg-zinc-900 text-white p-4 rounded-xl shadow-lg">
+    <div
+      className="p-4 rounded-xl shadow-lg"
+      style={{ background: "var(--surface)", border: "0.5px solid var(--border)", color: "var(--text-1)" }}
+    >
 
       {/* Pattern Insights */}
 
@@ -102,7 +105,7 @@ export default function MatchInsightPanel({ matchId }: Props) {
 
           {situationInsights.map((s, i) => (
 
-  <div key={i} className="text-sm text-yellow-400">
+  <div key={i} className="text-sm text-[var(--accent)]">
     ⚠ {s.text}
   </div>
 
@@ -110,7 +113,7 @@ export default function MatchInsightPanel({ matchId }: Props) {
 
           {patternInsights.map((p, i) => (
 
-            <div key={i} className="text-sm text-orange-400">
+            <div key={i} className="text-sm text-[var(--brand)]">
               ⚡ {p.text}
             </div>
 

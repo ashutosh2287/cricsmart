@@ -31,7 +31,7 @@ function MatchNarrativePanel({ matchId }: Props) {
             id: counter++,
             title: "🎯 Turning Point",
             description: "Match direction shifting rapidly",
-            color: "border-yellow-500"
+            color: "var(--accent)"
           };
           break;
 
@@ -40,7 +40,7 @@ function MatchNarrativePanel({ matchId }: Props) {
             id: counter++,
             title: "🚨 Collapse Alert",
             description: "Batting side collapsing under pressure",
-            color: "border-red-500"
+            color: "var(--danger)"
           };
           break;
 
@@ -49,7 +49,7 @@ function MatchNarrativePanel({ matchId }: Props) {
             id: counter++,
             title: "💥 Assault Phase",
             description: "Batting side launching aggressive attack",
-            color: "border-orange-500"
+            color: "var(--accent)"
           };
           break;
 
@@ -58,7 +58,7 @@ function MatchNarrativePanel({ matchId }: Props) {
             id: counter++,
             title: "🧱 Pressure Build",
             description: "Bowling side tightening control",
-            color: "border-blue-500"
+            color: "var(--brand)"
           };
           break;
 
@@ -70,7 +70,7 @@ function MatchNarrativePanel({ matchId }: Props) {
               signal.direction === "BATTING"
                 ? "Momentum favoring batting side"
                 : "Bowling side gaining control",
-            color: "border-purple-500"
+            color: "var(--brand)"
           };
           break;
 
@@ -82,7 +82,7 @@ function MatchNarrativePanel({ matchId }: Props) {
               signal.team === "BATTING"
                 ? "Batting side dominating the game"
                 : "Bowling side dominating the match",
-            color: "border-green-500"
+            color: "var(--brand)"
           };
           break;
       }
@@ -96,22 +96,30 @@ function MatchNarrativePanel({ matchId }: Props) {
   }, [matchId]);
 
   return (
-    <div className="bg-[#020617]/80 backdrop-blur-md 
-                    border border-gray-800 rounded-xl p-4 text-white shadow-xl">
+    <div
+      className="backdrop-blur-md rounded-xl p-4 shadow-xl"
+      style={{
+        background: "var(--surface)",
+        border: "0.5px solid var(--border)",
+        color: "var(--text-1)",
+      }}
+    >
 
       {/* HEADER */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">
+        <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
           Match Narrative
         </h2>
-        <span className="text-xs text-gray-500">Live</span>
+        <span className="text-xs" style={{ color: "var(--text-3)" }}>
+          Live
+        </span>
       </div>
 
       {/* STORIES */}
       <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
 
         {stories.length === 0 && (
-          <div className="text-gray-500 text-xs">
+          <div className="text-xs" style={{ color: "var(--text-3)" }}>
             Waiting for match story...
           </div>
         )}
@@ -119,15 +127,13 @@ function MatchNarrativePanel({ matchId }: Props) {
         {stories.map((story) => (
           <div
             key={story.id}
-            className={`border-l-4 ${story.color} 
-                        bg-white/5 hover:bg-white/10 
-                        transition-all duration-300 
-                        rounded-lg p-3 animate-fade-in`}
+            className="border-l-4 bg-[var(--surface-2)] transition-all duration-300 rounded-lg p-3 animate-fade-in hover:bg-[var(--surface-3)]"
+            style={{ borderLeftColor: story.color }}
           >
             <div className="text-sm font-semibold">
               {story.title}
             </div>
-            <div className="text-xs text-gray-400 mt-1">
+            <div className="text-xs mt-1" style={{ color: "var(--text-2)" }}>
               {story.description}
             </div>
           </div>

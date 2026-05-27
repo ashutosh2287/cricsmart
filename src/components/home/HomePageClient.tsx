@@ -89,13 +89,13 @@ function formatScore(entry: ScoreEntry): string {
 
 function categoryBadgeColor(cat: string) {
   const c = cat.toUpperCase();
-  if (c === "IPL") return { bg: "rgba(245,158,11,0.12)", color: "#f59e0b" };
-  if (c === "TEST") return { bg: "rgba(239,68,68,0.12)", color: "#ef4444" };
-  if (c === "ODI") return { bg: "rgba(34,197,94,0.12)", color: "#22c55e" };
-  if (c.includes("T20")) return { bg: "rgba(59,130,246,0.12)", color: "#60a5fa" };
+  if (c === "IPL") return { bg: "var(--accent-light)", color: "var(--accent)" };
+  if (c === "TEST") return { bg: "var(--danger-light)", color: "var(--danger)" };
+  if (c === "ODI") return { bg: "var(--brand-light)", color: "var(--brand)" };
+  if (c.includes("T20")) return { bg: "var(--surface-3)", color: "var(--text-2)" };
   return {
-    bg: "color-mix(in srgb, var(--text-primary) 8%, transparent)",
-    color: "var(--text-secondary)",
+    bg: "color-mix(in srgb, var(--text-1) 8%, transparent)",
+    color: "var(--text-2)",
   };
 }
 
@@ -126,10 +126,13 @@ function LiveMatchCard({ match }: { match: RealMatch }) {
           >
             {category}
           </span>
-          <span className="flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "#ef4444" }}>
+          <span className="flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--danger)" }}>
             <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500" />
+              <span
+                className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                style={{ background: "var(--danger)" }}
+              />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: "var(--danger)" }} />
             </span>
             LIVE
           </span>
@@ -138,10 +141,10 @@ function LiveMatchCard({ match }: { match: RealMatch }) {
         {/* Teams */}
         <p
           className="text-sm font-semibold mb-2 leading-snug"
-          style={{ color: "var(--text-primary)" }}
+          style={{ color: "var(--text-1)" }}
         >
           {teamA}
-          <span style={{ color: "var(--text-muted)" }}> vs </span>
+          <span style={{ color: "var(--text-3)" }}> vs </span>
           {teamB}
         </p>
 
@@ -152,7 +155,7 @@ function LiveMatchCard({ match }: { match: RealMatch }) {
               <p
                 key={i}
                 className="text-xs tabular-nums font-mono"
-                style={{ color: "var(--text-secondary)" }}
+                style={{ color: "var(--text-2)" }}
               >
                 {formatScore(s)}
               </p>
@@ -164,7 +167,7 @@ function LiveMatchCard({ match }: { match: RealMatch }) {
         {match.status && (
           <p
             className="text-[11px] mt-2 truncate"
-            style={{ color: "var(--text-muted)" }}
+            style={{ color: "var(--text-3)" }}
           >
             {match.status}
           </p>
@@ -185,10 +188,10 @@ function SimulationRow({
 }) {
   const statusColor =
     match.status === "Live"
-      ? "var(--accent-live)"
+      ? "var(--danger)"
       : match.status === "Completed"
-      ? "var(--text-muted)"
-      : "var(--accent-brand)";
+      ? "var(--text-3)"
+      : "var(--brand)";
 
   return (
     <div
@@ -207,18 +210,18 @@ function SimulationRow({
           <span className="relative flex h-2 w-2 shrink-0">
             <span
               className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-              style={{ background: "var(--accent-live)" }}
+              style={{ background: "var(--danger)" }}
             />
             <span
               className="relative inline-flex rounded-full h-2 w-2"
-              style={{ background: "var(--accent-live)" }}
+              style={{ background: "var(--danger)" }}
             />
           </span>
         )}
 
         <span
           className="font-medium text-sm truncate"
-          style={{ color: "var(--text-primary)" }}
+          style={{ color: "var(--text-1)" }}
         >
           {match.teamA} vs {match.teamB}
         </span>
@@ -237,7 +240,7 @@ function SimulationRow({
           className="text-[11px] px-3 py-1.5 rounded-lg transition-colors"
           style={{
             background: "var(--bg-overlay)",
-            color: "var(--text-secondary)",
+            color: "var(--text-2)",
             border: "1px solid var(--border-subtle)",
           }}
         >
@@ -250,7 +253,7 @@ function SimulationRow({
           className="w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-colors disabled:opacity-40"
           style={{
             background: "var(--bg-overlay)",
-            color: "var(--text-muted)",
+            color: "var(--text-3)",
             border: "1px solid var(--border-subtle)",
           }}
           title="Delete"
@@ -398,7 +401,7 @@ export default function HomePageClient({
       style={{
         backgroundColor: "var(--bg-base)",
         backgroundImage: "var(--page-hero-gradient)",
-        color: "var(--text-primary)",
+        color: "var(--text-1)",
       }}
     >
       <div className="mx-auto w-full max-w-[1100px] px-4 py-8 md:px-6">
@@ -408,13 +411,13 @@ export default function HomePageClient({
           <div>
             <h1
               className="text-2xl font-bold tracking-tight"
-              style={{ color: "var(--text-primary)" }}
+              style={{ color: "var(--text-1)" }}
             >
               CricSmart
             </h1>
             <p
               className="text-xs mt-0.5"
-              style={{ color: "var(--text-muted)" }}
+              style={{ color: "var(--text-3)" }}
             >
               Real-Time Cricket Intelligence
             </p>
@@ -428,7 +431,7 @@ export default function HomePageClient({
     className="text-sm px-4 py-2 rounded-lg transition-colors"
     style={{
       background: "var(--bg-surface)",
-      color: "var(--text-secondary)",
+      color: "var(--text-2)",
       border: "1px solid var(--border-subtle)",
     }}
   >
@@ -442,7 +445,7 @@ export default function HomePageClient({
                   className="text-sm px-4 py-2 rounded-lg transition-colors"
                   style={{
                     background: "var(--bg-surface)",
-                    color: "var(--text-secondary)",
+                    color: "var(--text-2)",
                     border: "1px solid var(--border-subtle)",
                   }}
                 >
@@ -453,8 +456,8 @@ export default function HomePageClient({
                   onClick={() => setShowCreateForm((v) => !v)}
                   className="text-sm px-4 py-2 rounded-lg font-medium transition-colors"
                   style={{
-                    background: "var(--accent-brand)",
-                    color: "#fff",
+                    background: "var(--brand)",
+                    color: "var(--text-inv)",
                   }}
                 >
                   + New Simulation
@@ -472,7 +475,7 @@ export default function HomePageClient({
                 >
                   <p
                     className="text-sm font-semibold mb-3"
-                    style={{ color: "var(--text-primary)" }}
+                    style={{ color: "var(--text-1)" }}
                   >
                     New Simulation
                   </p>
@@ -480,7 +483,7 @@ export default function HomePageClient({
                     <div>
                       <label
                         className="text-[11px] uppercase tracking-[0.12em] block mb-1"
-                        style={{ color: "var(--text-muted)" }}
+                        style={{ color: "var(--text-3)" }}
                       >
                         Team A
                       </label>
@@ -493,14 +496,14 @@ export default function HomePageClient({
                         style={{
                           background: "var(--bg-overlay)",
                           border: "1px solid var(--border-subtle)",
-                          color: "var(--text-primary)",
+                          color: "var(--text-1)",
                         }}
                       />
                     </div>
                     <div>
                       <label
                         className="text-[11px] uppercase tracking-[0.12em] block mb-1"
-                        style={{ color: "var(--text-muted)" }}
+                        style={{ color: "var(--text-3)" }}
                       >
                         Team B
                       </label>
@@ -514,7 +517,7 @@ export default function HomePageClient({
                         style={{
                           background: "var(--bg-overlay)",
                           border: "1px solid var(--border-subtle)",
-                          color: "var(--text-primary)",
+                          color: "var(--text-1)",
                         }}
                       />
                     </div>
@@ -522,7 +525,7 @@ export default function HomePageClient({
                       onClick={handleCreateMatch}
                       disabled={creating}
                       className="w-full rounded-lg py-2 text-sm font-semibold transition-opacity disabled:opacity-60"
-                      style={{ background: "var(--accent-brand)", color: "#fff" }}
+                      style={{ background: "var(--brand)", color: "var(--text-inv)" }}
                     >
                       {creating ? "Creating…" : "Create & Open"}
                     </button>
@@ -544,20 +547,20 @@ export default function HomePageClient({
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.15em]" style={{ color: "var(--text-muted)" }}>
+                <p className="text-xs uppercase tracking-[0.15em]" style={{ color: "var(--text-3)" }}>
                   Matchday hub
                 </p>
-                <h2 className="mt-1 text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+                <h2 className="mt-1 text-lg font-semibold" style={{ color: "var(--text-1)" }}>
                   No live matches right now
                 </h2>
-                <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+                <p className="mt-1 text-sm" style={{ color: "var(--text-2)" }}>
                   Start a simulation or browse upcoming fixtures while you wait.
                 </p>
               </div>
               <Link
                 href="/matches"
                 className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-                style={{ background: "var(--accent-brand)", color: "#fff" }}
+                style={{ background: "var(--brand)", color: "var(--text-inv)" }}
               >
                 Explore fixtures
               </Link>
@@ -575,18 +578,18 @@ export default function HomePageClient({
         >
           <LiveMatchDropdown count={liveMatchCount} matches={liveHostedMatches} />
           <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-            <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+            <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-3)" }}>
               Teams
             </p>
-            <p className="mt-1 text-xl font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+            <p className="mt-1 text-xl font-semibold tabular-nums" style={{ color: "var(--text-1)" }}>
               {teamCount}
             </p>
           </div>
           <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-            <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+            <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-3)" }}>
               Hosted matches
             </p>
-            <p className="mt-1 text-xl font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+            <p className="mt-1 text-xl font-semibold tabular-nums" style={{ color: "var(--text-1)" }}>
               {totalMatchCount}
             </p>
           </div>
@@ -608,14 +611,14 @@ export default function HomePageClient({
               </span>
               <h2
                 className="text-sm font-semibold uppercase tracking-[0.18em]"
-                style={{ color: "var(--text-secondary)" }}
+                style={{ color: "var(--text-2)" }}
               >
                 Live Now
               </h2>
               {liveMatches.length > 0 && (
                 <span
                   className="text-[11px] px-2 py-0.5 rounded-full tabular-nums"
-                  style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}
+                  style={{ background: "var(--danger-light)", color: "var(--danger)" }}
                 >
                   {liveMatches.length}
                 </span>
@@ -624,7 +627,7 @@ export default function HomePageClient({
             <Link
               href="/matches"
               className="text-xs transition-colors"
-              style={{ color: "var(--text-muted)" }}
+              style={{ color: "var(--text-3)" }}
             >
               View all →
             </Link>
@@ -633,7 +636,7 @@ export default function HomePageClient({
           {liveStale && (
             <p
               className="text-[11px] mb-3"
-              style={{ color: "var(--accent-amber)" }}
+              style={{ color: "var(--accent)" }}
             >
               ⚠ Scores may be delayed
             </p>
@@ -645,7 +648,7 @@ export default function HomePageClient({
               style={{
                 background: "var(--bg-surface)",
                 border: "1px solid var(--border-subtle)",
-                color: "var(--text-muted)",
+                color: "var(--text-3)",
               }}
             >
               No live matches right now. Check back soon.
@@ -673,14 +676,14 @@ export default function HomePageClient({
           <div className="flex items-center justify-between mb-4">
             <h2
               className="text-sm font-semibold uppercase tracking-[0.18em]"
-              style={{ color: "var(--text-secondary)" }}
+              style={{ color: "var(--text-2)" }}
             >
               Your Simulations
             </h2>
             {matches.length > 0 && (
               <span
                 className="text-[11px] tabular-nums"
-                style={{ color: "var(--text-muted)" }}
+                style={{ color: "var(--text-3)" }}
               >
                 {matches.length} match{matches.length !== 1 ? "es" : ""}
               </span>
@@ -697,14 +700,14 @@ export default function HomePageClient({
             >
               <p
                 className="text-sm mb-3"
-                style={{ color: "var(--text-muted)" }}
+                style={{ color: "var(--text-3)" }}
               >
                 No simulations yet.
               </p>
               <button
                 onClick={() => setShowCreateForm(true)}
                 className="text-sm px-4 py-2 rounded-lg font-medium"
-                style={{ background: "var(--accent-brand)", color: "#fff" }}
+                style={{ background: "var(--brand)", color: "var(--text-inv)" }}
               >
                 + Create your first simulation
               </button>
@@ -736,7 +739,7 @@ export default function HomePageClient({
               <div className="mb-4 flex items-center justify-between">
                 <h2
                   className="text-sm font-semibold uppercase tracking-[0.18em]"
-                  style={{ color: "var(--text-secondary)" }}
+                  style={{ color: "var(--text-2)" }}
                 >
                   Quick actions
                 </h2>
@@ -784,36 +787,36 @@ export default function HomePageClient({
               <div className="mb-4 flex items-center justify-between">
                 <h2
                   className="text-sm font-semibold uppercase tracking-[0.18em]"
-                  style={{ color: "var(--text-secondary)" }}
+                  style={{ color: "var(--text-2)" }}
                 >
                   Recent activity snapshot
                 </h2>
-                <Link href="/account/activity" className="text-xs" style={{ color: "var(--text-muted)" }}>
+                <Link href="/account/activity" className="text-xs" style={{ color: "var(--text-3)" }}>
                   Open feed →
                 </Link>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-3)" }}>
                     Live now
                   </p>
-                  <p className="mt-1 text-lg font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                  <p className="mt-1 text-lg font-semibold tabular-nums" style={{ color: "var(--text-1)" }}>
                     {liveMatches.length}
                   </p>
                 </div>
                 <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-3)" }}>
                     Simulations
                   </p>
-                  <p className="mt-1 text-lg font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                  <p className="mt-1 text-lg font-semibold tabular-nums" style={{ color: "var(--text-1)" }}>
                     {matches.length}
                   </p>
                 </div>
                 <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-3)" }}>
                     Feed status
                   </p>
-                  <p className="mt-1 text-sm font-medium" style={{ color: liveStale ? "var(--accent-amber)" : "var(--text-primary)" }}>
+                  <p className="mt-1 text-sm font-medium" style={{ color: liveStale ? "var(--accent)" : "var(--text-1)" }}>
                     {liveStale ? "Delayed data" : "Up to date"}
                   </p>
                 </div>

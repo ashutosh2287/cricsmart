@@ -44,20 +44,23 @@ export default function PartnershipPanel({ matchId }: Props) {
 
   return (
 
-  <div className="bg-gradient-to-br from-[#020617] to-[#0f172a] text-white p-5 rounded-xl border border-gray-800 shadow-lg">
+  <div
+    className="p-5 rounded-xl shadow-lg"
+    style={{ background: "var(--surface)", border: "0.5px solid var(--border)", color: "var(--text-1)" }}
+  >
 
     {/* HEADER */}
     <div className="flex justify-between items-center mb-3">
       <div>
-  <h3 className="text-sm uppercase text-gray-400 tracking-wide">
+  <h3 className="text-sm uppercase text-[var(--text-3)] tracking-wide">
     Current Partnership
   </h3>
 
-  <div className="text-lg font-semibold text-white mt-1">
+  <div className="text-lg font-semibold text-[var(--text-1)] mt-1">
     ⭐ {striker || "—"} & {nonStriker || "—"}
   </div>
 
-  <div className="text-xs text-gray-400">
+  <div className="text-xs text-[var(--text-3)]">
     {runs} ({balls})
   </div>
 </div>
@@ -66,12 +69,12 @@ export default function PartnershipPanel({ matchId }: Props) {
       <div
         className={`text-xs px-2 py-1 rounded-full font-semibold ${
           threat === "LOW"
-            ? "bg-gray-700 text-gray-300"
+            ? "bg-[var(--surface-3)] text-[var(--text-2)]"
             : threat === "BUILDING"
-            ? "bg-blue-500/20 text-blue-400"
+            ? "bg-[var(--brand-light)] text-[var(--brand)]"
             : threat === "DANGEROUS"
-            ? "bg-orange-500/20 text-orange-400"
-            : "bg-red-500/20 text-red-400"
+            ? "bg-[var(--accent-light)] text-[var(--accent)]"
+            : "bg-[var(--danger-light)] text-[var(--danger)]"
         }`}
       >
         {threat === "LOW" && "⚪ LOW"}
@@ -86,41 +89,41 @@ export default function PartnershipPanel({ matchId }: Props) {
 
       {/* RUNS */}
       <div>
-        <div className="text-3xl font-bold text-white">
+        <div className="text-3xl font-bold text-[var(--text-1)]">
           {runs}
         </div>
-        <div className="text-xs text-gray-400">Runs</div>
+        <div className="text-xs text-[var(--text-3)]">Runs</div>
       </div>
 
       {/* BALLS */}
       <div className="text-center">
-        <div className="text-xl font-semibold text-gray-200">
+        <div className="text-xl font-semibold text-[var(--text-2)]">
           {balls}
         </div>
-        <div className="text-xs text-gray-400">Balls</div>
+        <div className="text-xs text-[var(--text-3)]">Balls</div>
       </div>
 
       {/* RUN RATE */}
       <div className="text-right">
-        <div className="text-xl font-semibold text-green-400">
+        <div className="text-xl font-semibold text-[var(--brand)]">
           {rr.toFixed(2)}
         </div>
-        <div className="text-xs text-gray-400">Run Rate</div>
+        <div className="text-xs text-[var(--text-3)]">Run Rate</div>
       </div>
 
     </div>
 
     {/* 🔥 VISUAL BAR (BONUS FEEL) */}
-    <div className="mt-4 h-2 w-full bg-gray-800 rounded-full overflow-hidden">
+    <div className="mt-4 h-2 w-full rounded-full overflow-hidden" style={{ background: "var(--surface-3)" }}>
       <div
         className={`h-full transition-all duration-500 ${
           threat === "LOW"
-            ? "bg-gray-500 w-[20%]"
+            ? "bg-[var(--text-3)] w-[20%]"
             : threat === "BUILDING"
-            ? "bg-blue-500 w-[50%]"
+            ? "bg-[var(--brand)] w-[50%]"
             : threat === "DANGEROUS"
-            ? "bg-orange-500 w-[75%]"
-            : "bg-red-500 w-full"
+            ? "bg-[var(--accent)] w-[75%]"
+            : "bg-[var(--danger)] w-full"
         }`}
       />
     </div>

@@ -33,18 +33,21 @@ export default function MatchPhaseTimeline({ matchId }: Props) {
   const control = intelligence?.battingControl ?? 50;
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-lg space-y-4">
+    <div
+      className="rounded-xl p-4 shadow-lg space-y-4"
+      style={{ background: "var(--surface)", border: "0.5px solid var(--border)", color: "var(--text-1)" }}
+    >
 
-      <h3 className="text-sm text-gray-400 uppercase">
+      <h3 className="text-sm text-[var(--text-3)] uppercase">
         Match Phases
       </h3>
 
       {/* CURRENT PHASE */}
 
       {phase && (
-        <div className="text-xs text-gray-300">
+        <div className="text-xs text-[var(--text-2)]">
           Phase:{" "}
-          <span className="font-semibold text-white">
+          <span className="font-semibold text-[var(--text-1)]">
             {phase.phase.replaceAll("_", " ")}
           </span>
         </div>
@@ -59,10 +62,10 @@ export default function MatchPhaseTimeline({ matchId }: Props) {
           <span>{control.toFixed(0)}%</span>
         </div>
 
-        <div className="w-full bg-gray-700 h-2 rounded">
+        <div className="w-full h-2 rounded" style={{ background: "var(--surface-3)" }}>
           <div
-            className="bg-green-500 h-2 rounded"
-            style={{ width: `${control}%` }}
+            className="h-2 rounded"
+            style={{ width: `${control}%`, background: "var(--brand)" }}
           />
         </div>
 
@@ -77,10 +80,10 @@ export default function MatchPhaseTimeline({ matchId }: Props) {
           <span>{momentum}</span>
         </div>
 
-        <div className="w-full bg-gray-700 h-2 rounded">
+        <div className="w-full h-2 rounded" style={{ background: "var(--surface-3)" }}>
           <div
-            className="bg-blue-500 h-2 rounded"
-            style={{ width: `${Math.min(100, momentum * 10)}%` }}
+            className="h-2 rounded"
+            style={{ width: `${Math.min(100, momentum * 10)}%`, background: "var(--brand)" }}
           />
         </div>
 
@@ -95,10 +98,10 @@ export default function MatchPhaseTimeline({ matchId }: Props) {
           <span>{pressure}</span>
         </div>
 
-        <div className="w-full bg-gray-700 h-2 rounded">
+        <div className="w-full h-2 rounded" style={{ background: "var(--surface-3)" }}>
           <div
-            className="bg-red-500 h-2 rounded"
-            style={{ width: `${Math.min(100, pressure * 10)}%` }}
+            className="h-2 rounded"
+            style={{ width: `${Math.min(100, pressure * 10)}%`, background: "var(--danger)" }}
           />
         </div>
 

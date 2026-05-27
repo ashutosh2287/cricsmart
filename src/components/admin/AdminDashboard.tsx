@@ -40,26 +40,34 @@ const [tossData, setTossData] = useState<TossData | null>(null);
 
       {/* 🧮 SCORING */}
       <GlassPanel>
-        <h3 className="text-lg font-semibold mb-3">Admin Scoring Panel</h3>
+        <h3 className="text-lg font-semibold mb-3" style={{ color: "var(--text-1)", fontFamily: "var(--font-display)" }}>
+          Admin Scoring Panel
+        </h3>
         <AdminScoringPanel matchId={matchId} />
       </GlassPanel>
 
       {/* 📡 BROADCAST */}
       <div className="grid gap-6 xl:grid-cols-2">
         <GlassPanel>
-          <h3 className="mb-3 font-semibold">Director Panel</h3>
+          <h3 className="mb-3 font-semibold" style={{ color: "var(--text-1)", fontFamily: "var(--font-display)" }}>
+            Director Panel
+          </h3>
           <BroadcastDirectorPanel />
         </GlassPanel>
 
         <GlassPanel>
-          <h3 className="mb-3 font-semibold">Broadcast Control</h3>
+          <h3 className="mb-3 font-semibold" style={{ color: "var(--text-1)", fontFamily: "var(--font-display)" }}>
+            Broadcast Control
+          </h3>
           <BroadcastControlDashboard />
         </GlassPanel>
       </div>
 
       {/* 🎮 SIMULATION */}
       <GlassPanel>
-        <h3 className="mb-3 font-semibold">Simulation Controls</h3>
+        <h3 className="mb-3 font-semibold" style={{ color: "var(--text-1)", fontFamily: "var(--font-display)" }}>
+          Simulation Controls
+        </h3>
 
         {!matchMeta ? (
           <TeamSelector
@@ -75,7 +83,7 @@ const [tossData, setTossData] = useState<TossData | null>(null);
             }}
           />
         ) : (
-          <div className="p-3 bg-green-500/10 rounded-xl">
+          <div className="p-3 rounded-xl" style={{ background: "var(--brand-light)", color: "var(--brand-text)" }}>
             {matchMeta.teamA.name} vs {matchMeta.teamB.name}
           </div>
         )}
@@ -117,7 +125,7 @@ const [tossData, setTossData] = useState<TossData | null>(null);
   router.push(`/match/${matchId}?tab=live`);
 }}
   disabled={!matchMeta || !tossData || isStarting}
-  className="mt-4 bg-green-600 px-4 py-2 rounded-xl disabled:opacity-50"
+  className="mt-4 bg-green-600 px-4 py-2 rounded-xl text-[var(--text-inv)] disabled:opacity-50"
 >
   {isStarting ? "Starting..." : "Start Simulation"}
 </button>

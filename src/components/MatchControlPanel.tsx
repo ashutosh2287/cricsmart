@@ -140,7 +140,7 @@ export default function MatchControlPanel({ matchId }: Props) {
           type="button"
           onClick={startMatch}
           disabled={isStarting}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-md text-sm"
+          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-[var(--text-inv)] rounded-md text-sm"
         >
           {isStarting ? "Starting..." : "▶ Start Match"}
         </button>
@@ -149,7 +149,7 @@ export default function MatchControlPanel({ matchId }: Props) {
           type="button"
           onClick={startHistoricalReplay}
           disabled={isReplaying}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-md text-sm"
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-[var(--text-inv)] rounded-md text-sm"
         >
           {isReplaying ? "Loading Replay..." : "▶ Replay Match"}
         </button>

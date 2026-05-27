@@ -29,17 +29,20 @@ export default function MomentumMeter({ matchId }: Props) {
 
   return (
 
-    <div className="bg-black text-white p-4 rounded-xl">
+    <div
+      className="p-4 rounded-xl"
+      style={{ background: "var(--surface)", border: "0.5px solid var(--border)", color: "var(--text-1)" }}
+    >
 
       <h3 className="font-bold mb-2">
         Momentum
       </h3>
 
-      <div className="w-full h-4 bg-gray-700 rounded overflow-hidden">
+      <div className="w-full h-4 rounded overflow-hidden" style={{ background: "var(--surface-3)" }}>
 
         <div
-          className="h-full bg-green-400 transition-all"
-          style={{ width: `${momentum}%` }}
+          className="h-full transition-all"
+          style={{ width: `${momentum}%`, background: "var(--brand)" }}
         />
 
       </div>

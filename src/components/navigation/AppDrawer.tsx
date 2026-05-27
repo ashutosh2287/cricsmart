@@ -156,7 +156,7 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
         type="button"
         aria-label="Close navigation drawer"
         onClick={onClose}
-        className={`absolute inset-0 bg-black/60 backdrop-blur-[1px] transition-opacity duration-300 ${isOpen ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 bg-[var(--overlay-strong)] backdrop-blur-[1px] transition-opacity duration-300 ${isOpen ? "opacity-100" : "opacity-0"}`}
       />
 
       <aside
@@ -180,14 +180,14 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
             onClose();
           }
         }}
-        className={`absolute left-0 top-0 h-full w-[80vw] max-w-[320px] border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-transform duration-300 ease-out md:w-[320px] ${
+        className={`absolute left-0 top-0 h-full w-[80vw] max-w-[320px] border-r border-[var(--border)] bg-[var(--surface)] transition-transform duration-300 ease-out md:w-[320px] ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-4 py-3">
+          <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-secondary)]">Navigation</p>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-2)]">Navigation</p>
               <p className="text-sm font-semibold text-[var(--text-primary)]">CricSmart</p>
             </div>
             <button

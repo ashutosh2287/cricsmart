@@ -5,10 +5,12 @@ import MenuItem from "@/components/navigation/MenuItem";
 import { isPathActive } from "@/components/navigation/navigationUtils";
 
 export type DrawerMenuItem = {
+  key?: string;
   label: string;
-  href: string;
+  href?: string;
   icon: React.ReactNode;
   isLoading?: boolean;
+  onClick?: () => void | Promise<void>;
 };
 
 type MenuSectionProps = {
@@ -44,12 +46,13 @@ export default function MenuSection({ title, items, pathname, onNavigate }: Menu
         <div className="space-y-1">
           {items.map((item) => (
             <MenuItem
-              key={item.href}
+              key={item.key ?? item.href ?? `${title}-${item.label}`}
               href={item.href}
               label={item.label}
               icon={item.icon}
               isLoading={item.isLoading}
-              isActive={isPathActive(pathname, item.href)}
+              onClick={item.onClick}
+              isActive={item.href ? isPathActive(pathname, item.href) : false}
               onNavigate={onNavigate}
             />
           ))}

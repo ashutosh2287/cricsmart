@@ -96,6 +96,7 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
           icon: icon("M4 15a3 3 0 016 0m2 0a3 3 0 016 0M7 8a2 2 0 110-4 2 2 0 010 4zm6 0a2 2 0 110-4 2 2 0 010 4z"),
         },
         {
+          key: "account-logout",
           label: isLoggingOut ? "Logging out..." : "Logout",
           icon: icon("M9 6l-4 4 4 4M5 10h8m2 5H9a2 2 0 01-2-2V7a2 2 0 012-2h6"),
           isLoading: isLoggingOut,

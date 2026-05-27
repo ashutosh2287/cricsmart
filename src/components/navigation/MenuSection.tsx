@@ -5,6 +5,7 @@ import MenuItem from "@/components/navigation/MenuItem";
 import { isPathActive } from "@/components/navigation/navigationUtils";
 
 export type DrawerMenuItem = {
+  key?: string;
   label: string;
   href?: string;
   icon: React.ReactNode;
@@ -45,7 +46,7 @@ export default function MenuSection({ title, items, pathname, onNavigate }: Menu
         <div className="space-y-1">
           {items.map((item) => (
             <MenuItem
-              key={item.href ?? `${title}-${item.label}`}
+              key={item.key ?? item.href ?? `${title}-${item.label}`}
               href={item.href}
               label={item.label}
               icon={item.icon}

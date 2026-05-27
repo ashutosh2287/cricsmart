@@ -22,19 +22,20 @@ export default function MenuItem({
   onClick,
   onNavigate,
 }: MenuItemProps) {
-  const itemClassName = `group flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80 ${
+  const itemClassName = `group flex items-center gap-3 rounded-md px-3 py-2.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80 ${
     isActive
       ? "border border-blue-400/30 bg-blue-400/15 text-[var(--text-primary)]"
       : "text-[var(--text-secondary)] hover:bg-[var(--bg-raised)]/75 hover:text-[var(--text-primary)]"
   }`;
+  const buttonClassName = `${itemClassName} w-full text-left`;
 
   if (onClick) {
     return (
       <button
         type="button"
-        onClick={() => void onClick()}
+        onClick={onClick}
         disabled={isLoading}
-        className={itemClassName}
+        className={buttonClassName}
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--border-subtle)] bg-[var(--bg-raised)]/70 text-[var(--text-primary)]">
           {icon}
@@ -51,9 +52,13 @@ export default function MenuItem({
     );
   }
 
+  if (!href) {
+    return null;
+  }
+
   return (
     <Link
-      href={href ?? "#"}
+      href={href}
       aria-current={isActive ? "page" : undefined}
       onClick={onNavigate}
       className={itemClassName}

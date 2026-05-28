@@ -10,7 +10,7 @@ export default function GlobalAnalyticsPage() {
 
   return (
 
-    <div className="p-6 space-y-6 text-white">
+    <div className="p-6 space-y-6 text-[var(--text-primary)]">
 
       <h1 className="text-2xl font-bold">
         Global Cricket Analytics
@@ -25,9 +25,9 @@ export default function GlobalAnalyticsPage() {
 
       {/* Top Run Scorers */}
 
-      <div className="bg-gray-900 p-4 rounded-xl border border-gray-800">
+      <div className="bg-[var(--bg-surface)] p-4 rounded-xl border border-[var(--border-subtle)]">
 
-        <h2 className="text-sm uppercase text-gray-400 mb-3">
+        <h2 className="text-sm uppercase text-[var(--text-secondary)] mb-3">
           Top Run Scorers
         </h2>
 
@@ -46,9 +46,9 @@ export default function GlobalAnalyticsPage() {
 
       {/* Top Impact Players */}
 
-      <div className="bg-gray-900 p-4 rounded-xl border border-gray-800">
+      <div className="bg-[var(--bg-surface)] p-4 rounded-xl border border-[var(--border-subtle)]">
 
-        <h2 className="text-sm uppercase text-gray-400 mb-3">
+        <h2 className="text-sm uppercase text-[var(--text-secondary)] mb-3">
           Top Impact Players
         </h2>
 

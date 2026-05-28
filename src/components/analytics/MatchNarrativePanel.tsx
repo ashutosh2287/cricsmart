@@ -70,7 +70,7 @@ function MatchNarrativePanel({ matchId }: Props) {
               signal.direction === "BATTING"
                 ? "Momentum favoring batting side"
                 : "Bowling side gaining control",
-            color: "var(--brand)",
+            color: "var(--brand)"
           };
           break;
 
@@ -96,26 +96,23 @@ function MatchNarrativePanel({ matchId }: Props) {
   }, [matchId]);
 
   return (
-    <div
-      className="backdrop-blur-md rounded-xl p-4 shadow-xl"
-      style={{
-        background: "var(--surface)",
-        border: "0.5px solid var(--border)",
-        color: "var(--text-1)",
-      }}
-    >
+  <div
+    className="backdrop-blur-md rounded-xl p-4 shadow-xl"
+    style={{
+      background: "var(--surface)",
+      border: "0.5px solid var(--border)",
+      color: "var(--text-1)",
+    }}
+  >
 
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-4">
-        <h2
-          className="text-sm font-semibold uppercase tracking-wide"
-          style={{ color: "var(--text-3)" }}
-        >
-          Match Narrative
-        </h2>
-        <span className="text-xs" style={{ color: "var(--text-3)" }}>
-          Live
-        </span>
+    {/* HEADER */}
+    <div className="flex items-center justify-between mb-4">
+      <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--text-3)" }}>
+        Match Narrative
+      </h2>
+      <span className="text-xs" style={{ color: "var(--text-3)" }}>
+        Live
+      </span>
       </div>
 
       {/* STORIES */}

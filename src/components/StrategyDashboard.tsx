@@ -23,7 +23,7 @@ export default function StrategyDashboard({ matchId }: Props) {
   const pressure = intelligence?.pressureLevel ?? "LOW";
 
   return (
-    <div className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text-1)] p-5 rounded-xl space-y-4 shadow-lg">
+    <div className="bg-[var(--surface)] border border-gray-800 text-[var(--text-1)] p-5 rounded-xl space-y-4 shadow-lg">
 
       <h3 className="text-lg font-bold">
         Strategy Dashboard

@@ -20,9 +20,9 @@ function ImpactLeaderboard({ matchId }: { matchId: string }) {
 
   return (
 
-    <div className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text-1)] rounded-xl p-6">
+    <div className="bg-[var(--surface)] border border-zinc-800 rounded-xl p-6">
 
-      <h2 className="text-sm text-[var(--text-3)] uppercase mb-4">
+      <h2 className="text-sm text-[var(--text-2)] uppercase mb-4">
         Player Impact Leaderboard
       </h2>
 

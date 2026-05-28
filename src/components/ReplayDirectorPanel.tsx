@@ -9,7 +9,7 @@ export default function ReplayDirectorPanel({ matchId }: { matchId: string }) {
   if (!queue.length) return null;
 
   return (
-    <div className="bg-[var(--surface)] text-[var(--text-1)] border border-[var(--border)] p-4 rounded-xl">
+    <div className="bg-black text-[var(--text-1)] p-4 rounded-xl">
 
       <h3 className="font-bold mb-3">
         Replay Director

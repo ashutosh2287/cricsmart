@@ -48,7 +48,7 @@ export default function HighlightTimeline({ matchId }: Props) {
   if (!highlights.length) return null;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-1)]">
+    <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] text-[var(--text-1)]">
 
       {/* HEADER */}
       <div className="flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
@@ -75,7 +75,7 @@ export default function HighlightTimeline({ matchId }: Props) {
           <div
             key={h.id}
             className="flex items-center justify-between 
-                       bg-[var(--surface-2)] hover:bg-[var(--surface-3)] 
+                       bg-[var(--surface)]/80 hover:bg-[var(--surface-2)] 
                        px-2.5 py-2 rounded-md 
                        transition text-sm"
           >

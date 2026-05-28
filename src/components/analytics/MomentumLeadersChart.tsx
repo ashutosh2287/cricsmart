@@ -41,8 +41,8 @@ function MomentumLeadersChart() {
 
         <BarChart data={data}>
 
-          <XAxis dataKey="matchId" stroke="var(--chart-axis)" />
-          <YAxis stroke="var(--chart-axis)" />
+          <XAxis dataKey="matchId" stroke="var(--chart-axis)" tick={{ fill: "var(--text-3)", fontSize: 11 }} />
+          <YAxis stroke="var(--chart-axis)" tick={{ fill: "var(--text-3)", fontSize: 11 }} />
 
           {/* 🔥 UPGRADED TOOLTIP */}
           <Tooltip

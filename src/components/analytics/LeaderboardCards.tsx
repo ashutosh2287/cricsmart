@@ -16,9 +16,9 @@ function LeaderboardCards() {
 
       {/* TOP BATTER */}
 
-      <div className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text-1)] p-4 rounded-xl">
+      <div className="bg-[var(--surface)] border border-gray-800 p-4 rounded-xl">
 
-        <h3 className="text-xs text-[var(--text-3)] uppercase mb-2">
+        <h3 className="text-xs text-[var(--text-2)] uppercase mb-2">
           Top Batter
         </h3>
 
@@ -41,9 +41,9 @@ function LeaderboardCards() {
 
       {/* TOP IMPACT PLAYER */}
 
-      <div className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text-1)] p-4 rounded-xl">
+      <div className="bg-[var(--surface)] border border-gray-800 p-4 rounded-xl">
 
-        <h3 className="text-xs text-[var(--text-3)] uppercase mb-2">
+        <h3 className="text-xs text-[var(--text-2)] uppercase mb-2">
           Top Impact Player
         </h3>
 
@@ -66,9 +66,9 @@ function LeaderboardCards() {
 
       {/* MATCH CONTROL LEADER */}
 
-      <div className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text-1)] p-4 rounded-xl">
+      <div className="bg-[var(--surface)] border border-gray-800 p-4 rounded-xl">
 
-        <h3 className="text-xs text-[var(--text-3)] uppercase mb-2">
+        <h3 className="text-xs text-[var(--text-2)] uppercase mb-2">
           Match Control Leader
         </h3>
 

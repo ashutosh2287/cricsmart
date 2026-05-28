@@ -34,8 +34,13 @@ export default function MatchDramaMeter({ matchId }: Props) {
 
   return (
     <div
-      className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-primary)]"
-      style={{ padding: "12px", width: "260px" }}
+      style={{
+        padding: "12px",
+        background: "var(--surface)",
+        color: "var(--text-1)",
+        borderRadius: "8px",
+        width: "260px"
+      }}
     >
 
       <div style={{ marginBottom: "8px", fontWeight: 600 }}>
@@ -49,7 +54,8 @@ export default function MatchDramaMeter({ matchId }: Props) {
             style={{
               width: "18px",
               height: "12px",
-              background: i < bars ? "var(--accent-danger)" : "var(--border-subtle)",
+              background:
+                i < bars ? "var(--danger)" : "var(--surface-3)",
               borderRadius: "2px"
             }}
           />

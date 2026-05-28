@@ -50,8 +50,8 @@ function PlayerFormGraph({ playerId }: Props) {
           <ReferenceArea y1={20} y2={50} fill="var(--chart-zone-neutral)" />
           <ReferenceArea y1={0} y2={20} fill="var(--chart-zone-negative)" />
 
-          <XAxis dataKey="matchId" stroke="var(--chart-axis)" />
-          <YAxis stroke="var(--chart-axis)" />
+          <XAxis dataKey="matchId" stroke="var(--chart-axis)" tick={{ fill: "var(--text-3)", fontSize: 11 }} />
+          <YAxis stroke="var(--chart-axis)" tick={{ fill: "var(--text-3)", fontSize: 11 }} />
 
           {/* 🔥 TOOLTIP */}
           <Tooltip

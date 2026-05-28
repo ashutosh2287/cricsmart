@@ -78,11 +78,11 @@ export default function BroadcastOverlay() {
 
       {/* FLASH OVERLAY */}
       {flash && (
-        <div className="absolute inset-0 bg-white opacity-70 animate-pulse"/>
+        <div className="absolute inset-0 bg-[var(--text-1)] opacity-70 animate-pulse"/>
       )}
 
       {/* CINEMATIC TEXT */}
-      <div className="text-6xl font-extrabold animate-bounce z-10">
+      <div className="text-6xl font-extrabold animate-bounce z-10 text-[var(--text-1)]">
 
         {event === "SIX" && "🔥 SIX 🔥"}
         {event === "FOUR" && "⚡ FOUR ⚡"}

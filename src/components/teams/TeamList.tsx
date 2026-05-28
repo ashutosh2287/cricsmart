@@ -2,7 +2,7 @@ import { teams } from "@/data/teams";
 
 export default function TeamList() {
   return (
-    <div className="bg-[var(--surface)] text-[var(--text-1)] border border-[var(--border)] rounded-lg p-4">
+    <div className="bg-[var(--surface)] text-[var(--text-1)] rounded-lg p-4">
 
       <h2 className="text-lg mb-4 font-semibold">
         International Teams
@@ -13,7 +13,7 @@ export default function TeamList() {
         {teams.map((team) => (
           <div
             key={team.name}
-            className="bg-[var(--surface-2)] p-3 rounded flex justify-between hover:bg-[var(--surface-3)] cursor-pointer"
+            className="bg-[var(--surface-2)]/40 p-3 rounded flex justify-between hover:bg-[var(--surface-3)]/50 cursor-pointer"
           >
             <span>{team.name}</span>
             <span>›</span>

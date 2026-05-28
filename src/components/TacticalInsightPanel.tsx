@@ -9,7 +9,7 @@ export default function TacticalInsightPanel({ matchId }: { matchId: string }) {
   if (!insights.length) return null;
 
   return (
-    <div className="bg-[var(--surface)] text-[var(--text-1)] border border-[var(--border)] p-4 rounded-lg space-y-3">
+    <div className="bg-[var(--surface)] text-[var(--text-1)] p-4 rounded-lg space-y-3">
 
       <h3 className="font-bold text-lg">
         Tactical Insights
@@ -19,7 +19,7 @@ export default function TacticalInsightPanel({ matchId }: { matchId: string }) {
 
         <div
           key={idx}
-          className={`p-3 rounded text-[#ffffff] ${
+          className={`p-3 rounded ${
             i.severity === "HIGH"
               ? "bg-red-700"
               : i.severity === "MEDIUM"

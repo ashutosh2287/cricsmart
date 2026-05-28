@@ -50,7 +50,7 @@ export default function NarrativeTimeline({ matchId }: Props) {
 
   return (
 
-    <div className="bg-[var(--surface)] text-[var(--text-1)] border border-[var(--border)] p-3 rounded-lg">
+    <div className="bg-[var(--surface)] text-[var(--text-1)] p-3 rounded-lg">
 
       <h3 className="text-sm font-semibold mb-2">
         Match Narrative
@@ -61,7 +61,7 @@ export default function NarrativeTimeline({ matchId }: Props) {
         {segments.map((s, i) => (
           <div
             key={i}
-            className="px-3 py-1 text-xs bg-[var(--accent-brand)] text-[#ffffff] rounded"
+            className="px-3 py-1 text-xs bg-[var(--accent-brand)] text-white rounded"
           >
             {s.phase}
           </div>

@@ -33,7 +33,7 @@ export default function PlayerCard({
 
     <motion.div
       whileHover={{ scale: 1.04 }}
-      className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text-1)] rounded-xl p-6 shadow-lg cursor-pointer hover:border-blue-500 hover:shadow-blue-500/20 transition-all"
+      className="bg-[var(--surface)] border border-zinc-800 rounded-xl p-6 shadow-lg cursor-pointer hover:border-blue-500 hover:shadow-blue-500/20 transition-all"
     >
 
       {/* PLAYER HEADER */}

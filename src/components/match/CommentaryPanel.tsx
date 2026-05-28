@@ -394,10 +394,10 @@ function buildOverBlocks(innings: InningsState | undefined): OverBlock[] {
 }
 
 function getTagClasses(tag: string | null) {
-  if (tag === "WICKET") return "border-[var(--danger)] bg-[var(--danger-light)] text-[var(--danger)]";
-  if (tag === "SIX") return "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]";
-  if (tag === "FOUR") return "border-[var(--brand)] bg-[var(--brand-light)] text-[var(--brand)]";
-  return "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-2)]";
+  if (tag === "WICKET") return "border-[var(--danger)] bg-red-950/30 text-red-100";
+  if (tag === "SIX") return "border-amber-400/35 bg-amber-950/25 text-amber-100";
+  if (tag === "FOUR") return "border-sky-400/35 bg-sky-950/25 text-sky-100";
+  return "border-[var(--border)] bg-slate-950/55 text-[var(--text-1)]";
 }
 
 export default function CommentaryPanel({ matchId, insights }: Props) {
@@ -408,8 +408,8 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
 
   if (!currentInnings) {
     return (
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5">
-        <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-2)] p-5 text-sm text-[var(--text-2)]">
+      <div className="rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.9))] p-3.5">
+        <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm text-[var(--text-3)]">
           Waiting for live commentary...
         </div>
       </div>
@@ -521,10 +521,10 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
                       key={`${block.summary.key}-highlight-${index}`}
                       className={`rounded-lg border px-3 py-2 text-xs ${
                         note.type === "WICKET"
-                          ? "border-[var(--danger)] bg-[var(--danger-light)] text-[var(--danger)]"
+                          ? "border-red-400/40 bg-red-500/12 text-red-100"
                           : note.type === "MILESTONE"
-                            ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]"
-                            : "border-[var(--brand)] bg-[var(--brand-light)] text-[var(--brand)]"
+                            ? "border-amber-400/40 bg-amber-500/12 text-amber-100"
+                            : "border-emerald-400/30 bg-emerald-500/12 text-emerald-100"
                       }`}
                     >
                       {note.message}
@@ -558,16 +558,7 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
 
             <div className="space-y-2">
               {block.balls.map((ball) => (
-                <div
-                  key={ball.key}
-                  className="border border-[var(--border)]"
-                  style={{
-                    background: "var(--surface-2)",
-                    borderRadius: "var(--radius-md)",
-                    padding: "10px 12px",
-                    borderLeft: "2px solid var(--brand)",
-                  }}
-                >
+                <div key={ball.key} className={`rounded-xl border p-2.5 ${getTagClasses(ball.tag)}`}>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <div className="text-sm font-medium text-[var(--text-1)]">
@@ -579,9 +570,7 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
                     </div>
 
                     {ball.tag ? (
-                      <span
-                        className={`rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] ${getTagClasses(ball.tag)}`}
-                      >
+                      <span className="rounded-full border border-[var(--border-med)] bg-[var(--surface-2)] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--text-2)]">
                         {ball.tag}
                       </span>
                     ) : null}

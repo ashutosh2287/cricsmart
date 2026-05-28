@@ -56,6 +56,14 @@ type TeamFilter = "both" | "batting" | "bowling";
 
 const MOMENTUM_POSITIVE_THRESHOLD = 1.5;
 const MOMENTUM_NEGATIVE_THRESHOLD = -1.5;
+const CHART_TICK_STYLE = { fill: "var(--text-3)", fontSize: 11 } as const;
+const CHART_TOOLTIP_CONTENT_STYLE = {
+  backgroundColor: "var(--chart-tooltip-bg)",
+  border: "1px solid var(--chart-tooltip-border)",
+  borderRadius: 8,
+  color: "var(--chart-tooltip-text)",
+} as const;
+const CHART_TOOLTIP_LABEL_STYLE = { color: "var(--text-2)" } as const;
 
 type ProgressionPoint = {
   label: string;
@@ -448,9 +456,12 @@ export default function MatchGraphExplorer({
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={progression.overs}>
                         <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
-                        <XAxis dataKey="label" stroke="var(--chart-axis)" />
-                        <YAxis stroke="var(--chart-axis)" />
-                        <Tooltip />
+                        <XAxis dataKey="label" stroke="var(--chart-axis)" tick={CHART_TICK_STYLE} />
+                        <YAxis stroke="var(--chart-axis)" tick={CHART_TICK_STYLE} />
+                        <Tooltip
+                          contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                          labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+                        />
                         {showBattingSeries ? (
                           <Bar
                             dataKey="batting"
@@ -482,9 +493,12 @@ export default function MatchGraphExplorer({
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={progression.runRate}>
                         <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
-                        <XAxis dataKey="label" stroke="var(--chart-axis)" />
-                        <YAxis stroke="var(--chart-axis)" />
-                        <Tooltip />
+                        <XAxis dataKey="label" stroke="var(--chart-axis)" tick={CHART_TICK_STYLE} />
+                        <YAxis stroke="var(--chart-axis)" tick={CHART_TICK_STYLE} />
+                        <Tooltip
+                          contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                          labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+                        />
                         {showBattingSeries ? (
                           <Line
                             type="monotone"
@@ -530,9 +544,12 @@ export default function MatchGraphExplorer({
                           </linearGradient>
                         </defs>
                         <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
-                        <XAxis dataKey="label" stroke="var(--chart-axis)" />
-                        <YAxis stroke="var(--chart-axis)" />
-                        <Tooltip />
+                        <XAxis dataKey="label" stroke="var(--chart-axis)" tick={CHART_TICK_STYLE} />
+                        <YAxis stroke="var(--chart-axis)" tick={CHART_TICK_STYLE} />
+                        <Tooltip
+                          contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                          labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+                        />
                         {showBattingSeries ? (
                           <Area
                             type="monotone"
@@ -568,9 +585,12 @@ export default function MatchGraphExplorer({
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={safeMomentumData}>
                         <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
-                        <XAxis dataKey="over" stroke="var(--chart-axis)" />
-                        <YAxis stroke="var(--chart-axis)" />
-                        <Tooltip />
+                        <XAxis dataKey="over" stroke="var(--chart-axis)" tick={CHART_TICK_STYLE} />
+                        <YAxis stroke="var(--chart-axis)" tick={CHART_TICK_STYLE} />
+                        <Tooltip
+                          contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                          labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+                        />
                         <Line
                           type="monotone"
                           dataKey="score"

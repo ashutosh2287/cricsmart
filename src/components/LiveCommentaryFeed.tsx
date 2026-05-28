@@ -5,6 +5,16 @@ import { useCommentary, type CommentaryFeedEvent } from "@/hooks/useCommentary";
 
 type FeedFilter = "all" | "wickets" | "boundaries" | "insights" | "milestones" | "summaries";
 
+function toneClasses(commentary: CommentaryFeedEvent) {
+  const tone = commentary.tone;
+  if (tone === "dramatic") return "border-red-400/35 bg-red-500/10";
+  if (tone === "aggressive") return "border-orange-400/35 bg-orange-500/10";
+  if (tone === "celebratory") return "border-emerald-400/35 bg-emerald-500/10";
+  if (tone === "analytical") return "border-sky-400/35 bg-sky-500/10";
+  if (tone === "tense") return "border-fuchsia-400/30 bg-fuchsia-500/10";
+  return "border-[var(--border)] bg-[var(--surface-2)]";
+}
+
 function matchFilter(commentary: CommentaryFeedEvent, filter: FeedFilter) {
   if (filter === "all") return true;
 
@@ -28,7 +38,7 @@ function LiveCommentaryFeed({ matchId }: { matchId: string }) {
   return (
     <div className="space-y-3 rounded-lg border border-[var(--border)] p-4">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-[var(--text-1)]">Live Commentary Intelligence</h3>
+        <h3 className="text-sm font-bold text-[var(--text-2)]">Live Commentary Intelligence</h3>
         <select
           value={filter}
           onChange={(event) => setFilter(event.target.value as FeedFilter)}
@@ -47,26 +57,15 @@ function LiveCommentaryFeed({ matchId }: { matchId: string }) {
         {filtered.length === 0 && <p className="text-sm text-[var(--text-3)]">Waiting for commentary...</p>}
 
         {filtered.map((c, i) => (
-          <div
-            key={`${c.commentaryId}-${i}`}
-            className="text-sm"
-            style={{
-              background: "var(--surface-2)",
-              borderRadius: "var(--radius-md)",
-              padding: "10px 12px",
-              borderLeft: "2px solid var(--brand)",
-            }}
-          >
-            <div className="flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.12em] text-[var(--text-3)]">
+          <div key={`${c.commentaryId}-${i}`} className={`rounded-lg border px-3 py-2 text-sm text-[var(--text-1)] ${toneClasses(c)}`}>
+            <div className="flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.12em] text-[var(--text-2)]">
               <span>{c.tone ?? "neutral"}</span>
-              <span style={{ color: "var(--brand)", fontWeight: 600, fontSize: 12 }}>
+              <span>
                 over {c.over}.{c.ball}
                 {c.isWicket ? " · wicket" : ""}
               </span>
             </div>
-            <p className="mt-1 text-sm leading-5" style={{ color: "var(--text-1)" }}>
-              {c.text}
-            </p>
+            <p className="mt-1 text-sm leading-5">{c.text}</p>
           </div>
         ))}
       </div>

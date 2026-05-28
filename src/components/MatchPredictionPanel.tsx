@@ -9,7 +9,7 @@ export default function MatchPredictionPanel({ matchId }: { matchId: string }) {
   if (!prediction) return null;
 
   return (
-    <div className="bg-[var(--surface)] text-[var(--text-1)] border border-[var(--border)] p-4 rounded-lg space-y-3">
+    <div className="bg-[var(--surface)] text-[var(--text-1)] p-4 rounded-lg space-y-3">
 
       <h3 className="text-lg font-bold">
         Match Prediction

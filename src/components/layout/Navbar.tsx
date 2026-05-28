@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from "react";
-
+import { motion } from "framer-motion";
 
 import AppDrawer from "@/components/navigation/AppDrawer";
 import UserAvatar from "@/components/account/UserAvatar";
@@ -186,12 +185,12 @@ export default function Navbar() {
   const activeLink = quickLinks.find((link) => isPathActive(pathname, link.href));
 
   useEffect(() => {
-  startTransition(() => {
-    closeDrawer();
-    setMatchesPanelOpen(false);
-    setAllDropdownOpen(false);
-  });
-}, [pathname, closeDrawer]);
+    startTransition(() => {
+      closeDrawer();
+      setMatchesPanelOpen(false);
+      setAllDropdownOpen(false);
+    });
+  }, [pathname, closeDrawer]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -477,7 +476,7 @@ export default function Navbar() {
         <button
           type="button"
           aria-label="Close matches panel"
-          className="fixed inset-0 z-30 bg-[var(--overlay-strong)]"
+          className="fixed inset-0 z-30 bg-black/40"
           onClick={closePanel}
         />
       ) : null}

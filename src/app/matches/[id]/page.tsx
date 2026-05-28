@@ -62,9 +62,9 @@ export default function RealMatchPage({
     return (
       <div className="p-6 text-[var(--text-1)]">
         <div className="max-w-2xl animate-pulse space-y-4">
-          <div className="h-8 w-2/3 rounded animate-pulse" style={{ background: "var(--surface-3)" }} />
-          <div className="h-5 w-1/3 rounded animate-pulse" style={{ background: "var(--surface-3)" }} />
-          <div className="h-24 w-full rounded-xl animate-pulse" style={{ background: "var(--surface-3)" }} />
+          <div className="h-8 w-2/3 rounded bg-[var(--surface-2)]" />
+          <div className="h-5 w-1/3 rounded bg-[var(--surface-2)]" />
+          <div className="h-24 w-full rounded-xl bg-[var(--surface-2)]" />
         </div>
       </div>
     );
@@ -96,7 +96,7 @@ export default function RealMatchPage({
         </div>
       )}
 
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
+      <div className="rounded-2xl border border-white/10 bg-[var(--bg-surface)] p-6">
         <div className="mb-4 flex items-start justify-between gap-4">
           <h1 className="text-2xl font-bold">
             {teamA} vs {teamB}
@@ -116,7 +116,7 @@ export default function RealMatchPage({
         {match.score.length > 0 && (
           <div className="mb-4 space-y-2">
             {match.score.map((entry, i) => (
-              <div key={i} className="rounded-lg bg-[var(--surface-2)] px-4 py-3">
+              <div key={i} className="rounded-lg bg-[var(--surface)]/60 px-4 py-3">
                 {entry.inning && <p className="mb-1 text-xs text-[var(--text-2)]">{entry.inning}</p>}
                 <p className="font-mono text-lg font-semibold">{formatScore(entry.r, entry.w, entry.o)}</p>
               </div>
@@ -124,7 +124,7 @@ export default function RealMatchPage({
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap gap-4 border-t border-[var(--border)] pt-4 text-xs text-[var(--text-2)]">
+        <div className="mt-4 flex flex-wrap gap-4 border-t border-white/5 pt-4 text-xs text-[var(--text-2)]">
           {match.seriesName && <span>🏏 {match.seriesName}</span>}
           {match.venue && <span>📍 {match.venue}</span>}
           {match.startTime && !Number.isNaN(new Date(match.startTime).getTime()) && (

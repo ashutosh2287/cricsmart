@@ -11,7 +11,7 @@ function LiveScoreCard({
   const score = useScore(matchId);
 
   return (
-    <div className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text-1)] rounded-xl p-5">
+    <div className="bg-[var(--surface)] border border-zinc-800 rounded-xl p-5">
       <div className="text-xl font-bold">
         {score.runs}/{score.wickets}
       </div>

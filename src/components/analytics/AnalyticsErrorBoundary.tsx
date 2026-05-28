@@ -25,7 +25,7 @@ export default class AnalyticsErrorBoundary extends React.Component<Props, State
   render() {
     if (this.state.hasError) {
       return (
-        <div className="bg-[var(--surface)] border border-[var(--danger)]/40 rounded-xl p-4 text-[var(--danger)] text-sm">
+        <div className="bg-[var(--surface)] border border-red-800/50 rounded-xl p-4 text-red-300 text-sm">
           {this.props.fallbackTitle ?? "Analytics panel failed to render."}
         </div>
       );

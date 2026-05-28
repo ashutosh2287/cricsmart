@@ -275,7 +275,7 @@ export function ScoringConsole({ matchId, hostedMatchId }: Props) {
       <button
         onClick={handleSubmitBall}
         disabled={submitting || !canSubmit}
-        className="w-full rounded-md bg-[var(--accent-brand)] py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-md bg-[var(--accent-brand)] py-2.5 text-sm font-semibold text-[#ffffff] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting ? "Submitting..." : "Submit Ball Event"}
       </button>

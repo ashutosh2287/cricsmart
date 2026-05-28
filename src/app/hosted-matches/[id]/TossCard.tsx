@@ -91,7 +91,7 @@ export function TossCard({ matchId, teamA, teamB, onTossSet }: Props) {
         type="button"
         onClick={handleSaveToss}
         disabled={saving || !tossWinner}
-        className="mt-4 rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-4 rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-[#ffffff] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {saving ? "Saving..." : "Save Toss"}
       </button>

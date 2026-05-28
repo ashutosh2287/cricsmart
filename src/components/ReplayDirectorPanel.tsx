@@ -9,7 +9,7 @@ export default function ReplayDirectorPanel({ matchId }: { matchId: string }) {
   if (!queue.length) return null;
 
   return (
-    <div className="bg-black text-white p-4 rounded-xl">
+    <div className="bg-[var(--surface)] text-[var(--text-1)] border border-[var(--border)] p-4 rounded-xl">
 
       <h3 className="font-bold mb-3">
         Replay Director
@@ -19,7 +19,7 @@ export default function ReplayDirectorPanel({ matchId }: { matchId: string }) {
 
         <div
           key={i}
-          className="bg-gray-800 p-2 rounded mb-2"
+          className="bg-[var(--surface-2)] p-2 rounded mb-2"
         >
           <div className="text-xs">
             Ball {r.ballIndex + 1}

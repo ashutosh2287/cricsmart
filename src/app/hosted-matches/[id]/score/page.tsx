@@ -60,7 +60,7 @@ export default function HostedMatchScorePage() {
           <button
             onClick={startHostedMatch}
             disabled={Boolean(runtimeMatchId)}
-            className="rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-[#ffffff] disabled:cursor-not-allowed disabled:opacity-60"
           >
             Start Match
           </button>

@@ -39,7 +39,7 @@ export class GraphErrorBoundary extends Component<Props, State> {
           <p className="text-xs font-semibold text-red-400">
             {this.props.label ?? "Section"} failed to render
           </p>
-          <p className="mt-1 font-mono text-xs text-gray-600">
+          <p className="mt-1 font-mono text-xs text-[var(--text-3)]">
             {this.state.message}
           </p>
         </div>

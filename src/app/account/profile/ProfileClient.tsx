@@ -100,7 +100,7 @@ export function ProfileClient({ user }: Props) {
         <button
           type="submit"
           disabled={saving}
-          className="rounded-lg bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-lg bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-[#ffffff] disabled:opacity-60"
         >
           {saving ? "Saving..." : "Save Changes"}
         </button>

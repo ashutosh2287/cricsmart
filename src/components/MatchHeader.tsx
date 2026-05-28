@@ -44,7 +44,7 @@ function getBallChipStyle(ball: string): string {
   if (ball === "6")  return "bg-[#f59e0b]/15 text-[#f59e0b] font-bold";
   if (ball === "Wd") return "bg-[#f59e0b]/10 text-[#f59e0b]";
   if (ball === "Nb") return "bg-orange-500/10 text-orange-400";
-  if (ball === "0")  return "bg-white/[0.04] text-[var(--text-muted)]";
+  if (ball === "0")  return "bg-[var(--surface-3)] text-[var(--text-3)]";
   return "bg-[#22c55e]/10 text-[#22c55e]";
 }
 
@@ -87,7 +87,7 @@ export default function MatchHeader({
     <div
       className="w-full overflow-hidden"
       style={{
-        background: "var(--bg-surface)",
+        background: "var(--surface)",
         borderRadius: "var(--radius-lg)",
       }}
     >
@@ -180,8 +180,8 @@ export default function MatchHeader({
         </span>
 
         <span
-          className="text-[11px] font-medium tabular-nums"
-          style={{ color: "var(--text-secondary)" }}
+          className="font-medium tabular-nums"
+          style={{ color: "var(--text-3)", fontSize: 12 }}
         >
           Over {over}.{ball}
         </span>
@@ -194,20 +194,20 @@ export default function MatchHeader({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span
-              className="text-xl font-bold md:text-2xl"
-              style={{ color: "var(--text-primary)" }}
+              className="font-semibold"
+              style={{ color: "var(--text-2)", fontSize: 14 }}
             >
               {finalTeam1}
             </span>
             <span
-              className="text-sm font-medium px-1.5"
-              style={{ color: "var(--text-muted)" }}
+              className="font-medium px-1.5"
+              style={{ color: "var(--text-2)", fontSize: 14 }}
             >
               vs
             </span>
             <span
-              className="text-xl font-bold md:text-2xl"
-              style={{ color: "var(--text-primary)" }}
+              className="font-semibold"
+              style={{ color: "var(--text-2)", fontSize: 14 }}
             >
               {finalTeam2}
             </span>
@@ -223,18 +223,20 @@ export default function MatchHeader({
         {/* Score — dominant element */}
         <div className="text-right shrink-0">
           <div
-            className="font-extrabold tabular-nums leading-none"
+            className="tabular-nums leading-none"
             style={{
-              fontSize: "clamp(36px, 7vw, 64px)",
-              color: "var(--text-primary)",
+              fontFamily: "var(--font-display)",
+              fontSize: 40,
+              fontWeight: 700,
+              color: "var(--text-1)",
               letterSpacing: "-0.03em",
             }}
           >
             <AnimatedScore value={`${runs}/${wickets}`} />
           </div>
           <p
-            className="text-xs mt-1 tabular-nums"
-            style={{ color: "var(--text-secondary)" }}
+            className="mt-1 tabular-nums"
+            style={{ color: "var(--text-3)", fontSize: 12 }}
           >
             {over}.{ball} ov
           </p>
@@ -244,15 +246,16 @@ export default function MatchHeader({
       {/* ── Over progress bar ─────────────────────────────── */}
       <div className="px-5 pb-1">
         <div
-          className="w-full rounded-full overflow-hidden"
-          style={{ height: "3px", background: "var(--bg-overlay)" }}
+          className="w-full overflow-hidden"
+          style={{ height: 4, background: "var(--surface-3)", borderRadius: 4 }}
         >
           <div
-            className="h-full rounded-full transition-all duration-500"
+            className="h-full transition-all duration-500"
             style={{
               width: `${progress * 100}%`,
-              background: matchEnded ? "var(--text-muted)" : "var(--accent-live)",
+              background: matchEnded ? "var(--text-3)" : "var(--brand)",
               opacity: 0.8,
+              borderRadius: 4,
             }}
           />
         </div>

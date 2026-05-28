@@ -16,9 +16,9 @@ function LeaderboardCards() {
 
       {/* TOP BATTER */}
 
-      <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl">
+      <div className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text-1)] p-4 rounded-xl">
 
-        <h3 className="text-xs text-gray-400 uppercase mb-2">
+        <h3 className="text-xs text-[var(--text-3)] uppercase mb-2">
           Top Batter
         </h3>
 
@@ -27,12 +27,12 @@ function LeaderboardCards() {
             <div className="text-lg font-bold">
               {topBatter.playerId}
             </div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-[var(--text-2)]">
               {topBatter.runs} runs
             </div>
           </>
         ) : (
-          <div className="text-gray-500 text-sm">
+          <div className="text-[var(--text-3)] text-sm">
             No data
           </div>
         )}
@@ -41,9 +41,9 @@ function LeaderboardCards() {
 
       {/* TOP IMPACT PLAYER */}
 
-      <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl">
+      <div className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text-1)] p-4 rounded-xl">
 
-        <h3 className="text-xs text-gray-400 uppercase mb-2">
+        <h3 className="text-xs text-[var(--text-3)] uppercase mb-2">
           Top Impact Player
         </h3>
 
@@ -52,12 +52,12 @@ function LeaderboardCards() {
             <div className="text-lg font-bold">
               {topImpact.playerId}
             </div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-[var(--text-2)]">
               Impact {topImpact.impact.toFixed(1)}
             </div>
           </>
         ) : (
-          <div className="text-gray-500 text-sm">
+          <div className="text-[var(--text-3)] text-sm">
             No data
           </div>
         )}
@@ -66,9 +66,9 @@ function LeaderboardCards() {
 
       {/* MATCH CONTROL LEADER */}
 
-      <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl">
+      <div className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text-1)] p-4 rounded-xl">
 
-        <h3 className="text-xs text-gray-400 uppercase mb-2">
+        <h3 className="text-xs text-[var(--text-3)] uppercase mb-2">
           Match Control Leader
         </h3>
 
@@ -77,12 +77,12 @@ function LeaderboardCards() {
             <div className="text-lg font-bold">
               {data.matchControlLeader.matchId}
             </div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-[var(--text-2)]">
               Control {data.matchControlLeader.control.toFixed(0)}%
             </div>
           </>
         ) : (
-          <div className="text-gray-500 text-sm">
+          <div className="text-[var(--text-3)] text-sm">
             No data
           </div>
         )}

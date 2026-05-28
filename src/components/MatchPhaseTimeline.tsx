@@ -17,10 +17,10 @@ export default function MatchPhaseTimeline({ matchId }: Props) {
   if (!narrative) {
     return (
       <div className="glass-panel p-5">
-        <h3 className="text-sm text-gray-400 uppercase mb-2">
+        <h3 className="text-sm text-[var(--text-3)] uppercase mb-2">
           Match Phases
         </h3>
-        <div className="text-gray-500 text-sm">
+        <div className="text-[var(--text-3)] text-sm">
           Waiting for narrative data...
         </div>
       </div>

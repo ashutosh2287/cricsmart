@@ -45,7 +45,7 @@ export default async function HostedMatchesPage() {
           </div>
           <Link
             href="/host/matches/create"
-            className="rounded-lg bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-95"
+            className="rounded-lg bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-[#ffffff] transition hover:opacity-95"
           >
             + Host Match
           </Link>
@@ -94,7 +94,7 @@ function MatchCard({ match }: { match: MatchCardMatch }) {
                 match.status === "LIVE"
                   ? "border-red-500/30 text-red-400"
                   : match.status === "COMPLETED"
-                    ? "border-gray-700 text-gray-500"
+                    ? "border-[var(--border)] text-[var(--text-3)]"
                     : "border-blue-500/30 text-blue-400"
               }`}
             >

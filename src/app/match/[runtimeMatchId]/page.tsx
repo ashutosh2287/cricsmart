@@ -671,31 +671,38 @@ function TabsArea({
       <div className="min-w-0">
         {/* ── Tab Bar ── */}
         <div className="sticky top-24 z-20 mb-4 overflow-x-auto">
-  <div
-    className="inline-flex min-w-full"
-    style={{ borderBottom: "1px solid var(--border-subtle)" }}
-  >
-    {tabs.map((tab) => {
-      const isActive = activeTab === tab;
-      return (
-        <button
-          key={tab}
-          onClick={() => setActiveTab(tab)}
-          style={{
-            color: isActive ? "var(--text-primary)" : "var(--text-muted)",
-            borderBottom: isActive
-              ? "2px solid var(--accent-brand)"
-              : "2px solid transparent",
-            marginBottom: "-1px",
-          }}
-          className="px-4 py-3 text-sm font-medium capitalize whitespace-nowrap transition-colors hover:text-[var(--text-primary)]"
-        >
-          {tab}
-        </button>
-      );
-    })}
-  </div>
-</div>
+          <div
+            className="inline-flex min-w-full"
+            style={{ borderBottom: "1px solid var(--border)", display: "flex", gap: 0 }}
+          >
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    color: isActive ? "var(--brand)" : "var(--text-3)",
+                    borderBottom: isActive
+                      ? "2px solid var(--brand)"
+                      : "2px solid transparent",
+                  }}
+                  className={`capitalize whitespace-nowrap ${isActive ? "font-semibold" : "font-medium"}`}
+                >
+                  <span
+                    style={{
+                      fontSize: 13,
+                      padding: "10px 14px",
+                      display: "inline-flex",
+                    }}
+                  >
+                    {tab}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* ── Overview ── */}
         {activeTab === "overview" && (

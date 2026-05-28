@@ -90,8 +90,13 @@ function WagonWheel({ matchId }: Props) {
   return (
     <AnalyticsErrorBoundary fallbackTitle="Wagon wheel is temporarily unavailable.">
       <div
-        className="p-4 rounded-xl shadow-lg"
-        style={{ background: "var(--surface)", border: "0.5px solid var(--border)" }}
+        className="shadow-lg"
+        style={{
+          background: "var(--surface)",
+          border: "0.5px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          padding: "1rem",
+        }}
       >
 
       <h3 className="text-lg font-semibold mb-3 text-[var(--text-1)]">

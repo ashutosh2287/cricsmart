@@ -214,7 +214,7 @@ export function PlayingXICard({ matchId, teamA, teamB, onPlayingXISet }: Props) 
         type="button"
         onClick={savePlayingXI}
         disabled={saving || teamAXI.length !== 11 || teamBXI.length !== 11}
-        className="mt-4 rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-4 rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-[#ffffff] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {saving ? "Saving..." : "Save Playing XI"}
       </button>

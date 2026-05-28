@@ -32,7 +32,7 @@ export default function BroadcastControlDashboard() {
   }
 
   return (
-    <div className="p-4 bg-black text-white rounded-lg space-y-4">
+    <div className="p-4 bg-[var(--surface)] text-[var(--text-1)] border border-[var(--border)] rounded-lg space-y-4">
 
       <h2 className="text-xl font-bold">
         Broadcast Control Dashboard
@@ -43,6 +43,7 @@ export default function BroadcastControlDashboard() {
         <button
           onClick={triggerReplay}
           className="px-4 py-2 bg-red-600 rounded"
+          style={{ color: "#ffffff" }}
         >
           Trigger Replay
         </button>
@@ -50,6 +51,7 @@ export default function BroadcastControlDashboard() {
         <button
           onClick={triggerCameraSweep}
           className="px-4 py-2 bg-blue-600 rounded"
+          style={{ color: "#ffffff" }}
         >
           Camera Sweep
         </button>
@@ -57,6 +59,7 @@ export default function BroadcastControlDashboard() {
         <button
           onClick={triggerTension}
           className="px-4 py-2 bg-yellow-600 rounded"
+          style={{ color: "#ffffff" }}
         >
           Enter Tension
         </button>
@@ -64,6 +67,7 @@ export default function BroadcastControlDashboard() {
         <button
           onClick={() => showOverlay("Strategic Timeout")}
           className="px-4 py-2 bg-green-600 rounded"
+          style={{ color: "#ffffff" }}
         >
           Strategic Timeout
         </button>

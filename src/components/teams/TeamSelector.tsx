@@ -78,7 +78,7 @@ export default function TeamSelector({ onStart }: Props) {
           console.log("✅ Teams selected:", teamA.name, teamB.name);
           onStart(teamA, teamB);
         }}
-        className="w-full rounded-md bg-blue-600 py-2 text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-md bg-blue-600 py-2 text-[#ffffff] transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
         Start Match
       </button>

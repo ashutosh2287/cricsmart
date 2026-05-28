@@ -123,7 +123,7 @@ export default function HostMatchCreatePage() {
 
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
-      <button type="submit" disabled={busy} className="rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+      <button type="submit" disabled={busy} className="rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-[#ffffff] disabled:opacity-60">
         {busy ? "Creating..." : "Create Hosted Match"}
       </button>
     </form>

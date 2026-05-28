@@ -60,11 +60,11 @@ export default function RealMatchPage({
 
   if (loading) {
     return (
-      <div className="p-6 text-white">
+      <div className="p-6 text-[var(--text-1)]">
         <div className="max-w-2xl animate-pulse space-y-4">
-          <div className="h-8 w-2/3 rounded bg-gray-800" />
-          <div className="h-5 w-1/3 rounded bg-gray-800" />
-          <div className="h-24 w-full rounded-xl bg-gray-800" />
+          <div className="h-8 w-2/3 rounded animate-pulse" style={{ background: "var(--surface-3)" }} />
+          <div className="h-5 w-1/3 rounded animate-pulse" style={{ background: "var(--surface-3)" }} />
+          <div className="h-24 w-full rounded-xl animate-pulse" style={{ background: "var(--surface-3)" }} />
         </div>
       </div>
     );
@@ -72,11 +72,11 @@ export default function RealMatchPage({
 
   if (error || !match) {
     return (
-      <div className="p-6 text-white">
+      <div className="p-6 text-[var(--text-1)]">
         <Link href="/matches" className="mb-4 inline-block text-sm text-blue-400 hover:underline">
           ← Back to matches
         </Link>
-        <p className="mt-4 text-gray-400">{error ?? "Match not found."}</p>
+        <p className="mt-4 text-[var(--text-2)]">{error ?? "Match not found."}</p>
       </div>
     );
   }
@@ -85,7 +85,7 @@ export default function RealMatchPage({
   const teamB = match.teams?.[1]?.name ?? "Team B";
 
   return (
-    <div className="mx-auto max-w-3xl p-6 text-white">
+    <div className="mx-auto max-w-3xl p-6 text-[var(--text-1)]">
       <Link href="/matches" className="mb-6 inline-block text-sm text-blue-400 hover:underline">
         ← Back to matches
       </Link>
@@ -96,35 +96,35 @@ export default function RealMatchPage({
         </div>
       )}
 
-      <div className="rounded-2xl border border-white/10 bg-bg-surface p-6">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
         <div className="mb-4 flex items-start justify-between gap-4">
           <h1 className="text-2xl font-bold">
             {teamA} vs {teamB}
           </h1>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="rounded bg-zinc-800 px-2 py-0.5 text-xs font-semibold uppercase text-gray-300">
+            <span className="rounded bg-[var(--surface-2)] px-2 py-0.5 text-xs font-semibold uppercase text-[var(--text-2)]">
               {match.uiBadge ?? match.format}
             </span>
             {match.status === "live" && <span className="text-xs uppercase text-red-400">LIVE</span>}
-            {match.status === "completed" && <span className="text-xs uppercase text-gray-400">Completed</span>}
+            {match.status === "completed" && <span className="text-xs uppercase text-[var(--text-2)]">Completed</span>}
             {match.status === "upcoming" && <span className="text-xs uppercase text-blue-400">Upcoming</span>}
           </div>
         </div>
 
-        {match.statusText && <p className="mb-3 text-sm text-gray-300">{match.statusText}</p>}
+        {match.statusText && <p className="mb-3 text-sm text-[var(--text-2)]">{match.statusText}</p>}
 
         {match.score.length > 0 && (
           <div className="mb-4 space-y-2">
             {match.score.map((entry, i) => (
-              <div key={i} className="rounded-lg bg-zinc-900/60 px-4 py-3">
-                {entry.inning && <p className="mb-1 text-xs text-gray-400">{entry.inning}</p>}
+              <div key={i} className="rounded-lg bg-[var(--surface-2)] px-4 py-3">
+                {entry.inning && <p className="mb-1 text-xs text-[var(--text-2)]">{entry.inning}</p>}
                 <p className="font-mono text-lg font-semibold">{formatScore(entry.r, entry.w, entry.o)}</p>
               </div>
             ))}
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap gap-4 border-t border-white/5 pt-4 text-xs text-gray-400">
+        <div className="mt-4 flex flex-wrap gap-4 border-t border-[var(--border)] pt-4 text-xs text-[var(--text-2)]">
           {match.seriesName && <span>🏏 {match.seriesName}</span>}
           {match.venue && <span>📍 {match.venue}</span>}
           {match.startTime && !Number.isNaN(new Date(match.startTime).getTime()) && (
@@ -142,7 +142,7 @@ export default function RealMatchPage({
         </div>
       </div>
 
-      <p className="mt-4 text-center text-xs text-gray-600">Data from CricAPI · Updates every 30s</p>
+      <p className="mt-4 text-center text-xs text-[var(--text-3)]">Data from CricAPI · Updates every 30s</p>
     </div>
   );
 }

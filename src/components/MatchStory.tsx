@@ -43,7 +43,7 @@ export default function MatchStory({ matchId }: Props) {
   if (!story) return null;
 
   return (
-    <div className="bg-gray-900 text-white p-4 rounded-xl space-y-4">
+    <div className="bg-[var(--surface)] text-[var(--text-1)] border border-[var(--border)] p-4 rounded-xl space-y-4">
 
       {/* 🔥 TITLE */}
       <h2 className="font-bold text-lg">Match Story</h2>
@@ -52,18 +52,18 @@ export default function MatchStory({ matchId }: Props) {
 
 {/* 🏆 PLAYER OF MATCH */}
 {pom && (
-  <div className="text-yellow-400 text-sm bg-white/5 px-3 py-2 rounded-md border border-white/10">
+  <div className="text-[var(--accent)] text-sm bg-[var(--surface-3)] px-3 py-2 rounded-md border border-[var(--border)]">
     🏆 Player of the Match: <span className="font-semibold">{pom}</span> 
   </div>
 )}
 
       {/* ⚡ LIVE STORY */}
       {liveStory && (
-        <div className="bg-white/5 p-3 rounded-lg border border-white/10">
-          <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">
+        <div className="bg-[var(--surface-3)] p-3 rounded-lg border border-[var(--border)]">
+          <p className="text-xs text-[var(--text-3)] mb-1 uppercase tracking-wide">
             Live Narrative
           </p>
-          <p className="text-sm text-yellow-300 leading-relaxed">
+          <p className="text-sm text-[var(--accent)] leading-relaxed">
             {liveStory}
           </p>
         </div>
@@ -71,19 +71,19 @@ export default function MatchStory({ matchId }: Props) {
 
       {/* 📖 FINAL STORY */}
       <div>
-        <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">
+        <p className="text-xs text-[var(--text-3)] mb-1 uppercase tracking-wide">
           Full Match Story
         </p>
-        <p className="text-sm text-gray-300 leading-relaxed">
+        <p className="text-sm text-[var(--text-2)] leading-relaxed">
           {story}
         </p>
       </div>
 
       {/* 📊 INSIGHTS */}
       {insights && (
-        <div className="space-y-2 border-t border-white/10 pt-3">
+        <div className="space-y-2 border-t border-[var(--border)] pt-3">
 
-          <p className="text-xs text-gray-400 uppercase tracking-wide">
+          <p className="text-xs text-[var(--text-3)] uppercase tracking-wide">
             Key Insights
           </p>
 

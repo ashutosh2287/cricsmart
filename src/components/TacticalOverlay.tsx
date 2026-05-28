@@ -58,7 +58,7 @@ TURNING_POINT: {
 
   HAT_TRICK_THREAT: {
     text: "🎯 HAT-TRICK BALL!",
-    color: "bg-[var(--accent-brand)] text-white"
+    color: "bg-[var(--accent-brand)] text-[#ffffff]"
   },
 
   BOUNDARY_CLUSTER: {

@@ -473,7 +473,7 @@ export default function Navbar() {
         <button
           type="button"
           aria-label="Close matches panel"
-          className="fixed inset-0 z-30 bg-black/40"
+          className="fixed inset-0 z-30 bg-[var(--overlay-strong)]"
           onClick={closePanel}
         />
       ) : null}

@@ -71,7 +71,7 @@ export default async function SectionPage({ params }: { params: Promise<{ slug: 
         </Link>
         <Link
           href="/matches"
-          className="inline-flex items-center rounded-md px-3 py-2 text-xs font-medium text-white transition hover:opacity-90"
+          className="inline-flex items-center rounded-md px-3 py-2 text-xs font-medium text-[#ffffff] transition hover:opacity-90"
           style={{ background: "var(--accent-brand)" }}
         >
           Open Matches

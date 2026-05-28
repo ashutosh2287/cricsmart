@@ -23,7 +23,7 @@ export default function StrategyDashboard({ matchId }: Props) {
   const pressure = intelligence?.pressureLevel ?? "LOW";
 
   return (
-    <div className="bg-gray-900 border border-gray-800 text-white p-5 rounded-xl space-y-4 shadow-lg">
+    <div className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text-1)] p-5 rounded-xl space-y-4 shadow-lg">
 
       <h3 className="text-lg font-bold">
         Strategy Dashboard
@@ -38,7 +38,7 @@ export default function StrategyDashboard({ matchId }: Props) {
           <span>{battingControl.toFixed(0)}%</span>
         </div>
 
-        <div className="w-full bg-gray-700 h-2 rounded">
+        <div className="w-full bg-[var(--surface-3)] h-2 rounded">
           <div
             className="bg-green-500 h-2 rounded"
             style={{ width: `${battingControl}%` }}

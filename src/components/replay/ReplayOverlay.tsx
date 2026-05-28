@@ -137,7 +137,7 @@ if (!innings) return null;
   */
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex flex-col items-center justify-center text-white p-6">
+    <div className="fixed inset-0 bg-[var(--overlay-strong)] backdrop-blur-md z-50 flex flex-col items-center justify-center text-[var(--text-1)] p-6">
 
       <h2 className="text-3xl font-bold mb-6 tracking-wide">
         🎮 Replay Mode
@@ -178,7 +178,7 @@ if (!innings) return null;
 
       {/* WICKET MARKERS */}
       {highlights.wickets.length > 0 && (
-        <div className="mt-3 text-xs text-red-300 opacity-70">
+        <div className="mt-3 text-xs text-red-400 opacity-70">
           Wickets at balls:{" "}
           {highlights.wickets
             .slice(0, 10)
@@ -199,7 +199,7 @@ if (!innings) return null;
 
         <button
           onClick={handlePause}
-          className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded"
+          className="bg-[var(--surface-3)] hover:bg-[var(--surface-2)] px-4 py-2 rounded"
         >
           ⏸ Pause
         </button>
@@ -241,14 +241,14 @@ if (!innings) return null;
 
         <button
           onClick={() => handleSpeed(0.5)}
-          className="bg-[var(--accent-brand)] hover:bg-[var(--brand-dark)] px-4 py-2 rounded text-white"
+          className="bg-[var(--accent-brand)] hover:bg-[var(--brand-dark)] px-4 py-2 rounded text-[#ffffff]"
         >
           0.5x
         </button>
 
         <button
           onClick={() => handleSpeed(2)}
-          className="bg-[var(--accent-brand)] hover:bg-[var(--brand-dark)] px-4 py-2 rounded text-white"
+          className="bg-[var(--accent-brand)] hover:bg-[var(--brand-dark)] px-4 py-2 rounded text-[#ffffff]"
         >
           2x
         </button>
@@ -258,13 +258,13 @@ if (!innings) return null;
       {/* OVER SEEK */}
       {overCount > 1 && (
         <div className="mt-4 w-full max-w-2xl space-y-2">
-          <span className="block text-center text-xs text-gray-400">Jump to over:</span>
+          <span className="block text-center text-xs text-[var(--text-2)]">Jump to over:</span>
           <div className="flex max-h-24 flex-wrap justify-center gap-1.5 overflow-y-auto pr-1">
             {Array.from({ length: overCount }, (_, i) => (
               <button
                 key={i}
                 onClick={() => handleSeekOver(i)}
-                className="min-w-8 rounded-md bg-white/10 px-2 py-1 text-xs leading-none hover:bg-white/20"
+                className="min-w-8 rounded-md bg-[var(--surface-3)] px-2 py-1 text-xs leading-none hover:bg-[var(--surface-2)]"
               >
                 {i + 1}
               </button>
@@ -282,7 +282,7 @@ if (!innings) return null;
       </button>
 
       {/* PLAYBACK META */}
-      <div className="mt-4 text-xs text-gray-500">
+      <div className="mt-4 text-xs text-[var(--text-3)]">
         {replayMeta.isPlaying ? "▶ Playing" : "⏸ Paused"} · Ball {currentIndex + 1} of {timelineLength}
       </div>
 

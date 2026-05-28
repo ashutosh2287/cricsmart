@@ -31,12 +31,12 @@ function getBallLabel(ball: BallEvent) {
 }
 
 function getBallChipClass(label: string) {
-  if (label === "6") return "bg-[#7C4DFF] text-white";
-  if (label === "4") return "bg-[#4F7CFF] text-white";
-  if (label === "W") return "bg-[#FF4D5A] text-white";
-  if (label === "Wd" || label === "Nb") return "bg-amber-500 text-white";
-  if (label === "•") return "bg-white/15 text-[var(--text-primary)]";
-  return "bg-white/10 text-[var(--text-primary)]";
+  if (label === "6") return "bg-[#7C4DFF] text-[#ffffff]";
+  if (label === "4") return "bg-[#4F7CFF] text-[#ffffff]";
+  if (label === "W") return "bg-[#FF4D5A] text-[#ffffff]";
+  if (label === "Wd" || label === "Nb") return "bg-amber-500 text-[#ffffff]";
+  if (label === "•") return "bg-[var(--surface-3)] text-[var(--text-primary)]";
+  return "bg-[var(--surface-2)] text-[var(--text-primary)]";
 }
 
 export default function OversTimeline({ slug }: Props) {
@@ -86,7 +86,7 @@ export default function OversTimeline({ slug }: Props) {
   }, [activeInnings?.overs]);
 
   return (
-    <div className="rounded-xl border border-[var(--border-subtle)] bg-white/[0.02]">
+    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)]">
       <div className="border-b border-[var(--border-subtle)] p-3">
         <div className="flex flex-wrap gap-2">
           <button
@@ -94,7 +94,7 @@ export default function OversTimeline({ slug }: Props) {
             onClick={() => setSelectedInnings(0)}
             className={`rounded-lg border px-3 py-1.5 text-sm transition ${
               selectedInnings === 0
-                ? "border-[var(--accent-brand)] bg-[var(--accent-brand)] text-white"
+                ? "border-[var(--accent-brand)] bg-[var(--accent-brand)] text-[#ffffff]"
                 : "border-[var(--border-subtle)] bg-transparent text-[var(--text-primary)]"
             }`}
           >
@@ -106,7 +106,7 @@ export default function OversTimeline({ slug }: Props) {
               onClick={() => setSelectedInnings(1)}
               className={`rounded-lg border px-3 py-1.5 text-sm transition ${
                 selectedInnings === 1
-                  ? "border-[var(--accent-brand)] bg-[var(--accent-brand)] text-white"
+                  ? "border-[var(--accent-brand)] bg-[var(--accent-brand)] text-[#ffffff]"
                   : "border-[var(--border-subtle)] bg-transparent text-[var(--text-primary)]"
               }`}
             >

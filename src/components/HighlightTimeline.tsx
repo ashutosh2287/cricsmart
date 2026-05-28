@@ -48,16 +48,16 @@ export default function HighlightTimeline({ matchId }: Props) {
   if (!highlights.length) return null;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] text-white">
+    <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-1)]">
 
       {/* HEADER */}
-      <div className="flex items-center justify-between border-b border-gray-700/70 px-3 py-2">
+      <div className="flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
 
-        <h3 className="text-sm font-semibold text-gray-300 uppercase">
+        <h3 className="text-sm font-semibold text-[var(--text-2)] uppercase">
           Match Highlights
         </h3>
 
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-[var(--text-3)]">
           Live
         </span>
 
@@ -75,7 +75,7 @@ export default function HighlightTimeline({ matchId }: Props) {
           <div
             key={h.id}
             className="flex items-center justify-between 
-                       bg-zinc-900/80 hover:bg-zinc-800 
+                       bg-[var(--surface-2)] hover:bg-[var(--surface-3)] 
                        px-2.5 py-2 rounded-md 
                        transition text-sm"
           >
@@ -94,7 +94,7 @@ export default function HighlightTimeline({ matchId }: Props) {
             </div>
 
             {/* RIGHT (index/time feel) */}
-            <span className="text-[10px] text-gray-500">
+            <span className="text-[10px] text-[var(--text-3)]">
               #{highlights.length - i}
             </span>
 
@@ -166,7 +166,7 @@ function getColor(type: string) {
       return "text-[var(--accent-brand)]";
 
     default:
-      return "text-gray-300";
+      return "text-[var(--text-2)]";
   }
 
 }

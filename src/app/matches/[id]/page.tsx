@@ -96,7 +96,7 @@ export default function RealMatchPage({
         </div>
       )}
 
-      <div className="rounded-2xl border border-white/10 bg-bg-surface p-6">
+      <div className="rounded-2xl border border-white/10 bg-[var(--bg-surface)] p-6">
         <div className="mb-4 flex items-start justify-between gap-4">
           <h1 className="text-2xl font-bold">
             {teamA} vs {teamB}

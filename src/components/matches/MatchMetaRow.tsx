@@ -11,8 +11,8 @@ export function MatchMetaRow({ match }: { match: CuratedMatch }) {
       });
 
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
-      <span className="rounded border border-[var(--border-subtle)] px-1.5 py-0.5 font-medium text-[var(--text-secondary)]">
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-3)]">
+      <span className="rounded border border-[var(--border)] px-1.5 py-0.5 font-medium text-[var(--text-2)]">
         {match.uiBadge ?? match.format}
       </span>
       <span className="truncate">{match.seriesName}</span>

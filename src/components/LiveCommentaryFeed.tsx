@@ -12,7 +12,7 @@ function toneClasses(commentary: CommentaryFeedEvent) {
   if (tone === "celebratory") return "border-emerald-400/35 bg-emerald-500/10";
   if (tone === "analytical") return "border-sky-400/35 bg-sky-500/10";
   if (tone === "tense") return "border-fuchsia-400/30 bg-fuchsia-500/10";
-  return "border-white/10 bg-slate-950/55";
+  return "border-[var(--border)] bg-[var(--surface-2)]";
 }
 
 function matchFilter(commentary: CommentaryFeedEvent, filter: FeedFilter) {
@@ -36,13 +36,13 @@ function LiveCommentaryFeed({ matchId }: { matchId: string }) {
   );
 
   return (
-    <div className="space-y-3 rounded-lg border border-white/10 p-4">
+    <div className="space-y-3 rounded-lg border border-[var(--border)] p-4">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-gray-300">Live Commentary Intelligence</h3>
         <select
           value={filter}
           onChange={(event) => setFilter(event.target.value as FeedFilter)}
-          className="rounded-md border border-white/10 bg-slate-900 px-2 py-1 text-xs text-white"
+          className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs text-[var(--text-1)]"
         >
           <option value="all">All</option>
           <option value="wickets">Wickets</option>
@@ -57,8 +57,8 @@ function LiveCommentaryFeed({ matchId }: { matchId: string }) {
         {filtered.length === 0 && <p className="text-sm text-gray-500">Waiting for commentary...</p>}
 
         {filtered.map((c, i) => (
-          <div key={`${c.commentaryId}-${i}`} className={`rounded-lg border px-3 py-2 text-sm text-white ${toneClasses(c)}`}>
-            <div className="flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.12em] text-white/65">
+          <div key={`${c.commentaryId}-${i}`} className={`rounded-lg border px-3 py-2 text-sm text-[var(--text-1)] ${toneClasses(c)}`}>
+            <div className="flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.12em] text-[var(--text-2)]">
               <span>{c.tone ?? "neutral"}</span>
               <span>
                 over {c.over}.{c.ball}

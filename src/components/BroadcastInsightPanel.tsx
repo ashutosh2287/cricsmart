@@ -9,7 +9,10 @@ export default function BroadcastInsightPanel({ matchId }: { matchId: string }) 
   if (!insights.length) return null;
 
   return (
-    <div className="bg-black text-white p-4 rounded-lg space-y-3">
+    <div
+      className="p-4 rounded-lg space-y-3"
+      style={{ background: "var(--surface)", border: "0.5px solid var(--border)", color: "var(--text-1)" }}
+    >
 
       <h3 className="text-lg font-bold">
         Broadcast Insights
@@ -19,7 +22,7 @@ export default function BroadcastInsightPanel({ matchId }: { matchId: string }) 
 
         <div
           key={idx}
-          className={`p-3 rounded ${
+          className={`p-3 rounded text-[var(--text-inv)] ${
             i.severity === "HIGH"
               ? "bg-red-600"
               : i.severity === "MEDIUM"

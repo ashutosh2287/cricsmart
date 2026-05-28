@@ -1,34 +1,30 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { scaleIn } from "@/components/ui/motion";
 
 interface CardProps {
   children: React.ReactNode;
   className?: string;
   hover?: boolean;
   onClick?: () => void;
-  style?: React.CSSProperties;
+  accent?: boolean;
 }
 
-export function Card({ children, className = "", hover = false, onClick, style }: CardProps) {
+export function Card({ children, className = "", hover = false, onClick, accent = false }: CardProps) {
   return (
     <motion.div
-      variants={scaleIn}
-      initial="hidden"
-      animate="visible"
-      whileHover={
-        hover
-          ? {
-              y: -2,
-              boxShadow: "var(--shadow-hover)",
-            }
-          : undefined
-      }
-      transition={{ type: "spring", stiffness: 260, damping: 20 }}
+      whileHover={hover ? { y: -2, boxShadow: "var(--shadow-hover)" } : undefined}
+      whileTap={onClick ? { scale: 0.98 } : undefined}
       onClick={onClick}
-      style={style}
-      className={`rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface)] shadow-[var(--shadow-card)] ${className}`}
+      className={className}
+      style={{
+        background: accent ? "var(--brand-light)" : "var(--surface)",
+        border: `0.5px solid ${accent ? "var(--brand)" : "var(--border)"}`,
+        borderRadius: "var(--radius-lg)",
+        boxShadow: "var(--shadow-card)",
+        cursor: onClick ? "pointer" : "default",
+        transition: "box-shadow 0.2s ease, transform 0.2s ease",
+      }}
     >
       {children}
     </motion.div>

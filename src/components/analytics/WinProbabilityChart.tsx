@@ -155,19 +155,25 @@ function WinProbabilityChart({
           <Area type="monotone" dataKey="batting" fill="url(#battingFill)" stroke="none" />
           <Area type="monotone" dataKey="bowling" fill="url(#bowlingFill)" stroke="none" />
 
-          <XAxis dataKey="over" stroke="var(--chart-axis)" />
-          <YAxis domain={[0, 100]} stroke="var(--chart-axis)" tickFormatter={(v) => `${v}%`} />
+          <XAxis dataKey="over" stroke="var(--chart-axis)" tick={{ fill: "var(--text-3)", fontSize: 11 }} />
+          <YAxis
+            domain={[0, 100]}
+            stroke="var(--chart-axis)"
+            tick={{ fill: "var(--text-3)", fontSize: 11 }}
+            tickFormatter={(v) => `${v}%`}
+          />
 
           <ReferenceLine y={50} stroke="var(--chart-grid)" strokeDasharray="4 4" />
 
           <Tooltip
             formatter={(v) => `${Number(v).toFixed(1)}%`}
             contentStyle={{
-              backgroundColor: "var(--chart-tooltip-bg)",
-              border: "1px solid var(--chart-tooltip-border)",
-              color: "var(--chart-tooltip-text)",
+              background: "var(--surface)",
+              border: "0.5px solid var(--border)",
+              borderRadius: 8,
+              color: "var(--text-1)",
             }}
-            labelStyle={{ color: "var(--text-secondary)" }}
+            labelStyle={{ color: "var(--text-2)" }}
           />
 
           {/* MAIN LINE */}

@@ -207,11 +207,11 @@ function StatPill({
   tone?: "neutral" | "green" | "blue" | "amber" | "red";
 }) {
   const toneMap = {
-    neutral: "border-white/10 bg-white/[0.03] text-white",
-    green: "border-white/10 bg-white/[0.03] text-white",
-    blue: "border-white/10 bg-white/[0.03] text-white",
-    amber: "border-white/10 bg-white/[0.03] text-white",
-    red: "border-white/10 bg-white/[0.03] text-white",
+    neutral: "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-1)]",
+    green: "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-1)]",
+    blue: "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-1)]",
+    amber: "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-1)]",
+    red: "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-1)]",
   };
 
   return (
@@ -221,10 +221,10 @@ function StatPill({
         toneMap[tone]
       )}
     >
-      <p className="text-[11px] uppercase tracking-[0.18em] text-white/55">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)]">
         {label}
       </p>
-      <div className="mt-2 text-sm font-semibold text-white">{value}</div>
+      <div className="mt-2 text-sm font-semibold text-[var(--text-1)]">{value}</div>
     </div>
   );
 }
@@ -246,7 +246,7 @@ function SectionHeader({
             {eyebrow}
           </p>
         ) : null}
-        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        <h3 className="text-lg font-semibold text-[var(--text-1)]">{title}</h3>
       </div>
       {action ? <div>{action}</div> : null}
     </div>
@@ -358,14 +358,14 @@ function StickyInsightsRail({
               ) => (
                 <div
                   key={index}
-                  className="rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-sm text-white"
+                  className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-1)]"
                 >
                   {ball?.runs ?? ball?.label ?? ball?.outcome ?? "•"}
                 </div>
               )
             )
           ) : (
-            <p className="text-sm text-white/60">No ball events yet.</p>
+            <p className="text-sm text-[var(--text-3)]">No ball events yet.</p>
           )}
         </div>
       </GlassPanel>
@@ -378,13 +378,13 @@ function StickyInsightsRail({
             sessionState={sessionMeta?.sessionState}
             reconnectHealth={sessionMeta?.reconnectHealth}
           />
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <p className="text-sm font-medium text-white">Fixture</p>
-            <p className="mt-1 text-sm text-white/70">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <p className="text-sm font-medium text-[var(--text-1)]">Fixture</p>
+            <p className="mt-1 text-sm text-[var(--text-2)]">
               {match.team1}{" "}
-              <span className="text-white/40">vs</span> {match.team2}
+              <span className="text-[var(--text-3)]">vs</span> {match.team2}
             </p>
-            <div className="mt-1 text-sm text-gray-400">
+            <div className="mt-1 text-sm text-[var(--text-3)]">
               Over: {match.currentOver ?? 0}.{match.currentBall ?? 0}
             </div>
           </div>
@@ -498,9 +498,9 @@ function TabsArea({
   if (!match) {
     return (
       <div className="space-y-4">
-        <div className="h-6 w-40 animate-pulse rounded bg-white/10" />
-        <div className="h-[200px] animate-pulse rounded bg-white/10" />
-        <div className="h-[150px] animate-pulse rounded bg-white/10" />
+        <div className="h-6 w-40 animate-pulse rounded bg-[var(--surface-2)]" />
+        <div className="h-[200px] animate-pulse rounded bg-[var(--surface-2)]" />
+        <div className="h-[150px] animate-pulse rounded bg-[var(--surface-2)]" />
       </div>
     );
   }
@@ -728,7 +728,7 @@ function TabsArea({
               <GlassPanel>
                 <SectionHeader eyebrow="Control" title="Match Controls" />
                 {sessionMeta?.type === "LIVE" ? (
-                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4 text-sm text-white/70">
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm text-[var(--text-2)]">
                     Live sessions connect automatically. Simulation controls are hidden for provider-driven matches.
                   </div>
                 ) : (
@@ -798,14 +798,14 @@ function TabsArea({
                     <p className="text-[11px] uppercase tracking-[0.18em] text-sky-300/80">
                       Replay
                     </p>
-                    <p className="text-xs text-white/65">
+                    <p className="text-xs text-[var(--text-2)]">
                       Open compact replay controls only when needed.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowReplayTimeline((prev) => !prev)}
-                    className="rounded-lg border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs text-white/85 transition hover:bg-white/[0.08]"
+                    className="rounded-lg border border-[var(--border-med)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text-2)] transition hover:bg-[var(--surface)]"
                   >
                     {showReplayTimeline ? "Hide Replay" : "Open Replay"}
                   </button>
@@ -826,7 +826,7 @@ function TabsArea({
             <GlassPanel className="p-3">
               <SectionHeader eyebrow="Unified module" title="Match Analytics" />
               <div className="space-y-3">
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-[11px] uppercase tracking-[0.18em] text-sky-300/80">
                       Probability · Pressure · Momentum
@@ -834,7 +834,7 @@ function TabsArea({
                     <button
                       type="button"
                       onClick={() => setShowExpandedAnalytics((prev) => !prev)}
-                      className="rounded-md border border-white/15 bg-white/[0.05] px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-white/85"
+                      className="rounded-md border border-[var(--border-med)] bg-[var(--surface)] px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-[var(--text-2)]"
                     >
                       {showExpandedAnalytics ? "Collapse Analytics" : "Expand Analytics"}
                     </button>
@@ -844,9 +844,9 @@ function TabsArea({
                       <p className="text-[10px] uppercase tracking-[0.12em] text-emerald-200/85">Batting Win</p>
                       <p className="text-sm font-semibold text-emerald-100">{(latestWinPoint?.batting ?? 50).toFixed(0)}%</p>
                     </div>
-                    <div className="rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-[0.12em] text-red-200/85">Bowling Win</p>
-                      <p className="text-sm font-semibold text-red-100">{(latestWinPoint?.bowling ?? 50).toFixed(0)}%</p>
+                    <div className="rounded-lg border border-[var(--danger)] bg-[var(--danger-light)] px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-[var(--danger)]">Bowling Win</p>
+                      <p className="text-sm font-semibold text-[var(--danger)]">{(latestWinPoint?.bowling ?? 50).toFixed(0)}%</p>
                     </div>
                     <div className="rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2">
                       <p className="text-[10px] uppercase tracking-[0.12em] text-amber-200/85">Pressure</p>
@@ -860,7 +860,7 @@ function TabsArea({
                 {showExpandedAnalytics ? (
                   <div className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
                     <div className="space-y-3">
-                      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
                         <SectionHeader eyebrow="Charts" title="Win Probability & Trend" />
                         <MatchGraphExplorer
                           currentBattingTeam={overviewBattingTeam}
@@ -872,17 +872,17 @@ function TabsArea({
                           winProbabilityData={winProbabilityData}
                         />
                       </div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
                         <SectionHeader eyebrow="Momentum" title="Compact Heatmap" />
                         <MomentumHeatmap data={safeMomentumData} />
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
                         <SectionHeader eyebrow="Signals" title="Insights Feed" />
                         <MatchInsightsPanel matchId={match.slug} />
                       </div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
                         <SectionHeader eyebrow="Narrative" title="Storyline" />
                         <MatchNarrativePanel matchId={match.slug} />
                       </div>
@@ -894,7 +894,7 @@ function TabsArea({
 
             <GlassPanel className="p-3">
               <SectionHeader eyebrow="Shot analysis" title="Wagon Wheel" />
-              <div className="flex h-[260px] items-center justify-center text-white/60">
+              <div className="flex h-[260px] items-center justify-center text-[var(--text-3)]">
                 <WagonWheel matchId={match.slug} />
               </div>
             </GlassPanel>
@@ -919,7 +919,7 @@ function TabsArea({
         {activeTab === "scorecard" && (
           <div className="space-y-6">
             {currentEngineState?.matchEnded && currentEngineState?.winner ? (
-              <div className="mt-3 border-t border-white/10 pt-3 text-center text-sm text-white">
+              <div className="mt-3 border-t border-[var(--border)] pt-3 text-center text-sm text-[var(--text-1)]">
                 {currentEngineState.winner} won{" "}
                 {typeof currentEngineState.winBy === "string"
                   ? `by ${currentEngineState.winBy}`
@@ -940,7 +940,7 @@ function TabsArea({
                       "rounded-xl px-4 py-2 text-sm transition",
                       inningsIndex === i
                         ? "bg-gradient-to-r from-sky-400 to-cyan-300 text-slate-950 shadow-lg"
-                        : "border border-white/10 bg-white/[0.04] text-gray-300 hover:bg-white/[0.08]"
+                        : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-2)] hover:bg-[var(--surface)]"
                     )}
                   >
                     Innings {i + 1}
@@ -980,14 +980,14 @@ function TabsArea({
                     eyebrow="Batting card"
                     title="Batters"
                     action={
-                      <span className="text-xs uppercase tracking-[0.18em] text-white/45">
+                      <span className="text-xs uppercase tracking-[0.18em] text-[var(--text-3)]">
                         {activePlayers.length === 2
                           ? `${activePlayers.length} active • ${allPlayers.length} total`
                           : `${allPlayers.length} total records`}
                       </span>
                     }
                   />
-                  <div className="grid grid-cols-[minmax(160px,1.6fr)_0.7fr_0.7fr_0.7fr_0.8fr] gap-3 border-b border-white/10 px-3 pb-3 text-[11px] uppercase tracking-[0.18em] text-white/45">
+                  <div className="grid grid-cols-[minmax(160px,1.6fr)_0.7fr_0.7fr_0.7fr_0.8fr] gap-3 border-b border-[var(--border)] px-3 pb-3 text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)]">
                     <span>Batter</span>
                     <span className="text-center">R</span>
                     <span className="text-center">B</span>
@@ -1010,7 +1010,7 @@ function TabsArea({
                                 ? "border-amber-400/20 bg-amber-400/10"
                                 : player.isNonStriker
                                 ? "border-sky-400/15 bg-sky-400/10"
-                                : "border-white/10 bg-white/[0.04]"
+                                : "border-[var(--border)] bg-[var(--surface)]"
                             )}
                           >
                             <div className="min-w-0">
@@ -1021,21 +1021,21 @@ function TabsArea({
                                 {player.isNonStriker && (
                                   <span className="text-sky-300">○</span>
                                 )}
-                                <span className="truncate font-medium text-white">
+                                <span className="truncate font-medium text-[var(--text-1)]">
                                   {player.name}
                                 </span>
                               </div>
-                              <p className="mt-1 text-xs text-white/55">
+                              <p className="mt-1 text-xs text-[var(--text-3)]">
                                 {player.out ? "out" : "not out"}
                               </p>
                             </div>
                             <span className="text-center font-semibold text-emerald-300">
                               {player.runs}
                             </span>
-                            <span className="text-center text-white">
+                            <span className="text-center text-[var(--text-1)]">
                               {player.balls}
                             </span>
-                            <span className="text-center text-white/70">
+                            <span className="text-center text-[var(--text-2)]">
                               {player.fours}/{player.sixes}
                             </span>
                             <span className="text-center text-amber-300">
@@ -1045,7 +1045,7 @@ function TabsArea({
                         );
                       })
                     ) : (
-                      <p className="text-sm text-white/60">
+                      <p className="text-sm text-[var(--text-3)]">
                         No batting records available yet.
                       </p>
                     )}
@@ -1055,7 +1055,7 @@ function TabsArea({
                 {/* Bowling card */}
                 <GlassPanel>
                   <SectionHeader eyebrow="Bowling card" title="Bowlers" />
-                  <div className="grid grid-cols-5 gap-3 border-b border-white/10 px-3 pb-3 text-[11px] uppercase tracking-[0.18em] text-white/45">
+                  <div className="grid grid-cols-5 gap-3 border-b border-[var(--border)] px-3 pb-3 text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)]">
                     <span>Bowler</span>
                     <span className="text-center">O</span>
                     <span className="text-center">R</span>
@@ -1073,13 +1073,13 @@ function TabsArea({
                         return (
                           <div
                             key={name}
-                            className="grid grid-cols-5 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm hover:bg-white/[0.06]"
+                            className="grid grid-cols-5 items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm hover:bg-[var(--surface)]"
                           >
-                            <span className="truncate text-white">{name}</span>
-                            <span className="text-center text-white">
+                            <span className="truncate text-[var(--text-1)]">{name}</span>
+                            <span className="text-center text-[var(--text-1)]">
                               {overs}
                             </span>
-                            <span className="text-center text-white">
+                            <span className="text-center text-[var(--text-1)]">
                               {runs}
                             </span>
                             <span className="text-center font-semibold text-rose-300">
@@ -1092,7 +1092,7 @@ function TabsArea({
                         );
                       })
                     ) : (
-                      <p className="text-sm text-white/60">
+                      <p className="text-sm text-[var(--text-3)]">
                         No bowling records available yet.
                       </p>
                     )}
@@ -1106,15 +1106,15 @@ function TabsArea({
                   <div className="flex flex-wrap gap-3">
                     {wickets.length ? (
                       wickets.map((w, i) => (
-                        <div key={i} className="text-xs text-white/60">
-                          <span className="font-medium text-white">
+                        <div key={i} className="text-xs text-[var(--text-3)]">
+                          <span className="font-medium text-[var(--text-1)]">
                             {w.score}/{i + 1}
                           </span>{" "}
                           ({w.over})
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-white/60">No wickets yet.</p>
+                      <p className="text-sm text-[var(--text-3)]">No wickets yet.</p>
                     )}
                   </div>
                 </GlassPanel>
@@ -1136,16 +1136,16 @@ function TabsArea({
                       partnerships.map((p, i) => (
                         <div
                           key={i}
-                          className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm"
+                          className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm"
                         >
-                          <span className="text-white">{p.players}</span>
+                          <span className="text-[var(--text-1)]">{p.players}</span>
                           <span className="font-semibold text-emerald-300">
                             {p.runs} runs
                           </span>
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-white/60">
+                      <p className="text-sm text-[var(--text-3)]">
                         No partnerships available yet.
                       </p>
                     )}
@@ -1167,12 +1167,12 @@ function TabsArea({
                         return (
                           <div
                             key={player.name}
-                            className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                            className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4"
                           >
-                            <p className="font-medium text-white">
+                            <p className="font-medium text-[var(--text-1)]">
                               {player.name}
                             </p>
-                            <p className="mt-1 text-sm text-white/70">
+                            <p className="mt-1 text-sm text-[var(--text-2)]">
                               {player.runs} ({player.balls})
                             </p>
                             <p className="mt-2 text-sm text-amber-300">
@@ -1182,7 +1182,7 @@ function TabsArea({
                         );
                       })
                     ) : (
-                      <p className="text-sm text-white/60">
+                      <p className="text-sm text-[var(--text-3)]">
                         No comparison available yet.
                       </p>
                     )}
@@ -1206,16 +1206,16 @@ function TabsArea({
                   teamASquad.map((player, index) => (
                     <div
                       key={`${player.name}-${index}`}
-                      className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm"
+                      className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5 text-sm"
                     >
-                      <span className="text-white">{player.name}</span>
-                      <span className="text-xs uppercase tracking-[0.12em] text-white/55">
+                      <span className="text-[var(--text-1)]">{player.name}</span>
+                      <span className="text-xs uppercase tracking-[0.12em] text-[var(--text-3)]">
                         {player.role}
                       </span>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-white/60">No squad data available.</p>
+                  <p className="text-sm text-[var(--text-3)]">No squad data available.</p>
                 )}
               </div>
             </GlassPanel>
@@ -1230,16 +1230,16 @@ function TabsArea({
                   teamBSquad.map((player, index) => (
                     <div
                       key={`${player.name}-${index}`}
-                      className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm"
+                      className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5 text-sm"
                     >
-                      <span className="text-white">{player.name}</span>
-                      <span className="text-xs uppercase tracking-[0.12em] text-white/55">
+                      <span className="text-[var(--text-1)]">{player.name}</span>
+                      <span className="text-xs uppercase tracking-[0.12em] text-[var(--text-3)]">
                         {player.role}
                       </span>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-white/60">No squad data available.</p>
+                  <p className="text-sm text-[var(--text-3)]">No squad data available.</p>
                 )}
               </div>
             </GlassPanel>
@@ -1318,7 +1318,7 @@ function TabsArea({
                 )}
 
                 {matchMeta && !tossData && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-2">
                     <TossPanel
                       teamA={{ name: matchMeta?.teamA.name } as Team}
                       teamB={{ name: matchMeta?.teamB.name } as Team}
@@ -1354,9 +1354,9 @@ function TabsArea({
                       connectRealtime(id, "match-page-admin-start");
                     }}
                     className={cls(
-                      "rounded-xl px-4 py-2.5 font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60",
+                      "rounded-xl px-4 py-2.5 font-medium text-[var(--text-1)] transition disabled:cursor-not-allowed disabled:opacity-60",
                       effectiveIsRunning
-                        ? "bg-white/10"
+                        ? "bg-[var(--surface-2)]"
                         : "bg-emerald-600 hover:bg-emerald-500"
                     )}
                   >
@@ -1416,7 +1416,7 @@ function TabsArea({
                           console.error("Stop failed", err);
                         }
                       }}
-                      className="rounded-xl bg-red-600 px-4 py-2.5 font-medium text-white hover:bg-red-500"
+                      className="rounded-xl bg-[var(--danger)] px-4 py-2.5 font-medium text-[var(--text-1)] hover:bg-[var(--danger)]"
                     >
                       ⛔ Stop
                     </button>
@@ -1450,7 +1450,7 @@ function TabsArea({
                         "rounded-xl border px-3 py-2 text-sm transition",
                         speed === option.value
                           ? "border-sky-400/30 bg-sky-400/20 text-sky-200"
-                          : "border-white/10 bg-white/[0.04] text-gray-300 hover:bg-white/[0.08]"
+                          : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-2)] hover:bg-[var(--surface)]"
                       )}
                     >
                       {option.label}
@@ -1515,7 +1515,7 @@ function MatchInnerPage({
 
   if (!currentEngineState) {
     return (
-      <div className="p-10 text-center text-white">
+      <div className="p-10 text-center text-[var(--text-1)]">
         Loading match engine...
       </div>
     );
@@ -1658,13 +1658,13 @@ function MatchInnerPage({
                       <p className="text-[11px] uppercase tracking-[0.22em] text-sky-300/80">
                         CricSmart Match Center
                       </p>
-                      <h1 className="text-xl font-semibold text-white md:text-2xl">
+                      <h1 className="text-xl font-semibold text-[var(--text-1)] md:text-2xl">
                         {team1Name} vs {team2Name}
                       </h1>
                       {sessionMeta?.type === "LIVE" && liveStatus ? (
                         <p className="text-sm text-sky-200/90">{liveStatus}</p>
                       ) : null}
-                      <p className="text-xs text-white/60">
+                      <p className="text-xs text-[var(--text-3)]">
                         Live command center with realtime commentary, analytics, and replay.
                       </p>
                     </div>
@@ -1676,7 +1676,7 @@ function MatchInnerPage({
                       >
                         <Link
                           href="/"
-                          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/80 backdrop-blur-md transition"
+                          className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text-2)] backdrop-blur-md transition"
                         >
                           ← Back to Home
                         </Link>
@@ -2024,8 +2024,8 @@ export default function MatchDetailPage({
   if (!matchId) {
     return (
       <PageMotion>
-        <div className="bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,#020617_0%,#071120_35%,#0b1220_65%,#020617_100%)]">
-          <div className="p-10 text-center text-white">
+        <div className="bg-[var(--surface-2)]">
+          <div className="p-10 text-center text-[var(--text-1)]">
             Invalid match URL.
           </div>
         </div>
@@ -2037,7 +2037,7 @@ export default function MatchDetailPage({
     // ✅ FIX: matchId prop — NOT value prop
     <MatchProvider matchId={matchId}>
       <PageMotion>
-        <div className="bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,#020617_0%,#071120_35%,#0b1220_65%,#020617_100%)]">
+        <div className="bg-[var(--surface-2)]">
           {match ? (
             <MatchInnerPage
               match={match}
@@ -2048,7 +2048,7 @@ export default function MatchDetailPage({
               hostedMatchId={hostedMatchId}
             />
           ) : (
-            <div className="p-10 text-center text-white">
+            <div className="p-10 text-center text-[var(--text-1)]">
               Loading match...
             </div>
           )}

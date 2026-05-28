@@ -26,7 +26,7 @@ export default function AnalyticsPage() {
             Match Analytics
           </h1>
 
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          <p className="mt-1 text-sm text-[var(--text-2)]">
             Real-time cricket intelligence dashboard
           </p>
         </div>
@@ -34,20 +34,22 @@ export default function AnalyticsPage() {
         <div className="grid lg:grid-cols-2 gap-8">
 
           <div
-            className="rounded-xl p-5 shadow-lg transition"
+            className="p-5 shadow-lg transition"
             style={{
-              background: "var(--bg-surface)",
-              border: "1px solid var(--border-subtle)",
+              background: "var(--surface)",
+              border: "0.5px solid var(--border)",
+              borderRadius: "var(--radius-lg)",
             }}
           >
             <WinProbabilityChart data={[]} />
           </div>
 
           <div
-            className="rounded-xl p-5 shadow-lg transition"
+            className="p-5 shadow-lg transition"
             style={{
-              background: "var(--bg-surface)",
-              border: "1px solid var(--border-subtle)",
+              background: "var(--surface)",
+              border: "0.5px solid var(--border)",
+              borderRadius: "var(--radius-lg)",
             }}
           >
             <WinProbabilityChart data={[]} />
@@ -56,14 +58,15 @@ export default function AnalyticsPage() {
         </div>
 
         <div
-          className="rounded-xl p-6 shadow-lg transition"
+          className="p-6 shadow-lg transition"
           style={{
-            background: "var(--bg-surface)",
-            border: "1px solid var(--border-subtle)",
+            background: "var(--surface)",
+            border: "0.5px solid var(--border)",
+            borderRadius: "var(--radius-lg)",
           }}
         >
 
-          <h2 className="mb-4 text-sm font-semibold uppercase text-[var(--text-secondary)]">
+          <h2 className="mb-4 text-sm font-semibold uppercase text-[var(--text-3)]">
             Match Phases
           </h2>
 

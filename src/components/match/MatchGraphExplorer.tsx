@@ -279,7 +279,7 @@ export default function MatchGraphExplorer({
                   className="h-full"
                   style={{
                     background:
-                      "linear-gradient(to right, var(--chart-positive), color-mix(in srgb, var(--chart-positive) 65%, white))",
+                      "linear-gradient(to right, var(--chart-positive), color-mix(in srgb, var(--chart-positive) 65%, var(--text-inv)))",
                     width: `${battingWin}%`,
                   }}
                 />
@@ -575,7 +575,7 @@ export default function MatchGraphExplorer({
                           type="monotone"
                           dataKey="score"
                           name="Momentum score"
-                          stroke="var(--accent-glow, #6e5bff)"
+                          stroke="var(--brand)"
                           strokeWidth={3}
                           dot={{ r: 4 }}
                         />

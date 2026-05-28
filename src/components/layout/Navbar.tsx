@@ -172,7 +172,6 @@ function MatchRow({ match, onClick }: { match: PanelMatch; onClick: () => void }
 
 export default function Navbar() {
   const pathname = usePathname();
-  const [scrolled, setScrolled] = useState(false);
   const [matchesPanelOpen, setMatchesPanelOpen] = useState(false);
   const [allDropdownOpen, setAllDropdownOpen] = useState(false);
   const [loadingMatches, setLoadingMatches] = useState(false);
@@ -184,12 +183,6 @@ export default function Navbar() {
   const { user, isAuthenticated, authEnabled, loading: authLoading } = useAuth();
 
   const activeLink = quickLinks.find((link) => isPathActive(pathname, link.href));
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   useEffect(() => {
     closeDrawer();
@@ -284,18 +277,26 @@ export default function Navbar() {
 
   return (
     <>
-      <div className="sticky top-0 z-50">
+      <div className="z-50">
         <nav
-          className={`relative border-b border-[var(--border-subtle)] transition-all duration-300 ${
-            scrolled ? "bg-[var(--nav-bg-scrolled)] backdrop-blur-xl" : "bg-[var(--nav-bg)] backdrop-blur-md"
-          }`}
+          className="relative"
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 50,
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            background: "var(--nav-bg)",
+            borderBottom: "0.5px solid var(--nav-border)",
+          }}
         >
           <div className="mx-auto flex h-16 w-full max-w-[1100px] items-center justify-between px-4 md:px-6">
             <div className="flex items-center gap-3">
               <MobileMenuButton isOpen={isOpen} onClick={toggleDrawer} />
               <Link
                 href="/"
-                className="font-display text-lg font-semibold tracking-tight text-[var(--text-primary)] transition hover:text-[var(--accent-brand)] md:text-xl"
+                className="text-lg font-bold tracking-tight transition md:text-xl"
+                style={{ fontFamily: "var(--font-display)", color: "var(--text-1)", fontSize: 18 }}
               >
                 CricSmart
               </Link>
@@ -305,20 +306,21 @@ export default function Navbar() {
               {quickLinks.map((link) => {
                 const isActive = isPathActive(pathname, link.href);
                 return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`relative px-1 py-1 text-sm font-medium transition ${
-                      isActive
-                        ? "text-[var(--text-primary)]"
-                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                    }`}
-                  >
-                    {link.name}
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="relative px-1 py-1 transition"
+                      style={
+                        isActive
+                          ? { color: "var(--brand)", fontWeight: 600 }
+                          : { color: "var(--text-2)", fontWeight: 500, fontSize: 14 }
+                      }
+                    >
+                      {link.name}
                     {isActive ? (
                       <motion.span
                         layoutId="navbar-active-indicator"
-                        className="absolute -bottom-[9px] left-0 right-0 h-[2px] rounded-full bg-[var(--accent-brand)]"
+                        className="absolute -bottom-[9px] left-0 right-0 h-[2px] rounded-full bg-[var(--brand)]"
                         transition={{ type: "spring", stiffness: 500, damping: 34 }}
                       />
                     ) : null}
@@ -326,16 +328,17 @@ export default function Navbar() {
                 );
               })}
 
-              <button
-                type="button"
-                onClick={togglePanel}
-                className={`inline-flex items-center gap-1.5 text-sm font-medium transition ${
-                  matchesPanelOpen
-                    ? "text-[var(--accent-brand)]"
-                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                Matches
+                <button
+                  type="button"
+                  onClick={togglePanel}
+                  className="inline-flex items-center gap-1.5 transition"
+                  style={
+                    matchesPanelOpen
+                      ? { color: "var(--brand)", fontWeight: 600 }
+                      : { color: "var(--text-2)", fontWeight: 500, fontSize: 14 }
+                  }
+                >
+                  Matches
                 <span className={`inline-block transition-transform duration-200 ${matchesPanelOpen ? "rotate-180" : ""}`}>
                   ▾
                 </span>
@@ -375,7 +378,8 @@ export default function Navbar() {
                   </Link>
                   <Link
                     href={`/signup?redirect=${encodeURIComponent(pathname || "/")}`}
-                    className="rounded-md bg-[var(--accent-brand)] px-2.5 py-1.5 text-sm font-medium text-white transition hover:opacity-90"
+                    className="rounded-md px-2.5 py-1.5 text-sm font-medium transition hover:opacity-90"
+                    style={{ background: "var(--brand)", color: "var(--text-inv)" }}
                   >
                     Signup
                   </Link>

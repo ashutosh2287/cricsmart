@@ -17,7 +17,7 @@ export default function AdminScoringPanel({ matchId }: Props) {
 
   if (!matchMeta) {
   return (
-    <div className="text-yellow-400">
+    <div className="text-[var(--accent)]">
       ⚠️ Please select teams first in Overview tab
     </div>
   );
@@ -42,9 +42,19 @@ bowlingTeam: matchMeta?.teamB.name || "",
 
   return (
 
-    <div className="bg-gray-900 text-white p-6 rounded-lg space-y-6 relative z-[9999] pointer-events-auto">
+    <div
+      className="p-6 rounded-lg space-y-6 relative z-[9999] pointer-events-auto"
+      style={{
+        background: "var(--surface)",
+        border: "0.5px solid var(--border)",
+        borderRadius: "var(--radius-lg)",
+        color: "var(--text-1)",
+      }}
+    >
 
-      <h3 className="text-xl font-bold">Admin Scoring Panel</h3>
+      <h3 className="text-xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
+        Admin Scoring Panel
+      </h3>
 
       {/* PLAYER SELECTION */}
 
@@ -54,7 +64,7 @@ bowlingTeam: matchMeta?.teamB.name || "",
   aria-label="Select striker"
   value={striker}
   onChange={(e) => setStriker(e.target.value)}
-  className="bg-gray-800 border border-gray-700 p-2 rounded"
+  className="bg-[var(--surface-2)] border border-[var(--border-med)] text-[var(--text-1)] p-2 rounded"
 >
           <option value="">Select Striker</option>
           <option value="Virat Kohli">Virat Kohli</option>
@@ -65,7 +75,7 @@ bowlingTeam: matchMeta?.teamB.name || "",
           aria-label="Select non-striker"
           value={nonStriker}
           onChange={(e) => setNonStriker(e.target.value)}
-          className="bg-gray-800 border border-gray-700 p-2 rounded"
+          className="bg-[var(--surface-2)] border border-[var(--border-med)] text-[var(--text-1)] p-2 rounded"
         >
           <option value="">Select Non-Striker</option>
           <option value="Virat Kohli">Virat Kohli</option>
@@ -76,7 +86,7 @@ bowlingTeam: matchMeta?.teamB.name || "",
           aria-label="Select bowler"
           value={bowler}
           onChange={(e) => setBowler(e.target.value)}
-          className="bg-gray-800 border border-gray-700 p-2 rounded"
+          className="bg-[var(--surface-2)] border border-[var(--border-med)] text-[var(--text-1)] p-2 rounded"
         >
           <option value="">Select Bowler</option>
           <option value="Pat Cummins">Pat Cummins</option>
@@ -93,7 +103,7 @@ bowlingTeam: matchMeta?.teamB.name || "",
           <button
             key={r}
             onClick={() => run(r)}
-            className="bg-blue-600 px-4 py-2 rounded"
+            className="bg-blue-600 px-4 py-2 rounded text-[var(--text-inv)]"
           >
             {r}
           </button>
@@ -112,7 +122,7 @@ bowlingTeam: matchMeta?.teamB.name || "",
     alert("✅ CLICK WORKING");
     console.log("🔥 CLICK WORKING");
   }}
-  className="w-full bg-red-600 py-4 rounded"
+  className="w-full bg-red-600 py-4 rounded text-[var(--text-inv)]"
 >
   TEST START MATCH
 </button>
@@ -128,7 +138,7 @@ bowlingTeam: matchMeta?.teamB.name || "",
               bowlingTeam: matchMeta?.teamB.name || "",
             })
           }
-          className="bg-green-600 px-4 py-2 rounded"
+          className="bg-green-600 px-4 py-2 rounded text-[var(--text-inv)]"
         >
           4
         </button>
@@ -145,7 +155,7 @@ bowlingTeam: matchMeta?.teamB.name || "",
               bowlingTeam: matchMeta?.teamB.name || "",
             })
           }
-          className="bg-[var(--accent-brand)] px-4 py-2 rounded text-white"
+          className="bg-purple-600 px-4 py-2 rounded text-[var(--text-inv)]"
         >
           6
         </button>
@@ -168,7 +178,7 @@ bowlingTeam: matchMeta?.teamB.name || "",
               bowlingTeam: matchMeta?.teamB.name || "",
             })
           }
-          className="bg-red-600 px-4 py-2 rounded"
+          className="bg-red-600 px-4 py-2 rounded text-[var(--text-inv)]"
         >
           Wicket
         </button>
@@ -185,7 +195,7 @@ bowlingTeam: matchMeta?.teamB.name || "",
               bowlingTeam: matchMeta?.teamB.name || "",
             })
           }
-          className="bg-yellow-600 px-4 py-2 rounded"
+          className="bg-yellow-600 px-4 py-2 rounded text-[var(--text-inv)]"
         >
           Wide
         </button>
@@ -202,7 +212,7 @@ bowlingTeam: matchMeta?.teamB.name || "",
               bowlingTeam: matchMeta?.teamB.name || "",
             })
           }
-          className="bg-orange-600 px-4 py-2 rounded"
+          className="bg-orange-600 px-4 py-2 rounded text-[var(--text-inv)]"
         >
           No Ball
         </button>

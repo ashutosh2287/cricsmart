@@ -394,10 +394,10 @@ function buildOverBlocks(innings: InningsState | undefined): OverBlock[] {
 }
 
 function getTagClasses(tag: string | null) {
-  if (tag === "WICKET") return "border-red-400/45 bg-red-950/30 text-red-100";
+  if (tag === "WICKET") return "border-[var(--danger)] bg-red-950/30 text-red-100";
   if (tag === "SIX") return "border-amber-400/35 bg-amber-950/25 text-amber-100";
   if (tag === "FOUR") return "border-sky-400/35 bg-sky-950/25 text-sky-100";
-  return "border-white/10 bg-slate-950/55 text-white";
+  return "border-[var(--border)] bg-slate-950/55 text-[var(--text-1)]";
 }
 
 export default function CommentaryPanel({ matchId, insights }: Props) {
@@ -417,7 +417,7 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.9))] p-3.5">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5">
       {insights && insights.length > 0 ? (
         <div className="mb-3 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-3">
           <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-yellow-300">
@@ -433,13 +433,13 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
 
       <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <h3 className="text-base font-semibold text-white">Live Commentary</h3>
-          <p className="text-xs text-white/60">Grouped by over with pressure and milestone context.</p>
+          <h3 className="text-base font-semibold text-[var(--text-1)]">Live Commentary</h3>
+          <p className="text-xs text-[var(--text-3)]">Grouped by over with pressure and milestone context.</p>
         </div>
 
         <button
           onClick={() => setLang(lang === "EN" ? "HI" : "EN")}
-          className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-white/75 transition hover:bg-white/[0.08] hover:text-white"
+          className="inline-flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text-2)] transition hover:bg-[var(--surface)] hover:text-[var(--text-1)]"
         >
           {lang === "EN" ? "हिंदी" : "English"}
         </button>
@@ -455,7 +455,7 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
             {currentOver.summary.sequence.map((token, index) => (
               <span
                 key={`${currentOver.summary.key}-strip-${index}`}
-                className={`inline-flex h-6 min-w-[24px] items-center justify-center rounded-md border px-1.5 text-[11px] font-semibold ${token === "W" ? "border-red-400/45 bg-red-500/15 text-red-200" : "border-white/15 bg-white/[0.04] text-white/80"}`}
+                className={`inline-flex h-6 min-w-[24px] items-center justify-center rounded-md border px-1.5 text-[11px] font-semibold ${token === "W" ? "border-[var(--danger)] bg-[var(--danger-light)] text-[var(--danger)]" : "border-[var(--border-med)] bg-[var(--surface)] text-[var(--text-2)]"}`}
               >
                 {token}
               </span>
@@ -466,43 +466,43 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
 
       <div className="max-h-[74vh] space-y-3 overflow-y-auto pr-1">
         {overBlocks.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm text-white/55">
+          <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-2)] p-5 text-sm text-[var(--text-3)]">
             Waiting for live commentary...
           </div>
         ) : null}
 
         {overBlocks.map((block) => (
-          <div key={block.summary.key} className="space-y-2.5 rounded-xl border border-white/10 bg-white/[0.025] p-2.5">
-            <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
+          <div key={block.summary.key} className="space-y-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-2.5">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-white">{block.summary.overLabel}</span>
-                    <span className="text-xs text-white/55">{block.summary.overScore}</span>
+                    <span className="text-sm font-semibold text-[var(--text-1)]">{block.summary.overLabel}</span>
+                    <span className="text-xs text-[var(--text-3)]">{block.summary.overScore}</span>
                   </div>
-                  <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/45">Over summary</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-[var(--text-3)]">Over summary</p>
                 </div>
 
                 <div className="text-left sm:text-right">
                   <div className="font-mono text-xs text-sky-200">{block.summary.sequence.join("  ")}</div>
-                  <div className="mt-1 text-xs text-white/60">
+                  <div className="mt-1 text-xs text-[var(--text-3)]">
                     {block.summary.overRuns} run{block.summary.overRuns === 1 ? "" : "s"}
                     {block.summary.wicketCount > 0
                       ? ` · ${block.summary.wicketCount} wicket${block.summary.wicketCount > 1 ? "s" : ""}`
                       : ""}
                   </div>
-                  <div className="mt-1 text-[11px] uppercase tracking-[0.14em] text-white/45">
+                  <div className="mt-1 text-[11px] uppercase tracking-[0.14em] text-[var(--text-3)]">
                     Pressure {block.summary.pressure} · {block.summary.momentum}
                   </div>
                 </div>
               </div>
 
               {block.arrivals.length > 0 ? (
-                <div className="mt-3 grid gap-2 border-t border-dashed border-white/10 pt-3 md:grid-cols-2">
+                <div className="mt-3 grid gap-2 border-t border-dashed border-[var(--border)] pt-3 md:grid-cols-2">
                   {block.arrivals.map((arrival) => (
                     <div key={`${block.summary.key}-arrival-${arrival.name}`} className="rounded-lg border border-cyan-400/20 bg-cyan-500/10 px-3 py-2">
                       <div className="text-[11px] uppercase tracking-[0.16em] text-cyan-200">Batter arrival</div>
-                      <div className="mt-1 text-sm font-semibold text-white">{arrival.name}</div>
+                      <div className="mt-1 text-sm font-semibold text-[var(--text-1)]">{arrival.name}</div>
                       <div className="mt-1 flex flex-wrap gap-2 text-xs text-cyan-100/85">
                         <span>{arrival.runs}({arrival.balls})</span>
                         <span>SR {arrival.strikeRate}</span>
@@ -515,7 +515,7 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
               ) : null}
 
               {block.highlightNotes.length > 0 ? (
-                <div className="mt-3 space-y-1.5 border-t border-dashed border-white/10 pt-3">
+                <div className="mt-3 space-y-1.5 border-t border-dashed border-[var(--border)] pt-3">
                   {block.highlightNotes.map((note, index) => (
                     <div
                       key={`${block.summary.key}-highlight-${index}`}
@@ -533,12 +533,12 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
                 </div>
               ) : null}
 
-              <div className="mt-3 grid gap-3 border-t border-white/10 pt-3 md:grid-cols-[minmax(0,1fr)_auto]">
-                <div className="space-y-1.5 text-xs text-white/75">
+              <div className="mt-3 grid gap-3 border-t border-[var(--border)] pt-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                <div className="space-y-1.5 text-xs text-[var(--text-2)]">
                   {block.summary.batters.map((batter) => (
                     <div key={batter.name} className="flex items-center justify-between gap-3">
                       <span>{batter.name}</span>
-                      <span className="font-medium text-white">
+                      <span className="font-medium text-[var(--text-1)]">
                         {batter.runs}({batter.balls})
                       </span>
                     </div>
@@ -547,8 +547,8 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
 
                 {block.summary.bowler ? (
                   <div className="min-w-[130px] text-left md:text-right">
-                    <div className="text-xs text-white">{block.summary.bowler.name}</div>
-                    <div className="mt-1 text-xs text-white/60">
+                    <div className="text-xs text-[var(--text-1)]">{block.summary.bowler.name}</div>
+                    <div className="mt-1 text-xs text-[var(--text-3)]">
                       {formatOverCount(block.summary.bowler.balls)}-{block.summary.bowler.runs}-{block.summary.bowler.wickets}
                     </div>
                   </div>
@@ -561,16 +561,16 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
                 <div key={ball.key} className={`rounded-xl border p-2.5 ${getTagClasses(ball.tag)}`}>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <div className="text-sm font-medium text-white">
+                      <div className="text-sm font-medium text-[var(--text-1)]">
                         {ball.ballLabel} &nbsp; {translateCommentary(ball.headline, lang)}
                       </div>
-                      <p className="mt-1.5 max-w-3xl text-xs leading-5 text-white/75">
+                      <p className="mt-1.5 max-w-3xl text-xs leading-5 text-[var(--text-2)]">
                         {translateCommentary(ball.detail, lang)}
                       </p>
                     </div>
 
                     {ball.tag ? (
-                      <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/85">
+                      <span className="rounded-full border border-[var(--border-med)] bg-[var(--surface-2)] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--text-2)]">
                         {ball.tag}
                       </span>
                     ) : null}

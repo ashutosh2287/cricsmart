@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from "react";
+
 
 import AppDrawer from "@/components/navigation/AppDrawer";
 import UserAvatar from "@/components/account/UserAvatar";
@@ -185,10 +186,12 @@ export default function Navbar() {
   const activeLink = quickLinks.find((link) => isPathActive(pathname, link.href));
 
   useEffect(() => {
+  startTransition(() => {
     closeDrawer();
     setMatchesPanelOpen(false);
     setAllDropdownOpen(false);
-  }, [pathname, closeDrawer]);
+  });
+}, [pathname, closeDrawer]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -248,9 +251,10 @@ export default function Navbar() {
   }, [panelMatches.length]);
 
   useEffect(() => {
-    if (!matchesPanelOpen) return;
-    void loadMatches();
-  }, [matchesPanelOpen, loadMatches]);
+  if (!matchesPanelOpen) return;
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  void loadMatches();
+}, [matchesPanelOpen, loadMatches]);
 
   const filteredMatches = useMemo(() => {
     if (matchesFilter === "live") return panelMatches.filter((match) => match.isLive);

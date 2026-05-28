@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 
 import AppDrawer from "@/components/navigation/AppDrawer";
@@ -185,9 +185,11 @@ export default function Navbar() {
   const activeLink = quickLinks.find((link) => isPathActive(pathname, link.href));
 
   useEffect(() => {
-    closeDrawer();
-    setMatchesPanelOpen(false);
-    setAllDropdownOpen(false);
+    startTransition(() => {
+      closeDrawer();
+      setMatchesPanelOpen(false);
+      setAllDropdownOpen(false);
+    });
   }, [pathname, closeDrawer]);
 
   useEffect(() => {

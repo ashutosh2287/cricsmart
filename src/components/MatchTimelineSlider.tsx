@@ -128,7 +128,7 @@ export default function MatchTimelineSlider({ matchId }: Props) {
   if (maxIndex <= 0) return null;
 
   return (
-    <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white p-5 rounded-2xl shadow-xl border border-white/10">
+    <div className="bg-[var(--gradient-surface)] text-[var(--text-primary)] p-5 rounded-2xl shadow-xl border border-[var(--border-subtle)]">
 
       <h3 className="font-semibold mb-3 text-lg tracking-wide">
         📊 Match Timeline

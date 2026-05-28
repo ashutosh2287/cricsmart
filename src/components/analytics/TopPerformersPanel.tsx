@@ -10,9 +10,9 @@ function TopPerformersPanel({ matchId }: { matchId: string }) {
 
   return (
 
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+    <div className="bg-[var(--surface)] border border-zinc-800 rounded-xl p-6">
 
-      <h2 className="text-sm text-gray-400 uppercase mb-4">
+      <h2 className="text-sm text-[var(--text-2)] uppercase mb-4">
         Top Performers
       </h2>
 

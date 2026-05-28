@@ -137,7 +137,7 @@ if (!innings) return null;
   */
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex flex-col items-center justify-center text-white p-6">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex flex-col items-center justify-center text-[var(--text-1)] p-6">
 
       <h2 className="text-3xl font-bold mb-6 tracking-wide">
         🎮 Replay Mode
@@ -199,7 +199,7 @@ if (!innings) return null;
 
         <button
           onClick={handlePause}
-          className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded"
+          className="bg-[var(--surface-3)] hover:bg-[var(--surface-2)] px-4 py-2 rounded"
         >
           ⏸ Pause
         </button>
@@ -258,7 +258,7 @@ if (!innings) return null;
       {/* OVER SEEK */}
       {overCount > 1 && (
         <div className="mt-4 w-full max-w-2xl space-y-2">
-          <span className="block text-center text-xs text-gray-400">Jump to over:</span>
+          <span className="block text-center text-xs text-[var(--text-2)]">Jump to over:</span>
           <div className="flex max-h-24 flex-wrap justify-center gap-1.5 overflow-y-auto pr-1">
             {Array.from({ length: overCount }, (_, i) => (
               <button
@@ -282,7 +282,7 @@ if (!innings) return null;
       </button>
 
       {/* PLAYBACK META */}
-      <div className="mt-4 text-xs text-gray-500">
+      <div className="mt-4 text-xs text-[var(--text-3)]">
         {replayMeta.isPlaying ? "▶ Playing" : "⏸ Paused"} · Ball {currentIndex + 1} of {timelineLength}
       </div>
 

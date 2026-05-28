@@ -448,9 +448,21 @@ export default function MatchGraphExplorer({
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={progression.overs}>
                         <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
-                        <XAxis dataKey="label" stroke="var(--chart-axis)" />
-                        <YAxis stroke="var(--chart-axis)" />
-                        <Tooltip />
+                        <XAxis
+                          dataKey="label"
+                          stroke="var(--chart-axis)"
+                          tick={{ fill: "var(--text-3)", fontSize: 11 }}
+                        />
+                        <YAxis stroke="var(--chart-axis)" tick={{ fill: "var(--text-3)", fontSize: 11 }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "var(--chart-tooltip-bg)",
+                            border: "1px solid var(--chart-tooltip-border)",
+                            borderRadius: 8,
+                            color: "var(--chart-tooltip-text)",
+                          }}
+                          labelStyle={{ color: "var(--text-2)" }}
+                        />
                         {showBattingSeries ? (
                           <Bar
                             dataKey="batting"
@@ -482,9 +494,21 @@ export default function MatchGraphExplorer({
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={progression.runRate}>
                         <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
-                        <XAxis dataKey="label" stroke="var(--chart-axis)" />
-                        <YAxis stroke="var(--chart-axis)" />
-                        <Tooltip />
+                        <XAxis
+                          dataKey="label"
+                          stroke="var(--chart-axis)"
+                          tick={{ fill: "var(--text-3)", fontSize: 11 }}
+                        />
+                        <YAxis stroke="var(--chart-axis)" tick={{ fill: "var(--text-3)", fontSize: 11 }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "var(--chart-tooltip-bg)",
+                            border: "1px solid var(--chart-tooltip-border)",
+                            borderRadius: 8,
+                            color: "var(--chart-tooltip-text)",
+                          }}
+                          labelStyle={{ color: "var(--text-2)" }}
+                        />
                         {showBattingSeries ? (
                           <Line
                             type="monotone"
@@ -530,9 +554,21 @@ export default function MatchGraphExplorer({
                           </linearGradient>
                         </defs>
                         <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
-                        <XAxis dataKey="label" stroke="var(--chart-axis)" />
-                        <YAxis stroke="var(--chart-axis)" />
-                        <Tooltip />
+                        <XAxis
+                          dataKey="label"
+                          stroke="var(--chart-axis)"
+                          tick={{ fill: "var(--text-3)", fontSize: 11 }}
+                        />
+                        <YAxis stroke="var(--chart-axis)" tick={{ fill: "var(--text-3)", fontSize: 11 }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "var(--chart-tooltip-bg)",
+                            border: "1px solid var(--chart-tooltip-border)",
+                            borderRadius: 8,
+                            color: "var(--chart-tooltip-text)",
+                          }}
+                          labelStyle={{ color: "var(--text-2)" }}
+                        />
                         {showBattingSeries ? (
                           <Area
                             type="monotone"
@@ -568,9 +604,21 @@ export default function MatchGraphExplorer({
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={safeMomentumData}>
                         <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" />
-                        <XAxis dataKey="over" stroke="var(--chart-axis)" />
-                        <YAxis stroke="var(--chart-axis)" />
-                        <Tooltip />
+                        <XAxis
+                          dataKey="over"
+                          stroke="var(--chart-axis)"
+                          tick={{ fill: "var(--text-3)", fontSize: 11 }}
+                        />
+                        <YAxis stroke="var(--chart-axis)" tick={{ fill: "var(--text-3)", fontSize: 11 }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "var(--chart-tooltip-bg)",
+                            border: "1px solid var(--chart-tooltip-border)",
+                            borderRadius: 8,
+                            color: "var(--chart-tooltip-text)",
+                          }}
+                          labelStyle={{ color: "var(--text-2)" }}
+                        />
                         <Line
                           type="monotone"
                           dataKey="score"

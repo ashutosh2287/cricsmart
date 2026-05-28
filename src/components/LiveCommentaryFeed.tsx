@@ -38,7 +38,7 @@ function LiveCommentaryFeed({ matchId }: { matchId: string }) {
   return (
     <div className="space-y-3 rounded-lg border border-[var(--border)] p-4">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-gray-300">Live Commentary Intelligence</h3>
+        <h3 className="text-sm font-bold text-[var(--text-2)]">Live Commentary Intelligence</h3>
         <select
           value={filter}
           onChange={(event) => setFilter(event.target.value as FeedFilter)}
@@ -54,7 +54,7 @@ function LiveCommentaryFeed({ matchId }: { matchId: string }) {
       </div>
 
       <div className="max-h-[300px] space-y-2 overflow-y-auto">
-        {filtered.length === 0 && <p className="text-sm text-gray-500">Waiting for commentary...</p>}
+        {filtered.length === 0 && <p className="text-sm text-[var(--text-3)]">Waiting for commentary...</p>}
 
         {filtered.map((c, i) => (
           <div key={`${c.commentaryId}-${i}`} className={`rounded-lg border px-3 py-2 text-sm text-[var(--text-1)] ${toneClasses(c)}`}>

@@ -76,12 +76,14 @@ function MomentumChart({ matchId }: Props) {
 
             <XAxis
               dataKey="over"
-              tick={{ fill: "var(--chart-axis)", fontSize: 12 }}
+              tick={{ fill: "var(--text-3)", fontSize: 12 }}
+              stroke="var(--chart-axis)"
             />
 
             <YAxis
               domain={["auto", "auto"]}
-              tick={{ fill: "var(--chart-axis)", fontSize: 12 }}
+              tick={{ fill: "var(--text-3)", fontSize: 12 }}
+              stroke="var(--chart-axis)"
             />
 
             <Tooltip

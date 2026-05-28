@@ -41,7 +41,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <div className="rounded-xl border border-red-800/50 bg-zinc-900 p-4 text-red-300 text-sm">
+        <div className="rounded-xl border border-red-800/50 bg-[var(--surface)] p-4 text-red-300 text-sm">
           {this.props.context
             ? `${this.props.context} failed to render.`
             : "Something went wrong. Please refresh."}

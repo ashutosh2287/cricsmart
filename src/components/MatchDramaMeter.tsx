@@ -36,8 +36,8 @@ export default function MatchDramaMeter({ matchId }: Props) {
     <div
       style={{
         padding: "12px",
-        background: "#111",
-        color: "white",
+        background: "var(--surface)",
+        color: "var(--text-1)",
         borderRadius: "8px",
         width: "260px"
       }}
@@ -55,7 +55,7 @@ export default function MatchDramaMeter({ matchId }: Props) {
               width: "18px",
               height: "12px",
               background:
-                i < bars ? "#ff3b3b" : "#444",
+                i < bars ? "var(--danger)" : "var(--surface-3)",
               borderRadius: "2px"
             }}
           />

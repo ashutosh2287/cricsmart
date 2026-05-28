@@ -94,7 +94,7 @@ function MatchCard({ match }: { match: MatchCardMatch }) {
                 match.status === "LIVE"
                   ? "border-red-500/30 text-red-400"
                   : match.status === "COMPLETED"
-                    ? "border-gray-700 text-gray-500"
+                    ? "border-[var(--border)] text-[var(--text-3)]"
                     : "border-blue-500/30 text-blue-400"
               }`}
             >

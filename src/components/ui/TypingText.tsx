@@ -19,5 +19,5 @@ export default function TypingText({ text }: { text: string }) {
     return () => clearInterval(interval);
   }, [text]);
 
-  return <p className="text-sm text-white/80">{displayed}</p>;
+  return <p className="text-sm text-[var(--text-2)]">{displayed}</p>;
 }

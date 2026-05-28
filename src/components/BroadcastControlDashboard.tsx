@@ -32,7 +32,7 @@ export default function BroadcastControlDashboard() {
   }
 
   return (
-    <div className="p-4 bg-black text-white rounded-lg space-y-4">
+    <div className="p-4 bg-black text-[var(--text-1)] rounded-lg space-y-4">
 
       <h2 className="text-xl font-bold">
         Broadcast Control Dashboard

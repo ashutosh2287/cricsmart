@@ -50,7 +50,7 @@ export default function NarrativeTimeline({ matchId }: Props) {
 
   return (
 
-    <div className="bg-zinc-900 text-white p-3 rounded-lg">
+    <div className="bg-[var(--surface)] text-[var(--text-1)] p-3 rounded-lg">
 
       <h3 className="text-sm font-semibold mb-2">
         Match Narrative

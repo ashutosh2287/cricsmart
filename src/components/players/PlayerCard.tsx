@@ -33,7 +33,7 @@ export default function PlayerCard({
 
     <motion.div
       whileHover={{ scale: 1.04 }}
-      className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-lg cursor-pointer hover:border-blue-500 hover:shadow-blue-500/20 transition-all"
+      className="bg-[var(--surface)] border border-zinc-800 rounded-xl p-6 shadow-lg cursor-pointer hover:border-blue-500 hover:shadow-blue-500/20 transition-all"
     >
 
       {/* PLAYER HEADER */}
@@ -42,10 +42,10 @@ export default function PlayerCard({
 
         <div>
           <h3 className="text-lg font-semibold">{name}</h3>
-          <p className="text-xs text-gray-400">{team}</p>
+          <p className="text-xs text-[var(--text-2)]">{team}</p>
         </div>
 
-        <div className="text-xs px-2 py-1 rounded bg-zinc-800 text-gray-300">
+        <div className="text-xs px-2 py-1 rounded bg-[var(--surface-2)] text-[var(--text-2)]">
           Player
         </div>
 
@@ -56,23 +56,23 @@ export default function PlayerCard({
 
       <div className="grid grid-cols-2 gap-4 text-sm">
 
-        <div className="bg-zinc-800 rounded-lg p-3">
-          <p className="text-gray-400 text-xs">Runs</p>
+        <div className="bg-[var(--surface-2)] rounded-lg p-3">
+          <p className="text-[var(--text-2)] text-xs">Runs</p>
           <p className="font-semibold">{runs}</p>
         </div>
 
-        <div className="bg-zinc-800 rounded-lg p-3">
-          <p className="text-gray-400 text-xs">Balls</p>
+        <div className="bg-[var(--surface-2)] rounded-lg p-3">
+          <p className="text-[var(--text-2)] text-xs">Balls</p>
           <p className="font-semibold">{balls}</p>
         </div>
 
-        <div className="bg-zinc-800 rounded-lg p-3">
-          <p className="text-gray-400 text-xs">Strike Rate</p>
+        <div className="bg-[var(--surface-2)] rounded-lg p-3">
+          <p className="text-[var(--text-2)] text-xs">Strike Rate</p>
           <p className="font-semibold">{strikeRate}</p>
         </div>
 
-        <div className="bg-zinc-800 rounded-lg p-3">
-          <p className="text-gray-400 text-xs">Wickets</p>
+        <div className="bg-[var(--surface-2)] rounded-lg p-3">
+          <p className="text-[var(--text-2)] text-xs">Wickets</p>
           <p className="font-semibold text-green-400">{wickets}</p>
         </div>
 
@@ -81,9 +81,9 @@ export default function PlayerCard({
 
       {/* IMPACT SCORE */}
 
-      <div className="mt-5 flex items-center justify-between bg-zinc-800 rounded-lg p-3">
+      <div className="mt-5 flex items-center justify-between bg-[var(--surface-2)] rounded-lg p-3">
 
-        <span className="text-gray-400 text-sm">
+        <span className="text-[var(--text-2)] text-sm">
           Impact Score
         </span>
 

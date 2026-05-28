@@ -34,7 +34,7 @@ export default function TacticalOverlay() {
 
   TACTICAL_PANIC: {
     text: "😰 PANIC MODE",
-    color: "bg-yellow-500 text-black"
+    color: "bg-yellow-500 text-[var(--text-inv)]"
   },
 
   TACTICAL_RECOVERY: {

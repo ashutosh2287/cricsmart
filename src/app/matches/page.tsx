@@ -318,7 +318,7 @@ export default function MatchesPage() {
                       type="button"
                       onClick={() => handleDeleteSimulation(match.matchId)}
                       disabled={isDeleting}
-                      aria-busy={isDeleting}
+                      aria-busy={isDeleting ? "true" : "false"}
                       aria-label={
                         isDeleting
                           ? `Deleting simulation ${match.teamA} vs ${match.teamB}`

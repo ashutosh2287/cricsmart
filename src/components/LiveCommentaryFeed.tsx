@@ -42,6 +42,7 @@ function LiveCommentaryFeed({ matchId }: { matchId: string }) {
         <select
           value={filter}
           onChange={(event) => setFilter(event.target.value as FeedFilter)}
+          aria-label="Filter commentary"
           className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 text-xs text-[var(--text-1)]"
         >
           <option value="all">All</option>

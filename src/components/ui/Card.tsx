@@ -8,9 +8,10 @@ interface CardProps {
   hover?: boolean;
   onClick?: () => void;
   accent?: boolean;
+  style?: React.CSSProperties;
 }
 
-export function Card({ children, className = "", hover = false, onClick, accent = false }: CardProps) {
+export function Card({ children, className = "", hover = false, onClick, accent = false, style }: CardProps) {
   return (
     <motion.div
       whileHover={hover ? { y: -2, boxShadow: "var(--shadow-hover)" } : undefined}
@@ -24,6 +25,7 @@ export function Card({ children, className = "", hover = false, onClick, accent 
         boxShadow: "var(--shadow-card)",
         cursor: onClick ? "pointer" : "default",
         transition: "box-shadow 0.2s ease, transform 0.2s ease",
+        ...style,
       }}
     >
       {children}

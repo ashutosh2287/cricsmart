@@ -12,8 +12,6 @@ export default async function HomePage() {
       include: {
         teamA: { select: { name: true } },
         teamB: { select: { name: true } },
-        tossWinner: { select: { name: true } },
-        battingFirst: { select: { name: true } },
       },
       take: 5,
     }).catch(() => []),
@@ -28,9 +26,6 @@ export default async function HomePage() {
       title: match.title,
       teamA: match.teamA.name,
       teamB: match.teamB.name,
-      tossWinner: match.tossWinner?.name,
-      tossDecision: match.tossDecision ?? undefined,
-      battingTeam: match.battingFirst?.name,
     }));
 
   return (

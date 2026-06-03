@@ -1,8 +1,12 @@
 "use client";
 
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { 
+  Trophy, Zap, Activity, Users, 
+  Settings, Plus, Trash2, ExternalLink, AlertCircle
+} from "lucide-react";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import { useAuth } from "@/providers/AuthProvider";
 import { LiveMatchDropdown } from "@/components/home/LiveMatchDropdown";
@@ -10,264 +14,58 @@ import { LiveMatchDropdown } from "@/components/home/LiveMatchDropdown";
 // ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
-
-type ApiMatch = {
-  matchId: string;
-  teamA: string;
-  teamB: string;
-  status: "LIVE" | "UPCOMING" | "COMPLETED";
+type ApiMatch = { 
+  matchId: string; 
+  teamA: string; 
+  teamB: string; 
+  status: "LIVE" | "UPCOMING" | "COMPLETED"; 
 };
 
-type Match = {
-  matchId: string;
-  teamA: string;
-  teamB: string;
-  status: "Live" | "Upcoming" | "Completed";
+type Match = { 
+  matchId: string; 
+  teamA: string; 
+  teamB: string; 
+  status: "Live" | "Upcoming" | "Completed"; 
 };
 
 type ScoreEntry = { r?: number; w?: number; o?: number; inning?: string };
 
 type RealMatch = {
-  id: string;
-  name?: string;
-  matchType?: string;
+  id: string; 
+  name?: string; 
+  status?: string; 
+  teams?: string[]; 
+  score?: ScoreEntry[]; 
+  isLive?: boolean; 
   matchCategory?: string;
-  status?: string;
-  venue?: string;
-  date?: string;
-  dateTimeGMT?: string;
-  teams?: string[];
-  teamInfo?: { name?: string; shortname?: string }[];
-  score?: ScoreEntry[];
-  isLive?: boolean;
-  isCompleted?: boolean;
+  matchType?: string;
 };
 
-type HomePageClientProps = {
+interface HostedMatch {
+  id: string;
+  runtimeMatchId: string;
+  title: string;
+  teamA: string;
+  teamB: string;
+}
+
+interface HomePageClientProps {
   liveMatchCount: number;
   teamCount: number;
   totalMatchCount: number;
-  liveHostedMatches: {
-    id: string;
-    runtimeMatchId: string;
-    title: string;
-    teamA: string;
-    teamB: string;
-    tossWinner?: string;
-    tossDecision?: string;
-    battingTeam?: string;
-    currentScore?: string;
-    currentOvers?: string;
-  }[];
+  liveHostedMatches: HostedMatch[];
   isLoggedIn: boolean;
-};
+}
 
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
-
-function getTeamNames(match: RealMatch): [string, string] {
-  const a =
-    match.teamInfo?.[0]?.name ??
-    match.teams?.[0] ??
-    (match.name ?? "").split(/\s+vs\s+/i)[0]?.trim() ??
-    "Team A";
-  const b =
-    match.teamInfo?.[1]?.name ??
-    match.teams?.[1] ??
-    (match.name ?? "").split(/\s+vs\s+/i)[1]?.trim() ??
-    "Team B";
-  return [a, b];
-}
-
 function formatScore(entry: ScoreEntry): string {
   const runs = entry.r ?? 0;
   const wkts = entry.w ?? 0;
   const overs = entry.o ?? 0;
   return `${runs}/${wkts} (${overs} ov)`;
 }
-
-function categoryBadgeColor(cat: string) {
-  const c = cat.toUpperCase();
-  if (c === "IPL") return { bg: "var(--accent-light)", color: "var(--accent)" };
-  if (c === "TEST") return { bg: "var(--danger-light)", color: "var(--danger)" };
-  if (c === "ODI") return { bg: "var(--brand-light)", color: "var(--brand)" };
-  if (c.includes("T20")) return { bg: "var(--surface-3)", color: "var(--text-2)" };
-  return {
-    bg: "color-mix(in srgb, var(--text-1) 8%, transparent)",
-    color: "var(--text-2)",
-  };
-}
-
-// ─────────────────────────────────────────────
-// Sub-components
-// ─────────────────────────────────────────────
-
-function LiveMatchCard({ match }: { match: RealMatch }) {
-  const [teamA, teamB] = getTeamNames(match);
-  const category = match.matchCategory ?? match.matchType?.toUpperCase() ?? "T20";
-  const scores = Array.isArray(match.score) ? match.score : [];
-  const badge = categoryBadgeColor(category);
-
-  return (
-    <Link href={`/matches/${match.id}`}>
-      <div
-        className="rounded-xl p-4 transition-colors cursor-pointer group"
-        style={{
-          background: "var(--bg-surface)",
-          border: "1px solid var(--border-subtle)",
-        }}
-      >
-        {/* Top row */}
-        <div className="flex items-center justify-between mb-3">
-          <span
-            className="text-[10px] font-semibold uppercase tracking-[0.15em] px-2 py-0.5 rounded"
-            style={{ background: badge.bg, color: badge.color }}
-          >
-            {category}
-          </span>
-          <span className="flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--danger)" }}>
-            <span className="relative flex h-1.5 w-1.5">
-              <span
-                className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                style={{ background: "var(--danger)" }}
-              />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: "var(--danger)" }} />
-            </span>
-            LIVE
-          </span>
-        </div>
-
-        {/* Teams */}
-        <p
-          className="text-sm font-semibold mb-2 leading-snug"
-          style={{ color: "var(--text-1)" }}
-        >
-          {teamA}
-          <span style={{ color: "var(--text-3)" }}> vs </span>
-          {teamB}
-        </p>
-
-        {/* Scores */}
-        {scores.length > 0 && (
-          <div className="space-y-0.5">
-            {scores.slice(0, 2).map((s, i) => (
-              <p
-                key={i}
-                className="text-xs tabular-nums font-mono"
-                style={{ color: "var(--text-2)" }}
-              >
-                {formatScore(s)}
-              </p>
-            ))}
-          </div>
-        )}
-
-        {/* Status text */}
-        {match.status && (
-          <p
-            className="text-[11px] mt-2 truncate"
-            style={{ color: "var(--text-3)" }}
-          >
-            {match.status}
-          </p>
-        )}
-      </div>
-    </Link>
-  );
-}
-
-function SimulationRow({
-  match,
-  onDelete,
-  isDeleting,
-}: {
-  match: Match;
-  onDelete: () => void;
-  isDeleting: boolean;
-}) {
-  const statusColor =
-    match.status === "Live"
-      ? "var(--danger)"
-      : match.status === "Completed"
-      ? "var(--text-3)"
-      : "var(--brand)";
-
-  return (
-    <div
-      className="flex items-center justify-between px-4 py-3 rounded-xl group transition-colors"
-      style={{
-        background: "var(--bg-surface)",
-        border: "1px solid var(--border-subtle)",
-      }}
-    >
-      <Link
-        href={`/match/${match.matchId}`}
-        className="flex items-center gap-3 flex-1 min-w-0"
-      >
-        {/* Live dot */}
-        {match.status === "Live" && (
-          <span className="relative flex h-2 w-2 shrink-0">
-            <span
-              className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-              style={{ background: "var(--danger)" }}
-            />
-            <span
-              className="relative inline-flex rounded-full h-2 w-2"
-              style={{ background: "var(--danger)" }}
-            />
-          </span>
-        )}
-
-        <span
-          className="font-medium text-sm truncate"
-          style={{ color: "var(--text-1)" }}
-        >
-          {match.teamA} vs {match.teamB}
-        </span>
-
-        <span
-          className="text-[11px] font-medium uppercase tracking-[0.12em] shrink-0"
-          style={{ color: statusColor }}
-        >
-          {match.status}
-        </span>
-      </Link>
-
-      <div className="flex items-center gap-2 ml-3 shrink-0">
-        <Link
-          href={`/match/${match.matchId}`}
-          className="text-[11px] px-3 py-1.5 rounded-lg transition-colors"
-          style={{
-            background: "var(--bg-overlay)",
-            color: "var(--text-2)",
-            border: "1px solid var(--border-subtle)",
-          }}
-        >
-          Open →
-        </Link>
-
-        <button
-          onClick={onDelete}
-          disabled={isDeleting}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-colors disabled:opacity-40"
-          style={{
-            background: "var(--bg-overlay)",
-            color: "var(--text-3)",
-            border: "1px solid var(--border-subtle)",
-          }}
-          title="Delete"
-        >
-          {isDeleting ? "…" : "✕"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────
-// Main page
-// ─────────────────────────────────────────────
 
 export default function HomePageClient({
   liveMatchCount,
@@ -284,17 +82,12 @@ export default function HomePageClient({
   const [teamBInput, setTeamBInput] = useState("");
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  
   const formRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { authEnabled, isAuthenticated, loading: authLoading } = useAuth();
 
-  function closeCreateForm() {
-    setShowCreateForm(false);
-    setTeamAInput("");
-    setTeamBInput("");
-  }
-
-  // Fetch simulated matches
+  // Load Simulations
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -302,84 +95,50 @@ export default function HomePageClient({
         const res = await fetch("/api/matches");
         const data: ApiMatch[] = await res.json();
         const normalized: Match[] = data.map((m) => ({
-          matchId: m.matchId,
-          teamA: m.teamA,
-          teamB: m.teamB,
-          status:
-            m.status === "LIVE"
-              ? "Live"
-              : m.status === "COMPLETED"
-              ? "Completed"
-              : "Upcoming",
+          matchId: m.matchId, teamA: m.teamA, teamB: m.teamB,
+          status: m.status === "LIVE" ? "Live" : m.status === "COMPLETED" ? "Completed" : "Upcoming",
         }));
         if (mounted) setMatches(normalized);
       } catch {}
     };
     load();
-    const interval = setInterval(load, 3000);
+    const interval = setInterval(load, 5000);
     return () => { mounted = false; clearInterval(interval); };
   }, []);
 
-  // Fetch live (real) matches
+  // Load Real Matches
   useEffect(() => {
     let mounted = true;
-    const snap = { current: [] as RealMatch[] };
     const load = async () => {
       try {
         const res = await fetch("/api/live/fixtures", { cache: "no-store" });
-        const payload = (await res.json()) as { data?: RealMatch[]; stale?: boolean };
+        const payload = await res.json();
         if (!mounted) return;
-        const data = Array.isArray(payload.data) ? payload.data : [];
-        const live = data.filter((m) => m.isLive);
-        snap.current = live;
-        setLiveMatches(live);
+        const data = Array.isArray(payload.data) ? (payload.data as RealMatch[]) : [];
+        setLiveMatches(data.filter((m: RealMatch) => m.isLive));
         setLiveStale(Boolean(payload.stale));
-      } catch {
-        if (!mounted) return;
-        if (snap.current.length > 0) { setLiveMatches(snap.current); setLiveStale(true); }
-      }
+      } catch {}
     };
     load();
-    const interval = setInterval(load, 60_000);
+    const interval = setInterval(load, 60000);
     return () => { mounted = false; clearInterval(interval); };
   }, []);
-
-  // Close create form on outside click / escape
-  useEffect(() => {
-    if (!showCreateForm) return;
-    const onDown = (e: MouseEvent) => {
-      if (formRef.current && !formRef.current.contains(e.target as Node)) closeCreateForm();
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeCreateForm(); };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
-  }, [showCreateForm]);
 
   const handleCreateMatch = async () => {
     if (!authLoading && authEnabled && !isAuthenticated) {
       router.push(`/login?redirect=${encodeURIComponent("/")}`);
       return;
     }
-
-    const teamA = teamAInput.trim() || "Team A";
-    const teamB = teamBInput.trim() || "Team B";
     setCreating(true);
     try {
       const res = await fetch("/api/create-match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamA, teamB }),
+        body: JSON.stringify({ teamA: teamAInput || "Team A", teamB: teamBInput || "Team B" }),
       });
       const data = await res.json();
-      if (!data?.matchId) throw new Error("failed");
-      closeCreateForm();
-      router.push(`/admin/${data.matchId}`);
-    } catch (err) {
-      console.error("❌", err);
-    } finally {
-      setCreating(false);
-    }
+      if (data?.matchId) router.push(`/admin/${data.matchId}`);
+    } catch (err) { console.error(err); } finally { setCreating(false); }
   };
 
   const handleDelete = async (matchId: string) => {
@@ -391,440 +150,344 @@ export default function HomePageClient({
         body: JSON.stringify({ matchId }),
       });
       setMatches((prev) => prev.filter((m) => m.matchId !== matchId));
-    } catch {}
-    finally { setDeletingId(null); }
+    } catch {} finally { setDeletingId(null); }
   };
 
   return (
-    <div
-      className="min-h-screen"
-      style={{
-        backgroundColor: "var(--bg-base)",
-        backgroundImage: "var(--page-hero-gradient)",
-        color: "var(--text-1)",
-      }}
-    >
-      <div className="mx-auto w-full max-w-[1100px] px-4 py-8 md:px-6">
+    <div className="cs-theme-wrapper">
+      <style>{`
+        .cs-theme-wrapper {
+          --primary: #00E5FF;
+          --bg-dark: #040A14;
+          --card-bg: #0A1220;
+          --border: rgba(255,255,255,0.06);
+          background: var(--bg-dark);
+          color: white;
+          min-height: 100vh;
+          font-family: 'Inter', sans-serif;
+          padding: 2rem 1rem;
+        }
+        .cs-container {
+          max-w: 1100px;
+          margin: 0 auto;
+        }
+        .cs-card {
+          background: var(--card-bg);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 1.5rem;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .cs-card:hover { 
+          border-color: rgba(0, 229, 255, 0.3);
+          background: #0d192d;
+        }
+        .cs-input {
+          background: #111B2B;
+          border: 1px solid var(--border);
+          color: white;
+          padding: 0.6rem 1rem;
+          border-radius: 8px;
+          width: 100%;
+          outline: none;
+        }
+        .cs-input:focus {
+          border-color: var(--primary);
+        }
+        .cs-btn-primary {
+          background: var(--primary);
+          color: black;
+          font-weight: 700;
+          padding: 0.6rem 1.2rem;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          cursor: pointer;
+          transition: opacity 0.2s;
+        }
+        .cs-btn-primary:hover { opacity: 0.9; }
+        .cs-pulse {
+          width: 8px;
+          height: 8px;
+          background: #FF3B3B;
+          border-radius: 50%;
+          display: inline-block;
+          animation: pulse-red 1.5s infinite;
+          margin-right: 8px;
+        }
+        @keyframes pulse-red {
+          0% { box-shadow: 0 0 0 0 rgba(255, 59, 59, 0.7); }
+          70% { box-shadow: 0 0 0 8px rgba(255, 59, 59, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(255, 59, 59, 0); }
+        }
+        .cs-row-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.75rem 1rem;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          transition: background 0.2s;
+        }
+        .cs-row-item:hover {
+          background: rgba(255, 255, 255, 0.04);
+        }
+      `}</style>
 
-        {/* ── Top bar ──────────────────────────────────── */}
-        <div className="flex items-center justify-between mb-10">
+      <div className="cs-container">
+        {/* ── Header Area ──────────────────────────────────── */}
+        <header className="flex justify-between items-end mb-8">
           <div>
-            <h1
-              className="text-2xl font-bold tracking-tight"
-              style={{ color: "var(--text-1)" }}
-            >
-              CricSmart
-            </h1>
-            <p
-              className="text-xs mt-0.5"
-              style={{ color: "var(--text-3)" }}
-            >
-              Real-Time Cricket Intelligence
-            </p>
+            <h1 className="text-2xl font-bold tracking-tight">CricSmart</h1>
+            <p className="text-slate-500 text-xs mt-0.5">Real-Time Cricket Intelligence</p>
           </div>
-
-          <div className="flex items-center gap-3">
-  <ThemeToggle />
-
-  <Link
-    href="/matches"
-    className="text-sm px-4 py-2 rounded-lg transition-colors"
-    style={{
-      background: "var(--bg-surface)",
-      color: "var(--text-2)",
-      border: "1px solid var(--border-subtle)",
-    }}
-  >
-    All Matches
-  </Link>
-
-  <div className="relative" ref={formRef}>
-              {(!authLoading && authEnabled && !isAuthenticated) ? (
-                <Link
-                  href={`/login?redirect=${encodeURIComponent("/")}`}
-                  className="text-sm px-4 py-2 rounded-lg transition-colors"
-                  style={{
-                    background: "var(--bg-surface)",
-                    color: "var(--text-2)",
-                    border: "1px solid var(--border-subtle)",
-                  }}
-                >
-                  Sign in to host
-                </Link>
-              ) : (
-                <button
-                  onClick={() => setShowCreateForm((v) => !v)}
-                  className="text-sm px-4 py-2 rounded-lg font-medium transition-colors"
-                  style={{
-                    background: "var(--brand)",
-                    color: "var(--text-inv)",
-                  }}
-                >
-                  + New Simulation
-                </button>
-              )}
-
-              {/* Create form dropdown */}
-              {showCreateForm && (
-                <div
-                  className="absolute right-0 top-full mt-2 z-50 rounded-xl p-4 w-64 shadow-xl"
-                  style={{
-                    background: "var(--bg-raised)",
-                    border: "1px solid var(--border-subtle)",
-                  }}
-                >
-                  <p
-                    className="text-sm font-semibold mb-3"
-                    style={{ color: "var(--text-1)" }}
-                  >
-                    New Simulation
-                  </p>
-                  <div className="space-y-2.5">
-                    <div>
-                      <label
-                        className="text-[11px] uppercase tracking-[0.12em] block mb-1"
-                        style={{ color: "var(--text-3)" }}
-                      >
-                        Team A
-                      </label>
-                      <input
-                        type="text"
-                        value={teamAInput}
-                        onChange={(e) => setTeamAInput(e.target.value)}
-                        placeholder="e.g. India"
-                        className="w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors"
-                        style={{
-                          background: "var(--bg-overlay)",
-                          border: "1px solid var(--border-subtle)",
-                          color: "var(--text-1)",
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label
-                        className="text-[11px] uppercase tracking-[0.12em] block mb-1"
-                        style={{ color: "var(--text-3)" }}
-                      >
-                        Team B
-                      </label>
-                      <input
-                        type="text"
-                        value={teamBInput}
-                        onChange={(e) => setTeamBInput(e.target.value)}
-                        placeholder="e.g. Australia"
-                        onKeyDown={(e) => e.key === "Enter" && handleCreateMatch()}
-                        className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                        style={{
-                          background: "var(--bg-overlay)",
-                          border: "1px solid var(--border-subtle)",
-                          color: "var(--text-1)",
-                        }}
-                      />
-                    </div>
-                    <button
-                      onClick={handleCreateMatch}
-                      disabled={creating}
-                      className="w-full rounded-lg py-2 text-sm font-semibold transition-opacity disabled:opacity-60"
-                      style={{ background: "var(--brand)", color: "var(--text-inv)" }}
-                    >
-                      {creating ? "Creating…" : "Create & Open"}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="flex gap-3 items-center">
+            <ThemeToggle />
+            <Link
+              href="/matches"
+              className="text-xs px-4 py-2 rounded-lg border border-slate-800 bg-slate-900/40 text-slate-300 hover:text-white transition"
+            >
+              All Matches
+            </Link>
+            <button 
+              onClick={() => setShowCreateForm(!showCreateForm)}
+              className="cs-btn-primary text-xs"
+              aria-label="Create new simulation"
+            >
+              <Plus size={16} /> New Simulation
+            </button>
           </div>
-        </div>
+        </header>
 
-        {/* ── Hero bar ──────────────────────────────────── */}
-        {liveMatches.length === 0 && (
-          <section
-            className="mb-6 rounded-2xl p-5 md:p-6"
-            style={{
-              background: "var(--bg-surface)",
-              border: "1px solid var(--border-subtle)",
-            }}
-          >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.15em]" style={{ color: "var(--text-3)" }}>
-                  Matchday hub
-                </p>
-                <h2 className="mt-1 text-lg font-semibold" style={{ color: "var(--text-1)" }}>
-                  No live matches right now
-                </h2>
-                <p className="mt-1 text-sm" style={{ color: "var(--text-2)" }}>
-                  Start a simulation or browse upcoming fixtures while you wait.
-                </p>
-              </div>
-              <Link
-                href="/matches"
-                className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-                style={{ background: "var(--brand)", color: "var(--text-inv)" }}
+        {/* ── Configuration Form ────────────────────────────── */}
+        {showCreateForm && (
+          <div className="cs-card mb-8 border-cyan-500/30 bg-cyan-950/10">
+            <h3 className="font-bold text-sm mb-4 flex items-center gap-2"><Activity size={16} className="text-cyan-400"/> Configure Simulation Engine</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <input 
+                className="cs-input text-sm" 
+                placeholder="Team A Name" 
+                value={teamAInput} 
+                onChange={(e) => setTeamAInput(e.target.value)}
+              />
+              <input 
+                className="cs-input text-sm" 
+                placeholder="Team B Name" 
+                value={teamBInput} 
+                onChange={(e) => setTeamBInput(e.target.value)}
+              />
+              <button 
+                onClick={handleCreateMatch}
+                disabled={creating}
+                className="cs-btn-primary justify-center text-sm"
               >
-                Explore fixtures
-              </Link>
+                {creating ? "Launching..." : "Start Engine"}
+              </button>
             </div>
-          </section>
+          </div>
         )}
 
-        {/* ── Platform stats bar ────────────────────────── */}
-        <section
-          className="mb-10 grid gap-3 rounded-2xl p-4 sm:grid-cols-3"
-          style={{
-            background: "var(--bg-surface)",
-            border: "1px solid var(--border-subtle)",
-          }}
-        >
+        {/* ── Stats Bar ─────────────────────────────────────── */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <LiveMatchDropdown count={liveMatchCount} matches={liveHostedMatches} />
-          <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-            <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-3)" }}>
-              Teams
-            </p>
-            <p className="mt-1 text-xl font-semibold tabular-nums" style={{ color: "var(--text-1)" }}>
-              {teamCount}
-            </p>
+          <div className="cs-card py-3 px-4 flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 text-[11px] uppercase tracking-wider font-semibold">Teams</p>
+              <p className="text-xl font-bold mt-0.5">{teamCount}</p>
+            </div>
+            <Users className="text-cyan-400 opacity-20" size={24} />
           </div>
-          <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-            <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-3)" }}>
-              Hosted matches
-            </p>
-            <p className="mt-1 text-xl font-semibold tabular-nums" style={{ color: "var(--text-1)" }}>
-              {totalMatchCount}
-            </p>
+          <div className="cs-card py-3 px-4 flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 text-[11px] uppercase tracking-wider font-semibold">Hosted Matches</p>
+              <p className="text-xl font-bold mt-0.5">{totalMatchCount}</p>
+            </div>
+            <Trophy className="text-cyan-400 opacity-20" size={24} />
           </div>
         </section>
 
-        {/* ── Live Now ─────────────────────────────────── */}
-        <section
-          className="mb-10 rounded-2xl p-5 md:p-6"
-          style={{
-            background: "var(--bg-surface)",
-            border: "1px solid var(--border-subtle)",
-          }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-              </span>
-              <h2
-                className="text-sm font-semibold uppercase tracking-[0.18em]"
-                style={{ color: "var(--text-2)" }}
-              >
-                Live Now
-              </h2>
+        {/* ── Live Now ──────────────────────────────────────── */}
+        <section className="cs-card mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xs font-bold uppercase tracking-[0.15em] flex items-center text-slate-300">
+              <span className="cs-pulse"></span> Live Now
               {liveMatches.length > 0 && (
-                <span
-                  className="text-[11px] px-2 py-0.5 rounded-full tabular-nums"
-                  style={{ background: "var(--danger-light)", color: "var(--danger)" }}
-                >
+                <span className="ml-2 bg-red-950 text-red-400 text-[10px] px-2 py-0.5 rounded-full font-mono">
                   {liveMatches.length}
                 </span>
               )}
-            </div>
-            <Link
-              href="/matches"
-              className="text-xs transition-colors"
-              style={{ color: "var(--text-3)" }}
-            >
+            </h2>
+            <Link href="/matches" className="text-xs text-slate-500 hover:text-slate-300 transition">
               View all →
             </Link>
           </div>
 
           {liveStale && (
-            <p
-              className="text-[11px] mb-3"
-              style={{ color: "var(--accent)" }}
-            >
-              ⚠ Scores may be delayed
+            <p className="text-[11px] text-amber-500 mb-3 flex items-center gap-1">
+              <AlertCircle size={12}/> Scores may be delayed
             </p>
           )}
 
           {liveMatches.length === 0 ? (
-            <div
-              className="rounded-xl px-4 py-6 text-sm text-center"
-              style={{
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-subtle)",
-                color: "var(--text-3)",
-              }}
-            >
+            <div className="text-center py-8 text-sm text-slate-500 border border-dashed border-slate-800 rounded-xl">
               No live matches right now. Check back soon.
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {liveMatches.slice(0, 6).map((m) => (
-                <LiveMatchCard key={m.id} match={m} />
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {liveMatches.slice(0, 6).map(m => {
+                const scores = Array.isArray(m.score) ? m.score : [];
+                return (
+                  <Link key={m.id} href={`/matches/${m.id}`} className="p-4 rounded-xl border border-slate-800/60 bg-slate-900/30 hover:border-cyan-500/40 transition group block">
+                    <div className="flex justify-between items-center text-[10px] text-slate-500 mb-2 font-mono uppercase tracking-wider">
+                      <span>{m.matchCategory || m.matchType || 'Domestic'}</span>
+                      <span className="text-red-500 font-semibold group-hover:text-cyan-400 transition flex items-center gap-1">
+                        LIVE <ExternalLink size={10}/>
+                      </span>
+                    </div>
+                    <div className="text-sm font-bold text-slate-200 mb-2 truncate">
+                      {m.name?.replace(/\s+vs\s+/i, " vs ")}
+                    </div>
+                    {scores.length > 0 && (
+                      <div className="space-y-0.5 border-t border-slate-800/40 pt-2 mt-2">
+                        {scores.slice(0, 2).map((s, idx) => (
+                          <p key={idx} className="text-xs font-mono text-slate-400 tabular-nums">
+                            {formatScore(s)}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    {m.status && <p className="text-[11px] text-slate-500 mt-2 truncate">{m.status}</p>}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </section>
 
-        {/* Divider */}
-        <div className="mb-10" />
-
-        {/* ── Your Simulations ─────────────────────────── */}
-        <section
-          className="rounded-2xl p-5 md:p-6"
-          style={{
-            background: "var(--bg-surface)",
-            border: "1px solid var(--border-subtle)",
-          }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2
-              className="text-sm font-semibold uppercase tracking-[0.18em]"
-              style={{ color: "var(--text-2)" }}
-            >
+        {/* ── Your Simulations ──────────────────────────────── */}
+        <section className="cs-card mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-slate-300">
               Your Simulations
             </h2>
             {matches.length > 0 && (
-              <span
-                className="text-[11px] tabular-nums"
-                style={{ color: "var(--text-3)" }}
-              >
+              <span className="text-[11px] text-slate-500 font-mono">
                 {matches.length} match{matches.length !== 1 ? "es" : ""}
               </span>
             )}
           </div>
 
-          {matches.length === 0 ? (
-            <div
-              className="rounded-xl px-4 py-8 text-center"
-              style={{
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              <p
-                className="text-sm mb-3"
-                style={{ color: "var(--text-3)" }}
-              >
-                No simulations yet.
-              </p>
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="text-sm px-4 py-2 rounded-lg font-medium"
-                style={{ background: "var(--brand)", color: "var(--text-inv)" }}
-              >
-                + Create your first simulation
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {matches.map((m) => (
-                <SimulationRow
-                  key={m.matchId}
-                  match={m}
-                  onDelete={() => handleDelete(m.matchId)}
-                  isDeleting={deletingId === m.matchId}
-                />
-              ))}
-            </div>
-          )}
+          <div className="space-y-2">
+            {matches.map(m => (
+              <div key={m.matchId} className="cs-row-item">
+                <Link href={`/match/${m.matchId}`} className="flex items-center gap-3 flex-1 min-w-0">
+                  {m.status === "Live" && <span className="cs-pulse !margin-0"></span>}
+                  <span className="font-semibold text-sm text-slate-200 truncate">
+                    {m.teamA} vs {m.teamB}
+                  </span>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ml-2 ${
+                    m.status === 'Live' ? 'text-red-500' : m.status === 'Completed' ? 'text-slate-500' : 'text-cyan-400'
+                  }`}>
+                    {m.status}
+                  </span>
+                </Link>
+                <div className="flex items-center gap-2 ml-4">
+                  <Link 
+                    href={`/match/${m.matchId}`}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900/60 text-slate-300 hover:text-white transition"
+                  >
+                    Open →
+                  </Link>
+                  <button 
+                    onClick={() => handleDelete(m.matchId)}
+                    disabled={deletingId === m.matchId}
+                    className="p-1.5 rounded-lg border border-slate-800 bg-slate-900/60 text-slate-500 hover:text-red-400 hover:border-red-900/50 transition"
+                    aria-label={`Delete simulation ${m.teamA} vs ${m.teamB}`}
+                    title="Delete Simulation"
+                  >
+                    <Trash2 size={14}/>
+                  </button>
+                </div>
+              </div>
+            ))}
+            {matches.length === 0 && (
+              <div className="text-center py-6">
+                <p className="text-slate-500 text-xs italic mb-3">No active simulation matrices generated yet.</p>
+                <button
+                  onClick={() => setShowCreateForm(true)}
+                  className="text-xs text-cyan-400 border border-cyan-950 bg-cyan-950/20 px-3 py-1.5 rounded-lg hover:bg-cyan-900/30 transition"
+                >
+                  + Spawn Simulation Thread
+                </button>
+              </div>
+            )}
+          </div>
         </section>
 
+        {/* ── Quick Actions ─────────────────────────────────── */}
+        <section className="cs-card mb-6">
+          <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-slate-300 mb-4">
+            Quick Actions
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Link
+              href="/host/matches/create"
+              className="p-3 text-center text-xs font-medium rounded-xl border border-slate-800 bg-slate-900/30 text-slate-300 hover:border-cyan-500/30 hover:text-white transition block"
+            >
+              Host Match
+            </Link>
+            <Link
+              href="/account/teams"
+              className="p-3 text-center text-xs font-medium rounded-xl border border-slate-800 bg-slate-900/30 text-slate-300 hover:border-cyan-500/30 hover:text-white transition block"
+            >
+              Manage Teams
+            </Link>
+            <Link
+              href="/account/tournaments"
+              className="p-3 text-center text-xs font-medium rounded-xl border border-slate-800 bg-slate-900/30 text-slate-300 hover:border-cyan-500/30 hover:text-white transition block"
+            >
+              Tournaments
+            </Link>
+            <Link
+              href="/account/saved"
+              className="p-3 text-center text-xs font-medium rounded-xl border border-slate-800 bg-slate-900/30 text-slate-300 hover:border-cyan-500/30 hover:text-white transition block"
+            >
+              Saved Items
+            </Link>
+          </div>
+        </section>
+
+        {/* ── Recent Activity Snapshot ──────────────────────── */}
         {isLoggedIn && (
-          <>
-            {/* ── Quick actions ───────────────────────────── */}
-            <section
-              className="mt-10 rounded-2xl p-5 md:p-6"
-              style={{
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <h2
-                  className="text-sm font-semibold uppercase tracking-[0.18em]"
-                  style={{ color: "var(--text-2)" }}
-                >
-                  Quick actions
-                </h2>
+          <section className="cs-card">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-slate-300">
+                Recent Activity Snapshot
+              </h2>
+              <Link href="/account/activity" className="text-xs text-slate-500 hover:text-slate-300 transition">
+                Open feed →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-xl px-4 py-3 bg-slate-900/40 border border-slate-800/80">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Live Now</p>
+                <p className="mt-1 text-xl font-bold text-slate-200 font-mono">{liveMatches.length}</p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <Link
-                  href="/host/matches/create"
-                  className="rounded-xl px-4 py-3 text-sm transition-colors"
-                  style={{ background: "var(--bg-overlay)", border: "1px solid var(--border-subtle)" }}
-                >
-                  Host Match
-                </Link>
-                <Link
-                  href="/account/teams"
-                  className="rounded-xl px-4 py-3 text-sm transition-colors"
-                  style={{ background: "var(--bg-overlay)", border: "1px solid var(--border-subtle)" }}
-                >
-                  Manage Teams
-                </Link>
-                <Link
-                  href="/account/tournaments"
-                  className="rounded-xl px-4 py-3 text-sm transition-colors"
-                  style={{ background: "var(--bg-overlay)", border: "1px solid var(--border-subtle)" }}
-                >
-                  Tournaments
-                </Link>
-                <Link
-                  href="/account/saved"
-                  className="rounded-xl px-4 py-3 text-sm transition-colors"
-                  style={{ background: "var(--bg-overlay)", border: "1px solid var(--border-subtle)" }}
-                >
-                  Saved Items
-                </Link>
+              <div className="rounded-xl px-4 py-3 bg-slate-900/40 border border-slate-800/80">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Simulations</p>
+                <p className="mt-1 text-xl font-bold text-slate-200 font-mono">{matches.length}</p>
               </div>
-            </section>
-
-            {/* ── Recent activity snapshot ───────────────── */}
-            <section
-              className="mt-6 rounded-2xl p-5 md:p-6"
-              style={{
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <h2
-                  className="text-sm font-semibold uppercase tracking-[0.18em]"
-                  style={{ color: "var(--text-2)" }}
-                >
-                  Recent activity snapshot
-                </h2>
-                <Link href="/account/activity" className="text-xs" style={{ color: "var(--text-3)" }}>
-                  Open feed →
-                </Link>
+              <div className="rounded-xl px-4 py-3 bg-slate-900/40 border border-slate-800/80">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Feed Status</p>
+                <p className={`mt-1 text-xs font-semibold ${liveStale ? "text-amber-400" : "text-emerald-400"}`}>
+                  {liveStale ? "Delayed data stream" : "Up to date"}
+                </p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-3)" }}>
-                    Live now
-                  </p>
-                  <p className="mt-1 text-lg font-semibold tabular-nums" style={{ color: "var(--text-1)" }}>
-                    {liveMatches.length}
-                  </p>
-                </div>
-                <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-3)" }}>
-                    Simulations
-                  </p>
-                  <p className="mt-1 text-lg font-semibold tabular-nums" style={{ color: "var(--text-1)" }}>
-                    {matches.length}
-                  </p>
-                </div>
-                <div className="rounded-xl px-4 py-3" style={{ background: "var(--bg-overlay)" }}>
-                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "var(--text-3)" }}>
-                    Feed status
-                  </p>
-                  <p className="mt-1 text-sm font-medium" style={{ color: liveStale ? "var(--accent)" : "var(--text-1)" }}>
-                    {liveStale ? "Delayed data" : "Up to date"}
-                  </p>
-                </div>
-              </div>
-            </section>
-          </>
+            </div>
+          </section>
         )}
-
       </div>
     </div>
   );

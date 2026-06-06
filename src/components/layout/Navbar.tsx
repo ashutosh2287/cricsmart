@@ -172,6 +172,14 @@ function MatchRow({ match, onClick }: { match: PanelMatch; onClick: () => void }
 
 export default function Navbar() {
   const pathname = usePathname();
+
+  // ── Hide entirely on the public landing page ─────────────────────
+  if (pathname === "/") return null;
+
+  return <NavbarInner pathname={pathname} />;
+}
+
+function NavbarInner({ pathname }: { pathname: string }) {
   const [matchesPanelOpen, setMatchesPanelOpen] = useState(false);
   const [allDropdownOpen, setAllDropdownOpen] = useState(false);
   const [loadingMatches, setLoadingMatches] = useState(false);
@@ -250,10 +258,10 @@ export default function Navbar() {
   }, [panelMatches.length]);
 
   useEffect(() => {
-  if (!matchesPanelOpen) return;
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  void loadMatches();
-}, [matchesPanelOpen, loadMatches]);
+    if (!matchesPanelOpen) return;
+    const id = setTimeout(() => { void loadMatches(); }, 0);
+    return () => clearTimeout(id);
+  }, [matchesPanelOpen, loadMatches]);
 
   const filteredMatches = useMemo(() => {
     if (matchesFilter === "live") return panelMatches.filter((match) => match.isLive);
@@ -309,17 +317,17 @@ export default function Navbar() {
               {quickLinks.map((link) => {
                 const isActive = isPathActive(pathname, link.href);
                 return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className="relative px-1 py-1 transition"
-                      style={
-                        isActive
-                          ? { color: "var(--brand)", fontWeight: 600 }
-                          : { color: "var(--text-2)", fontWeight: 500, fontSize: 14 }
-                      }
-                    >
-                      {link.name}
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="relative px-1 py-1 transition"
+                    style={
+                      isActive
+                        ? { color: "var(--brand)", fontWeight: 600 }
+                        : { color: "var(--text-2)", fontWeight: 500, fontSize: 14 }
+                    }
+                  >
+                    {link.name}
                     {isActive ? (
                       <motion.span
                         layoutId="navbar-active-indicator"
@@ -331,17 +339,17 @@ export default function Navbar() {
                 );
               })}
 
-                <button
-                  type="button"
-                  onClick={togglePanel}
-                  className="inline-flex items-center gap-1.5 transition"
-                  style={
-                    matchesPanelOpen
-                      ? { color: "var(--brand)", fontWeight: 600 }
-                      : { color: "var(--text-2)", fontWeight: 500, fontSize: 14 }
-                  }
-                >
-                  Matches
+              <button
+                type="button"
+                onClick={togglePanel}
+                className="inline-flex items-center gap-1.5 transition"
+                style={
+                  matchesPanelOpen
+                    ? { color: "var(--brand)", fontWeight: 600 }
+                    : { color: "var(--text-2)", fontWeight: 500, fontSize: 14 }
+                }
+              >
+                Matches
                 <span className={`inline-block transition-transform duration-200 ${matchesPanelOpen ? "rotate-180" : ""}`}>
                   ▾
                 </span>

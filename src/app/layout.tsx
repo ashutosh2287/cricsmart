@@ -9,6 +9,7 @@ import PageTransition from "@/components/ui/PageTransition";
 import MonitoringBootstrap from "@/components/MonitoringBootstrap";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthProvider } from "@/providers/AuthProvider";
+import AppShellContent from "@/components/layout/AppShellContent";
 
 const themeInitializerScript = `
 (() => {
@@ -49,44 +50,38 @@ export default function RootLayout({
       <body className="antialiased">
         <ThemeProvider>
           <AuthProvider>
-          {/* ========================================
-             CINEMATIC BACKGROUND
-          ======================================== */}
-          <div className="cinematic-background fixed inset-0 -z-10 overflow-hidden">
-            <div className="cinematic-background__base absolute inset-0" />
-
-            {/* Blue glow */}
-            <div className="cinematic-background__glow cinematic-background__glow--blue absolute top-0 left-1/4 h-[600px] w-[600px] rounded-full blur-[140px]" />
-
-            {/* Accent glow */}
-            <div className="cinematic-background__glow cinematic-background__glow--accent absolute right-1/4 bottom-0 h-[600px] w-[600px] rounded-full blur-[140px]" />
-          </div>
-
-          {/* ========================================
-             ENGINE
-          ======================================== */}
-          <EngineBootstrap />
-          <MonitoringBootstrap />
-
-          {/* ========================================
-             OVERLAYS
-          ======================================== */}
-          <StadiumOverlay />
-          <BroadcastDirectorOverlay />
-
-          {/* ========================================
-             NAVBAR (UPGRADED)
-          ======================================== */}
-          <Navbar />
-
-          {/* ========================================
-             MAIN CONTENT (ANIMATED)
-          ======================================== */}
-          <main className="min-h-screen bg-[var(--bg-base)]">
-            <div className="mx-auto w-full max-w-[1100px] px-4 py-8 md:px-6">
-              <PageTransition>{children}</PageTransition>
+            {/* ========================================
+               CINEMATIC BACKGROUND
+            ======================================== */}
+            <div className="cinematic-background fixed inset-0 -z-10 overflow-hidden">
+              <div className="cinematic-background__base absolute inset-0" />
+              <div className="cinematic-background__glow cinematic-background__glow--blue absolute top-0 left-1/4 h-[600px] w-[600px] rounded-full blur-[140px]" />
+              <div className="cinematic-background__glow cinematic-background__glow--accent absolute right-1/4 bottom-0 h-[600px] w-[600px] rounded-full blur-[140px]" />
             </div>
-          </main>
+
+            {/* ========================================
+               ENGINE
+            ======================================== */}
+            <EngineBootstrap />
+            <MonitoringBootstrap />
+
+            {/* ========================================
+               OVERLAYS
+            ======================================== */}
+            <StadiumOverlay />
+            <BroadcastDirectorOverlay />
+
+            {/* ========================================
+               NAVBAR — returns null on pathname="/"
+            ======================================== */}
+            <Navbar />
+
+            {/* ========================================
+               MAIN CONTENT — no padding/max-width on landing
+            ======================================== */}
+            <AppShellContent>
+              <PageTransition>{children}</PageTransition>
+            </AppShellContent>
           </AuthProvider>
         </ThemeProvider>
       </body>

@@ -88,7 +88,7 @@ export const springBounce = {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { type: "spring", stiffness: 300, damping: 20 },
+    transition: { type: "spring" as const as const, stiffness: 300, damping: 20 },
   },
 };
 
@@ -97,7 +97,7 @@ export const springPop = {
   visible: {
     opacity: 1,
     scale: 1,
-    transition: { type: "spring", stiffness: 400, damping: 15 },
+    transition: { type: "spring" as const as const, stiffness: 400, damping: 15 },
   },
 };
 
@@ -106,7 +106,7 @@ export const springGentle = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: "spring", stiffness: 200, damping: 25 },
+    transition: { type: "spring" as const as const, stiffness: 200, damping: 25 },
   },
 };
 
@@ -118,7 +118,7 @@ export const scoreFlip = {
     y: 0,
     opacity: 1,
     scale: 1,
-    transition: { type: "spring", stiffness: 500, damping: 30 },
+    transition: { type: "spring" as const as const, stiffness: 500, damping: 30 },
   },
   exit: {
     y: -24,
@@ -177,7 +177,7 @@ export const overlaySlideIn = {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { type: "spring", stiffness: 300, damping: 25 },
+    transition: { type: "spring" as const, stiffness: 300, damping: 25 },
   },
   exit: {
     opacity: 0,
@@ -208,7 +208,7 @@ export const confettiBurst = {
     opacity: 1,
     scale: 1,
     rotate: 0,
-    transition: { type: "spring", stiffness: 200, damping: 12 },
+    transition: { type: "spring" as const, stiffness: 200, damping: 12 },
   },
 };
 

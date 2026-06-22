@@ -88,8 +88,8 @@ function RunRateChart({ data, team1Name = "Team A", team2Name = "Team B" }: Prop
           />
 
           <Tooltip
-            formatter={(value: number, name: string) => [
-              value.toFixed(2),
+            formatter={(value, name) => [
+              Number(value).toFixed(2),
               name === "team1Rate" ? team1Name : team2Name,
             ]}
             contentStyle={{

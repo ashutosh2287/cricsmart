@@ -156,7 +156,8 @@ export default function MomentumMeter({ matchId }: Props) {
         <motion.line
           x1={CENTER_X}
           y1={CENTER_Y}
-          style={{ x2: needleX, y2: needleY }}
+          x2={needleX}
+          y2={needleY}
           stroke={getMomentumColor(momentum)}
           strokeWidth="2.5"
           strokeLinecap="round"

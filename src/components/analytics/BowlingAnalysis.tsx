@@ -111,7 +111,6 @@ function BowlingAnalysis({ bowlers }: Props) {
               <Radar
                 key={b.name}
                 name={b.name}
-                data={normalizeStats(b.stats)}
                 dataKey="value"
                 stroke={color}
                 fill={color}

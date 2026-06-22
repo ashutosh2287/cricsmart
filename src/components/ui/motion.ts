@@ -1,4 +1,4 @@
-import type { Variants } from "framer-motion";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 const easeStandard: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 const easeSpring: [number, number, number, number] = [0.34, 1.56, 0.64, 1];
@@ -13,12 +13,12 @@ export const fadeUp = {
     y: 0,
     transition: { duration: 0.4, ease: easeStandard },
   },
-} satisfies Variants;
+};
 
 export const fadeIn = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.35 } },
-} satisfies Variants;
+};
 
 export const slideRight = {
   hidden: { opacity: 0, x: -20 },
@@ -27,7 +27,7 @@ export const slideRight = {
     x: 0,
     transition: { duration: 0.35, ease: easeStandard },
   },
-} satisfies Variants;
+};
 
 export const slideLeft = {
   hidden: { opacity: 0, x: 20 },
@@ -36,7 +36,7 @@ export const slideLeft = {
     x: 0,
     transition: { duration: 0.35, ease: easeStandard },
   },
-} satisfies Variants;
+};
 
 export const slideUp = {
   hidden: { opacity: 0, y: 30 },
@@ -45,7 +45,7 @@ export const slideUp = {
     y: 0,
     transition: { duration: 0.45, ease: easeStandard },
   },
-} satisfies Variants;
+};
 
 export const scaleIn = {
   hidden: { opacity: 0, scale: 0.95 },
@@ -54,7 +54,7 @@ export const scaleIn = {
     scale: 1,
     transition: { duration: 0.25, ease: easeStandard },
   },
-} satisfies Variants;
+};
 
 export const scaleUp = {
   hidden: { opacity: 0, scale: 0.8 },
@@ -63,24 +63,24 @@ export const scaleUp = {
     scale: 1,
     transition: { duration: 0.4, ease: easeSpring },
   },
-} satisfies Variants;
+};
 
 /* ─── Stagger Container ─── */
 
 export const stagger = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.07 } },
-} satisfies Variants;
+};
 
 export const staggerSlow = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.12 } },
-} satisfies Variants;
+};
 
 export const staggerFast = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.04 } },
-} satisfies Variants;
+};
 
 /* ─── Spring Animations ─── */
 
@@ -92,7 +92,7 @@ export const springBounce = {
     scale: 1,
     transition: { type: "spring" as const, stiffness: 300, damping: 20 },
   },
-} satisfies Variants;
+};
 
 export const springPop = {
   hidden: { opacity: 0, scale: 0.5 },
@@ -101,7 +101,7 @@ export const springPop = {
     scale: 1,
     transition: { type: "spring" as const, stiffness: 400, damping: 15 },
   },
-} satisfies Variants;
+};
 
 export const springGentle = {
   hidden: { opacity: 0, y: 20 },
@@ -110,7 +110,7 @@ export const springGentle = {
     y: 0,
     transition: { type: "spring" as const, stiffness: 200, damping: 25 },
   },
-} satisfies Variants;
+};
 
 /* ─── Score / Number Animations ─── */
 
@@ -128,7 +128,7 @@ export const scoreFlip = {
     scale: 0.8,
     transition: { duration: 0.15 },
   },
-} satisfies Variants;
+};
 
 export const countUp = {
   hidden: { opacity: 0, y: 10 },
@@ -137,7 +137,7 @@ export const countUp = {
     y: 0,
     transition: { duration: 0.6, ease: easeSmooth },
   },
-} satisfies Variants;
+};
 
 /* ─── Reveal on Scroll ─── */
 
@@ -149,7 +149,7 @@ export const revealOnScroll = {
     filter: "blur(0px)",
     transition: { duration: 0.6, ease: easeStandard },
   },
-} satisfies Variants;
+};
 
 export const revealFromLeft = {
   hidden: { opacity: 0, x: -60, filter: "blur(4px)" },
@@ -159,7 +159,7 @@ export const revealFromLeft = {
     filter: "blur(0px)",
     transition: { duration: 0.6, ease: easeStandard },
   },
-} satisfies Variants;
+};
 
 export const revealFromRight = {
   hidden: { opacity: 0, x: 60, filter: "blur(4px)" },
@@ -169,7 +169,7 @@ export const revealFromRight = {
     filter: "blur(0px)",
     transition: { duration: 0.6, ease: easeStandard },
   },
-} satisfies Variants;
+};
 
 /* ─── Overlay / Match Animations ─── */
 
@@ -187,14 +187,14 @@ export const overlaySlideIn = {
     scale: 0.98,
     transition: { duration: 0.2 },
   },
-} satisfies Variants;
+};
 
 export const wicketShake = {
   animate: {
     x: [0, -8, 8, -6, 6, -3, 3, 0],
     transition: { duration: 0.5, ease: "easeInOut" as const },
   },
-} satisfies Variants;
+};
 
 export const boundaryFlash = {
   animate: {
@@ -202,7 +202,7 @@ export const boundaryFlash = {
     opacity: [1, 0.8, 1],
     transition: { duration: 0.3 },
   },
-} satisfies Variants;
+};
 
 export const confettiBurst = {
   hidden: { opacity: 0, scale: 0, rotate: -180 },
@@ -212,7 +212,7 @@ export const confettiBurst = {
     rotate: 0,
     transition: { type: "spring" as const, stiffness: 200, damping: 12 },
   },
-} satisfies Variants;
+};
 
 /* ─── Card Hover Effects ─── */
 
@@ -224,7 +224,7 @@ export const magneticHover = {
     transition: { duration: 0.3, ease: easeStandard },
   },
   tap: { scale: 0.98 },
-} satisfies Variants;
+};
 
 /* ─── Page Transition ─── */
 
@@ -245,7 +245,7 @@ export const textReveal = {
     filter: "blur(0px)",
     transition: { duration: 0.5, ease: easeStandard },
   },
-} satisfies Variants;
+};
 
 export const typewriter = {
   hidden: { width: 0 },
@@ -253,4 +253,4 @@ export const typewriter = {
     width: "100%",
     transition: { duration: 0.8, ease: easeStandard },
   },
-} satisfies Variants;
+};

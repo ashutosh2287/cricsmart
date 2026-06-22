@@ -1,10 +1,12 @@
+import type { Variants, Transition } from "framer-motion";
+
 const easeStandard: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 const easeSpring: [number, number, number, number] = [0.34, 1.56, 0.64, 1];
 const easeSmooth: [number, number, number, number] = [0.4, 0, 0.2, 1];
 
 /* ─── Basic Transitions ─── */
 
-export const fadeUp = {
+export const fadeUp: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: {
     opacity: 1,
@@ -13,12 +15,12 @@ export const fadeUp = {
   },
 };
 
-export const fadeIn = {
+export const fadeIn: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.35 } },
 };
 
-export const slideRight = {
+export const slideRight: Variants = {
   hidden: { opacity: 0, x: -20 },
   visible: {
     opacity: 1,
@@ -27,7 +29,7 @@ export const slideRight = {
   },
 };
 
-export const slideLeft = {
+export const slideLeft: Variants = {
   hidden: { opacity: 0, x: 20 },
   visible: {
     opacity: 1,
@@ -36,7 +38,7 @@ export const slideLeft = {
   },
 };
 
-export const slideUp = {
+export const slideUp: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: {
     opacity: 1,
@@ -45,7 +47,7 @@ export const slideUp = {
   },
 };
 
-export const scaleIn = {
+export const scaleIn: Variants = {
   hidden: { opacity: 0, scale: 0.95 },
   visible: {
     opacity: 1,
@@ -54,7 +56,7 @@ export const scaleIn = {
   },
 };
 
-export const scaleUp = {
+export const scaleUp: Variants = {
   hidden: { opacity: 0, scale: 0.8 },
   visible: {
     opacity: 1,
@@ -65,60 +67,60 @@ export const scaleUp = {
 
 /* ─── Stagger Container ─── */
 
-export const stagger = {
+export const stagger: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.07 } },
 };
 
-export const staggerSlow = {
+export const staggerSlow: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.12 } },
 };
 
-export const staggerFast = {
+export const staggerFast: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.04 } },
 };
 
 /* ─── Spring Animations ─── */
 
-export const springBounce = {
+export const springBounce: Variants = {
   hidden: { opacity: 0, y: 40, scale: 0.9 },
   visible: {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { type: "spring" as const as const, stiffness: 300, damping: 20 },
+    transition: { type: "spring", stiffness: 300, damping: 20 } as Transition,
   },
 };
 
-export const springPop = {
+export const springPop: Variants = {
   hidden: { opacity: 0, scale: 0.5 },
   visible: {
     opacity: 1,
     scale: 1,
-    transition: { type: "spring" as const as const, stiffness: 400, damping: 15 },
+    transition: { type: "spring", stiffness: 400, damping: 15 } as Transition,
   },
 };
 
-export const springGentle = {
+export const springGentle: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: "spring" as const as const, stiffness: 200, damping: 25 },
+    transition: { type: "spring", stiffness: 200, damping: 25 } as Transition,
   },
 };
 
 /* ─── Score / Number Animations ─── */
 
-export const scoreFlip = {
+export const scoreFlip: Variants = {
   initial: { y: 24, opacity: 0, scale: 0.8 },
   animate: {
     y: 0,
     opacity: 1,
     scale: 1,
-    transition: { type: "spring" as const as const, stiffness: 500, damping: 30 },
+    transition: { type: "spring", stiffness: 500, damping: 30 } as Transition,
   },
   exit: {
     y: -24,
@@ -128,7 +130,7 @@ export const scoreFlip = {
   },
 };
 
-export const countUp = {
+export const countUp: Variants = {
   hidden: { opacity: 0, y: 10 },
   visible: {
     opacity: 1,
@@ -139,7 +141,7 @@ export const countUp = {
 
 /* ─── Reveal on Scroll ─── */
 
-export const revealOnScroll = {
+export const revealOnScroll: Variants = {
   hidden: { opacity: 0, y: 40, filter: "blur(4px)" },
   visible: {
     opacity: 1,
@@ -149,7 +151,7 @@ export const revealOnScroll = {
   },
 };
 
-export const revealFromLeft = {
+export const revealFromLeft: Variants = {
   hidden: { opacity: 0, x: -60, filter: "blur(4px)" },
   visible: {
     opacity: 1,
@@ -159,7 +161,7 @@ export const revealFromLeft = {
   },
 };
 
-export const revealFromRight = {
+export const revealFromRight: Variants = {
   hidden: { opacity: 0, x: 60, filter: "blur(4px)" },
   visible: {
     opacity: 1,
@@ -171,13 +173,13 @@ export const revealFromRight = {
 
 /* ─── Overlay / Match Animations ─── */
 
-export const overlaySlideIn = {
+export const overlaySlideIn: Variants = {
   hidden: { opacity: 0, y: -20, scale: 0.95 },
   visible: {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { type: "spring" as const, stiffness: 300, damping: 25 },
+    transition: { type: "spring", stiffness: 300, damping: 25 } as Transition,
   },
   exit: {
     opacity: 0,
@@ -187,14 +189,14 @@ export const overlaySlideIn = {
   },
 };
 
-export const wicketShake = {
+export const wicketShake: Variants = {
   animate: {
     x: [0, -8, 8, -6, 6, -3, 3, 0],
     transition: { duration: 0.5, ease: "easeInOut" },
   },
 };
 
-export const boundaryFlash = {
+export const boundaryFlash: Variants = {
   animate: {
     scale: [1, 1.05, 1],
     opacity: [1, 0.8, 1],
@@ -202,19 +204,19 @@ export const boundaryFlash = {
   },
 };
 
-export const confettiBurst = {
+export const confettiBurst: Variants = {
   hidden: { opacity: 0, scale: 0, rotate: -180 },
   visible: {
     opacity: 1,
     scale: 1,
     rotate: 0,
-    transition: { type: "spring" as const, stiffness: 200, damping: 12 },
+    transition: { type: "spring", stiffness: 200, damping: 12 } as Transition,
   },
 };
 
 /* ─── Card Hover Effects ─── */
 
-export const magneticHover = {
+export const magneticHover: Variants = {
   rest: { scale: 1, boxShadow: "var(--shadow-card)" },
   hover: {
     scale: 1.02,
@@ -235,7 +237,7 @@ export const pageTransition = {
 
 /* ─── Text Animations ─── */
 
-export const textReveal = {
+export const textReveal: Variants = {
   hidden: { opacity: 0, y: 20, filter: "blur(8px)" },
   visible: {
     opacity: 1,
@@ -245,7 +247,7 @@ export const textReveal = {
   },
 };
 
-export const typewriter = {
+export const typewriter: Variants = {
   hidden: { width: 0 },
   visible: {
     width: "100%",

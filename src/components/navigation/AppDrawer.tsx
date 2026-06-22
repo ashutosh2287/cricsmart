@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type Variants, type Transition } from "framer-motion";
 import MenuSection, { DrawerMenuItem } from "@/components/navigation/MenuSection";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -69,12 +69,12 @@ const sections: DrawerSection[] = [
   },
 ];
 
-const drawerVariants = {
+const drawerVariants: Variants = {
   hidden: { x: "-100%", opacity: 0.5 },
   visible: {
     x: 0,
     opacity: 1,
-    transition: { type: "spring", stiffness: 300, damping: 30 },
+    transition: { type: "spring", stiffness: 300, damping: 30 } as Transition,
   },
   exit: {
     x: "-100%",
@@ -83,13 +83,13 @@ const drawerVariants = {
   },
 };
 
-const overlayVariants = {
+const overlayVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.2 } },
   exit: { opacity: 0, transition: { duration: 0.2 } },
 };
 
-const sectionVariants = {
+const sectionVariants: Variants = {
   hidden: { opacity: 0, x: -12 },
   visible: (i: number) => ({
     opacity: 1,

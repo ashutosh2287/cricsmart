@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import type { Variants } from "framer-motion";
+
 const easeStandard: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 const easeSpring: [number, number, number, number] = [0.34, 1.56, 0.64, 1];
 const easeSmooth: [number, number, number, number] = [0.4, 0, 0.2, 1];
@@ -92,7 +94,7 @@ export const springBounce = {
     scale: 1,
     transition: { type: "spring" as const, stiffness: 300, damping: 20 },
   },
-};
+} satisfies Variants;
 
 export const springPop = {
   hidden: { opacity: 0, scale: 0.5 },
@@ -101,7 +103,7 @@ export const springPop = {
     scale: 1,
     transition: { type: "spring" as const, stiffness: 400, damping: 15 },
   },
-};
+} satisfies Variants;
 
 export const springGentle = {
   hidden: { opacity: 0, y: 20 },
@@ -110,7 +112,7 @@ export const springGentle = {
     y: 0,
     transition: { type: "spring" as const, stiffness: 200, damping: 25 },
   },
-};
+} satisfies Variants;
 
 /* ─── Score / Number Animations ─── */
 
@@ -128,7 +130,7 @@ export const scoreFlip = {
     scale: 0.8,
     transition: { duration: 0.15 },
   },
-};
+} satisfies Variants;
 
 export const countUp = {
   hidden: { opacity: 0, y: 10 },
@@ -187,14 +189,14 @@ export const overlaySlideIn = {
     scale: 0.98,
     transition: { duration: 0.2 },
   },
-};
+} satisfies Variants;
 
 export const wicketShake = {
   animate: {
     x: [0, -8, 8, -6, 6, -3, 3, 0],
     transition: { duration: 0.5, ease: "easeInOut" as const },
   },
-};
+} satisfies Variants;
 
 export const boundaryFlash = {
   animate: {
@@ -212,7 +214,7 @@ export const confettiBurst = {
     rotate: 0,
     transition: { type: "spring" as const, stiffness: 200, damping: 12 },
   },
-};
+} satisfies Variants;
 
 /* ─── Card Hover Effects ─── */
 

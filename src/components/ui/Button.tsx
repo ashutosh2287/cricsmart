@@ -4,24 +4,51 @@ import { motion } from "framer-motion";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps {
   variant?: Variant;
   loading?: boolean;
   icon?: React.ReactNode;
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+  disabled?: boolean;
+  type?: "button" | "submit" | "reset";
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+  className?: string;
 }
 
-export function Button({ variant = "primary", loading, icon, children, style, ...props }: ButtonProps) {
+export function Button({ variant = "primary", loading, icon, children, style, disabled, type = "button", onClick, className }: ButtonProps) {
   const variantStyles: Record<Variant, React.CSSProperties> = {
-    primary: { background: "var(--brand)", color: "var(--text-inv)", border: "none" },
-    secondary: { background: "transparent", color: "var(--text-2)", border: "0.5px solid var(--border-med)" },
-    danger: { background: "var(--danger-light)", color: "var(--danger)", border: "0.5px solid var(--danger)" },
-    ghost: { background: "transparent", color: "var(--brand)", border: "none" },
+    primary: {
+      background: "var(--brand)",
+      color: "var(--text-inv)",
+      border: "none",
+    },
+    secondary: {
+      background: "transparent",
+      color: "var(--text-2)",
+      border: "0.5px solid var(--border-med)",
+    },
+    danger: {
+      background: "var(--danger-light)",
+      color: "var(--danger)",
+      border: "0.5px solid var(--danger)",
+    },
+    ghost: {
+      background: "transparent",
+      color: "var(--brand)",
+      border: "none",
+    },
   };
 
   return (
     <motion.button
+      whileHover={
+        variant === "primary"
+          ? { scale: 1.02, boxShadow: "0 0 20px rgba(29, 158, 117, 0.35)" }
+          : { scale: 1.02 }
+      }
       whileTap={{ scale: 0.97 }}
-      whileHover={{ opacity: 0.87 }}
+      transition={{ type: "spring", stiffness: 500, damping: 20 }}
       style={{
         ...variantStyles[variant],
         padding: "8px 18px",
@@ -32,12 +59,15 @@ export function Button({ variant = "primary", loading, icon, children, style, ..
         display: "inline-flex",
         alignItems: "center",
         gap: 6,
-        cursor: "pointer",
-        transition: "background 0.15s, opacity 0.15s",
+        cursor: loading ? "wait" : "pointer",
+        position: "relative",
+        overflow: "hidden",
         ...(style ?? {}),
       }}
-      disabled={loading || props.disabled}
-      {...props}
+      className={className}
+      disabled={loading || disabled}
+      type={type}
+      onClick={onClick}
     >
       {loading ? (
         <span

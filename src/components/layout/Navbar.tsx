@@ -185,10 +185,18 @@ function NavbarInner({ pathname }: { pathname: string }) {
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [matchesFilter, setMatchesFilter] = useState<MatchesFilter>("all");
   const [panelMatches, setPanelMatches] = useState<PanelMatch[]>([]);
+  const [scrolled, setScrolled] = useState(false);
   const lastFetchedAtRef = useRef(0);
   const allDropdownRef = useRef<HTMLDivElement>(null);
   const { isOpen, closeDrawer, toggleDrawer } = useDrawer();
   const { user, isAuthenticated, authEnabled, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const activeLink = quickLinks.find((link) => isPathActive(pathname, link.href));
 
@@ -295,10 +303,15 @@ function NavbarInner({ pathname }: { pathname: string }) {
             position: "sticky",
             top: 0,
             zIndex: 50,
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-            background: "var(--nav-bg)",
-            borderBottom: "0.5px solid var(--nav-border)",
+            backdropFilter: scrolled ? "blur(16px) saturate(180%)" : "blur(10px)",
+            WebkitBackdropFilter: scrolled ? "blur(16px) saturate(180%)" : "blur(10px)",
+            background: scrolled
+              ? "color-mix(in srgb, var(--nav-bg) 82%, transparent)"
+              : "var(--nav-bg)",
+            borderBottom: scrolled
+              ? "0.5px solid color-mix(in srgb, var(--nav-border) 60%, transparent)"
+              : "0.5px solid var(--nav-border)",
+            transition: "background 0.3s ease, border-color 0.3s ease, backdrop-filter 0.3s ease",
           }}
         >
           <div className="mx-auto flex h-16 w-full max-w-[1100px] items-center justify-between px-4 md:px-6">
@@ -360,6 +373,17 @@ function NavbarInner({ pathname }: { pathname: string }) {
               <span className="hidden rounded-md border border-[var(--border-subtle)] bg-[var(--bg-raised)]/40 px-2.5 py-1 text-[11px] uppercase tracking-[0.14em] text-[var(--text-secondary)] md:inline-flex">
                 {matchesPanelOpen ? "Matches" : activeLink?.name ?? "Cricket"}
               </span>
+              <button
+                type="button"
+                aria-label="Notifications"
+                className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-[var(--text-2)] transition hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+              >
+                <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+                  <path d="M10 2a5 5 0 00-5 5v3l-1.3 2.6a.5.5 0 00.45.7h11.7a.5.5 0 00.45-.7L15 10V7a5 5 0 00-5-5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M8 14a2 2 0 004 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[var(--accent-live)] opacity-0" />
+              </button>
               <ThemeToggle />
               {authLoading ? (
                 <span className="inline-flex h-9 w-20 animate-pulse rounded-md border border-[var(--border-subtle)] bg-[var(--bg-raised)]/50" />

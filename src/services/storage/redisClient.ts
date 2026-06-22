@@ -2,58 +2,46 @@ import "server-only";
 import Redis from "ioredis";
 
 let redis: Redis | null = null;
+let warned = false;
 
 function normalizeRedisUrl(rawUrl: string): string {
   let value = rawUrl.trim();
-  if (!value) {
-    throw new Error(
-      "Invalid REDIS_URL format (empty value). Expected redis://<host>:6379 or rediss://<host>:6379"
-    );
-  }
-
-  // Common typo: "...:6379s" (trailing "s" on port)
+  if (!value) return "";
   value = value.replace(/:(\d+)s\b/, ":$1");
-
   try {
     const parsed = new URL(value);
     const isUpstashHost = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.upstash\.io$/i.test(parsed.hostname);
-
-    if (parsed.protocol === "redis:" && isUpstashHost) {
-      parsed.protocol = "rediss:";
-    }
-
+    if (parsed.protocol === "redis:" && isUpstashHost) parsed.protocol = "rediss:";
     return parsed.toString();
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : "Malformed URL";
-    throw new Error(
-      `Invalid REDIS_URL format (${reason}). Expected redis://<host>:6379 or rediss://<host>:6379`
-    );
+  } catch {
+    return "";
   }
 }
 
-export function getRedis() {
-  if (!redis) {
-    const rawUrl = process.env.REDIS_URL;
-    if (!rawUrl) {
-      throw new Error("Missing REDIS_URL in environment");
+export function getRedis(): Redis {
+  if (redis) return redis;
+
+  const rawUrl = process.env.REDIS_URL;
+  if (!rawUrl) throw new Error("Missing REDIS_URL");
+
+  const url = normalizeRedisUrl(rawUrl);
+  if (!url) throw new Error("Invalid REDIS_URL");
+
+  const useTls = url.startsWith("rediss://");
+
+  redis = new Redis(url, {
+    ...(useTls ? { tls: {} } : {}),
+    maxRetriesPerRequest: 1,
+    connectTimeout: 5000,
+    enableOfflineQueue: true,
+  });
+
+  redis.on("error", () => {
+    if (!warned) {
+      warned = true;
+      console.warn("⚠️  Redis unavailable — running without cache/sessions");
     }
-
-    const redisUrl = normalizeRedisUrl(rawUrl);
-    const useTls = redisUrl.startsWith("rediss://");
-
-    redis = new Redis(redisUrl, {
-      ...(useTls ? { tls: {} } : {}),
-      maxRetriesPerRequest: 1,
-    });
-
-    redis.on("connect", () => {
-      console.log("🟢 Redis Connected");
-    });
-
-    redis.on("error", (err) => {
-      console.error("🔴 Redis Error:", err);
-    });
-  }
+  });
 
   return redis;
 }

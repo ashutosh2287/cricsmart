@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { getRequestAuthSession } from "@/services/auth/serverRequestContext";
+import { ActivityTimeline } from "./ActivityTimeline";
 
 export const metadata = { title: "Activity Feed — CricSmart" };
 
@@ -14,6 +14,7 @@ type ActivityItem = {
   timestamp: Date;
   icon: string;
   colorClass: string;
+  dotColor: string;
 };
 
 export default async function ActivityPage() {
@@ -54,6 +55,7 @@ export default async function ActivityPage() {
         timestamp: match.createdAt,
         icon: "🔴",
         colorClass: "text-red-400",
+        dotColor: "bg-red-400",
       };
     }
 
@@ -67,6 +69,7 @@ export default async function ActivityPage() {
         timestamp: match.createdAt,
         icon: "✅",
         colorClass: "text-emerald-400",
+        dotColor: "bg-emerald-400",
       };
     }
 
@@ -79,6 +82,7 @@ export default async function ActivityPage() {
       timestamp: match.createdAt,
       icon: "📋",
       colorClass: "text-blue-400",
+      dotColor: "bg-blue-400",
     };
   });
 
@@ -93,6 +97,7 @@ export default async function ActivityPage() {
       timestamp: team.createdAt,
       icon: "🏏",
       colorClass: "text-emerald-400",
+      dotColor: "bg-emerald-400",
     })),
     ...teamMemberships.map((membership) => ({
       id: `membership-${membership.teamId}`,
@@ -103,6 +108,7 @@ export default async function ActivityPage() {
       timestamp: membership.joinedAt,
       icon: "👤",
       colorClass: "text-[var(--accent-brand)]",
+      dotColor: "bg-[var(--accent-brand)]",
     })),
   ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
@@ -111,51 +117,7 @@ export default async function ActivityPage() {
       <div className="mx-auto w-full max-w-3xl px-4 py-10">
         <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent-brand)]">Account</p>
         <h1 className="mb-8 text-2xl font-semibold text-[var(--text-primary)]">Activity Feed</h1>
-
-        {timeline.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[var(--border-subtle)] py-16 text-center">
-            <p className="mb-3 text-3xl">📊</p>
-            <p className="text-sm text-[var(--text-secondary)]">
-              No activity yet — host a match or create a team to get started.
-            </p>
-          </div>
-        ) : (
-          <div className="relative">
-            <div className="absolute bottom-0 left-[0.95rem] top-0 w-px bg-[var(--border-subtle)]" />
-            <div className="space-y-3 pl-10">
-              {timeline.map((item) => (
-                <div key={item.id} className="relative">
-                  <div className="absolute -left-[1.95rem] top-6 h-3 w-3 rounded-full border-2 border-[var(--bg-base)] bg-[var(--text-muted)]" />
-                  <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-5 py-4 transition hover:border-[var(--text-muted)]">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3">
-                        <span className="mt-0.5 text-lg">{item.icon}</span>
-                        <div>
-                          <p className={`text-sm font-medium ${item.colorClass}`}>{item.label}</p>
-                          <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{item.sublabel}</p>
-                        </div>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <p className="text-xs text-[var(--text-muted)]">{item.timestamp.toLocaleDateString()}</p>
-                        <p className="text-xs text-[var(--text-muted)]">
-                          {item.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </p>
-                      </div>
-                    </div>
-                    {item.href ? (
-                      <Link
-                        href={item.href}
-                        className="mt-2 block text-xs text-[var(--text-secondary)] transition hover:text-[var(--accent-brand)]"
-                      >
-                        View →
-                      </Link>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <ActivityTimeline timeline={timeline} />
       </div>
     </main>
   );

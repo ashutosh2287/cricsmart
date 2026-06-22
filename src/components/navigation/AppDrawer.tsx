@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import MenuSection, { DrawerMenuItem } from "@/components/navigation/MenuSection";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -67,6 +68,35 @@ const sections: DrawerSection[] = [
     ],
   },
 ];
+
+const drawerVariants = {
+  hidden: { x: "-100%", opacity: 0.5 },
+  visible: {
+    x: 0,
+    opacity: 1,
+    transition: { type: "spring", stiffness: 300, damping: 30 },
+  },
+  exit: {
+    x: "-100%",
+    opacity: 0,
+    transition: { duration: 0.2, ease: "easeIn" },
+  },
+};
+
+const overlayVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.2 } },
+  exit: { opacity: 0, transition: { duration: 0.2 } },
+};
+
+const sectionVariants = {
+  hidden: { opacity: 0, x: -12 },
+  visible: (i: number) => ({
+    opacity: 1,
+    x: 0,
+    transition: { delay: 0.08 + i * 0.06, duration: 0.3, ease: "easeOut" },
+  }),
+};
 
 export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -167,77 +197,91 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
     return () => drawer.removeEventListener("keydown", handleFocusTrap);
   }, [isOpen]);
 
+  const allSections = [{ title: "My Account", items: accountItems }, ...sections];
+
   return (
-    <div className={`fixed inset-0 z-[70] ${isOpen ? "pointer-events-auto" : "pointer-events-none"}`}>
-      <button
-        type="button"
-        aria-label="Close navigation drawer"
-        onClick={onClose}
-        className={`absolute inset-0 bg-[var(--overlay-strong)] backdrop-blur-[1px] transition-opacity duration-300 ${isOpen ? "opacity-100" : "opacity-0"}`}
-      />
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[70]">
+          <motion.button
+            type="button"
+            aria-label="Close navigation drawer"
+            onClick={onClose}
+            variants={overlayVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="absolute inset-0 bg-[var(--overlay-strong)] backdrop-blur-[1px]"
+          />
 
-      <aside
-        id="cricsmart-app-drawer"
-        role="dialog"
-        aria-modal="true"
-        aria-label="CricSmart main navigation"
-        ref={drawerRef}
-        tabIndex={-1}
-        onTouchStart={(event) => {
-          touchStartRef.current = event.touches[0]?.clientX ?? null;
-        }}
-        onTouchEnd={(event) => {
-          const startX = touchStartRef.current;
-          const endX = event.changedTouches[0]?.clientX;
-          if (startX === null || endX === undefined) {
-            return;
-          }
+          <motion.aside
+            id="cricsmart-app-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="CricSmart main navigation"
+            ref={drawerRef}
+            tabIndex={-1}
+            variants={drawerVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onTouchStart={(event) => {
+              touchStartRef.current = event.touches[0]?.clientX ?? null;
+            }}
+            onTouchEnd={(event) => {
+              const startX = touchStartRef.current;
+              const endX = event.changedTouches[0]?.clientX;
+              if (startX === null || endX === undefined) {
+                return;
+              }
 
-          if (startX - endX > 70) {
-            onClose();
-          }
-        }}
-        className={`absolute left-0 top-0 h-full w-[80vw] max-w-[320px] border-r border-[var(--border)] bg-[var(--surface)] transition-transform duration-300 ease-out md:w-[320px] ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-2)]">Navigation</p>
-              <p className="text-sm font-semibold text-[var(--text-primary)]">CricSmart</p>
+              if (startX - endX > 70) {
+                onClose();
+              }
+            }}
+            className="absolute left-0 top-0 h-full w-[80vw] max-w-[320px] border-r border-[var(--border)] bg-[var(--surface)] md:w-[320px]"
+          >
+            <div className="flex h-full flex-col">
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-2)]">Navigation</p>
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">CricSmart</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Close menu"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border-subtle)] bg-[var(--bg-raised)]/65 text-[var(--text-secondary)] transition hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80"
+                >
+                  <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
+                    <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+
+              <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4" aria-label="Primary navigation">
+                {allSections.map((section, sectionIndex) => (
+                  <motion.div
+                    key={section.title}
+                    custom={sectionIndex}
+                    variants={sectionVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="mb-4"
+                  >
+                    <MenuSection
+                      title={section.title}
+                      items={section.items}
+                      pathname={pathname}
+                      onNavigate={onClose}
+                    />
+                  </motion.div>
+                ))}
+              </nav>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close menu"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border-subtle)] bg-[var(--bg-raised)]/65 text-[var(--text-secondary)] transition hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80"
-            >
-              <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
-                <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
-
-          <nav className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label="Primary navigation">
-            <MenuSection
-              title="My Account"
-              items={accountItems}
-              pathname={pathname}
-              onNavigate={onClose}
-            />
-            {sections.map((section) => (
-              <MenuSection
-                key={section.title}
-                title={section.title}
-                items={section.items}
-                pathname={pathname}
-                onNavigate={onClose}
-              />
-            ))}
-          </nav>
+          </motion.aside>
         </div>
-      </aside>
-    </div>
+      )}
+    </AnimatePresence>
   );
 }

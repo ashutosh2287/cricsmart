@@ -17,7 +17,7 @@ export default function AppShellContent({
   // All other pages get the standard constrained layout
   return (
     <main className="min-h-screen bg-[var(--bg-base)]">
-      <div className="mx-auto w-full max-w-[1100px] px-4 py-8 md:px-6">
+      <div className="mx-auto w-full max-w-[1100px] px-3 py-6 sm:px-4 sm:py-8 md:px-6">
         {children}
       </div>
     </main>

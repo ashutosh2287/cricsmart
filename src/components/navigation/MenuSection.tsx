@@ -44,7 +44,7 @@ export default function MenuSection({ title, items, pathname, onNavigate }: Menu
 
       {expanded ? (
         <div className="space-y-1">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <MenuItem
               key={item.key ?? item.href ?? `${title}-${item.label}`}
               href={item.href}
@@ -54,6 +54,7 @@ export default function MenuSection({ title, items, pathname, onNavigate }: Menu
               onClick={item.onClick}
               isActive={item.href ? isPathActive(pathname, item.href) : false}
               onNavigate={onNavigate}
+              index={index}
             />
           ))}
         </div>

@@ -1,13 +1,40 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
+import { useCountUp } from "@/hooks/useCountUp";
 
-export function Stat({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
+interface StatProps {
+  label: string;
+  value: string | number;
+  accent?: boolean;
+  index?: number;
+}
+
+export function Stat({ label, value, accent = false, index = 0 }: StatProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, { once: true, margin: "-40px" });
+  const isNumeric = typeof value === "number";
+
+  const { ref: countRef, display } = useCountUp({
+    end: isNumeric ? value : 0,
+    duration: 1600,
+    startOnView: isInView,
+    prefix: "",
+    suffix: "",
+  });
+
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.92 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.25 }}
+      ref={containerRef}
+      initial={{ opacity: 0, y: 16 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{
+        duration: 0.4,
+        delay: index * 0.08,
+        ease: [0.25, 0.46, 0.45, 0.94],
+      }}
+      whileHover={{ scale: 1.03 }}
       style={{
         background: accent ? "var(--brand-light)" : "var(--surface-3)",
         borderRadius: "var(--radius-md)",
@@ -16,14 +43,16 @@ export function Stat({ label, value, accent }: { label: string; value: string | 
       }}
     >
       <div
+        ref={countRef}
         style={{
           fontSize: 22,
           fontWeight: 600,
           color: accent ? "var(--brand-text)" : "var(--text-1)",
           fontFamily: "var(--font-display)",
+          fontVariantNumeric: "tabular-nums",
         }}
       >
-        {value}
+        {isNumeric ? display : value}
       </div>
       <div
         style={{

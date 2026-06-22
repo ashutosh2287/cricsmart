@@ -1,10 +1,11 @@
 // src/components/landing/LandingPageClient.tsx
-// REPLACE the entire file with this corrected version
+// Redesigned with framer-motion animations
 
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TYPES
@@ -35,7 +36,6 @@ function useInViewRef(threshold = 0.15): [React.RefCallback<HTMLElement>, boolea
 
   const refCallback = useCallback(
     (node: HTMLElement | null) => {
-      // Cleanup previous observer
       if (observerRef.current) {
         observerRef.current.disconnect();
         observerRef.current = null;
@@ -98,6 +98,117 @@ function LiveDot() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATION VARIANTS
+═══════════════════════════════════════════════════════════════════════════ */
+
+const heroContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.12, delayChildren: 0.1 } },
+};
+
+const heroBadge = {
+  hidden: { opacity: 0, x: -20, scale: 0.9 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    scale: 1,
+    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const },
+  },
+};
+
+const heroWord = {
+  hidden: { opacity: 0, y: 20, filter: "blur(8px)" },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const },
+  },
+};
+
+const heroSubtitle = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const },
+  },
+};
+
+const heroCta = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as const },
+  },
+};
+
+const statsContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
+};
+
+const statCard = {
+  hidden: { opacity: 0, y: 30, scale: 0.95 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const },
+  },
+};
+
+const matchesContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
+
+const matchCard = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as const },
+  },
+};
+
+const featuresContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
+
+const featureFromLeft = {
+  hidden: { opacity: 0, x: -40, filter: "blur(4px)" },
+  visible: {
+    opacity: 1,
+    x: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const },
+  },
+};
+
+const featureFromRight = {
+  hidden: { opacity: 0, x: 40, filter: "blur(4px)" },
+  visible: {
+    opacity: 1,
+    x: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const },
+  },
+};
+
+const ctaBox = {
+  hidden: { opacity: 0, y: 30, filter: "blur(4px)" },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] as const },
+  },
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -110,19 +221,15 @@ export default function LandingPageClient({
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Scroll listener for navbar
+  const { scrollY } = useScroll();
+  const ambientY = useTransform(scrollY, [0, 1000], [0, 150]);
+  const gridY = useTransform(scrollY, [0, 1000], [0, 80]);
+
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  // Section refs for fade-in
-  const [heroRef, heroInView] = useInViewRef();
-  const [statsRef, statsInView] = useInViewRef();
-  const [matchesRef, matchesInView] = useInViewRef();
-  const [featuresRef, featuresInView] = useInViewRef();
-  const [ctaRef, ctaInView] = useInViewRef();
 
   const features = [
     {
@@ -160,10 +267,6 @@ export default function LandingPageClient({
   return (
     <>
       <style>{`
-        /* ═══════════════════════════════════════════════════════════════════
-           LANDING PAGE STYLES — scoped with .lp- prefix
-        ═══════════════════════════════════════════════════════════════════ */
-        
         .lp-root {
           --lp-bg: #040A14;
           --lp-surface: #0A1628;
@@ -181,7 +284,6 @@ export default function LandingPageClient({
           overflow-x: hidden;
         }
 
-        /* Ambient background */
         .lp-ambient {
           position: fixed;
           inset: 0;
@@ -208,7 +310,6 @@ export default function LandingPageClient({
           .lp-grid-texture { display: none; }
         }
 
-        /* Navigation */
         .lp-nav {
           position: fixed;
           top: 0;
@@ -296,7 +397,6 @@ export default function LandingPageClient({
           font-size: 1rem;
         }
 
-        /* Mobile menu */
         .lp-mobile-toggle {
           display: none;
           background: transparent;
@@ -321,15 +421,9 @@ export default function LandingPageClient({
           background: var(--lp-surface);
           z-index: 200;
           padding: 5rem 2rem 2rem;
-          transform: translateX(100%);
-          transition: transform 0.3s ease;
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
-        }
-
-        .lp-mobile-menu.open {
-          transform: translateX(0);
         }
 
         .lp-mobile-overlay {
@@ -337,13 +431,6 @@ export default function LandingPageClient({
           inset: 0;
           background: rgba(0, 0, 0, 0.6);
           z-index: 150;
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 0.3s;
-        }
-
-        .lp-mobile-overlay.open {
-          opacity: 1;
           pointer-events: auto;
         }
 
@@ -367,7 +454,6 @@ export default function LandingPageClient({
           border-bottom: 1px solid var(--lp-border);
         }
 
-        /* Hero */
         .lp-hero {
           position: relative;
           z-index: 1;
@@ -381,14 +467,7 @@ export default function LandingPageClient({
         }
 
         .lp-hero-content {
-          opacity: 0;
-          transform: translateY(30px);
-          transition: opacity 0.8s ease, transform 0.8s ease;
-        }
-
-        .lp-hero-content.visible {
-          opacity: 1;
-          transform: translateY(0);
+          will-change: transform, opacity;
         }
 
         .lp-hero-badge {
@@ -410,9 +489,16 @@ export default function LandingPageClient({
           font-weight: 800;
           line-height: 1.1;
           margin: 0 0 1.5rem;
+          display: flex;
+          flex-wrap: wrap;
         }
 
-        .lp-hero h1 span {
+        .lp-hero-word {
+          display: inline-block;
+          margin-right: 0.3em;
+        }
+
+        .lp-hero-word-accent {
           background: linear-gradient(135deg, var(--lp-cyan), var(--lp-purple));
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
@@ -433,7 +519,6 @@ export default function LandingPageClient({
           flex-wrap: wrap;
         }
 
-        /* Live dot animation */
         .lp-live-dot {
           position: relative;
           width: 8px;
@@ -460,7 +545,6 @@ export default function LandingPageClient({
           100% { transform: scale(2.5); opacity: 0; }
         }
 
-        /* Stats section */
         .lp-stats {
           position: relative;
           z-index: 1;
@@ -473,14 +557,6 @@ export default function LandingPageClient({
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 2rem;
-          opacity: 0;
-          transform: translateY(30px);
-          transition: opacity 0.8s ease, transform 0.8s ease;
-        }
-
-        .lp-stats-grid.visible {
-          opacity: 1;
-          transform: translateY(0);
         }
 
         @media (max-width: 768px) {
@@ -510,7 +586,6 @@ export default function LandingPageClient({
           margin-top: 0.25rem;
         }
 
-        /* Live matches section */
         .lp-matches {
           position: relative;
           z-index: 1;
@@ -541,27 +616,21 @@ export default function LandingPageClient({
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
           gap: 1.5rem;
-          opacity: 0;
-          transform: translateY(30px);
-          transition: opacity 0.8s ease, transform 0.8s ease;
-        }
-
-        .lp-matches-grid.visible {
-          opacity: 1;
-          transform: translateY(0);
         }
 
         .lp-match-card {
+          display: block;
           background: var(--lp-surface);
           border: 1px solid var(--lp-border);
           border-radius: 16px;
           padding: 1.5rem;
-          transition: border-color 0.2s, transform 0.2s;
+          text-decoration: none;
+          color: inherit;
+          transition: border-color 0.2s;
         }
 
         .lp-match-card:hover {
           border-color: var(--lp-cyan);
-          transform: translateY(-2px);
         }
 
         .lp-match-title {
@@ -605,9 +674,9 @@ export default function LandingPageClient({
           background: var(--lp-surface);
           border: 1px solid var(--lp-border);
           border-radius: 16px;
+          grid-column: 1 / -1;
         }
 
-        /* Features section */
         .lp-features {
           position: relative;
           z-index: 1;
@@ -620,14 +689,6 @@ export default function LandingPageClient({
           display: grid;
           grid-template-columns: repeat(3, 1fr);
           gap: 1.5rem;
-          opacity: 0;
-          transform: translateY(30px);
-          transition: opacity 0.8s ease, transform 0.8s ease;
-        }
-
-        .lp-features-grid.visible {
-          opacity: 1;
-          transform: translateY(0);
         }
 
         @media (max-width: 900px) {
@@ -647,11 +708,7 @@ export default function LandingPageClient({
           border: 1px solid var(--lp-border);
           border-radius: 16px;
           padding: 2rem;
-          transition: border-color 0.2s;
-        }
-
-        .lp-feature:hover {
-          border-color: var(--lp-cyan);
+          cursor: default;
         }
 
         .lp-feature-icon {
@@ -672,7 +729,6 @@ export default function LandingPageClient({
           line-height: 1.5;
         }
 
-        /* CTA section */
         .lp-cta {
           position: relative;
           z-index: 1;
@@ -687,14 +743,6 @@ export default function LandingPageClient({
           border: 1px solid var(--lp-border);
           border-radius: 24px;
           padding: 4rem 2rem;
-          opacity: 0;
-          transform: translateY(30px);
-          transition: opacity 0.8s ease, transform 0.8s ease;
-        }
-
-        .lp-cta-box.visible {
-          opacity: 1;
-          transform: translateY(0);
         }
 
         .lp-cta h2 {
@@ -710,7 +758,6 @@ export default function LandingPageClient({
           margin: 0 0 2rem;
         }
 
-        /* Footer */
         .lp-footer {
           position: relative;
           z-index: 1;
@@ -736,11 +783,16 @@ export default function LandingPageClient({
       `}</style>
 
       <div className="lp-root">
-        <div className="lp-ambient" />
-        <div className="lp-grid-texture" />
+        <motion.div className="lp-ambient" style={{ y: ambientY }} />
+        <motion.div className="lp-grid-texture" style={{ y: gridY }} />
 
         {/* Navigation */}
-        <nav className={`lp-nav ${scrolled ? "scrolled" : ""}`}>
+        <motion.nav
+          className={`lp-nav ${scrolled ? "scrolled" : ""}`}
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const }}
+        >
           <Link href="/" className="lp-logo">
             CricSmart
           </Link>
@@ -773,112 +825,145 @@ export default function LandingPageClient({
           >
             ☰
           </button>
-        </nav>
+        </motion.nav>
 
         {/* Mobile menu */}
-        <div
-          className={`lp-mobile-overlay ${mobileMenuOpen ? "open" : ""}`}
-          onClick={() => setMobileMenuOpen(false)}
-        />
-        <div className={`lp-mobile-menu ${mobileMenuOpen ? "open" : ""}`}>
-          <button
-            className="lp-mobile-close"
-            onClick={() => setMobileMenuOpen(false)}
-            aria-label="Close menu"
-          >
-            ✕
-          </button>
-          <Link
-            href="/matches"
-            className="lp-mobile-link"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Live Matches
-          </Link>
-          <Link
-            href="/rankings"
-            className="lp-mobile-link"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Rankings
-          </Link>
-          <Link
-            href="/teams"
-            className="lp-mobile-link"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Teams
-          </Link>
-          <Link href="/login" className="lp-btn lp-btn-ghost">
-            Sign In
-          </Link>
-          <Link href="/signup" className="lp-btn lp-btn-primary">
-            Get Started
-          </Link>
-        </div>
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <>
+              <motion.div
+                className="lp-mobile-overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setMobileMenuOpen(false)}
+              />
+              <motion.div
+                className="lp-mobile-menu"
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              >
+                <button
+                  className="lp-mobile-close"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-label="Close menu"
+                >
+                  ✕
+                </button>
+                <Link
+                  href="/matches"
+                  className="lp-mobile-link"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Live Matches
+                </Link>
+                <Link
+                  href="/rankings"
+                  className="lp-mobile-link"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Rankings
+                </Link>
+                <Link
+                  href="/teams"
+                  className="lp-mobile-link"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Teams
+                </Link>
+                <Link href="/login" className="lp-btn lp-btn-ghost">
+                  Sign In
+                </Link>
+                <Link href="/signup" className="lp-btn lp-btn-primary">
+                  Get Started
+                </Link>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
         {/* Hero */}
-        <section className="lp-hero" ref={heroRef}>
-          <div className={`lp-hero-content ${heroInView ? "visible" : ""}`}>
-            <div className="lp-hero-badge">
+        <section className="lp-hero">
+          <motion.div
+            className="lp-hero-content"
+            variants={heroContainer}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.div className="lp-hero-badge" variants={heroBadge}>
               <LiveDot />
               {liveMatchCount > 0
                 ? `${liveMatchCount} match${liveMatchCount > 1 ? "es" : ""} live now`
                 : "AI-Powered Cricket Analytics"}
-            </div>
+            </motion.div>
 
             <h1>
-              Cricket <span>Intelligence</span>
-              <br />
-              Redefined
+              <motion.span className="lp-hero-word lp-hero-word-accent" variants={heroWord}>
+                Cricket{" "}
+              </motion.span>
+              <motion.span className="lp-hero-word lp-hero-word-accent" variants={heroWord}>
+                Intelligence{" "}
+              </motion.span>
+              <motion.span className="lp-hero-word" variants={heroWord}>
+                Redefined
+              </motion.span>
             </h1>
 
-            <p className="lp-hero-sub">
+            <motion.p className="lp-hero-sub" variants={heroSubtitle}>
               Real-time analytics, AI predictions, and comprehensive match data.
               The smartest way to follow cricket.
-            </p>
+            </motion.p>
 
-            <div className="lp-hero-ctas">
+            <motion.div className="lp-hero-ctas" variants={heroCta}>
               <Link href="/signup" className="lp-btn lp-btn-primary lp-btn-large">
                 Start for Free
               </Link>
               <Link href="/matches" className="lp-btn lp-btn-ghost lp-btn-large">
                 View Live Matches
               </Link>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </section>
 
         {/* Stats */}
-        <section className="lp-stats" ref={statsRef}>
-          <div className={`lp-stats-grid ${statsInView ? "visible" : ""}`}>
-            <div className="lp-stat">
+        <section className="lp-stats">
+          <motion.div
+            className="lp-stats-grid"
+            variants={statsContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+          >
+            <motion.div className="lp-stat" variants={statCard}>
               <div className="lp-stat-value">
                 <CountUp target={totalMatchCount || 500} />+
               </div>
               <div className="lp-stat-label">Matches Analyzed</div>
-            </div>
-            <div className="lp-stat">
+            </motion.div>
+            <motion.div className="lp-stat" variants={statCard}>
               <div className="lp-stat-value">
                 <CountUp target={teamCount || 50} />+
               </div>
               <div className="lp-stat-label">Teams Tracked</div>
-            </div>
-            <div className="lp-stat">
+            </motion.div>
+            <motion.div className="lp-stat" variants={statCard}>
               <div className="lp-stat-value">
                 <CountUp target={8400} />+
               </div>
               <div className="lp-stat-label">Players in Database</div>
-            </div>
-            <div className="lp-stat">
+            </motion.div>
+            <motion.div className="lp-stat" variants={statCard}>
               <div className="lp-stat-value">74.3%</div>
               <div className="lp-stat-label">Prediction Accuracy</div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </section>
 
         {/* Live Matches */}
-        <section className="lp-matches" ref={matchesRef}>
+        <section className="lp-matches">
           <div className="lp-section-header">
             <h2 className="lp-section-title">
               <LiveDot />
@@ -889,58 +974,102 @@ export default function LandingPageClient({
             </Link>
           </div>
 
-          <div className={`lp-matches-grid ${matchesInView ? "visible" : ""}`}>
+          <motion.div
+            className="lp-matches-grid"
+            variants={matchesContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+          >
             {liveMatches.length > 0 ? (
               liveMatches.map((match) => (
-                <Link
+                <motion.div
                   key={match.id}
-                  href={
-                    match.runtimeMatchId
-                      ? `/match/${match.runtimeMatchId}`
-                      : `/hosted-matches/${match.id}`
-                  }
-                  className="lp-match-card"
+                  variants={matchCard}
+                  whileHover={{
+                    y: -4,
+                    transition: { duration: 0.2 },
+                  }}
                 >
-                  <div className="lp-match-title">{match.title}</div>
-                  <div className="lp-match-teams">
-                    <span className="lp-match-team">{match.teamA}</span>
-                    <span className="lp-match-vs">vs</span>
-                    <span className="lp-match-team">{match.teamB}</span>
-                  </div>
-                  <div className="lp-match-live">
-                    <LiveDot />
-                    Live
-                  </div>
-                </Link>
+                  <Link
+                    href={
+                      match.runtimeMatchId
+                        ? `/match/${match.runtimeMatchId}`
+                        : `/hosted-matches/${match.id}`
+                    }
+                    className="lp-match-card"
+                  >
+                    <div className="lp-match-title">{match.title}</div>
+                    <div className="lp-match-teams">
+                      <span className="lp-match-team">{match.teamA}</span>
+                      <span className="lp-match-vs">vs</span>
+                      <span className="lp-match-team">{match.teamB}</span>
+                    </div>
+                    <div className="lp-match-live">
+                      <LiveDot />
+                      Live
+                    </div>
+                  </Link>
+                </motion.div>
               ))
             ) : (
-              <div className="lp-no-matches">
+              <motion.div
+                className="lp-no-matches"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+              >
                 No live matches right now. Check back soon or explore past matches.
-              </div>
+              </motion.div>
             )}
-          </div>
+          </motion.div>
         </section>
 
         {/* Features */}
-        <section className="lp-features" ref={featuresRef}>
+        <section className="lp-features">
           <div className="lp-section-header">
             <h2 className="lp-section-title">Why CricSmart?</h2>
           </div>
 
-          <div className={`lp-features-grid ${featuresInView ? "visible" : ""}`}>
+          <motion.div
+            className="lp-features-grid"
+            variants={featuresContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+          >
             {features.map((feat, idx) => (
-              <div key={idx} className="lp-feature">
+              <motion.div
+                key={idx}
+                className="lp-feature"
+                variants={idx % 2 === 0 ? featureFromLeft : featureFromRight}
+                whileHover={{
+                  scale: 1.03,
+                  y: -6,
+                  borderColor: "rgba(0, 229, 255, 0.4)",
+                  boxShadow: "0 8px 32px rgba(0, 229, 255, 0.12)",
+                  transition: { duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] as const },
+                }}
+                whileTap={{ scale: 0.98 }}
+              >
                 <div className="lp-feature-icon">{feat.icon}</div>
                 <div className="lp-feature-title">{feat.title}</div>
                 <div className="lp-feature-desc">{feat.desc}</div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </section>
 
         {/* CTA */}
-        <section className="lp-cta" ref={ctaRef}>
-          <div className={`lp-cta-box ${ctaInView ? "visible" : ""}`}>
+        <section className="lp-cta">
+          <motion.div
+            className="lp-cta-box"
+            variants={ctaBox}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+          >
             <h2>Ready to elevate your cricket experience?</h2>
             <p>
               Join thousands of cricket fans using AI-powered analytics to stay
@@ -949,11 +1078,17 @@ export default function LandingPageClient({
             <Link href="/signup" className="lp-btn lp-btn-primary lp-btn-large">
               Get Started — It&apos;s Free
             </Link>
-          </div>
+          </motion.div>
         </section>
 
         {/* Footer */}
-        <footer className="lp-footer">
+        <motion.footer
+          className="lp-footer"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
           <p className="lp-footer-text">
             © 2025 CricSmart. Built with ❤️ for cricket fans.{" "}
             <a
@@ -965,7 +1100,7 @@ export default function LandingPageClient({
               View on GitHub
             </a>
           </p>
-        </footer>
+        </motion.footer>
       </div>
     </>
   );

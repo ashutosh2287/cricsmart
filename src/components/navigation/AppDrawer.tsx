@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence, type Variants, type Transition } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import MenuSection, { DrawerMenuItem } from "@/components/navigation/MenuSection";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -69,34 +69,34 @@ const sections: DrawerSection[] = [
   },
 ];
 
-const drawerVariants: Variants = {
+const drawerVariants = {
   hidden: { x: "-100%", opacity: 0.5 },
   visible: {
     x: 0,
     opacity: 1,
-    transition: { type: "spring", stiffness: 300, damping: 30 } as Transition,
+    transition: { type: "spring" as const, stiffness: 300, damping: 30 },
   },
   exit: {
     x: "-100%",
     opacity: 0,
-    transition: { duration: 0.2, ease: "easeIn" },
+    transition: { duration: 0.2, ease: "easeIn" as const },
   },
-};
+} satisfies Variants;
 
-const overlayVariants: Variants = {
+const overlayVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.2 } },
   exit: { opacity: 0, transition: { duration: 0.2 } },
-};
+} satisfies Variants;
 
-const sectionVariants: Variants = {
+const sectionVariants = {
   hidden: { opacity: 0, x: -12 },
   visible: (i: number) => ({
     opacity: 1,
     x: 0,
-    transition: { delay: 0.08 + i * 0.06, duration: 0.3, ease: "easeOut" },
+    transition: { delay: 0.08 + i * 0.06, duration: 0.3, ease: "easeOut" as const },
   }),
-};
+} satisfies Variants;
 
 export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null);

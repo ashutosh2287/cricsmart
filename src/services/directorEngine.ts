@@ -47,7 +47,7 @@ let state: DirectorState = {
 };
 
 // Probability memory (deterministic per timeline)
-let lastProbability: number | null = null;
+const lastProbabilityByMatch: Record<string, number | null> = {};
 
 export function resetDirectorState(
   matchId: string,
@@ -56,7 +56,7 @@ export function resetDirectorState(
   resetCinematicCooldown();
 resetDirectorMemory(matchId, branchId);
 
-lastProbability = null;
+lastProbabilityByMatch[matchId] = null;
 
   state = {
     matchId,
@@ -130,11 +130,11 @@ if (matchState) {
   if (probability) {
 
     swing = computeProbabilitySwing(
-      lastProbability,
+      lastProbabilityByMatch[state.matchId] ?? null,
       matchState
     );
 
-    lastProbability =
+    lastProbabilityByMatch[state.matchId] =
       probability.battingWinProbability;
   }
 

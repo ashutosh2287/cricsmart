@@ -1,46 +1,48 @@
-import test from "node:test";
-import assert from "node:assert/strict";
+import { describe, it, expect } from "vitest";
 import { parseLoginPayload, parseSignupPayload } from "./authValidation";
 
-test("parseLoginPayload rejects malformed and extra fields", () => {
-  const malformed = parseLoginPayload({ email: "bad-email", password: "12345678" });
-  assert.equal(malformed.success, false);
+describe("parseLoginPayload", () => {
+  it("rejects malformed and extra fields", () => {
+    const malformed = parseLoginPayload({ email: "bad-email", password: "12345678" });
+    expect(malformed.success).toBe(false);
 
-  const extraField = parseLoginPayload({
-    email: "user@example.com",
-    password: "12345678",
-    role: "admin",
+    const extraField = parseLoginPayload({
+      email: "user@example.com",
+      password: "12345678",
+      role: "admin",
+    });
+    expect(extraField.success).toBe(false);
   });
-  assert.equal(extraField.success, false);
+
+  it("sanitizes email identifier", () => {
+    const result = parseLoginPayload({
+      email: "  USER@Example.com ",
+      password: "12345678",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.identifier).toBe("user@example.com");
+    }
+  });
 });
 
-test("parseLoginPayload sanitizes email identifier", () => {
-  const result = parseLoginPayload({
-    email: "  USER@Example.com ",
-    password: "12345678",
+describe("parseSignupPayload", () => {
+  it("rejects malformed and extra fields", () => {
+    const malformed = parseSignupPayload({
+      username: "abc",
+      email: "bad-email",
+      password: "12345678",
+      confirmPassword: "12345678",
+    });
+    expect(malformed.success).toBe(false);
+
+    const extraField = parseSignupPayload({
+      username: "abc",
+      email: "user@example.com",
+      password: "12345678",
+      confirmPassword: "12345678",
+      role: "admin",
+    });
+    expect(extraField.success).toBe(false);
   });
-  assert.equal(result.success, true);
-  if (result.success) {
-    assert.equal(result.data.identifier, "user@example.com");
-  }
 });
-
-test("parseSignupPayload rejects malformed and extra fields", () => {
-  const malformed = parseSignupPayload({
-    username: "abc",
-    email: "bad-email",
-    password: "12345678",
-    confirmPassword: "12345678",
-  });
-  assert.equal(malformed.success, false);
-
-  const extraField = parseSignupPayload({
-    username: "abc",
-    email: "user@example.com",
-    password: "12345678",
-    confirmPassword: "12345678",
-    role: "admin",
-  });
-  assert.equal(extraField.success, false);
-});
-

@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 export default function TypingText({ text }: { text: string }) {
   const [displayed, setDisplayed] = useState("");
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     let i = 0;
-    setDisplayed("");
 
     const interval = setInterval(() => {
       setDisplayed(text.slice(0, i + 1));
@@ -18,6 +18,7 @@ export default function TypingText({ text }: { text: string }) {
 
     return () => clearInterval(interval);
   }, [text]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return <p className="text-sm text-[var(--text-2)]">{displayed}</p>;
 }

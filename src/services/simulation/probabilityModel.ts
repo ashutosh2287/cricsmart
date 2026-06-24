@@ -35,8 +35,9 @@ export function getBallOutcome(state: SimulationState, matchId?: string): Outcom
   const bat = getPlayer(state.striker);
   const bowl = getPlayer(state.bowler);
 
-  // 🎯 Pressure logic
-  const requiredRR = getRequiredRunRate(state, 20);
+  // 🎯 Pressure logic — use configOvers if available, else default to 20
+  const maxOvers = state.configOvers ?? 20;
+  const requiredRR = getRequiredRunRate(state, maxOvers);
 
   let pressure = 1;
   if (requiredRR && requiredRR > 10) pressure = 1.5;
@@ -68,10 +69,10 @@ export function getBallOutcome(state: SimulationState, matchId?: string): Outcom
   { type: "NB", runs: 1, prob: 0.015 },
 
   // 🔥 BYES (no batsman credit)
-  { type: "BYE", runs: randomForMatch(matchId) < 0.7 ? 1 : 2, prob: 0.02 },
+  { type: "BYE", runs: 0, prob: 0.02 },
 
   // 🔥 LEG BYES
-  { type: "LB", runs: randomForMatch(matchId) < 0.7 ? 1 : 2, prob: 0.02 },
+  { type: "LB", runs: 0, prob: 0.02 },
 ];
 
   // 🔥 NORMALIZE PROBABILITIES
@@ -91,7 +92,12 @@ function weightedRandom(options: Outcome[], matchId?: string): Outcome {
 
   for (const opt of options) {
     sum += opt.prob;
-    if (rand <= sum) return opt;
+    if (rand <= sum) {
+      if (opt.type === "BYE" || opt.type === "LB") {
+        return { ...opt, runs: randomForMatch(matchId) < 0.7 ? 1 : 2 };
+      }
+      return opt;
+    }
   }
 
   return options[0];

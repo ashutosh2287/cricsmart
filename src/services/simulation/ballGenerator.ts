@@ -73,6 +73,8 @@ export function generateBallEvent(state: SimulationState, matchId?: string): Bal
       };
 
     case "WICKET":
+      const dismissalKinds = ["BOWLED", "CAUGHT", "LBW", "RUN_OUT", "STUMPED"] as const;
+      const dismissalIndex = Math.floor(Math.random() * dismissalKinds.length);
       return {
         ...base,
         type: "WICKET",
@@ -82,7 +84,7 @@ export function generateBallEvent(state: SimulationState, matchId?: string): Bal
         extra: false,
         isLegalDelivery: true,
         dismissedBatsman: striker,
-        dismissalKind: "BOWLED"
+        dismissalKind: dismissalKinds[dismissalIndex]
       };
 
     case "WD":

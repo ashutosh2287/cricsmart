@@ -24,8 +24,6 @@ export function addBallEvent(event: BallEvent) {
   }
 
   events[matchSlug].push(event);
-
-  // 🔥 ENTERPRISE EVENT ROUTING
 }
 
 /*

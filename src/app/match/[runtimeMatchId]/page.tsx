@@ -3,9 +3,6 @@
 import React, { useEffect, useMemo, useState, use } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import AdminScoringPanel from "@/components/admin/AdminScoringPanel";
-import BroadcastControlDashboard from "@/components/BroadcastControlDashboard";
-import BroadcastDirectorPanel from "@/components/BroadcastDirectorPanel";
 import CommentaryPanel from "@/components/match/CommentaryPanel";
 import GlassPanel from "@/components/ui/GlassPanel";
 import HighlightTimeline from "@/components/HighlightTimeline";
@@ -51,7 +48,6 @@ import { getMatchBySlug } from "@/services/matchService";
 import { connectRealtime, disconnectRealtime } from "@/services/realtime/connectRealtime";
 import type { MatchReconnectHealth } from "@/services/match/matchRegistry";
 import type { LiveSessionState } from "@/types/liveSession";
-import { getBattingOrder, getBowlingOrder } from "@/services/simulation/lineup";
 import { initTacticalOverlayBridge } from "@/services/tacticalOverlayBridge";
 import WagonWheel from "@/components/analytics/WagonWheel";
 import { calculateWinProbability } from "@/services/analytics/calculateWinProbability";
@@ -144,34 +140,35 @@ const MATCH_PAGE_STYLES = `
     --mdp-surface-2: rgba(255,255,255,0.05);
     --mdp-border: rgba(255,255,255,0.07);
     --mdp-border-med: rgba(255,255,255,0.12);
-    --mdp-text-1: #fff;
-    --mdp-text-2: rgba(255,255,255,0.65);
-    --mdp-text-3: rgba(255,255,255,0.35);
+    --mdp-text-1: #F0F4F8;
+    --mdp-text-2: #94A3B8;
+    --mdp-text-3: #475569;
   }
 
   /* ── animated live dot ── */
   @keyframes mdp-pulse { 0% { transform:scale(1); opacity:.5 } 100% { transform:scale(2.5); opacity:0 } }
   .mdp-live-dot { display:inline-block; position:relative; width:8px; height:8px; flex-shrink:0 }
-  .mdp-live-dot::before { content:''; position:absolute; inset:0; border-radius:50%; background:var(--mdp-cyan); animation:mdp-pulse 1.4s ease-out infinite; opacity:.5 }
-  .mdp-live-dot::after  { content:''; position:absolute; inset:1px; border-radius:50%; background:var(--mdp-cyan) }
+  .mdp-live-dot::before { content:''; position:absolute; inset:0; border-radius:50%; background:var(--mdp-red); animation:mdp-pulse 1.4s ease-out infinite; opacity:.5 }
+  .mdp-live-dot::after  { content:''; position:absolute; inset:1px; border-radius:50%; background:var(--mdp-red) }
   .mdp-live-dot.amber::before, .mdp-live-dot.amber::after { background:var(--mdp-amber) }
   .mdp-live-dot.green::before,  .mdp-live-dot.green::after  { background:var(--mdp-green) }
 
   /* ── hero banner ── */
   .mdp-hero {
-    background: linear-gradient(135deg, rgba(0,229,255,0.05) 0%, rgba(0,77,255,0.05) 50%, rgba(124,58,237,0.04) 100%);
-    border: 1px solid rgba(0,229,255,0.1);
+    background: linear-gradient(135deg, rgba(0,229,255,0.08) 0%, rgba(124,58,237,0.06) 50%, rgba(0,255,135,0.04) 100%);
+    border: 1px solid rgba(0,229,255,0.12);
     border-radius: 16px;
     padding: 20px 24px;
     position: relative;
     overflow: hidden;
+    backdrop-filter: blur(8px);
   }
   .mdp-hero::before {
     content: '';
     position: absolute;
     top: -60px; right: -60px;
     width: 220px; height: 220px;
-    background: radial-gradient(circle, rgba(0,229,255,0.07), transparent 65%);
+    background: radial-gradient(circle, rgba(0,229,255,0.08), transparent 65%);
     pointer-events: none;
   }
   .mdp-hero-eyebrow {
@@ -182,7 +179,8 @@ const MATCH_PAGE_STYLES = `
   .mdp-hero-title {
     font-size: clamp(20px, 2.5vw, 28px);
     font-weight: 800; letter-spacing: -.025em;
-    color: #fff; margin: 0 0 4px;
+    color: var(--mdp-text-1); margin: 0 0 4px;
+    font-family: "Space Grotesk", "DM Sans", sans-serif;
   }
   .mdp-hero-sub { font-size: 12px; color: var(--mdp-text-3); }
 
@@ -190,11 +188,11 @@ const MATCH_PAGE_STYLES = `
   .mdp-score-big {
     font-size: clamp(36px, 5vw, 56px);
     font-weight: 900; letter-spacing: -.04em;
-    color: #fff; line-height: 1;
+    color: var(--mdp-text-1); line-height: 1;
   }
   .mdp-score-over { font-size: 13px; color: var(--mdp-text-3); margin-top: 3px; font-family: monospace; }
 
-  /* ── stat pills (upgraded) ── */
+  /* ── stat pills ── */
   .mdp-pill {
     background: rgba(255,255,255,0.025);
     border: 1px solid rgba(255,255,255,0.07);
@@ -202,15 +200,15 @@ const MATCH_PAGE_STYLES = `
     padding: 10px 14px;
     min-height: 64px;
     display: flex; flex-direction: column; justify-content: space-between;
-    transition: border-color .2s;
+    transition: border-color .2s, box-shadow .2s;
   }
-  .mdp-pill:hover { border-color: rgba(0,229,255,0.2); }
+  .mdp-pill:hover { border-color: rgba(0,229,255,0.25); box-shadow: 0 0 12px rgba(0,229,255,0.08); }
   .mdp-pill-label {
     font-size: 10px; font-weight: 700; letter-spacing: .14em;
     text-transform: uppercase; color: var(--mdp-text-3);
   }
   .mdp-pill-value {
-    font-size: 14px; font-weight: 700; color: #fff; margin-top: 6px;
+    font-size: 14px; font-weight: 700; color: var(--mdp-text-1); margin-top: 6px;
   }
   .mdp-pill.cyan  { border-color: rgba(0,229,255,0.15); }
   .mdp-pill.green { border-color: rgba(0,255,135,0.15); }
@@ -228,7 +226,7 @@ const MATCH_PAGE_STYLES = `
     font-size: 12px; font-weight: 700;
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.1);
-    color: #fff; flex-shrink: 0;
+    color: var(--mdp-text-1); flex-shrink: 0;
   }
   .mdp-ball.four   { background: rgba(0,229,255,0.15); border-color: rgba(0,229,255,0.35); color: var(--mdp-cyan); }
   .mdp-ball.six    { background: rgba(0,255,135,0.15); border-color: rgba(0,255,135,0.35); color: var(--mdp-green); }
@@ -239,10 +237,10 @@ const MATCH_PAGE_STYLES = `
   /* ── tab bar ── */
   .mdp-tabbar {
     display: flex; gap: 0;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
     overflow-x: auto;
     position: sticky; top: 24px; z-index: 20;
-    background: rgba(4,10,20,0.85); backdrop-filter: blur(12px);
+    background: rgba(4,10,20,0.92); backdrop-filter: blur(16px) saturate(1.2);
     border-radius: 0;
     padding: 0 2px;
   }
@@ -255,7 +253,7 @@ const MATCH_PAGE_STYLES = `
     border-bottom: 2px solid transparent;
     transition: color .2s, border-color .2s;
   }
-  .mdp-tab:hover  { color: rgba(255,255,255,.7); }
+  .mdp-tab:hover  { color: var(--mdp-text-2); }
   .mdp-tab.active { color: var(--mdp-cyan); border-bottom-color: var(--mdp-cyan); font-weight: 700; }
 
   /* ── section header ── */
@@ -263,16 +261,16 @@ const MATCH_PAGE_STYLES = `
     font-size: 10px; font-weight: 700; letter-spacing: .18em;
     text-transform: uppercase; color: rgba(0,229,255,0.7); margin-bottom: 4px;
   }
-  .mdp-sec-title { font-size: 16px; font-weight: 700; color: #fff; }
+  .mdp-sec-title { font-size: 16px; font-weight: 700; color: var(--mdp-text-1); }
 
   /* ── panel card ── */
   .mdp-card {
     background: rgba(255,255,255,0.025);
     border: 1px solid rgba(255,255,255,0.07);
     border-radius: 14px; padding: 18px 20px;
-    transition: border-color .2s;
+    transition: border-color .2s, box-shadow .2s;
   }
-  .mdp-card:hover { border-color: rgba(255,255,255,0.11); }
+  .mdp-card:hover { border-color: rgba(0,229,255,0.15); box-shadow: 0 0 15px rgba(0,229,255,0.06); }
 
   /* ── right rail ── */
   .mdp-rail-label {
@@ -280,7 +278,7 @@ const MATCH_PAGE_STYLES = `
     text-transform: uppercase; color: var(--mdp-text-3); margin-bottom: 3px;
   }
   .mdp-rail-value {
-    font-size: 14px; font-weight: 700; color: #fff;
+    font-size: 14px; font-weight: 700; color: var(--mdp-text-1);
     padding: 8px 12px;
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,255,255,0.06);
@@ -1071,32 +1069,6 @@ function TabsArea({
         {activeTab === "admin" && isAdmin && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div className="mdp-card">
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                <div style={{ width: 4, height: 18, borderRadius: 2, background: "var(--mdp-cyan)", flexShrink: 0 }} />
-                <div>
-                  <p className="mdp-sec-eyebrow">Scoring</p>
-                  <h3 className="mdp-sec-title">Admin Scoring Panel</h3>
-                </div>
-              </div>
-              <div style={{ position: "relative", zIndex: 9999, pointerEvents: "auto" }}>
-                <AdminScoringPanel matchId={match.slug} />
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <div className="mdp-card">
-                <p className="mdp-sec-eyebrow" style={{ marginBottom: 4 }}>Broadcast</p>
-                <h3 className="mdp-sec-title" style={{ marginBottom: 14 }}>Director Panel</h3>
-                <BroadcastDirectorPanel />
-              </div>
-              <div className="mdp-card">
-                <p className="mdp-sec-eyebrow" style={{ marginBottom: 4 }}>Broadcast</p>
-                <h3 className="mdp-sec-title" style={{ marginBottom: 14 }}>Control Dashboard</h3>
-                <BroadcastControlDashboard />
-              </div>
-            </div>
-
-            <div className="mdp-card">
               <p className="mdp-sec-eyebrow" style={{ marginBottom: 4 }}>Simulation</p>
               <h3 className="mdp-sec-title" style={{ marginBottom: 16 }}>Simulation Controls</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1203,13 +1175,46 @@ function TabsArea({
                 </div>
               </div>
             </div>
+
+            {/* Delete Simulation */}
+            <div className="mdp-card">
+              <p className="mdp-sec-eyebrow" style={{ marginBottom: 4 }}>Danger Zone</p>
+              <h3 className="mdp-sec-title" style={{ marginBottom: 12 }}>Delete Simulation</h3>
+              <p style={{ fontSize: 13, color: "var(--mdp-text-3)", marginBottom: 14 }}>
+                Permanently remove this simulation and all its data. This action cannot be undone.
+              </p>
+              <button
+                type="button"
+                className="mdp-admin-btn stop"
+                onClick={async () => {
+                  if (!confirm("Are you sure you want to delete this simulation?")) return;
+                  try {
+                    const res = await fetch("/api/matches/delete", {
+                      method: "DELETE",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ matchId: match.slug }),
+                    });
+                    if (res.ok) {
+                      window.location.href = "/matches";
+                    } else {
+                      setStartError("Failed to delete simulation.");
+                    }
+                  } catch (err) {
+                    console.error("Delete failed", err);
+                    setStartError("Failed to delete simulation.");
+                  }
+                }}
+              >
+                🗑 Delete Simulation
+              </button>
+            </div>
           </div>
         )}
       </div>
 
       {/* ── Right Rail (sticky) ── */}
       {activeTab !== "live" && (
-        <div style={{ display: "none" }} className="lg:block">
+        <div className="hidden lg:block">
           <StickyInsightsRail match={match} sessionMeta={sessionMeta} />
         </div>
       )}

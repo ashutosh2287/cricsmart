@@ -11,18 +11,21 @@ type TensionState = {
   score: number;
 };
 
-const tension: TensionState = {
-  score: 0
-};
+const tensionByMatch: Record<string, TensionState> = {};
 
-/*
-================================================
-RESET (replay rebuild safe)
-================================================
-*/
+function getTension(matchId: string): TensionState {
+  if (!tensionByMatch[matchId]) {
+    tensionByMatch[matchId] = { score: 0 };
+  }
+  return tensionByMatch[matchId];
+}
 
-export function resetTension() {
-  tension.score = 0;
+export function resetTension(matchId?: string) {
+  if (matchId) {
+    delete tensionByMatch[matchId];
+  } else {
+    Object.keys(tensionByMatch).forEach(k => delete tensionByMatch[k]);
+  }
 }
 
 /*
@@ -41,11 +44,8 @@ export function updateTension(
   strategic?: StrategicContext
 ): number {
 
-  /*
-  --------------------------------------------
-  BASE EVENT REACTIONS
-  --------------------------------------------
-  */
+  const matchId = signal.matchId;
+  const tension = getTension(matchId);
 
   switch (signal.type) {
 

@@ -12,10 +12,11 @@ import { RedisSimulationStorage } from "@/services/storage/redisSimulationStorag
 import { getSimulationPreset } from "@/services/simulation/simulationPresets";
 import { setSimulationSeed } from "@/services/simulation/simulationRandom";
 import { logAuthSensitiveAction, requireRouteAccess } from "@/services/auth/routeGuard";
+import { getRedis } from "@/services/storage/redisClient";
 
 export const runtime = "nodejs";
 
-const startLocks = new Set<string>();
+const LOCK_TTL_SECONDS = 30;
 
 type StartSimulationBody = {
   matchId?: string;
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
   const access = await requireRouteAccess({ req, scope: "admin" });
   if (!access.ok) return access.response;
 
-  let lockedMatchId: string | undefined;
+  let lockKey: string | undefined;
 
   try {
     const body = (await req.json()) as StartSimulationBody;
@@ -52,9 +53,6 @@ export async function POST(req: Request) {
     const tossDecision = preset?.tossDecision ?? body?.tossDecision;
     const seed = body?.seed?.trim();
 
-    // ==============================
-    // ✅ VALIDATION
-    // ==============================
     if (!matchId) {
       return Response.json(
         { success: false, error: "matchId is required" },
@@ -76,18 +74,24 @@ export async function POST(req: Request) {
       );
     }
 
-    // ==============================
-    // 🔒 LOCK CHECK
-    // ==============================
-    if (startLocks.has(matchId) || isSimulationRunning(matchId)) {
+    // Redis distributed lock
+    if (isSimulationRunning(matchId)) {
       return Response.json(
         { success: true, alreadyRunning: true, matchId },
         { status: 200 }
       );
     }
 
-    startLocks.add(matchId);
-    lockedMatchId = matchId;
+    const redis = getRedis();
+    lockKey = `lock:simulation:start:${matchId}`;
+    const acquired = await redis.set(lockKey, "1", "EX", LOCK_TTL_SECONDS, "NX");
+
+    if (!acquired) {
+      return Response.json(
+        { success: true, alreadyRunning: true, matchId },
+        { status: 200 }
+      );
+    }
 
     // ==============================
     // 🏏 GET TEAMS
@@ -288,8 +292,13 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   } finally {
-    if (lockedMatchId) {
-      startLocks.delete(lockedMatchId);
+    if (lockKey) {
+      try {
+        const redis = getRedis();
+        await redis.del(lockKey);
+      } catch {
+        // Lock will expire via TTL
+      }
     }
   }
 }

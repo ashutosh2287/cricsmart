@@ -1,15 +1,16 @@
-import test from "node:test";
-import assert from "node:assert/strict";
+import { describe, it, expect } from "vitest";
 import { resolveRequestedTab } from "@/services/match/matchTabRouting";
 
-test("resolveRequestedTab defaults to overview when tab is missing", () => {
-  assert.equal(resolveRequestedTab(null), "overview");
-});
+describe("resolveRequestedTab", () => {
+  it("defaults to overview when tab is missing", () => {
+    expect(resolveRequestedTab(null)).toBe("overview");
+  });
 
-test("resolveRequestedTab maps timeline to overs", () => {
-  assert.equal(resolveRequestedTab("timeline"), "overs");
-});
+  it("maps timeline to overs", () => {
+    expect(resolveRequestedTab("timeline")).toBe("overs");
+  });
 
-test("resolveRequestedTab keeps explicit admin tab", () => {
-  assert.equal(resolveRequestedTab("admin"), "admin");
+  it("keeps explicit admin tab", () => {
+    expect(resolveRequestedTab("admin")).toBe("admin");
+  });
 });

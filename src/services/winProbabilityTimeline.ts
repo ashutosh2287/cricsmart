@@ -21,7 +21,7 @@ export function updateWinProbabilityTimeline(matchId: string) {
 
   const innings = state.innings[state.currentInningsIndex];
 
-  const overValue = innings.over + innings.ball / 10;
+  const overValue = innings.over + innings.ball / 6;
 
   const point: ProbabilityPoint = {
     over: overValue,

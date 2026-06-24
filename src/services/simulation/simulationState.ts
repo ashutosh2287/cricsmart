@@ -73,5 +73,5 @@ export type SimulationState = {
 
   phase: "POWERPLAY" | "MIDDLE" | "DEATH";
 
-  
+  configOvers?: number;
 };

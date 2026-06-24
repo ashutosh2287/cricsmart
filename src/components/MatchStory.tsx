@@ -48,8 +48,6 @@ export default function MatchStory({ matchId }: Props) {
       {/* 🔥 TITLE */}
       <h2 className="font-bold text-lg">Match Story</h2>
 
-      <h2 className="font-bold text-lg">Match Story</h2>
-
 {/* 🏆 PLAYER OF MATCH */}
 {pom && (
   <div className="text-yellow-400 text-sm bg-white/5 px-3 py-2 rounded-md border border-white/10">

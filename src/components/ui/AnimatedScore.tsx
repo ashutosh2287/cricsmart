@@ -28,6 +28,7 @@ export default function AnimatedScore({ value, eventType = null }: Props) {
   const [prevValue, setPrevValue] = useState(value);
   const [isFlipping, setIsFlipping] = useState(false);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (value !== prevValue) {
       setIsFlipping(true);
@@ -49,6 +50,7 @@ export default function AnimatedScore({ value, eventType = null }: Props) {
       };
     }
   }, [value, prevValue, eventType]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const displayValue = String(value).split("");
 

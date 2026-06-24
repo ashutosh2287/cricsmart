@@ -11,7 +11,9 @@
     "build": "next build",
     "start": "next start",
     "barrels": "barrelsby --directory src/services --delete",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -44,6 +46,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.9",
     "barrelsby": "^2.8.1",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.4",
@@ -51,7 +54,8 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.1.9"
   },
   "description": "> This README is intentionally written as a **long-form, report-ready source document**. You can paste this file into an AI tool and directly generate:\r > - academic project report\r > - viva notes\r > - project synopsis\r > - software engineering documentation\r > - final project PPT",
   "main": "index.js",

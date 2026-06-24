@@ -182,16 +182,17 @@ export default function MatchesPage() {
       animate="visible"
     >
       <motion.div variants={fadeUp}>
-        <h1 className="font-display text-xl font-semibold tracking-tight text-[var(--text-primary)] md:text-2xl">
-          Matches
+        <h1 className="text-xl font-semibold tracking-tight md:text-2xl" style={{ fontFamily: "var(--font-display)" }}>
+          <span className="gradient-text">Live</span> Cricket
         </h1>
+        <p className="text-sm text-[var(--text-secondary)] mt-1">Real-time scores from around the world</p>
       </motion.div>
 
       {discovery.stale && (
         <motion.div variants={fadeUp}>
-          <Card className="px-3 py-2 text-xs" style={{ background: "var(--accent-light)" }}>
-            <span style={{ color: "var(--accent)" }}>Scores may be delayed</span>
-          </Card>
+          <div className="px-3 py-2 rounded-lg text-xs bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.2)]">
+            <span className="text-[var(--amber)]">Scores may be delayed</span>
+          </div>
         </motion.div>
       )}
 

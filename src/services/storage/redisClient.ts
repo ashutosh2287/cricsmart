@@ -31,7 +31,7 @@ export function getRedis(): Redis {
 
   redis = new Redis(url, {
     ...(useTls ? { tls: {} } : {}),
-    maxRetriesPerRequest: 1,
+    maxRetriesPerRequest: 3,
     connectTimeout: 5000,
     enableOfflineQueue: true,
   });

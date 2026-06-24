@@ -5,12 +5,12 @@ import { computeWinProbability } from "../winProbabilityEngine";
 import { computeProbabilitySwing } from "../probabilitySwingEngine";
 import type { MatchState } from "../matchEngine";
 
-let lastProbability: number | null = null;
+const lastProbability: Record<string, number | null> = {};
 
 export function computeMatchDrama(
   state: MatchState
 ) {
-
+  const matchId = state.matchId;
   let drama = 0;
 
   const pressure = computeChasePressure(state);
@@ -26,20 +26,17 @@ export function computeMatchDrama(
   const probability = computeWinProbability(state);
 
   if (probability) {
-
     const swing = computeProbabilitySwing(
-      lastProbability,
+      lastProbability[matchId] ?? null,
       state
     );
 
-    lastProbability = probability.battingWinProbability;
+    lastProbability[matchId] = probability.battingWinProbability;
 
     if (swing) {
-
       if (swing.intensity === "MODERATE") drama += 10;
       if (swing.intensity === "MAJOR") drama += 20;
       if (swing.intensity === "SHOCK") drama += 35;
-
     }
   }
 

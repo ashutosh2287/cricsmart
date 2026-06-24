@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { setSimulationSpeed } from "@/services/simulation/matchSimulator";
 import { logAuthSensitiveAction, requireRouteAccess } from "@/services/auth/routeGuard";
 
+export const runtime = "nodejs";
+
 export async function POST(req: NextRequest) {
   const access = await requireRouteAccess({ req, scope: "admin" });
   if (!access.ok) return access.response;

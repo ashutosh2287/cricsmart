@@ -372,7 +372,11 @@ function finishMatch(state: SimulationState, matchState: MatchStateType) {
 
   const first = matchState.innings[0];
   const second = matchState.innings[1];
-  if (!first || !second) return;
+  if (!first || !second) {
+    state.winner = null;
+    state.winBy = null;
+    return;
+  }
 
   const teamA = state.teamA.name;
   const teamB = state.teamB.name;
@@ -436,15 +440,6 @@ if (engineState && saved) {
     };
   }
 
-  if (control.isRunning || control.runBallRef || control.timeoutRef) {
-  console.log(`⚠️ Simulation already starting/running for match ${matchId}`);
-  return {
-    started: false,
-    alreadyRunning: true,
-    reason: "ALREADY_RUNNING" as const,
-  };
-}
-
 if (control.timeoutRef) {
   clearTimeout(control.timeoutRef);
   control.timeoutRef = null;
@@ -483,6 +478,7 @@ if (state.battingOrder?.length >= 2) {
     try {
       const replay = getReplayState(matchId);
       if (replay?.isReplayMode) {
+        control.timeoutRef = setTimeout(runBall, control.speed);
         return;
       }
 

@@ -256,3 +256,124 @@ export const typewriter = {
     transition: { duration: 0.8, ease: easeStandard },
   },
 };
+
+/* ─── Cinematic Hero Reveal ─── */
+
+export const heroReveal = {
+  hidden: { opacity: 0, y: 30, filter: "blur(10px)" },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.8, ease: easeSmooth },
+  },
+};
+
+export const heroStagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.15, delayChildren: 0.2 } },
+};
+
+export const heroChild = {
+  hidden: { opacity: 0, y: 20, filter: "blur(6px)" },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.6, ease: easeSmooth },
+  },
+};
+
+/* ─── Cinematic Card ─── */
+
+export const cardReveal = {
+  hidden: { opacity: 0, y: 24, scale: 0.97 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.5, ease: easeStandard },
+  },
+};
+
+export const cardHover = {
+  rest: { scale: 1, y: 0 },
+  hover: {
+    scale: 1.02,
+    y: -4,
+    transition: { duration: 0.3, type: "spring" as const, stiffness: 300, damping: 20 },
+  },
+  tap: { scale: 0.98 },
+};
+
+/* ─── Score Flash ─── */
+
+export const scoreFlash = {
+  initial: { scale: 1 },
+  animate: {
+    scale: [1, 1.15, 1],
+    transition: { duration: 0.4, ease: easeSpring },
+  },
+};
+
+/* ─── Staggered Grid ─── */
+
+export const staggerGrid = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.06, delayChildren: 0.1 },
+  },
+};
+
+export const gridItem = {
+  hidden: { opacity: 0, y: 16, scale: 0.95 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.4, ease: easeStandard },
+  },
+};
+
+/* ─── Parallax Fade ─── */
+
+export const parallaxFade = {
+  hidden: { opacity: 0, y: 60 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.7, ease: easeSmooth },
+  },
+};
+
+/* ─── Ticker Scroll ─── */
+
+export const tickerScroll = {
+  animate: {
+    x: [0, -1000],
+    transition: { duration: 20, repeat: Infinity, ease: "linear" },
+  },
+};
+
+/* ─── Glow Pulse ─── */
+
+export const glowPulse = {
+  animate: {
+    boxShadow: [
+      "0 0 15px rgba(0, 229, 255, 0.2)",
+      "0 0 30px rgba(0, 229, 255, 0.4)",
+      "0 0 15px rgba(0, 229, 255, 0.2)",
+    ],
+    transition: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+  },
+};
+
+/* ─── Live Dot Pulse ─── */
+
+export const liveDotPulse = {
+  animate: {
+    scale: [1, 1.4, 1],
+    opacity: [1, 0.7, 1],
+    transition: { duration: 1.5, repeat: Infinity, ease: "easeInOut" },
+  },
+};

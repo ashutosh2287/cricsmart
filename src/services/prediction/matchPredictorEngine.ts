@@ -60,12 +60,10 @@ export function runMatchPredictor(matchId: string) {
   Wickets slow scoring
   */
 
-  if (wickets >= 5) {
-    projectedRunRate *= 0.9;
-  }
-
   if (wickets >= 8) {
     projectedRunRate *= 0.8;
+  } else if (wickets >= 5) {
+    projectedRunRate *= 0.9;
   }
 
   /*

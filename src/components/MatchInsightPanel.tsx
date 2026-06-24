@@ -97,30 +97,26 @@ export default function MatchInsightPanel({ matchId }: Props) {
       style={{ background: "var(--surface)", border: "0.5px solid var(--border)", color: "var(--text-1)" }}
     >
 
-      {/* Pattern Insights */}
-
-      {patternInsights.length > 0 && (
-
+      {/* Situation Insights */}
+      {situationInsights.length > 0 && (
         <div className="mb-4 space-y-1">
-
           {situationInsights.map((s, i) => (
+            <div key={i} className="text-sm text-[var(--accent)]">
+              ⚠ {s.text}
+            </div>
+          ))}
+        </div>
+      )}
 
-  <div key={i} className="text-sm text-[var(--accent)]">
-    ⚠ {s.text}
-  </div>
-
-))}
-
+      {/* Pattern Insights */}
+      {patternInsights.length > 0 && (
+        <div className="mb-4 space-y-1">
           {patternInsights.map((p, i) => (
-
             <div key={i} className="text-sm text-[var(--brand)]">
               ⚡ {p.text}
             </div>
-
           ))}
-
         </div>
-
       )}
 
       <h3 className="text-lg font-semibold mb-3">

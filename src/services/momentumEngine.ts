@@ -1,81 +1,56 @@
 import { subscribeCommand, Command } from "./commandBus";
 import { getHighlights } from "@/services/highlights/highlightStore";
 
-let momentum = 0;
+const momentumByMatch: Record<string, number> = {};
+const listenersByMatch: Record<string, Set<(value: number) => void>> = {};
 
-const listeners = new Set<(value: number) => void>();
-
-export function subscribeMomentum(cb: (value: number) => void) {
-  listeners.add(cb);
-  return () => listeners.delete(cb);
+export function subscribeMomentum(matchId: string, cb: (value: number) => void) {
+  if (!listenersByMatch[matchId]) listenersByMatch[matchId] = new Set();
+  listenersByMatch[matchId].add(cb);
+  return () => listenersByMatch[matchId]?.delete(cb);
 }
 
-function emitMomentum() {
-  listeners.forEach((l) => l(momentum));
+function emitMomentum(matchId: string) {
+  const val = momentumByMatch[matchId] ?? 0;
+  listenersByMatch[matchId]?.forEach((l) => l(val));
 }
-
-/*
-================================================
-🔥 MOMENTUM LOGIC (UPGRADED)
-================================================
-*/
 
 function handleCommand(command: Command) {
-
   const matchId = command.slug;
+  if (!matchId) return;
+
+  if (momentumByMatch[matchId] === undefined) momentumByMatch[matchId] = 0;
 
   switch (command.type) {
-
     case "RUN_SCORED":
-      momentum += 0.5;
+      momentumByMatch[matchId] += 0.5;
       break;
-
     case "BOUNDARY_FOUR":
-      momentum += 2;
+      momentumByMatch[matchId] += 2;
       break;
-
     case "BOUNDARY_SIX":
-      momentum += 3;
+      momentumByMatch[matchId] += 3;
       break;
-
     case "WICKET_FALL":
-      momentum -= 5; // ✅ CORRECT (negative)
+      momentumByMatch[matchId] -= 5;
       break;
-
     case "DOT_BALL":
-      momentum -= 1;
+      momentumByMatch[matchId] -= 1;
       break;
   }
 
-  /*
-  🔥 HIGHLIGHT BOOST (OPTIONAL)
-  */
+  const highlights = getHighlights(matchId);
+  const last = highlights[highlights.length - 1];
 
-  if (matchId) {
-    const highlights = getHighlights(matchId);
-    const last = highlights[highlights.length - 1];
-
-    if (last?.type === "TURNING_POINT") {
-      momentum += 6;
-    }
+  if (last?.type === "TURNING_POINT") {
+    momentumByMatch[matchId] += 6;
   }
 
-  /*
-  🔻 DECAY (SMOOTH)
-  */
+  momentumByMatch[matchId] *= 0.9;
+  momentumByMatch[matchId] = Math.max(-100, Math.min(100, momentumByMatch[matchId]));
 
-  momentum *= 0.9;
-
-  momentum = Math.max(-100, Math.min(100, momentum));
-
-  emitMomentum();
+  emitMomentum(matchId);
 }
-
-/*
-================================================
-INIT MOMENTUM ENGINE
-================================================
-*/
 
 export function initMomentumEngine() {
   subscribeCommand(handleCommand);

@@ -57,6 +57,19 @@ export default function RootLayout({
               <div className="cinematic-background__base absolute inset-0" />
               <div className="cinematic-background__glow cinematic-background__glow--blue absolute top-0 left-1/4 h-[600px] w-[600px] rounded-full blur-[140px]" />
               <div className="cinematic-background__glow cinematic-background__glow--accent absolute right-1/4 bottom-0 h-[600px] w-[600px] rounded-full blur-[140px]" />
+              <div className="cinematic-grid-overlay" />
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="cinematic-particle"
+                  style={{
+                    left: `${(i * 8.3) % 100}%`,
+                    bottom: `-10px`,
+                    animationDelay: `${i * 0.7}s`,
+                    animationDuration: `${6 + (i % 4) * 2}s`,
+                  }}
+                />
+              ))}
             </div>
 
             {/* ========================================

@@ -75,7 +75,7 @@ export function updateMatchPhase(matchId: string) {
       phase = "BOWLING_DOMINANCE";
     }
     else if (partnership && partnership.runs >= 50) {
-      phase = "MIDDLE_OVERS_BUILD";
+      phase = "DEATH_OVERS_ATTACK";
     }
     else {
       phase = "MIDDLE_OVERS_BUILD";

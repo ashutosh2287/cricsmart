@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-const USERNAME_PATTERN = /^[a-z0-9_]+$/;
+const USERNAME_PATTERN = /^[a-zA-Z0-9_]+$/;
 const PASSWORD_MIN_LENGTH = 8;
 
 const loginSchema = z
   .object({
     identifier: z.string().trim().min(1).optional(),
-    username: z.string().trim().min(3).regex(USERNAME_PATTERN).optional(),
+    username: z.string().trim().min(3).regex(USERNAME_PATTERN).transform(s => s.toLowerCase()).optional(),
     email: z.string().trim().email().optional(),
     password: z.string().min(PASSWORD_MIN_LENGTH),
   })
@@ -23,7 +23,7 @@ const loginSchema = z
 
 const signupSchema = z
   .object({
-    username: z.string().trim().min(3).regex(USERNAME_PATTERN),
+    username: z.string().trim().min(3).regex(USERNAME_PATTERN).transform(s => s.toLowerCase()),
     email: z.string().trim().email(),
     password: z.string().min(PASSWORD_MIN_LENGTH),
     confirmPassword: z.string().min(PASSWORD_MIN_LENGTH),

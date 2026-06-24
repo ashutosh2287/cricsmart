@@ -4,6 +4,8 @@ import { transitionSimulationLifecycle } from "@/services/simulation/simulation-
 import { SIMULATION_LIFECYCLE_STATES } from "@/services/simulation/simulation-lifecycle";
 import type { SimulationLifecycleState } from "@/services/simulation/simulation-lifecycle";
 
+export const runtime = "nodejs";
+
 export async function POST(req: NextRequest) {
   const access = await requireRouteAccess({ req, scope: "admin" });
   if (!access.ok) return access.response;

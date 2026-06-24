@@ -14,9 +14,12 @@ interface CardProps {
 export function Card({ children, className = "", hover = false, onClick, accent = false, style }: CardProps) {
   return (
     <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
       whileHover={
         hover
-          ? { y: -4, boxShadow: "0 8px 30px rgba(29, 158, 117, 0.18)" }
+          ? { y: -4, boxShadow: "0 8px 30px rgba(0, 229, 255, 0.12)", borderColor: "rgba(0, 229, 255, 0.25)" }
           : undefined
       }
       whileTap={onClick ? { scale: 0.98 } : undefined}

@@ -63,11 +63,13 @@ export default function MatchDramaMeter({ matchId }: Props) {
   const labelChanged = currentLabel !== prevLabel;
   const isHighDrama = drama >= 60;
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (labelChanged) {
       setPrevLabel(currentLabel);
     }
   }, [currentLabel, labelChanged, prevLabel]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <div

@@ -16,10 +16,6 @@ export default function GlobalAnalyticsPage() {
         Global Cricket Analytics
       </h1>
 
-      <h1 className="text-2xl font-bold">
-  Global Cricket Analytics
-</h1>
-
 <LeaderboardCards />
 <MomentumLeadersChart />
 

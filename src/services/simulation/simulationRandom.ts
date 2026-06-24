@@ -20,7 +20,7 @@ function xorshift32(state: SeedState): number {
   x ^= x >>> 17;
   x ^= x << 5;
   state.value = x >>> 0;
-  return (state.value & 0xffffffff) / 0x100000000;
+  return state.value / 0x100000000;
 }
 
 export function setSimulationSeed(matchId: string, seed: string) {

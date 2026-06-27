@@ -22,7 +22,7 @@ type ThemeProviderProps = {
   children: React.ReactNode;
 };
 
-const THEME_STORAGE_KEY = "cricsmart-theme";
+const THEME_STORAGE_KEY = "CricLens-theme";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function getSystemTheme(): ResolvedTheme {

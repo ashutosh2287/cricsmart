@@ -5,10 +5,11 @@ import { subscribeMatch } from "@/services/matchEngine";
 
 import { composeFullMatchStory } from "@/services/story/matchStoryComposer";
 import { generateMatchStory } from "@/services/story/matchStoryEngine";
-import { getLiveMatchStory } from "@/services/story/liveMatchStoryEngine"; // 🔥 NEW
+import { getLiveMatchStory } from "@/services/story/liveMatchStoryEngine";
 import { MatchStory as MatchStoryType } from "@/services/story/matchStoryEngine";
 
 import { getPlayerOfMatch } from "@/services/analytics/playerOfMatchEngine";
+import { TrendingDown, TrendingUp, AlertCircle, Sparkles, AlertTriangle } from "lucide-react";
 type Props = {
   matchId: string;
 };
@@ -50,18 +51,18 @@ export default function MatchStory({ matchId }: Props) {
 
 {/* 🏆 PLAYER OF MATCH */}
 {pom && (
-  <div className="text-yellow-400 text-sm bg-white/5 px-3 py-2 rounded-md border border-white/10">
-    🏆 Player of the Match: <span className="font-semibold">{pom}</span> 
+  <div className="text-[var(--amber)] text-sm bg-[var(--surface-3)] px-3 py-2 rounded-md border border-[var(--border)]">
+    🏆 Player of the Match: <span className="font-semibold">{pom}</span>
   </div>
 )}
 
       {/* ⚡ LIVE STORY */}
       {liveStory && (
-        <div className="bg-white/5 p-3 rounded-lg border border-white/10">
+        <div className="bg-[var(--surface-3)] p-3 rounded-lg border border-[var(--border)]">
           <p className="text-xs text-[var(--text-2)] mb-1 uppercase tracking-wide">
             Live Narrative
           </p>
-          <p className="text-sm text-yellow-300 leading-relaxed">
+          <p className="text-sm text-[var(--amber)] leading-relaxed">
             {liveStory}
           </p>
         </div>
@@ -79,40 +80,45 @@ export default function MatchStory({ matchId }: Props) {
 
       {/* 📊 INSIGHTS */}
       {insights && (
-        <div className="space-y-2 border-t border-white/10 pt-3">
+        <div className="space-y-2 border-t border-[var(--border)] pt-3">
 
           <p className="text-xs text-[var(--text-2)] uppercase tracking-wide">
             Key Insights
           </p>
 
           {insights.turningPoint && (
-            <p className="text-sm text-red-400">
-              🔴 {insights.turningPoint}
-            </p>
+            <div className="flex items-start gap-1.5 text-sm text-[var(--danger)]">
+              <TrendingDown className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>{insights.turningPoint}</span>
+            </div>
           )}
 
           {insights.partnership && (
-            <p className="text-sm text-green-400">
-              🟢 {insights.partnership}
-            </p>
+            <div className="flex items-start gap-1.5 text-sm text-[var(--success)]">
+              <TrendingUp className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>{insights.partnership}</span>
+            </div>
           )}
 
           {insights.bestMoment && (
-            <p className="text-sm text-blue-400">
-              🔵 {insights.bestMoment}
-            </p>
+            <div className="flex items-start gap-1.5 text-sm text-[var(--brand)]">
+              <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>{insights.bestMoment}</span>
+            </div>
           )}
 
           {insights.collapsePhase && (
-            <p className="text-sm text-orange-400">
-              ⚠ {insights.collapsePhase}
-            </p>
+            <div className="flex items-start gap-1.5 text-sm text-[var(--amber)]">
+              <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>{insights.collapsePhase}</span>
+            </div>
           )}
 
           {insights.deathDrama && (
-            <p className="text-sm text-[var(--accent-brand)]">
-              ⚡ {insights.deathDrama}
-            </p>
+            <div className="flex items-start gap-1.5 text-sm text-[var(--accent-brand)]">
+              <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>{insights.deathDrama}</span>
+            </div>
           )}
 
         </div>

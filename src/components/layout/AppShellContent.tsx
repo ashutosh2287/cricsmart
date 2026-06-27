@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import AppFooter from "@/components/layout/AppFooter";
 
 const pageVariants = {
   hidden: { opacity: 0, y: 12 },
@@ -24,17 +25,20 @@ export default function AppShellContent({
     return <>{children}</>;
   }
 
-  // All other pages get the standard constrained layout with enter animation
+  // All other pages get the standard constrained layout with footer
   return (
-    <main className="min-h-screen bg-[var(--bg-base)]">
-      <motion.div
-        className="mx-auto w-full max-w-[1100px] px-3 py-6 sm:px-4 sm:py-8 md:px-6"
-        variants={pageVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        {children}
-      </motion.div>
-    </main>
+    <>
+      <main id="main-content" className="min-h-screen bg-[var(--bg-base)]">
+        <motion.div
+          className="mx-auto w-full max-w-6xl px-3 py-6 sm:px-4 sm:py-8 md:px-6"
+          variants={pageVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          {children}
+        </motion.div>
+      </main>
+      <AppFooter />
+    </>
   );
 }

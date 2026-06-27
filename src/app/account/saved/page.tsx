@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { getRequestAuthSession } from "@/services/auth/serverRequestContext";
 
-export const metadata = { title: "Saved & Favourites — CricSmart" };
+export const metadata = { title: "Saved & Favourites — CricLens" };
 
 export default async function SavedPage() {
   const session = await getRequestAuthSession();

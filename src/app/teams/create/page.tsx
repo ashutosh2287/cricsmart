@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getRequestAuthSession } from "@/services/auth/serverRequestContext";
 import { CreateTeamForm } from "./CreateTeamForm";
 
-export const metadata = { title: "Create Team — CricSmart" };
+export const metadata = { title: "Create Team — CricLens" };
 
 export default async function CreateTeamPage() {
   const session = await getRequestAuthSession();

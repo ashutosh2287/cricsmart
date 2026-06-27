@@ -14,7 +14,7 @@ import AppShellContent from "@/components/layout/AppShellContent";
 const themeInitializerScript = `
 (() => {
   try {
-    const key = "cricsmart-theme";
+    const key = "CricLens-theme";
     const saved = window.localStorage.getItem(key);
     const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
     const resolved = saved === "light" ? "light" : saved === "dark" ? "dark" : prefersLight ? "light" : "dark";
@@ -29,8 +29,9 @@ const themeInitializerScript = `
 `;
 
 export const metadata: Metadata = {
-  title: "CricSmart",
-  description: "Real-Time Cricket Analytics Platform",
+  title: "CricLens — AI Cricket Intelligence",
+  description: "AI-powered cricket analytics platform with real-time insights, match predictions, and deep statistical analysis.",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({
@@ -48,6 +49,12 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitializerScript }} />
       </head>
       <body className="antialiased">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-lg focus:bg-[var(--brand)] focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-[var(--text-inv)] focus:shadow-lg"
+        >
+          Skip to content
+        </a>
         <ThemeProvider>
           <AuthProvider>
             {/* ========================================

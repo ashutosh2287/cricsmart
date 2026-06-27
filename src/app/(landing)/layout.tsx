@@ -10,14 +10,14 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "CricSmart — Cricket Intelligence, Redefined",
+  title: "CricLens — Cricket Intelligence, Redefined",
   description:
     "AI-powered cricket analytics platform. Real-time scores, match predictions, player insights, and fantasy tools — all in one place.",
   openGraph: {
-    title: "CricSmart — Cricket Intelligence, Redefined",
+    title: "CricLens — Cricket Intelligence, Redefined",
     description:
       "AI-powered cricket analytics. Real-time scores, predictions, and deep analytics.",
-    siteName: "CricSmart",
+    siteName: "CricLens",
   },
 };
 

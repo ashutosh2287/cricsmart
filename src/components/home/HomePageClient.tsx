@@ -64,6 +64,7 @@ export default function HomePageClient({
   const [teamAInput, setTeamAInput] = useState("");
   const [teamBInput, setTeamBInput] = useState("");
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const router = useRouter();
   const { authEnabled, isAuthenticated, loading: authLoading } = useAuth();
 
@@ -114,6 +115,20 @@ export default function HomePageClient({
       const data = await res.json();
       if (data?.matchId) router.push(`/admin/${data.matchId}`);
     } catch {} finally { setCreating(false); }
+  };
+
+  const handleDelete = async (matchId: string) => {
+    setDeletingId(matchId);
+    try {
+      const res = await fetch("/api/matches/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId }),
+      });
+      if (res.ok) {
+        setMatches((prev) => prev.filter((m) => m.matchId !== matchId));
+      }
+    } catch {} finally { setDeletingId(null); }
   };
 
   return (
@@ -174,8 +189,10 @@ export default function HomePageClient({
               <div className="card-cinematic-static p-6 glow-border">
                 <h3 className="text-sm font-semibold mb-4">Configure Simulation</h3>
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <input className="flex-1" placeholder="Team A Name" value={teamAInput} onChange={(e) => setTeamAInput(e.target.value)} />
-                  <input className="flex-1" placeholder="Team B Name" value={teamBInput} onChange={(e) => setTeamBInput(e.target.value)} />
+                  <label className="sr-only" htmlFor="team-a-input">Team A Name</label>
+                  <input id="team-a-input" className="flex-1" placeholder="Team A Name" value={teamAInput} onChange={(e) => setTeamAInput(e.target.value)} />
+                  <label className="sr-only" htmlFor="team-b-input">Team B Name</label>
+                  <input id="team-b-input" className="flex-1" placeholder="Team B Name" value={teamBInput} onChange={(e) => setTeamBInput(e.target.value)} />
                   <button
                     onClick={handleCreateMatch}
                     disabled={creating}
@@ -285,17 +302,33 @@ export default function HomePageClient({
                 const cfg = statusConfig[m.status] || statusConfig.Upcoming;
                 return (
                   <motion.div key={m.matchId} variants={gridItem}>
-                    <Link href={`/match/${m.matchId}`}>
-                      <div className="card-cinematic p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <GlowBadge color={cfg.color} pulse={m.status === "Live"}>{cfg.label}</GlowBadge>
-                          <span className="text-sm font-medium truncate hover:text-[var(--brand)] transition-colors">
-                            {m.teamA} vs {m.teamB}
-                          </span>
-                        </div>
-                        <span className="text-xs text-[var(--brand)] ml-4 whitespace-nowrap">Open →</span>
+                    <div className="card-cinematic p-4 flex items-center justify-between">
+                      <Link href={`/match/${m.matchId}`} className="flex items-center gap-3 min-w-0 flex-1">
+                        <GlowBadge color={cfg.color} pulse={m.status === "Live"}>{cfg.label}</GlowBadge>
+                        <span className="text-sm font-medium truncate hover:text-[var(--brand)] transition-colors">
+                          {m.teamA} vs {m.teamB}
+                        </span>
+                      </Link>
+                      <div className="flex items-center gap-2 ml-4 shrink-0">
+                        <Link href={`/match/${m.matchId}`} className="text-xs text-[var(--brand)] whitespace-nowrap hover:underline">
+                          Open →
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(m.matchId)}
+                          disabled={deletingId === m.matchId}
+                          className="w-7 h-7 rounded-md border border-[var(--border)] bg-[var(--surface-3)] flex items-center justify-center text-[var(--text-3)] hover:text-[var(--danger)] hover:border-[var(--danger)]/30 transition-colors disabled:opacity-50"
+                          title="Delete simulation"
+                        >
+                          {deletingId === m.matchId ? (
+                            <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                              <path d="M2 4h12M5.333 4V2.667a1.333 1.333 0 011.334-1.334h2.666a1.333 1.333 0 011.334 1.334V4m2 0v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4h9.334z" />
+                            </svg>
+                          )}
+                        </button>
                       </div>
-                    </Link>
+                    </div>
                   </motion.div>
                 );
               })}

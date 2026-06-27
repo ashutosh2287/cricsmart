@@ -9,7 +9,7 @@ import { ProfileActivityFeed } from "./ProfileActivityFeed";
 import { ProfileQuickActions } from "./ProfileQuickActions";
 import { ProfileFavorites } from "./ProfileFavorites";
 
-export const metadata = { title: "My Profile — CricSmart" };
+export const metadata = { title: "My Profile — CricLens" };
 
 export default async function ProfilePage() {
   const session = await getRequestAuthSession();

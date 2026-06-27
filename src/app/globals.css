@@ -30,7 +30,7 @@
   /* Text */
   --text-1: #F0F4F8;
   --text-2: #94A3B8;
-  --text-3: #475569;
+  --text-3: #8896A6;
   --text-inv: #040A14;
 
   /* Shadows */
@@ -265,6 +265,20 @@ button, input, textarea, select { font: inherit; }
 ::selection {
   background: rgba(0, 229, 255, 0.3);
   color: var(--text-primary);
+}
+
+/* ─── FOCUS VISIBLE (WCAG 2.4.7) ─── */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 /* ─── CINEMATIC UTILITY CLASSES ─── */

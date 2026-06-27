@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { stagger, fadeUp } from "@/components/ui/motion";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 
 interface StatsSnapshot {
   batting?: {
@@ -83,6 +84,7 @@ export default function PlayerProfileDetailPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6 p-6">
+      <Breadcrumbs items={[{ label: "Players", href: "/players" }, { label: profile!.displayName }]} />
       <motion.div initial="hidden" animate="visible" variants={fadeUp}>
         <h1 className="text-2xl font-bold text-[var(--text-primary)]">{profile!.displayName}</h1>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">

@@ -10,6 +10,8 @@ import UserAvatar from "@/components/account/UserAvatar";
 import MobileMenuButton from "@/components/navigation/MobileMenuButton";
 import { isPathActive } from "@/components/navigation/navigationUtils";
 import ThemeToggle from "@/components/ui/ThemeToggle";
+import GlobalSearch from "@/components/ui/GlobalSearch";
+import AnimatedLogo from "@/components/ui/AnimatedLogo";
 import { useAuth } from "@/providers/AuthProvider";
 import { useDrawer } from "@/hooks/useDrawer";
 
@@ -186,6 +188,7 @@ function NavbarInner({ pathname }: { pathname: string }) {
   const [matchesFilter, setMatchesFilter] = useState<MatchesFilter>("all");
   const [panelMatches, setPanelMatches] = useState<PanelMatch[]>([]);
   const [scrolled, setScrolled] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const lastFetchedAtRef = useRef(0);
   const allDropdownRef = useRef<HTMLDivElement>(null);
   const { isOpen, closeDrawer, toggleDrawer } = useDrawer();
@@ -314,16 +317,10 @@ function NavbarInner({ pathname }: { pathname: string }) {
             transition: "background 0.3s ease, border-color 0.3s ease, backdrop-filter 0.3s ease",
           }}
         >
-          <div className="mx-auto flex h-16 w-full max-w-[1100px] items-center justify-between px-4 md:px-6">
+          <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 md:px-6">
             <div className="flex items-center gap-3">
               <MobileMenuButton isOpen={isOpen} onClick={toggleDrawer} />
-              <Link
-                href="/"
-                className="text-lg font-bold tracking-tight transition md:text-xl"
-                style={{ fontFamily: "var(--font-display)", color: "var(--text-1)", fontSize: 18 }}
-              >
-                CricSmart
-              </Link>
+              <AnimatedLogo size="sm" />
             </div>
 
             <div className="hidden items-center gap-5 md:flex">
@@ -375,6 +372,17 @@ function NavbarInner({ pathname }: { pathname: string }) {
               </span>
               <button
                 type="button"
+                aria-label="Search"
+                onClick={() => setSearchOpen(true)}
+                className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-[var(--text-2)] transition hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
+              >
+                <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+                  <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M12.5 12.5L17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+              <button
+                type="button"
                 aria-label="Notifications"
                 className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-[var(--text-2)] transition hover:bg-[var(--bg-raised)] hover:text-[var(--text-primary)]"
               >
@@ -388,21 +396,28 @@ function NavbarInner({ pathname }: { pathname: string }) {
               {authLoading ? (
                 <span className="inline-flex h-9 w-20 animate-pulse rounded-md border border-[var(--border-subtle)] bg-[var(--bg-raised)]/50" />
               ) : authEnabled && isAuthenticated ? (
-                <Link
-                  href="/account/profile"
-                  aria-label="Open account profile"
-                  className="inline-flex items-center gap-2 rounded-full transition hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brand)]/80"
+                <motion.div
+                  whileHover={{ scale: 1.1, rotate: 3 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 15 }}
                 >
-                  <UserAvatar
-                    username={user?.username}
-                    avatarUrl={user?.avatarUrl}
-                    sizeClassName="h-9 w-9"
-                    textSizeClassName="text-xs"
-                  />
+                  <Link
+                    href="/account/profile"
+                    aria-label="Open account profile"
+                    className="inline-flex items-center gap-2 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-brand)]/80"
+                    style={{ boxShadow: "none" }}
+                  >
+                    <UserAvatar
+                      username={user?.username}
+                      avatarUrl={user?.avatarUrl}
+                      sizeClassName="h-9 w-9 ring-2 ring-transparent hover:ring-[var(--brand)]/30 transition-all"
+                      textSizeClassName="text-xs"
+                    />
                   <span className="hidden max-w-24 truncate text-sm font-medium text-[var(--text-primary)] md:inline">
                     {user?.username}
                   </span>
                 </Link>
+                </motion.div>
               ) : (
                 <div className="flex items-center gap-2">
                   <Link
@@ -424,8 +439,8 @@ function NavbarInner({ pathname }: { pathname: string }) {
           </div>
         </nav>
 
-        <div className="relative border-b border-[var(--border-subtle)] bg-[var(--bg-raised)]/72 backdrop-blur-sm">
-          <div className="mx-auto flex h-11 w-full max-w-[1100px] items-center justify-between gap-3 px-4 md:px-6">
+        <div className="relative border-b border-[var(--border-subtle)] bg-[var(--bg-raised)]/72 backdrop-blur-sm hidden md:block">
+          <div className="mx-auto flex h-11 w-full max-w-6xl items-center justify-between gap-3 px-4 md:px-6">
             <button
               type="button"
               onClick={togglePanel}
@@ -517,7 +532,7 @@ function NavbarInner({ pathname }: { pathname: string }) {
         className={`matches-panel ${matchesPanelOpen ? "open" : ""}`}
         style={{ top: PANEL_TOP_OFFSET, maxHeight: 480, overflowY: "auto" }}
       >
-        <div className="mx-auto w-full max-w-[1100px] px-4 py-4 md:px-6">
+        <div className="mx-auto w-full max-w-6xl px-4 py-4 md:px-6">
           <div className="mb-4 flex items-center gap-2">
             <button
               type="button"
@@ -612,6 +627,7 @@ function NavbarInner({ pathname }: { pathname: string }) {
       </div>
 
       <AppDrawer isOpen={isOpen} pathname={pathname} onClose={closeDrawer} />
+      {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
     </>
   );
 }

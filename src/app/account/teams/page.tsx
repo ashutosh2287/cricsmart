@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getUserTeams } from "@/lib/repositories/team.repository";
 import { getRequestAuthSession } from "@/services/auth/serverRequestContext";
 
-export const metadata = { title: "My Teams — CricSmart" };
+export const metadata = { title: "My Teams — CricLens" };
 
 export default async function AccountTeamsPage() {
   const session = await getRequestAuthSession();

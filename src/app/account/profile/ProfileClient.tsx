@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import AvatarUpload from "@/components/ui/AvatarUpload";
 import {
   PROFILE_USERNAME_MAX_LENGTH,
   PROFILE_USERNAME_MIN_LENGTH,
@@ -69,24 +70,12 @@ export function ProfileClient({ user }: Props) {
         </div>
 
         <form onSubmit={handleSave} className="space-y-5">
-          {/* Avatar Preview */}
-          <div className="flex items-center gap-4">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt="Avatar preview"
-                className="w-16 h-16 rounded-xl object-cover border border-[var(--border-subtle)]"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[var(--accent-brand)] to-[var(--accent-brand)]/60 flex items-center justify-center text-xl font-bold text-white">
-                {username.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="text-xs text-[var(--text-muted)]">
-              <p>Avatar Preview</p>
-              <p className="mt-0.5">Enter a URL below to update</p>
-            </div>
-          </div>
+          {/* Avatar Upload */}
+          <AvatarUpload
+            currentUrl={avatarUrl}
+            username={username}
+            onUpload={(dataUrl) => setAvatarUrl(dataUrl)}
+          />
 
           {/* Username */}
           <div>
@@ -117,22 +106,6 @@ export function ProfileClient({ user }: Props) {
               value={user.email}
               readOnly
               className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-overlay)]/50 px-3 py-2.5 text-sm text-[var(--text-muted)] cursor-not-allowed"
-            />
-          </div>
-
-          {/* Avatar URL */}
-          <div>
-            <label htmlFor="profile-avatar-url" className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
-              Avatar URL
-            </label>
-            <input
-              id="profile-avatar-url"
-              type="url"
-              value={avatarUrl}
-              onChange={(event) => setAvatarUrl(event.target.value)}
-              className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-brand)]/30 focus:border-[var(--accent-brand)] transition-all"
-              placeholder="https://example.com/avatar.png"
-              disabled={saving}
             />
           </div>
 

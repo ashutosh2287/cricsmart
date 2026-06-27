@@ -136,7 +136,7 @@ export default function LoginPageClient() {
       </form>
 
       <p className="mt-4 text-center text-sm text-[var(--text-secondary)]">
-        New to CricSmart?{" "}
+        New to CricLens?{" "}
         <Link
           href={`/signup?redirect=${encodeURIComponent(redirectTarget)}`}
           className="font-medium text-[var(--accent-brand)] hover:underline"

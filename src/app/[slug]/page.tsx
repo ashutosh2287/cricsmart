@@ -173,7 +173,7 @@ export default function SectionPage() {
       `}</style>
 
       <section className="section-panel">
-        <div className="section-header-tag">CricSmart Platform Data Node</div>
+        <div className="section-header-tag">CricLens Platform Data Node</div>
         
         <div className="section-title-area">
           <div className="section-icon-box">

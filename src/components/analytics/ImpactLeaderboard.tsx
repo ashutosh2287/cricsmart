@@ -20,7 +20,7 @@ function ImpactLeaderboard({ matchId }: { matchId: string }) {
 
   return (
 
-    <div className="bg-[var(--surface)] border border-zinc-800 rounded-xl p-6">
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6">
 
       <h2 className="text-sm text-[var(--text-2)] uppercase mb-4">
         Player Impact Leaderboard
@@ -36,7 +36,7 @@ function ImpactLeaderboard({ matchId }: { matchId: string }) {
               {i + 1}. {p.player}
             </span>
 
-            <span className="text-blue-400">
+            <span className="text-[var(--brand)]">
               {p.impact.toFixed(1)}
             </span>
 

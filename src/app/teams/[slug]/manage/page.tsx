@@ -5,7 +5,7 @@ import { ManageTeamClient } from "./ManageTeamClient";
 
 type Props = { params: Promise<{ slug: string }> };
 
-export const metadata = { title: "Manage Team — CricSmart" };
+export const metadata = { title: "Manage Team — CricLens" };
 
 export default async function ManageTeamPage({ params }: Props) {
   const { slug } = await params;

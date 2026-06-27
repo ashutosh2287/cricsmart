@@ -6,7 +6,9 @@ import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
 import { heroStagger, heroChild, staggerGrid, gridItem, cardHover } from "@/components/ui/motion";
 import GlowBadge from "@/components/ui/GlowBadge";
 import StatCounter from "@/components/ui/StatCounter";
+import AnimatedLogo from "@/components/ui/AnimatedLogo";
 import { BarChart3, Zap, Trophy, Target, Smartphone, Radio } from "lucide-react";
+import AppFooter from "@/components/layout/AppFooter";
 
 interface LiveMatch {
   id: string;
@@ -76,14 +78,7 @@ export default function LandingPageClient({
         }`}
       >
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--brand)] to-[var(--accent)] flex items-center justify-center">
-              <span className="text-white font-bold text-sm">CS</span>
-            </div>
-            <span className="text-xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
-              <span className="text-[var(--brand)]">Cric</span>Smart
-            </span>
-          </Link>
+          <AnimatedLogo size="md" />
 
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors">Features</a>
@@ -131,57 +126,154 @@ export default function LandingPageClient({
       {/* ─── HERO ─── */}
       <motion.section
         style={{ y: heroY, opacity: heroOpacity }}
-        className="relative min-h-screen flex items-center justify-center pt-20"
+        className="relative min-h-screen flex items-center pt-20"
       >
         <div className="gradient-mesh absolute inset-0" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,229,255,0.06),transparent_70%)]" />
 
-        <motion.div
-          variants={heroStagger}
-          initial="hidden"
-          animate="visible"
-          className="relative z-10 text-center max-w-4xl mx-auto px-6"
-        >
-          <motion.div variants={heroChild} className="mb-6">
-            <GlowBadge color="cyan" pulse>
-              Cricket Intelligence Platform
-            </GlowBadge>
-          </motion.div>
-
-          <motion.h1
-            variants={heroChild}
-            className="text-5xl md:text-7xl font-bold leading-[1.05] mb-6"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            <span className="gradient-text">Cricket</span>{" "}
-            <span className="text-[var(--text-1)]">Intelligence</span>
-            <br />
-            <span className="text-[var(--text-1)]">Redefined</span>
-          </motion.h1>
-
-          <motion.p
-            variants={heroChild}
-            className="text-lg md:text-xl text-[var(--text-2)] max-w-2xl mx-auto mb-10 leading-relaxed"
-          >
-            Real-time analytics, AI-powered predictions, and deep match insights.
-            Experience cricket like never before.
-          </motion.p>
-
-          <motion.div variants={heroChild} className="flex flex-wrap justify-center gap-4">
-            <Link
-              href="/signup"
-              className="px-8 py-3.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-[var(--brand)] to-[#0077FF] text-white hover:shadow-[0_0_30px_rgba(0,229,255,0.35)] transition-all duration-300 hover:-translate-y-0.5"
+        <div className="relative z-10 w-full max-w-6xl mx-auto px-6 py-16">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            {/* Left: Copy */}
+            <motion.div
+              variants={heroStagger}
+              initial="hidden"
+              animate="visible"
             >
-              Start for Free
-            </Link>
-            <Link
-              href="/matches"
-              className="px-8 py-3.5 text-sm font-semibold rounded-xl border border-[var(--border-med)] text-[var(--text-2)] hover:border-[var(--brand)] hover:text-[var(--brand)] transition-all duration-300"
+              <motion.div variants={heroChild} className="mb-6">
+                <GlowBadge color="cyan" pulse>
+                  Cricket Intelligence Platform
+                </GlowBadge>
+              </motion.div>
+
+              <motion.h1
+                variants={heroChild}
+                className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] mb-6"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                <span className="gradient-text">Cricket</span>{" "}
+                <span className="text-[var(--text-1)]">Intelligence</span>
+                <br />
+                <span className="text-[var(--text-1)]">Redefined</span>
+              </motion.h1>
+
+              <motion.p
+                variants={heroChild}
+                className="text-base md:text-lg text-[var(--text-2)] max-w-lg mb-8 leading-relaxed"
+              >
+                Real-time analytics, AI-powered predictions, and deep match insights.
+                Experience cricket like never before.
+              </motion.p>
+
+              <motion.div variants={heroChild} className="flex flex-wrap gap-4">
+                <Link
+                  href="/signup"
+                  className="px-7 py-3 text-sm font-semibold rounded-xl bg-gradient-to-r from-[var(--brand)] to-[#0077FF] text-white hover:shadow-[0_0_30px_rgba(0,229,255,0.35)] transition-all duration-300 hover:-translate-y-0.5"
+                >
+                  Start for Free
+                </Link>
+                <Link
+                  href="/matches"
+                  className="px-7 py-3 text-sm font-semibold rounded-xl border border-[var(--border-med)] text-[var(--text-2)] hover:border-[var(--brand)] hover:text-[var(--brand)] transition-all duration-300"
+                >
+                  View Live Matches
+                </Link>
+              </motion.div>
+
+              {/* Trust badges */}
+              <motion.div variants={heroChild} className="mt-10 flex items-center gap-6 text-xs text-[var(--text-3)]">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" />
+                  Real-time updates
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)]" />
+                  AI-powered
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+                  Free to start
+                </span>
+              </motion.div>
+            </motion.div>
+
+            {/* Right: Product Preview */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.7, delay: 0.3 }}
+              className="hidden md:block"
             >
-              View Live Matches
-            </Link>
-          </motion.div>
-        </motion.div>
+              <div className="relative">
+                {/* Glow behind */}
+                <div className="absolute -inset-4 bg-gradient-to-br from-[var(--brand)]/10 to-[var(--accent)]/10 rounded-3xl blur-xl" />
+
+                {/* Mock dashboard */}
+                <div className="relative bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-2xl">
+                  {/* Mini nav */}
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border)]">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[var(--brand)] to-[var(--accent)] flex items-center justify-center">
+                        <span className="text-white font-bold text-[8px]">CS</span>
+                      </div>
+                      <span className="text-xs font-semibold text-[var(--text-1)]">CricLens</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 rounded-full bg-[var(--surface-3)]" />
+                      <span className="w-2 h-2 rounded-full bg-[var(--surface-3)]" />
+                      <span className="w-2 h-2 rounded-full bg-[var(--surface-3)]" />
+                    </div>
+                  </div>
+
+                  {/* Win probability chart mock */}
+                  <div className="mb-4">
+                    <p className="text-[10px] text-[var(--text-3)] uppercase tracking-wider mb-2">Win Probability</p>
+                    <div className="h-24 bg-[var(--surface-3)] rounded-lg relative overflow-hidden">
+                      <svg className="w-full h-full" viewBox="0 0 200 80" preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id="heroGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="var(--success)" stopOpacity="0.4"/>
+                            <stop offset="100%" stopColor="var(--success)" stopOpacity="0"/>
+                          </linearGradient>
+                        </defs>
+                        <path d="M0,60 Q20,55 40,50 T80,35 T120,40 T160,25 T200,20" fill="none" stroke="var(--success)" strokeWidth="2"/>
+                        <path d="M0,60 Q20,55 40,50 T80,35 T120,40 T160,25 T200,20 L200,80 L0,80 Z" fill="url(#heroGrad)"/>
+                        <path d="M0,20 Q20,25 40,30 T80,45 T120,40 T160,55 T200,60" fill="none" stroke="var(--danger)" strokeWidth="2" strokeDasharray="4,4"/>
+                      </svg>
+                      <div className="absolute bottom-2 right-2 flex gap-3 text-[8px]">
+                        <span className="text-[var(--success)]">IND 62%</span>
+                        <span className="text-[var(--danger)]">AUS 38%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Score row */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-[var(--surface-3)] rounded-lg p-3">
+                      <p className="text-[8px] text-[var(--text-3)] uppercase mb-1">Score</p>
+                      <p className="text-lg font-bold font-mono tabular-nums text-[var(--text-1)]">186/4</p>
+                      <p className="text-[9px] text-[var(--text-3)]">15.2 overs</p>
+                    </div>
+                    <div className="bg-[var(--surface-3)] rounded-lg p-3">
+                      <p className="text-[8px] text-[var(--text-3)] uppercase mb-1">AI Prediction</p>
+                      <p className="text-lg font-bold font-mono tabular-nums text-[var(--brand)]">218</p>
+                      <p className="text-[9px] text-[var(--success)]">projected</p>
+                    </div>
+                  </div>
+
+                  {/* Insight */}
+                  <div className="bg-[var(--surface-3)] rounded-lg p-2.5 flex items-start gap-2">
+                    <div className="w-5 h-5 rounded bg-gradient-to-br from-[var(--brand)] to-[var(--accent)] flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-white text-[7px]">AI</span>
+                    </div>
+                    <p className="text-[9px] text-[var(--text-2)] leading-relaxed">
+                      Batting side gaining momentum. Partnership of 45 runs shifting win probability by 12%.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
 
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
           <motion.div
@@ -275,11 +367,23 @@ export default function LandingPageClient({
               <motion.div
                 key={i}
                 variants={gridItem}
+                whileHover={{
+                  scale: 1.03,
+                  y: -4,
+                  boxShadow: "0 12px 40px rgba(0, 229, 255, 0.15)",
+                  borderColor: "rgba(0, 229, 255, 0.25)",
+                }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
                 className="group card-cinematic p-6 cursor-default"
               >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-[var(--surface-3)] ${iconColors[f.color]} group-hover:bg-[rgba(0,229,255,0.08)] transition-colors duration-300 ${glowColors[f.color]}`}>
+                <motion.div
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-[var(--surface-3)] ${iconColors[f.color]} group-hover:bg-[rgba(0,229,255,0.08)] transition-colors duration-300 ${glowColors[f.color]}`}
+                >
                   {f.icon}
-                </div>
+                </motion.div>
                 <h3 className="text-lg font-semibold text-[var(--text-1)] mb-2">{f.title}</h3>
                 <p className="text-sm text-[var(--text-2)] leading-relaxed">{f.desc}</p>
               </motion.div>
@@ -295,9 +399,17 @@ export default function LandingPageClient({
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            whileHover={{ scale: 1.01 }}
             className="relative rounded-2xl overflow-hidden p-10 md:p-14 text-center"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-[rgba(0,229,255,0.1)] via-[rgba(124,58,237,0.08)] to-[rgba(0,255,135,0.06)]" />
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-br from-[rgba(0,229,255,0.1)] via-[rgba(124,58,237,0.08)] to-[rgba(0,255,135,0.06)]"
+              animate={{
+                backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+              }}
+              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+              style={{ backgroundSize: "200% 200%" }}
+            />
             <div className="absolute inset-0 border border-[rgba(0,229,255,0.15)] rounded-2xl" />
 
             <div className="relative z-10">
@@ -305,33 +417,27 @@ export default function LandingPageClient({
                 Ready to elevate your cricket experience?
               </h2>
               <p className="text-[var(--text-2)] mb-8 max-w-md mx-auto">
-                Join thousands of cricket enthusiasts using CricSmart for real-time analytics.
+                Join thousands of cricket enthusiasts using CricLens for real-time analytics.
               </p>
-              <Link
-                href="/signup"
-                className="inline-flex px-8 py-3.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-[var(--brand)] to-[#0077FF] text-white hover:shadow-[0_0_30px_rgba(0,229,255,0.35)] transition-all duration-300"
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="inline-block"
               >
-                Get Started Free
-              </Link>
+                <Link
+                  href="/signup"
+                  className="inline-flex px-8 py-3.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-[var(--brand)] to-[#0077FF] text-white hover:shadow-[0_0_30px_rgba(0,229,255,0.35)] transition-all duration-300"
+                >
+                  Get Started Free
+                </Link>
+              </motion.div>
             </div>
           </motion.div>
         </div>
       </section>
 
       {/* ─── FOOTER ─── */}
-      <footer className="py-10 border-t border-[var(--border)]">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[var(--brand)] to-[var(--accent)] flex items-center justify-center">
-              <span className="text-white font-bold text-xs">CS</span>
-            </div>
-            <span className="text-sm font-semibold text-[var(--text-2)]">CricSmart</span>
-          </div>
-          <p className="text-xs text-[var(--text-3)]">
-            Real-Time Cricket Analytics Platform
-          </p>
-        </div>
-      </footer>
+      <AppFooter />
     </div>
   );
 }

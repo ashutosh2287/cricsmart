@@ -4,7 +4,7 @@ import { findById } from "@/lib/repositories/user.repository";
 import { prisma } from "@/lib/db/prisma";
 import AccountPageClient from "./AccountPageClient";
 
-export const metadata = { title: "My Account — CricSmart" };
+export const metadata = { title: "My Account — CricLens" };
 
 export default async function AccountPage() {
   const session = await getRequestAuthSession();

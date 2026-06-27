@@ -408,8 +408,8 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
 
   if (!currentInnings) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.9))] p-3.5">
-        <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm text-[var(--text-3)]">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5">
+        <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-3)] p-5 text-sm text-[var(--text-3)]">
           Waiting for live commentary...
         </div>
       </div>
@@ -419,11 +419,11 @@ export default function CommentaryPanel({ matchId, insights }: Props) {
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3.5">
       {insights && insights.length > 0 ? (
-        <div className="mb-3 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-3">
-          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-yellow-300">
+        <div className="mb-3 rounded-2xl border border-[var(--amber)]/20 bg-[var(--amber)]/10 p-3">
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--amber)]">
             Match insights
           </div>
-          <div className="space-y-1 text-xs text-yellow-100/85">
+          <div className="space-y-1 text-xs text-[var(--text-2)]">
             {insights.slice(0, 2).map((insight, index) => (
               <div key={`${insight.type}-${index}`}>{insight.message}</div>
             ))}

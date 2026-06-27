@@ -10,7 +10,7 @@ function TopPerformersPanel({ matchId }: { matchId: string }) {
 
   return (
 
-    <div className="bg-[var(--surface)] border border-zinc-800 rounded-xl p-6">
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6">
 
       <h2 className="text-sm text-[var(--text-2)] uppercase mb-4">
         Top Performers
@@ -19,15 +19,15 @@ function TopPerformersPanel({ matchId }: { matchId: string }) {
       <div className="space-y-2 text-sm">
 
         <div>
-          Top Scorer: <span className="text-blue-400">{performers.topScorer}</span>
+          Top Scorer: <span className="text-[var(--brand)]">{performers.topScorer}</span>
         </div>
 
         <div>
-          Best Bowler: <span className="text-blue-400">{performers.topBowler}</span>
+          Best Bowler: <span className="text-[var(--brand)]">{performers.topBowler}</span>
         </div>
 
         <div>
-          Best Strike Rate: <span className="text-blue-400">{performers.bestStrikeRate}</span>
+          Best Strike Rate: <span className="text-[var(--brand)]">{performers.bestStrikeRate}</span>
         </div>
 
       </div>

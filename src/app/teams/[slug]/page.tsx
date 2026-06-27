@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTeamBySlug } from "@/lib/repositories/team.repository";
 import { getRequestAuthSession } from "@/services/auth/serverRequestContext";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
   const team = await getTeamBySlug(slug);
-  return { title: team ? `${team.name} — CricSmart` : "Team Not Found" };
+  return { title: team ? `${team.name} — CricLens` : "Team Not Found" };
 }
 
 export default async function TeamPublicPage({ params }: Props) {
@@ -59,7 +60,8 @@ export default async function TeamPublicPage({ params }: Props) {
   return (
     <main className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)]">
       <div className="mx-auto w-full max-w-3xl px-4 py-10">
-        <div className="mb-8 flex items-start justify-between gap-4">
+        <Breadcrumbs items={[{ label: "Teams", href: "/teams" }, { label: team.name }]} />
+        <div className="mb-8 mt-4 flex items-start justify-between gap-4">
           <div>
             <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent-brand)]">Team</p>
             <h1 className="text-2xl font-semibold text-[var(--text-primary)]">{team.name}</h1>

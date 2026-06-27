@@ -27,44 +27,21 @@ const focusableSelector =
 
 const sections: DrawerSection[] = [
   {
-    title: "Live",
+    title: "Browse",
     items: [
       { label: "Home", href: "/", icon: icon("M3 9.5L10 4l7 5.5V16H3V9.5z") },
       { label: "Matches", href: "/matches", icon: icon("M4 5h12v10H4z") },
       { label: "Hosted Matches", href: "/hosted-matches", icon: icon("M5 5h10v10H5z") },
-      { label: "Live Matches", href: "/live-matches", icon: icon("M4 10h4m4 0h4M10 4v12") },
-      { label: "Live Scores", href: "/live-scores", icon: icon("M4 14l3-3 2 2 4-5 3 3") },
-      { label: "Schedule", href: "/schedule", icon: icon("M5 4h10v12H5z M5 8h10") },
+      { label: "Analytics", href: "/analytics", icon: icon("M5 14V9m5 5V6m5 8v-3") },
     ],
   },
   {
-    title: "Cricket Hub",
+    title: "Cricket",
     items: [
-      { label: "Series", href: "/series", icon: icon("M4 6h12M4 10h12M4 14h8") },
       { label: "Teams", href: "/teams", icon: icon("M4 15a3 3 0 016 0m2 0a3 3 0 016 0M7 8a2 2 0 110-4 2 2 0 010 4zm6 0a2 2 0 110-4 2 2 0 010 4z") },
       { label: "Players", href: "/players", icon: icon("M10 11a4 4 0 100-8 4 4 0 000 8zm-6 6a6 6 0 0112 0") },
       { label: "Discover Players", href: "/players/discover", icon: icon("M4 10h12M10 4v12") },
       { label: "Tournaments", href: "/tournaments", icon: icon("M5 5h10v10H5zM5 8h10") },
-      { label: "Rankings", href: "/rankings", icon: icon("M5 15h10M6 15V7m4 8V5m4 10V9") },
-      { label: "Points Table", href: "/points-table", icon: icon("M4 5h12v10H4zM8 5v10M12 5v10") },
-    ],
-  },
-  {
-    title: "Data",
-    items: [
-      { label: "Stats Center", href: "/stats-center", icon: icon("M5 14V9m5 5V6m5 8v-3") },
-      { label: "Records", href: "/records", icon: icon("M6 4h8l2 2v10H6z") },
-      { label: "Venues", href: "/venues", icon: icon("M10 17s5-4.5 5-8a5 5 0 10-10 0c0 3.5 5 8 5 8z") },
-    ],
-  },
-  {
-    title: "Media & Fantasy",
-    items: [
-      { label: "News", href: "/news", icon: icon("M5 5h10v10H5zM7 8h6M7 11h4") },
-      { label: "Highlights", href: "/highlights", icon: icon("M7 6l7 4-7 4V6z") },
-      { label: "Photos", href: "/photos", icon: icon("M5 6h10v8H5zM8 10l2-2 3 3") },
-      { label: "Auction Tracker", href: "/auction-tracker", icon: icon("M6 6h8M8 10h8M6 14h8") },
-      { label: "Fantasy Insights", href: "/fantasy-insights", icon: icon("M10 4l2 4 4 .5-3 2.5 1 4-4-2.3-4 2.3 1-4-3-2.5 4-.5z") },
     ],
   },
 ];
@@ -215,10 +192,10 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
           />
 
           <motion.aside
-            id="cricsmart-app-drawer"
+            id="CricLens-app-drawer"
             role="dialog"
             aria-modal="true"
-            aria-label="CricSmart main navigation"
+            aria-label="CricLens main navigation"
             ref={drawerRef}
             tabIndex={-1}
             variants={drawerVariants}
@@ -243,9 +220,9 @@ export default function AppDrawer({ isOpen, pathname, onClose }: AppDrawerProps)
           >
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--text-2)]">Navigation</p>
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">CricSmart</p>
+                <div className="flex items-center gap-2">
+                  <img src="/logo-icon.svg" alt="" className="w-5 h-5" />
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">CricLens</p>
                 </div>
                 <button
                   type="button"

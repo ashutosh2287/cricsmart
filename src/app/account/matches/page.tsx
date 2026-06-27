@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getRequestAuthSession } from "@/services/auth/serverRequestContext";
 import { prisma } from "@/lib/db/prisma";
 
-export const metadata = { title: "Hosted Matches — CricSmart" };
+export const metadata = { title: "Hosted Matches — CricLens" };
 
 type MatchCardMatch = {
   id: string;

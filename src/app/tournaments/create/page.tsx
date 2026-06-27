@@ -49,11 +49,26 @@ export default function CreateTournamentPage() {
     <form onSubmit={handleSubmit} className="mx-auto w-full max-w-xl space-y-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
       <h1 className="text-xl font-semibold text-[var(--text-primary)]">Create Tournament</h1>
 
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tournament Name" className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]" />
-      <input value={format} onChange={(e) => setFormat(e.target.value)} placeholder="Format" className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]" />
-      <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location" className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]" />
-      <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]" />
-      <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]" />
+      <div>
+        <label htmlFor="tournament-name" className="sr-only">Tournament Name</label>
+        <input id="tournament-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tournament Name" className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]" />
+      </div>
+      <div>
+        <label htmlFor="tournament-format" className="sr-only">Format</label>
+        <input id="tournament-format" value={format} onChange={(e) => setFormat(e.target.value)} placeholder="Format" className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]" />
+      </div>
+      <div>
+        <label htmlFor="tournament-location" className="sr-only">Location</label>
+        <input id="tournament-location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location" className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]" />
+      </div>
+      <div>
+        <label htmlFor="tournament-start" className="sr-only">Start Date</label>
+        <input id="tournament-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]" />
+      </div>
+      <div>
+        <label htmlFor="tournament-end" className="sr-only">End Date</label>
+        <input id="tournament-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full rounded-md border border-[var(--border-subtle)] bg-[var(--bg-overlay)] px-3 py-2 text-[var(--text-primary)]" />
+      </div>
 
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
 

@@ -11,6 +11,7 @@ import MatchNarrativePanel from "@/components/analytics/MatchNarrativePanel";
 import LiveScoreCard from "@/components/LiveScoreCard";
 import TeamList from "@/components/teams/TeamList";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { getWinProbabilityTimeline } from "@/services/analytics/winProbabilityTimelineEngine";
 
 interface MatchRecord {
   matchId: string;
@@ -24,6 +25,7 @@ export default function AnalyticsPage() {
   const [matches, setMatches] = useState<MatchRecord[]>([]);
   const [selectedMatchId, setSelectedMatchId] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [winProbData, setWinProbData] = useState<{ over: number; batting: number; bowling: number; confidence?: number; marker?: "WICKET" | "SIX" | "FOUR" | "SWING" | "TURNING_POINT" }[]>([]);
 
   useEffect(() => {
     fetch("/api/matches")
@@ -38,6 +40,17 @@ export default function AnalyticsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!selectedMatchId) return;
+    const update = () => {
+      const result = getWinProbabilityTimeline(selectedMatchId);
+      setWinProbData(result?.timeline ?? []);
+    };
+    update();
+    const interval = setInterval(update, 3000);
+    return () => clearInterval(interval);
+  }, [selectedMatchId]);
+
   return (
     <PageMotion>
       <main className="max-w-7xl mx-auto px-6 py-10 space-y-10">
@@ -49,13 +62,14 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="space-y-3">
-          <label className="text-sm font-semibold text-[var(--text-3)] uppercase tracking-wide">
+          <label htmlFor="match-select" className="text-sm font-semibold text-[var(--text-3)] uppercase tracking-wide">
             Select Match
           </label>
           {loading ? (
             <Skeleton variant="rect" className="h-10 w-full max-w-sm" />
           ) : (
             <select
+              id="match-select"
               value={selectedMatchId}
               onChange={(e) => setSelectedMatchId(e.target.value)}
               className="w-full max-w-sm rounded-lg border px-3 py-2 text-sm"
@@ -98,7 +112,7 @@ export default function AnalyticsPage() {
                 borderRadius: "var(--radius-lg)",
               }}
             >
-              <WinProbabilityChart data={[]} />
+              <WinProbabilityChart data={winProbData} />
             </div>
 
             <div

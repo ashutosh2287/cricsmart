@@ -22,6 +22,7 @@ import {
 import { playAnimation } from "@/services/animationController";
 import AnimatedScore from "./ui/AnimatedScore";
 import { Card } from "@/components/ui/Card";
+import { CircleDot, ArrowRightLeft } from "lucide-react";
 
 type Props = {
   match: {
@@ -191,11 +192,16 @@ export default function MatchCard({ match: initialMatch }: Props) {
           {/* RUN RATE */}
           {runRate && <p className="text-sm text-[var(--text-muted)]">Run Rate: {runRate}</p>}
 
-          {/* 🔥 BATSMEN */}
-          <div className="text-sm text-[var(--text-secondary)] mt-2">
-            🏏 {striker} <span className="text-[var(--accent-amber)]">*</span>
-            <br />
-            🏃 {nonStriker}
+          {/* BATSMEN */}
+          <div className="text-sm text-[var(--text-secondary)] mt-2 space-y-0.5">
+            <div className="flex items-center gap-1.5">
+              <CircleDot className="w-3.5 h-3.5 text-[var(--accent-amber)]" />
+              <span>{striker} <span className="text-[var(--accent-amber)]">*</span></span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+              <span>{nonStriker}</span>
+            </div>
           </div>
 
           {/* 🔥 LAST BALL */}

@@ -48,7 +48,7 @@ export default function HighlightTimeline({ matchId }: Props) {
   if (!highlights.length) return null;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] text-[var(--text-1)]">
+    <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-1)]">
 
       {/* HEADER */}
       <div className="flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
@@ -151,16 +151,16 @@ function getColor(type: string) {
   switch (type) {
 
     case "WICKET":
-      return "text-red-400";
+      return "text-[var(--danger)]";
 
     case "SIX":
-      return "text-green-400";
+      return "text-[var(--success)]";
 
     case "BOUNDARY_CLUSTER":
-      return "text-blue-400";
+      return "text-[var(--brand)]";
 
     case "LAST_OVER_THRILLER":
-      return "text-yellow-400";
+      return "text-[var(--amber)]";
 
     case "DOMINANT_PARTNERSHIP":
       return "text-[var(--accent-brand)]";

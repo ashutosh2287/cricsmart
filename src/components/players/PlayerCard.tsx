@@ -33,7 +33,7 @@ export default function PlayerCard({
 
     <motion.div
       whileHover={{ scale: 1.04 }}
-      className="bg-[var(--surface)] border border-zinc-800 rounded-xl p-6 shadow-lg cursor-pointer hover:border-blue-500 hover:shadow-blue-500/20 transition-all"
+      className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 shadow-lg cursor-pointer hover:border-[var(--border-bright)] hover:shadow-[var(--shadow-hover)] transition-all"
     >
 
       {/* PLAYER HEADER */}
@@ -73,7 +73,7 @@ export default function PlayerCard({
 
         <div className="bg-[var(--surface-2)] rounded-lg p-3">
           <p className="text-[var(--text-2)] text-xs">Wickets</p>
-          <p className="font-semibold text-green-400">{wickets}</p>
+          <p className="font-semibold text-[var(--success)]">{wickets}</p>
         </div>
 
       </div>
@@ -87,7 +87,7 @@ export default function PlayerCard({
           Impact Score
         </span>
 
-        <span className="text-green-400 font-bold">
+        <span className="text-[var(--success)] font-bold">
           {impact}
         </span>
 

@@ -9,6 +9,8 @@ import { getWinProbabilityTimeline } from "@/services/analytics/winProbabilityTi
 import { getPatternInsights } from "@/services/analytics/patternDetectionEngine";
 import { getSituationInsights } from "@/services/analytics/matchSituationEngine";
 import { SituationInsight } from "@/services/analytics/matchSituationEngine";
+import { AlertTriangle, Zap } from "lucide-react";
+import TrendIndicator from "@/components/ui/TrendIndicator";
 type Props = {
   matchId: string;
 };
@@ -101,8 +103,9 @@ export default function MatchInsightPanel({ matchId }: Props) {
       {situationInsights.length > 0 && (
         <div className="mb-4 space-y-1">
           {situationInsights.map((s, i) => (
-            <div key={i} className="text-sm text-[var(--accent)]">
-              ⚠ {s.text}
+            <div key={i} className="flex items-start gap-1.5 text-sm text-[var(--accent)]">
+              <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>{s.text}</span>
             </div>
           ))}
         </div>
@@ -112,8 +115,9 @@ export default function MatchInsightPanel({ matchId }: Props) {
       {patternInsights.length > 0 && (
         <div className="mb-4 space-y-1">
           {patternInsights.map((p, i) => (
-            <div key={i} className="text-sm text-[var(--brand)]">
-              ⚡ {p.text}
+            <div key={i} className="flex items-start gap-1.5 text-sm text-[var(--brand)]">
+              <Zap className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>{p.text}</span>
             </div>
           ))}
         </div>
@@ -125,29 +129,29 @@ export default function MatchInsightPanel({ matchId }: Props) {
 
       <div className="space-y-2 text-sm">
 
-        <div className="flex justify-between">
-          <span>Win Probability</span>
-          <span>{winProb.toFixed(1)}%</span>
+        <div className="flex justify-between items-center">
+          <span className="text-[var(--text-2)]">Win Probability</span>
+          <TrendIndicator value={winProb} suffix="%" />
         </div>
 
-        <div className="flex justify-between">
-          <span>Momentum</span>
-          <span>{momentum.toFixed(2)}</span>
+        <div className="flex justify-between items-center">
+          <span className="text-[var(--text-2)]">Momentum</span>
+          <TrendIndicator value={momentum} decimals={2} />
         </div>
 
-        <div className="flex justify-between">
-          <span>Run Rate</span>
-          <span>{runRate.toFixed(2)}</span>
+        <div className="flex justify-between items-center">
+          <span className="text-[var(--text-2)]">Run Rate</span>
+          <TrendIndicator value={runRate} decimals={2} />
         </div>
 
-        <div className="flex justify-between">
-          <span>Projected Score</span>
-          <span>{projection}</span>
+        <div className="flex justify-between items-center">
+          <span className="text-[var(--text-2)]">Projected Score</span>
+          <span className="font-mono tabular-nums font-semibold text-[var(--brand)]">{projection}</span>
         </div>
 
-        <div className="flex justify-between">
-          <span>Required Run Rate</span>
-          <span>{rrr.toFixed(2)}</span>
+        <div className="flex justify-between items-center">
+          <span className="text-[var(--text-2)]">Required Run Rate</span>
+          <TrendIndicator value={rrr} decimals={2} />
         </div>
 
       </div>

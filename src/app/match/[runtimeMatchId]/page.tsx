@@ -1308,7 +1308,7 @@ function MatchInnerPage({ match, analytics, insights, sessionMeta, liveStatus, h
               <div>
                 <div className="mdp-hero-eyebrow">
                   <div className="mdp-live-dot" />
-                  CricSmart Match Center
+                  CricLens Match Center
                 </div>
                 <h1 className="mdp-hero-title">{team1Name} vs {team2Name}</h1>
                 {sessionMeta?.type === "LIVE" && liveStatus && (

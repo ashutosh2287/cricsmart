@@ -28,7 +28,7 @@ export default function MobileMenuButton({ isOpen, onClick }: MobileMenuButtonPr
       type="button"
       aria-label={isOpen ? "Close navigation menu" : "Open navigation menu"}
       aria-expanded={isOpen ? "true" : "false"}
-      aria-controls="cricsmart-app-drawer"
+      aria-controls="CricLens-app-drawer"
       onClick={onClick}
       className="relative inline-flex h-10 w-10 items-center justify-center rounded-md border border-border-subtle bg-(--bg-raised)/65 text-text-primary transition hover:bg-bg-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/80"
     >

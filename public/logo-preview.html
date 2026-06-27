@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { background: #040A14; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 60px; font-family: sans-serif; margin: 0; padding: 40px; }
+    .logo-row { display: flex; align-items: center; gap: 40px; }
+    .card { background: #0A1628; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 40px; text-align: center; }
+    .card h3 { color: #94A3B8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 20px; }
+    .light { background: #F8FAFC; }
+    .light h3 { color: #475569; }
+  </style>
+</head>
+<body>
+  <div class="logo-row">
+    <div class="card">
+      <h3>Full Logo (Dark)</h3>
+      <img src="logo.svg" width="240" />
+    </div>
+    <div class="card light">
+      <h3>Full Logo (Light)</h3>
+      <img src="logo.svg" width="240" />
+    </div>
+  </div>
+
+  <div class="logo-row">
+    <div class="card">
+      <h3>Icon 48px</h3>
+      <img src="logo-icon.svg" width="48" />
+    </div>
+    <div class="card">
+      <h3>Icon 32px</h3>
+      <img src="logo-icon.svg" width="32" />
+    </div>
+    <div class="card">
+      <h3>Favicon 16px</h3>
+      <img src="favicon.svg" width="32" />
+    </div>
+  </div>
+
+  <div class="logo-row">
+    <div class="card" style="width: 100%; max-width: 600px;">
+      <h3>In-Context: Navbar Mockup</h3>
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: rgba(4,10,20,0.88); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="logo-icon.svg" width="24" />
+          <span style="color: #F0F4F8; font-size: 18px; font-weight: 700; font-family: 'Space Grotesk', sans-serif;">
+            <span style="color: #00E5FF;">Cric</span>Lens
+          </span>
+        </div>
+        <div style="display: flex; gap: 20px; color: #94A3B8; font-size: 14px;">
+          <span>Matches</span>
+          <span>Analytics</span>
+          <span>Players</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="logo-row">
+    <div class="card" style="width: 100%; max-width: 600px;">
+      <h3>In-Context: Footer Mockup</h3>
+      <div style="padding: 20px; background: #0A1628; border-radius: 10px; border-top: 1px solid rgba(255,255,255,0.06);">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+          <img src="logo-icon.svg" width="28" />
+          <span style="color: #F0F4F8; font-size: 16px; font-weight: 700;">
+            <span style="color: #00E5FF;">Cric</span>Lens
+          </span>
+        </div>
+        <p style="color: #8896A6; font-size: 12px; margin: 0;">AI-powered cricket intelligence platform.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

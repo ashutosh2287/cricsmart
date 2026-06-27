@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { getRequestAuthSession } from "@/services/auth/serverRequestContext";
 import { ActivityTimeline } from "./ActivityTimeline";
 
-export const metadata = { title: "Activity Feed — CricSmart" };
+export const metadata = { title: "Activity Feed — CricLens" };
 
 type ActivityItem = {
   id: string;

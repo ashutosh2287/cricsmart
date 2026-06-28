@@ -11,6 +11,7 @@ import MatchNarrativePanel from "@/components/analytics/MatchNarrativePanel";
 import LiveScoreCard from "@/components/LiveScoreCard";
 import TeamList from "@/components/teams/TeamList";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { BarChart3 } from "lucide-react";
 import { getWinProbabilityTimeline } from "@/services/analytics/winProbabilityTimelineEngine";
 
 interface MatchRecord {
@@ -88,7 +89,11 @@ export default function AnalyticsPage() {
             </select>
           )}
           {!loading && matches.length === 0 && (
-            <p className="text-sm text-[var(--text-3)]">No matches available.</p>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center">
+              <BarChart3 className="w-8 h-8 mx-auto text-[var(--text-3)] mb-3" />
+              <p className="text-sm font-medium text-[var(--text-1)]">No matches to analyze</p>
+              <p className="text-xs text-[var(--text-3)] mt-1">Host or play a match to see analytics here.</p>
+            </div>
           )}
         </div>
 

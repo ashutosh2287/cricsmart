@@ -12,6 +12,9 @@ import MatchesScreen from "@/screens/MatchesScreen";
 import AnalyticsScreen from "@/screens/AnalyticsScreen";
 import PlayersScreen from "@/screens/PlayersScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
+import MatchDetailScreen from "@/screens/MatchDetailScreen";
+import PlayerDetailScreen from "@/screens/PlayerDetailScreen";
+import TeamDetailScreen from "@/screens/TeamDetailScreen";
 
 export type RootStackParamList = {
   Main: undefined;
@@ -136,17 +139,4 @@ export default function AppNavigator() {
       </Stack.Navigator>
     </NavigationContainer>
   );
-}
-
-// Placeholder screens for detail views
-function MatchDetailScreen() {
-  return null; // Will be implemented
-}
-
-function PlayerDetailScreen() {
-  return null; // Will be implemented
-}
-
-function TeamDetailScreen() {
-  return null; // Will be implemented
 }

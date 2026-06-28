@@ -493,7 +493,7 @@ function StickyInsightsRail({ match, sessionMeta }: { match: Match; sessionMeta?
       <div className="mdp-card" style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
           <div className="mdp-live-dot" />
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: "var(--mdp-cyan)", textTransform: "uppercase" }}>Live Pulse</span>
+          <span className="text-[11px] font-bold tracking-[.1em] text-[var(--mdp-cyan)] uppercase">Live Pulse</span>
         </div>
         <p className="mdp-sec-eyebrow" style={{ marginBottom: 10 }}>Match Snapshot</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
@@ -518,7 +518,7 @@ function StickyInsightsRail({ match, sessionMeta }: { match: Match; sessionMeta?
               return <span key={index} className={`mdp-ball ${ballClass}`}>{String(label)}</span>;
             })
           ) : (
-            <p style={{ fontSize: 12, color: "var(--mdp-text-3)" }}>No balls yet</p>
+            <p className="text-xs text-var(--mdp-text-3)">No balls yet</p>
           )}
         </div>
       </div>
@@ -530,11 +530,11 @@ function StickyInsightsRail({ match, sessionMeta }: { match: Match; sessionMeta?
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <LiveMatchStatus matchId={match.slug} sessionState={sessionMeta?.sessionState} reconnectHealth={sessionMeta?.reconnectHealth} />
           <div style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px" }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 4 }}>Fixture</p>
-            <p style={{ fontSize: 13, color: "var(--mdp-text-2)" }}>
+            <p className="text-sm font-bold text-white mb-1">Fixture</p>
+            <p className="text-sm text-var(--mdp-text-2)">
               {match.team1} <span style={{ color: "var(--mdp-text-3)" }}>vs</span> {match.team2}
             </p>
-            <p style={{ fontSize: 12, color: "var(--mdp-text-3)", marginTop: 3, fontFamily: "monospace" }}>
+            <p className="text-xs text-[var(--mdp-text-3)] mt-1 font-mono">
               Over: {match.currentOver ?? 0}.{match.currentBall ?? 0}
             </p>
           </div>
@@ -722,7 +722,7 @@ function TabsArea({
             <div className="mdp-card">
               <SectionHeader eyebrow="Control" title="Match Controls" />
               {sessionMeta?.type === "LIVE" ? (
-                <div style={{ background: "rgba(0,229,255,0.05)", border: "1px solid rgba(0,229,255,0.15)", borderRadius: 10, padding: "12px 14px", fontSize: 13, color: "rgba(0,229,255,0.8)" }}>
+                <div className="text-sm text-[var(--brand)]/80 bg-[var(--brand)]/5 border border-[var(--brand)]/15 rounded-[10px] px-3.5 py-3">
                   Live sessions connect automatically. Simulation controls are hidden for provider-driven matches.
                 </div>
               ) : (
@@ -768,7 +768,7 @@ function TabsArea({
             <div className="mdp-card">
               <SectionHeader eyebrow="Ball by ball" title="Live Commentary" />
               {sessionMeta?.type === "LIVE" && (
-                <div style={{ background: "rgba(0,229,255,0.06)", border: "1px solid rgba(0,229,255,0.18)", borderRadius: 9, padding: "9px 13px", fontSize: 12, color: "rgba(0,229,255,0.8)", marginBottom: 12 }}>
+                <div className="text-xs text-[var(--brand)]/80 bg-[var(--brand)]/6 border border-[var(--brand)]/18 rounded-[9px] px-3 py-2 mb-3">
                   Score updates every 60s. Ball-by-ball feed may be limited on free CricAPI tier.
                 </div>
               )}
@@ -779,7 +779,7 @@ function TabsArea({
               <div className="mdp-card">
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                   <div className="mdp-live-dot" />
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: "var(--mdp-cyan)", textTransform: "uppercase" }}>Live Pulse</span>
+                  <span className="text-[11px] font-bold tracking-[.1em] text-[var(--mdp-cyan)] uppercase">Live Pulse</span>
                 </div>
                 <p className="mdp-sec-title" style={{ marginBottom: 10 }}>Session Status</p>
                 <LiveMatchStatus matchId={match.slug} sessionState={sessionMeta?.sessionState} reconnectHealth={sessionMeta?.reconnectHealth} />
@@ -789,7 +789,7 @@ function TabsArea({
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: showReplayTimeline ? 12 : 0 }}>
                   <div>
                     <p className="mdp-sec-eyebrow" style={{ marginBottom: 2 }}>Replay</p>
-                    <p style={{ fontSize: 12, color: "var(--mdp-text-3)" }}>Open compact replay controls only when needed.</p>
+                    <p className="text-xs text-var(--mdp-text-3)">Open compact replay controls only when needed.</p>
                   </div>
                   <button className="mdp-replay-btn" onClick={() => setShowReplayTimeline((p) => !p)}>
                     {showReplayTimeline ? "Hide Replay" : "Open Replay"}
@@ -815,7 +815,7 @@ function TabsArea({
                 </button>
               </div>
 
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--mdp-text-3)", marginBottom: 10 }}>
+              <p className="text-[10px] font-bold tracking-[.14em] uppercase text-[var(--mdp-text-3)] mb-2.5">
                 Probability · Pressure · Momentum
               </p>
               <div className="mdp-prob-row">
@@ -829,7 +829,7 @@ function TabsArea({
                 </div>
                 <div className="mdp-prob-cell pressure">
                   <div className="label">Pressure</div>
-                  <div className="val" style={{ fontSize: 13 }}>
+                  <div className="val text-sm">
                     {(latestWinPoint?.batting ?? 50) > 60 ? "Batting" : (latestWinPoint?.batting ?? 50) < 40 ? "Bowling" : "Balanced"}
                   </div>
                 </div>
@@ -888,7 +888,7 @@ function TabsArea({
         {activeTab === "scorecard" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {currentEngineState?.matchEnded && currentEngineState?.winner && (
-              <div style={{ background: "linear-gradient(135deg,rgba(0,255,135,0.08),rgba(0,229,255,0.05))", border: "1px solid rgba(0,255,135,0.2)", borderRadius: 12, padding: "14px 18px", textAlign: "center", fontSize: 15, fontWeight: 700, color: "var(--mdp-green)" }}>
+              <div className="text-[15px] font-bold text-[var(--success)] text-center bg-gradient-to-br from-[var(--success)]/8 to-[var(--brand)]/5 border border-[var(--success)]/20 rounded-xl px-4 py-3.5">
                 🏆 {currentEngineState.winner} won {typeof currentEngineState.winBy === "string" ? `by ${currentEngineState.winBy}` : typeof currentEngineState.winBy === "number" ? `by ${currentEngineState.winBy}` : ""}
               </div>
             )}
@@ -920,12 +920,12 @@ function TabsArea({
                       <p className="mdp-sec-eyebrow" style={{ marginBottom: 2 }}>Batting Card</p>
                       <h3 className="mdp-sec-title">Batters</h3>
                     </div>
-                    <span style={{ fontSize: 11, color: "var(--mdp-text-3)", fontWeight: 600 }}>
+                    <span className="text-[11px] text-[var(--mdp-text-3)] font-semibold">
                       {activePlayers.length === 2 ? `${activePlayers.length} active · ${allPlayers.length} total` : `${allPlayers.length} total`}
                     </span>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "minmax(140px,1.6fr) .7fr .7fr .7fr .8fr", gap: 10, padding: "6px 14px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: 10, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--mdp-text-3)" }}>
-                    <span>Batter</span><span style={{ textAlign: "center" }}>R</span><span style={{ textAlign: "center" }}>B</span><span style={{ textAlign: "center" }}>4s/6s</span><span style={{ textAlign: "center" }}>SR</span>
+                  <div className="grid text-[10px] font-bold tracking-[.14em] uppercase text-[var(--text-3)] gap-2.5 py-1.5 px-3.5 pb-2.5 border-b border-white/6" style={{ gridTemplateColumns: "minmax(140px,1.6fr) .7fr .7fr .7fr .8fr" }}>
+                    <span>Batter</span><span className="text-center">R</span><span className="text-center">B</span><span className="text-center">4s/6s</span><span className="text-center">SR</span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
                     {players.length ? players.map((player, pidx) => {
@@ -935,11 +935,11 @@ function TabsArea({
                         <div key={playerKey} className={`mdp-batter-row ${player.isStriker ? "striker" : player.isNonStriker ? "nonstriker" : ""}`}>
                           <div>
                             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              {player.isStriker && <span style={{ color: "var(--mdp-amber)", fontSize: 12 }}>★</span>}
-                              {player.isNonStriker && <span style={{ color: "var(--mdp-cyan)", fontSize: 12 }}>○</span>}
+                              {player.isStriker && <span className="text-xs text-[var(--mdp-amber)]">★</span>}
+                              {player.isNonStriker && <span className="text-xs text-[var(--mdp-cyan)]">○</span>}
                               <span style={{ fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{player.name}</span>
                             </div>
-                            <span style={{ fontSize: 11, color: "var(--mdp-text-3)" }}>{player.out ? "out" : "not out"}</span>
+                            <span className="text-[11px] text-var(--mdp-text-3)">{player.out ? "out" : "not out"}</span>
                           </div>
                           <span style={{ textAlign: "center", fontWeight: 700, color: "var(--mdp-green)" }}>{player.runs}</span>
                           <span style={{ textAlign: "center", color: "#fff" }}>{player.balls}</span>
@@ -947,7 +947,7 @@ function TabsArea({
                           <span style={{ textAlign: "center", color: "var(--mdp-amber)" }}>{sr}</span>
                         </div>
                       );
-                    }) : <p style={{ fontSize: 13, color: "var(--mdp-text-3)", padding: 10 }}>No batting records yet.</p>}
+                    }) : <p className="text-sm text-[var(--text-3)] p-2.5">No batting records yet.</p>}
                   </div>
                 </div>
 
@@ -955,8 +955,8 @@ function TabsArea({
                 <div className="mdp-card">
                   <p className="mdp-sec-eyebrow" style={{ marginBottom: 4 }}>Bowling Card</p>
                   <h3 className="mdp-sec-title" style={{ marginBottom: 12 }}>Bowlers</h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr repeat(4,.7fr)", gap: 10, padding: "6px 14px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: 10, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: "var(--mdp-text-3)" }}>
-                    <span>Bowler</span><span style={{ textAlign: "center" }}>O</span><span style={{ textAlign: "center" }}>R</span><span style={{ textAlign: "center" }}>W</span><span style={{ textAlign: "center" }}>Econ</span>
+                  <div className="grid text-[10px] font-bold tracking-[.14em] uppercase text-[var(--text-3)] gap-2.5 py-1.5 px-3.5 pb-2.5 border-b border-white/6" style={{ gridTemplateColumns: "1fr repeat(4,.7fr)" }}>
+                    <span>Bowler</span><span className="text-center">O</span><span className="text-center">R</span><span className="text-center">W</span><span className="text-center">Econ</span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
                     {Object.entries(bowling).length ? Object.entries(bowling).map(([name, stat]) => {
@@ -973,7 +973,7 @@ function TabsArea({
                           <span style={{ textAlign: "center", color: "var(--mdp-cyan)" }}>{economy}</span>
                         </div>
                       );
-                    }) : <p style={{ fontSize: 13, color: "var(--mdp-text-3)", padding: 10 }}>No bowling records yet.</p>}
+                    }) : <p className="text-sm text-[var(--text-3)] p-2.5">No bowling records yet.</p>}
                   </div>
                 </div>
               </div>
@@ -985,11 +985,11 @@ function TabsArea({
                   <h3 className="mdp-sec-title" style={{ marginBottom: 12 }}>Fall of Wickets</h3>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {wickets.length ? wickets.map((w, i) => (
-                      <div key={i} style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, padding: "5px 10px", fontSize: 12 }}>
-                        <span style={{ fontWeight: 700, color: "var(--mdp-red)" }}>{w.score}/{i + 1}</span>
-                        <span style={{ color: "var(--mdp-text-3)", marginLeft: 5 }}>({w.over})</span>
+                      <div key={i} className="text-xs bg-[var(--danger)]/8 border border-[var(--danger)]/20 rounded-lg px-2.5 py-1">
+                        <span className="font-bold text-[var(--danger)]">{w.score}/{i + 1}</span>
+                        <span className="text-[var(--text-3)] ml-1">({w.over})</span>
                       </div>
-                    )) : <p style={{ fontSize: 12, color: "var(--mdp-text-3)" }}>No wickets yet.</p>}
+                    )) : <p className="text-xs text-var(--mdp-text-3)">No wickets yet.</p>}
                   </div>
                 </div>
 
@@ -1008,11 +1008,11 @@ function TabsArea({
                   <p className="mdp-sec-eyebrow" style={{ marginBottom: 4 }}>Stand</p>
                   <h3 className="mdp-sec-title" style={{ marginBottom: 12 }}>Partnerships</h3>
                   {partnerships.length ? partnerships.map((p, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,255,135,0.05)", border: "1px solid rgba(0,255,135,0.15)", borderRadius: 9, padding: "10px 14px", fontSize: 13 }}>
-                      <span style={{ color: "#fff" }}>{p.players}</span>
-                      <span style={{ fontWeight: 700, color: "var(--mdp-green)" }}>{p.runs} runs</span>
+                    <div key={i} className="flex justify-between items-center text-sm bg-[var(--success)]/5 border border-[var(--success)]/15 rounded-[9px] px-3.5 py-2.5">
+                      <span className="text-white">{p.players}</span>
+                      <span className="font-bold text-[var(--success)]">{p.runs} runs</span>
                     </div>
-                  )) : <p style={{ fontSize: 12, color: "var(--mdp-text-3)" }}>No partnerships yet.</p>}
+                  )) : <p className="text-xs text-var(--mdp-text-3)">No partnerships yet.</p>}
                 </div>
 
                 <div className="mdp-card">
@@ -1023,11 +1023,11 @@ function TabsArea({
                     return (
                       <div key={player.name} style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: 14, marginBottom: 8 }}>
                         <p style={{ fontWeight: 700, color: "#fff", marginBottom: 4 }}>{player.name}</p>
-                        <p style={{ fontSize: 13, color: "var(--mdp-text-2)", marginBottom: 4 }}>{player.runs} ({player.balls})</p>
-                        <p style={{ fontSize: 13, color: "var(--mdp-amber)", fontWeight: 600 }}>SR: {sr}</p>
+                        <p className="text-sm text-[var(--mdp-text-2)] mb-1">{player.runs} ({player.balls})</p>
+                        <p className="text-sm text-[var(--mdp-amber)] font-semibold">SR: {sr}</p>
                       </div>
                     );
-                  }) : <p style={{ fontSize: 12, color: "var(--mdp-text-3)" }}>No comparison available yet.</p>}
+                  }) : <p className="text-xs text-var(--mdp-text-3)">No comparison available yet.</p>}
                 </div>
               </div>
             </div>
@@ -1053,12 +1053,12 @@ function TabsArea({
                   {squad.length ? squad.map((player, index) => (
                     <div key={`${player.name}-${index}`} className="mdp-squad-row">
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: 11, color: "var(--mdp-text-3)", fontFamily: "monospace", minWidth: 18 }}>{String(index + 1).padStart(2, "0")}</span>
+                        <span className="text-[11px] text-[var(--text-3)] font-mono min-w-[18px]">{String(index + 1).padStart(2, "0")}</span>
                         <span style={{ color: "#fff", fontWeight: 600 }}>{player.name}</span>
                       </div>
                       <span className={`mdp-role-badge ${player.role}`}>{player.role}</span>
                     </div>
-                  )) : <p style={{ fontSize: 13, color: "var(--mdp-text-3)" }}>No squad data available.</p>}
+                  )) : <p className="text-sm text-var(--mdp-text-3)">No squad data available.</p>}
                 </div>
               </div>
             ))}
@@ -1089,7 +1089,7 @@ function TabsArea({
                     }}
                   />
                 ) : (
-                  <div style={{ background: "rgba(0,255,135,0.07)", border: "1px solid rgba(0,255,135,0.2)", borderRadius: 10, padding: "12px 16px", fontSize: 14, fontWeight: 700, color: "var(--mdp-green)" }}>
+                  <div className="text-sm font-bold text-[var(--success)] bg-[var(--success)]/7 border border-[var(--success)]/20 rounded-[10px] px-4 py-3">
                     ✓ Teams: {matchMeta.teamA.name} vs {matchMeta.teamB.name}
                   </div>
                 )}
@@ -1155,7 +1155,7 @@ function TabsArea({
                   )}
 
                   {startError && (
-                    <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 9, padding: "9px 14px", fontSize: 13, color: "var(--mdp-red)" }}>
+                    <div className="text-sm text-[var(--danger)] bg-[var(--danger)]/8 border border-[var(--danger)]/20 rounded-[9px] px-3.5 py-2">
                       {startError}
                     </div>
                   )}
@@ -1180,7 +1180,7 @@ function TabsArea({
             <div className="mdp-card">
               <p className="mdp-sec-eyebrow" style={{ marginBottom: 4 }}>Danger Zone</p>
               <h3 className="mdp-sec-title" style={{ marginBottom: 12 }}>Delete Simulation</h3>
-              <p style={{ fontSize: 13, color: "var(--mdp-text-3)", marginBottom: 14 }}>
+              <p className="text-sm text-[var(--mdp-text-3)] mb-3.5">
                 Permanently remove this simulation and all its data. This action cannot be undone.
               </p>
               <button
@@ -1312,14 +1312,14 @@ function MatchInnerPage({ match, analytics, insights, sessionMeta, liveStatus, h
                 </div>
                 <h1 className="mdp-hero-title">{team1Name} vs {team2Name}</h1>
                 {sessionMeta?.type === "LIVE" && liveStatus && (
-                  <p style={{ fontSize: 13, color: "rgba(0,229,255,0.8)", marginTop: 3 }}>{liveStatus}</p>
+                  <p className="text-sm text-[var(--brand)]/80 mt-1">{liveStatus}</p>
                 )}
                 <p className="mdp-hero-sub">Live command center with realtime commentary, analytics, and replay.</p>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
                 <ConnectionStatus hideWhenConnected={false} />
                 <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}>
-                  <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)", textDecoration: "none", transition: "all .2s" }}>
+                  <Link href="/" className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white/70 rounded-[9px] border border-white/10 bg-white/4 hover:text-white hover:bg-white/8 transition-all">
                     ← Back to Home
                   </Link>
                 </motion.div>

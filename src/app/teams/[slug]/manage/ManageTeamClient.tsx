@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 type Member = {
   userId: string;
@@ -33,6 +34,7 @@ export function ManageTeamClient({ team, currentUserId }: Props) {
   const [removing, setRemoving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [squad, setSquad] = useState<SquadMember[]>([]);
   const [loadingSquad, setLoadingSquad] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -93,9 +95,6 @@ export function ManageTeamClient({ team, currentUserId }: Props) {
   }
 
   async function handleDeleteTeam() {
-    const shouldDelete = window.confirm(`Delete "${team.name}" permanently? This cannot be undone.`);
-    if (!shouldDelete) return;
-
     setDeleting(true);
     setError(null);
 
@@ -322,14 +321,24 @@ export function ManageTeamClient({ team, currentUserId }: Props) {
             <p className="mt-0.5 text-xs text-[var(--text-muted)]">Permanently removes the team and all memberships.</p>
           </div>
           <button
-            onClick={handleDeleteTeam}
+            onClick={() => setShowDeleteModal(true)}
             disabled={deleting || removing !== null}
             className="rounded-lg border border-red-500/35 px-4 py-2 text-xs text-red-400 transition hover:border-red-500/60 hover:text-red-300 disabled:opacity-40"
           >
-            {deleting ? "Deleting..." : "Delete Team"}
+            Delete Team
           </button>
         </div>
       </section>
+
+      <ConfirmModal
+        open={showDeleteModal}
+        title="Delete Team"
+        message={`Delete "${team.name}" permanently? This cannot be undone.`}
+        confirmLabel={deleting ? "Deleting..." : "Delete"}
+        danger
+        onConfirm={handleDeleteTeam}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </div>
   );
 }

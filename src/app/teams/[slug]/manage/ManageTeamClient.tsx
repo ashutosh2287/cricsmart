@@ -270,7 +270,7 @@ export function ManageTeamClient({ team, currentUserId }: Props) {
             type="button"
             onClick={handleAddSquadPlayer}
             disabled={adding}
-            className="rounded-md bg-[var(--accent-brand)] px-3 py-2 text-xs font-semibold text-[#ffffff] disabled:opacity-60"
+            className="rounded-md bg-[var(--accent-brand)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
           >
             {adding ? "Adding..." : "Add"}
           </button>

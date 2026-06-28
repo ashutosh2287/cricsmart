@@ -84,7 +84,7 @@ export default function PasswordChangeForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="rounded-md bg-[var(--accent-brand)] px-3 py-2 text-sm font-medium text-[#ffffff] disabled:opacity-60"
+        className="rounded-md bg-[var(--accent-brand)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
       >
         {submitting ? "Updating..." : "Change password"}
       </button>

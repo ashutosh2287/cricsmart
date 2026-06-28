@@ -39,13 +39,13 @@ type Props = {
 };
 
 function getBallChipStyle(ball: string): string {
-  if (ball === "W")  return "bg-[#ef4444]/15 text-[#ef4444] font-bold";
-  if (ball === "4")  return "bg-[#3b82f6]/15 text-[#3b82f6] font-semibold";
-  if (ball === "6")  return "bg-[#f59e0b]/15 text-[#f59e0b] font-bold";
-  if (ball === "Wd") return "bg-[#f59e0b]/10 text-[#f59e0b]";
-  if (ball === "Nb") return "bg-orange-500/10 text-orange-400";
+  if (ball === "W")  return "bg-[var(--danger)]/15 text-[var(--danger)] font-bold";
+  if (ball === "4")  return "bg-[var(--brand)]/15 text-[var(--brand)] font-semibold";
+  if (ball === "6")  return "bg-[var(--amber)]/15 text-[var(--amber)] font-bold";
+  if (ball === "Wd") return "bg-[var(--amber)]/10 text-[var(--amber)]";
+  if (ball === "Nb") return "bg-[var(--amber)]/10 text-[var(--amber)]";
   if (ball === "0")  return "bg-[var(--surface-3)] text-[var(--text-3)]";
-  return "bg-[#22c55e]/10 text-[#22c55e]";
+  return "bg-[var(--success)]/10 text-[var(--success)]";
 }
 
 export default function MatchHeader({

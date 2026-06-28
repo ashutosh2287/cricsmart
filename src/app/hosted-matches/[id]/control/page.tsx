@@ -123,7 +123,7 @@ export default function HostedMatchControlPage() {
           <button
             onClick={startHostedMatch}
             disabled={Boolean(hostedMatch.runtimeMatchId) || !readyForStart}
-            className="rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-[#ffffff] disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
             title={!readyForStart ? "Set toss and Playing XI first" : undefined}
           >
             Start Live Match
@@ -187,7 +187,7 @@ export default function HostedMatchControlPage() {
             <option value="SCORER">SCORER</option>
             <option value="OPERATOR">OPERATOR</option>
           </select>
-          <button type="submit" className="rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-[#ffffff]">
+          <button type="submit" className="rounded-md bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-white">
             Add
           </button>
         </div>

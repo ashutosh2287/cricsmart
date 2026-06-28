@@ -31,10 +31,10 @@ function getBallLabel(ball: BallEvent) {
 }
 
 function getBallChipClass(label: string) {
-  if (label === "6") return "bg-[#7C4DFF] text-[#ffffff]";
-  if (label === "4") return "bg-[#4F7CFF] text-[#ffffff]";
-  if (label === "W") return "bg-[#FF4D5A] text-[#ffffff]";
-  if (label === "Wd" || label === "Nb") return "bg-amber-500 text-[#ffffff]";
+  if (label === "6") return "bg-[var(--accent)] text-white";
+  if (label === "4") return "bg-[var(--brand)] text-white";
+  if (label === "W") return "bg-[var(--danger)] text-white";
+  if (label === "Wd" || label === "Nb") return "bg-[var(--amber)] text-white";
   if (label === "•") return "bg-[var(--surface-3)] text-[var(--text-primary)]";
   return "bg-[var(--surface-2)] text-[var(--text-primary)]";
 }
@@ -94,7 +94,7 @@ export default function OversTimeline({ slug }: Props) {
             onClick={() => setSelectedInnings(0)}
             className={`rounded-lg border px-3 py-1.5 text-sm transition ${
               selectedInnings === 0
-                ? "border-[var(--accent-brand)] bg-[var(--accent-brand)] text-[#ffffff]"
+                ? "border-[var(--accent-brand)] bg-[var(--accent-brand)] text-white"
                 : "border-[var(--border-subtle)] bg-transparent text-[var(--text-primary)]"
             }`}
           >
@@ -106,7 +106,7 @@ export default function OversTimeline({ slug }: Props) {
               onClick={() => setSelectedInnings(1)}
               className={`rounded-lg border px-3 py-1.5 text-sm transition ${
                 selectedInnings === 1
-                  ? "border-[var(--accent-brand)] bg-[var(--accent-brand)] text-[#ffffff]"
+                  ? "border-[var(--accent-brand)] bg-[var(--accent-brand)] text-white"
                   : "border-[var(--border-subtle)] bg-transparent text-[var(--text-primary)]"
               }`}
             >

@@ -24,35 +24,35 @@ export default function BroadcastInsightBanner() {
         case "COLLAPSE_ALERT":
           message = {
             text: "🔥 COLLAPSE ALERT",
-            color: "#ef4444"
+            color: "var(--danger)"
           };
           break;
 
         case "ASSAULT_PHASE":
           message = {
             text: "🚀 ASSAULT PHASE",
-            color: "#22c55e"
+            color: "var(--success)"
           };
           break;
 
         case "STRANGLE_ALERT":
           message = {
             text: "🎯 STRANGLE HOLD",
-            color: "#eab308"
+            color: "var(--amber)"
           };
           break;
 
         case "PANIC_MODE":
           message = {
             text: "⚠ PANIC MODE",
-            color: "#f97316"
+            color: "var(--amber)"
           };
           break;
 
         case "RECOVERY_PHASE":
           message = {
             text: "🧊 RECOVERY PHASE",
-            color: "#3b82f6"
+            color: "var(--brand)"
           };
           break;
 

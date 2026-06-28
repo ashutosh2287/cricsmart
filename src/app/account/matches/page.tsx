@@ -45,7 +45,7 @@ export default async function HostedMatchesPage() {
           </div>
           <Link
             href="/host/matches/create"
-            className="rounded-lg bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-[#ffffff] transition hover:opacity-95"
+            className="rounded-lg bg-[var(--accent-brand)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-95"
           >
             + Host Match
           </Link>

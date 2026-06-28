@@ -49,7 +49,7 @@ export default function TeamsPage() {
         </div>
         <Link
           href="/teams/create"
-          className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--brand)] to-[#0077FF] text-white hover:shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--brand)] to-[var(--brand-dark)] text-white hover:shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all"
         >
           <Plus className="w-4 h-4" /> Create Team
         </Link>
@@ -75,7 +75,7 @@ export default function TeamsPage() {
           action={
             <Link
               href="/teams/create"
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--brand)] to-[#0077FF] text-white hover:shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--brand)] to-[var(--brand-dark)] text-white hover:shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all"
             >
               <Plus className="w-4 h-4" /> Create Team
             </Link>

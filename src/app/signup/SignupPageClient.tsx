@@ -187,7 +187,7 @@ export default function SignupPageClient() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-md bg-[var(--accent-brand)] px-3 py-2 text-sm font-medium text-[#ffffff] disabled:opacity-60"
+          className="w-full rounded-md bg-[var(--accent-brand)] px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
         >
           {submitting ? "Creating account..." : "Create account"}
         </button>

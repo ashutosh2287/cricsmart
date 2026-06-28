@@ -168,7 +168,7 @@ export default function HomePageClient({
               </Link>
               <button
                 onClick={() => setShowCreateForm(!showCreateForm)}
-                className="px-5 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--brand)] to-[#0077FF] text-white hover:shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all"
+                className="px-5 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--brand)] to-[var(--brand-dark)] text-white hover:shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all"
               >
                 <Plus className="w-4 h-4 inline mr-1" />
                 New Simulation
@@ -196,7 +196,7 @@ export default function HomePageClient({
                   <button
                     onClick={handleCreateMatch}
                     disabled={creating}
-                    className="px-6 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--brand)] to-[#0077FF] text-white hover:shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all disabled:opacity-50"
+                    className="px-6 py-2.5 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--brand)] to-[var(--brand-dark)] text-white hover:shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all disabled:opacity-50"
                   >
                     {creating ? "Launching..." : "Start Engine"}
                   </button>

@@ -94,7 +94,7 @@ export default function LandingPageClient({
             <Link href="/login" className="px-4 py-2 text-sm font-medium text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors rounded-lg hover:bg-[var(--surface-3)]">
               Sign In
             </Link>
-            <Link href="/signup" className="px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--brand)] to-[#0077FF] text-white hover:shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all duration-300">
+            <Link href="/signup" className="px-5 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-[var(--brand)] to-[var(--brand-dark)] text-white hover:shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all duration-300">
               Get Started
             </Link>
           </div>
@@ -167,7 +167,7 @@ export default function LandingPageClient({
               <motion.div variants={heroChild} className="flex flex-wrap gap-4">
                 <Link
                   href="/signup"
-                  className="px-7 py-3 text-sm font-semibold rounded-xl bg-gradient-to-r from-[var(--brand)] to-[#0077FF] text-white hover:shadow-[0_0_30px_rgba(0,229,255,0.35)] transition-all duration-300 hover:-translate-y-0.5"
+                  className="px-7 py-3 text-sm font-semibold rounded-xl bg-gradient-to-r from-[var(--brand)] to-[var(--brand-dark)] text-white hover:shadow-[0_0_30px_rgba(0,229,255,0.35)] transition-all duration-300 hover:-translate-y-0.5"
                 >
                   Start for Free
                 </Link>
@@ -426,7 +426,7 @@ export default function LandingPageClient({
               >
                 <Link
                   href="/signup"
-                  className="inline-flex px-8 py-3.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-[var(--brand)] to-[#0077FF] text-white hover:shadow-[0_0_30px_rgba(0,229,255,0.35)] transition-all duration-300"
+                  className="inline-flex px-8 py-3.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-[var(--brand)] to-[var(--brand-dark)] text-white hover:shadow-[0_0_30px_rgba(0,229,255,0.35)] transition-all duration-300"
                 >
                   Get Started Free
                 </Link>

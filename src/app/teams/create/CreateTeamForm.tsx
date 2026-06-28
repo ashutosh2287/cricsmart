@@ -121,7 +121,7 @@ export function CreateTeamForm({ userId }: Props) {
       <button
         type="submit"
         disabled={loading || name.trim().length < 2}
-        className="w-full rounded-lg bg-[var(--accent-brand)] py-3 text-sm font-bold text-[#ffffff] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-lg bg-[var(--accent-brand)] py-3 text-sm font-bold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? "Creating..." : "Create Team"}
       </button>

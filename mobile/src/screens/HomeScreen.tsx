@@ -1,17 +1,53 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, radii, typography } from "@/styles/theme";
+import { useLiveMatches, useSimulations, type FixtureMatch } from "@/hooks/useApi";
+
+function formatScore(scores: { r?: number; w?: number; o?: number }[]): string {
+  if (!scores || scores.length === 0) return "";
+  const s = scores[0];
+  return `${s.r ?? 0}/${s.w ?? 0} (${s.o ?? 0} ov)`;
+}
+
+function getTeamNames(match: FixtureMatch): string {
+  if (match.teamInfo && match.teamInfo.length >= 2) {
+    return `${match.teamInfo[0].name} vs ${match.teamInfo[1].name}`;
+  }
+  if (match.teams && match.teams.length >= 2) {
+    return `${match.teams[0]} vs ${match.teams[1]}`;
+  }
+  return match.name || "TBA vs TBA";
+}
 
 export default function HomeScreen() {
+  const { data: fixtureData, loading: fixturesLoading, refetch: refetchFixtures } = useLiveMatches();
+  const { data: simData, loading: simsLoading, refetch: refetchSims } = useSimulations();
+
+  const liveMatches = (fixtureData?.data ?? []).filter((m) => m.isLive);
+  const simulations = simData ?? [];
+
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refetchFixtures(), refetchSims()]);
+    setRefreshing(false);
+  }, [refetchFixtures, refetchSims]);
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand} />}
+    >
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -35,45 +71,59 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.matchCard}>
-            <Text style={styles.matchStatus}>LIVE</Text>
-            <Text style={styles.teamName}>India vs Australia</Text>
-            <Text style={styles.score}>186/4 (15.2 ov)</Text>
+        {fixturesLoading ? (
+          <View style={styles.loadingCard}>
+            <Text style={styles.loadingText}>Loading...</Text>
           </View>
-          <View style={styles.matchCard}>
-            <Text style={styles.matchStatus}>LIVE</Text>
-            <Text style={styles.teamName}>England vs South Africa</Text>
-            <Text style={styles.score}>245/6 (42.3 ov)</Text>
+        ) : liveMatches.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Ionicons name="football-outline" size={32} color={colors.textMuted} />
+            <Text style={styles.emptyText}>No live matches right now</Text>
           </View>
-        </ScrollView>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {liveMatches.slice(0, 5).map((match) => (
+              <TouchableOpacity key={match.id} style={styles.matchCard}>
+                <View style={styles.matchHeader}>
+                  <Text style={styles.matchType}>{match.matchCategory || "T20"}</Text>
+                  <Text style={styles.matchStatus}>LIVE</Text>
+                </View>
+                <Text style={styles.teamName}>{getTeamNames(match)}</Text>
+                <Text style={styles.score}>{formatScore(match.score || [])}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
-      {/* Quick Stats */}
+      {/* Your Simulations */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your Stats</Text>
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Ionicons name="football" size={20} color={colors.brand} />
-            <Text style={styles.statValue}>12</Text>
-            <Text style={styles.statLabel}>Matches</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="people" size={20} color={colors.success} />
-            <Text style={styles.statValue}>5</Text>
-            <Text style={styles.statLabel}>Teams</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="trophy" size={20} color={colors.amber} />
-            <Text style={styles.statValue}>3</Text>
-            <Text style={styles.statLabel}>Tournaments</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="star" size={20} color={colors.accent} />
-            <Text style={styles.statValue}>8</Text>
-            <Text style={styles.statLabel}>Following</Text>
-          </View>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Your Simulations</Text>
+          <Text style={styles.count}>{simulations.length} matches</Text>
         </View>
+
+        {simsLoading ? (
+          <View style={styles.loadingCard}>
+            <Text style={styles.loadingText}>Loading...</Text>
+          </View>
+        ) : simulations.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Ionicons name="add-circle-outline" size={32} color={colors.textMuted} />
+            <Text style={styles.emptyText}>No simulations yet</Text>
+          </View>
+        ) : (
+          simulations.slice(0, 4).map((sim) => (
+            <TouchableOpacity key={sim.matchId} style={styles.simCard}>
+              <View style={styles.simStatus}>
+                <View style={[styles.statusDot, { backgroundColor: sim.status === "LIVE" ? colors.danger : colors.textMuted }]} />
+                <Text style={styles.statusText}>{sim.status}</Text>
+              </View>
+              <Text style={styles.teamName}>{sim.teamA} vs {sim.teamB}</Text>
+              {sim.score && <Text style={styles.score}>{sim.score}</Text>}
+            </TouchableOpacity>
+          ))
+        )}
       </View>
 
       {/* Quick Actions */}
@@ -103,10 +153,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -115,122 +162,57 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xxxl,
     paddingBottom: spacing.lg,
   },
-  greeting: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  username: {
-    ...typography.heading1,
-    color: colors.text,
-    fontFamily: "SpaceGrotesk",
-  },
+  greeting: { ...typography.caption, color: colors.textMuted },
+  username: { ...typography.heading1, color: colors.text, fontFamily: "SpaceGrotesk" },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.lg,
-    backgroundColor: colors.surface2,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
+    width: 44, height: 44, borderRadius: radii.lg,
+    backgroundColor: colors.surface2, alignItems: "center", justifyContent: "center",
+    borderWidth: 1, borderColor: colors.border,
   },
-  section: {
-    marginBottom: spacing.xl,
-    paddingHorizontal: spacing.lg,
-  },
+  section: { marginBottom: spacing.xl, paddingHorizontal: spacing.lg },
   sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.md,
+    flexDirection: "row", justifyContent: "space-between",
+    alignItems: "center", marginBottom: spacing.md,
   },
-  sectionTitle: {
-    ...typography.heading3,
-    color: colors.text,
-  },
-  liveIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.danger,
-  },
-  viewAll: {
-    ...typography.caption,
-    color: colors.brand,
-  },
+  sectionTitle: { ...typography.heading3, color: colors.text },
+  liveIndicator: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.danger },
+  viewAll: { ...typography.caption, color: colors.brand },
+  count: { ...typography.caption, color: colors.textMuted },
   matchCard: {
-    width: 200,
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    marginRight: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    width: 200, backgroundColor: colors.surface, borderRadius: radii.lg,
+    padding: spacing.lg, marginRight: spacing.md, borderWidth: 1, borderColor: colors.border,
   },
-  matchStatus: {
-    ...typography.small,
-    color: colors.danger,
-    marginBottom: spacing.sm,
+  matchHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm },
+  matchType: {
+    ...typography.small, color: colors.brand, backgroundColor: `${colors.brand}20`,
+    paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radii.sm, overflow: "hidden",
   },
-  teamName: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: "600",
-    marginBottom: spacing.xs,
+  matchStatus: { ...typography.small, color: colors.danger, fontWeight: "700" },
+  teamName: { ...typography.body, color: colors.text, fontWeight: "600", marginBottom: spacing.xs },
+  score: { ...typography.caption, color: colors.textSecondary, fontFamily: "JetBrainsMono" },
+  simCard: {
+    backgroundColor: colors.surface, borderRadius: radii.lg, padding: spacing.lg,
+    marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border,
   },
-  score: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontFamily: "JetBrainsMono",
+  simStatus: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { ...typography.small, color: colors.textMuted, textTransform: "uppercase" },
+  loadingCard: {
+    backgroundColor: colors.surface, borderRadius: radii.lg, padding: spacing.xl,
+    borderWidth: 1, borderColor: colors.border, alignItems: "center",
   },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
+  loadingText: { ...typography.caption, color: colors.textMuted },
+  emptyCard: {
+    backgroundColor: colors.surface, borderRadius: radii.lg, padding: spacing.xxl,
+    borderWidth: 1, borderColor: colors.border, alignItems: "center", gap: spacing.md,
   },
-  statCard: {
-    width: "47%",
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-  },
-  statValue: {
-    ...typography.heading2,
-    color: colors.text,
-    marginTop: spacing.sm,
-    fontFamily: "SpaceGrotesk",
-  },
-  statLabel: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
-  },
-  actionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
-  },
+  emptyText: { ...typography.caption, color: colors.textMuted },
+  actionsGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
   actionCard: {
-    width: "47%",
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    gap: spacing.sm,
+    width: "47%", backgroundColor: colors.surface, borderRadius: radii.lg,
+    padding: spacing.lg, borderWidth: 1, borderColor: colors.border,
+    alignItems: "center", gap: spacing.sm,
   },
-  actionLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontWeight: "600",
-  },
+  actionLabel: { ...typography.caption, color: colors.textSecondary, fontWeight: "600" },
 });

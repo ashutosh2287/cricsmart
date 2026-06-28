@@ -13,7 +13,7 @@ import MatchControlPanel from "@/components/MatchControlPanel";
 import MatchHeader from "@/components/MatchHeader";
 import MatchInsightsPanel from "@/components/analytics/MatchInsightsPanel";
 import MatchNarrativePanel from "@/components/analytics/MatchNarrativePanel";
-import "./match-page.css";
+import "@/styles/match-page.css";
 import MatchStory from "@/components/MatchStory";
 import MatchGraphExplorer from "@/components/match/MatchGraphExplorer";
 import MomentumHeatmap from "@/components/MomentumHeatmap";

@@ -13,7 +13,7 @@ import MatchControlPanel from "@/components/MatchControlPanel";
 import MatchHeader from "@/components/MatchHeader";
 import MatchInsightsPanel from "@/components/analytics/MatchInsightsPanel";
 import MatchNarrativePanel from "@/components/analytics/MatchNarrativePanel";
-import "@/styles/match-page.css";
+import { matchPageStyles } from "@/styles/matchPageStyles";
 import MatchStory from "@/components/MatchStory";
 import MatchGraphExplorer from "@/components/match/MatchGraphExplorer";
 import MomentumHeatmap from "@/components/MomentumHeatmap";
@@ -1192,6 +1192,7 @@ export default function MatchDetailPage({ params }: { params: Promise<{ runtimeM
   return (
     <MatchProvider matchId={matchId}>
       <PageMotion>
+        <style dangerouslySetInnerHTML={{ __html: matchPageStyles }} />
         <div className="mdp-root" style={{ background: "var(--surface-2)" }}>
           {match ? (
             <MatchInnerPage match={match} analytics={replayHydratedAnalytics} insights={insights} sessionMeta={sessionMeta} liveStatus={liveStatus} hostedMatchId={hostedMatchId} />

@@ -5,8 +5,6 @@
   "scripts": {
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate",
-    "predev": "prisma generate",
-    "prebuild": "prisma generate",
     "dev": "tsx server/index.ts",
     "build": "next build",
     "start": "next start",

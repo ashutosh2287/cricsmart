@@ -180,8 +180,7 @@ export default function MatchHeader({
         </span>
 
         <span
-          className="font-medium tabular-nums"
-          style={{ color: "var(--text-3)", fontSize: 12 }}
+          className="font-medium tabular-nums text-xs text-[var(--text-3)]"
         >
           Over {over}.{ball}
         </span>
@@ -194,20 +193,17 @@ export default function MatchHeader({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span
-              className="font-semibold"
-              style={{ color: "var(--text-2)", fontSize: 14 }}
+              className="font-semibold text-sm text-[var(--text-2)]"
             >
               {finalTeam1}
             </span>
             <span
-              className="font-medium px-1.5"
-              style={{ color: "var(--text-2)", fontSize: 14 }}
+              className="font-medium px-1.5 text-sm text-[var(--text-2)]"
             >
               vs
             </span>
             <span
-              className="font-semibold"
-              style={{ color: "var(--text-2)", fontSize: 14 }}
+              className="font-semibold text-sm text-[var(--text-2)]"
             >
               {finalTeam2}
             </span>
@@ -235,8 +231,7 @@ export default function MatchHeader({
             <AnimatedScore value={`${runs}/${wickets}`} />
           </div>
           <p
-            className="mt-1 tabular-nums"
-            style={{ color: "var(--text-3)", fontSize: 12 }}
+            className="mt-1 tabular-nums text-xs text-[var(--text-3)]"
           >
             {over}.{ball} ov
           </p>
